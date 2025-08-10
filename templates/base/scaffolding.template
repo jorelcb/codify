@@ -1,0 +1,12 @@
+# Project Scaffolding - {{PROJECT_NAME}}
+
+## Structure
+Project uses DDD/Clean Architecture structure appropriate for {{LANGUAGE}}.
+
+## Key Files
+- `Taskfile.yml`: Development tasks
+- `context/`: AI agent documentation
+- Source code in language-specific structure
+
+---
+Generated: {{TIMESTAMP}}

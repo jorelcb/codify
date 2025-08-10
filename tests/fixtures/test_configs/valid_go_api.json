@@ -1,0 +1,12 @@
+{
+    "project_name": "test-go-api",
+    "language": "go",
+    "project_type": "api",
+    "ai_provider": "anthropic",
+    "description": "Test Go API project for integration testing",
+    "capabilities": ["database", "monitoring"],
+    "include_tests": true,
+    "include_docker": true,
+    "include_ci": true,
+    "timestamp": "2024-01-15T10:30:00Z"
+}

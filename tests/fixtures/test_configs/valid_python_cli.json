@@ -1,0 +1,12 @@
+{
+    "project_name": "test-python-cli",
+    "language": "python",
+    "project_type": "cli",
+    "ai_provider": "google",
+    "description": "Test Python CLI tool for automated testing",
+    "capabilities": [],
+    "include_tests": true,
+    "include_docker": true,
+    "include_ci": false,
+    "timestamp": "2024-01-15T10:30:00Z"
+}
