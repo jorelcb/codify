@@ -1,10 +1,19 @@
 # 🤖 AI Context Generator
 
-> Generador profesional de contextos para agentes de desarrollo con IA, basado en Domain-Driven Design y Clean Architecture
+> Generador de contextos y documentación para agentes de desarrollo con IA
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/jorelcb/ai-context-generator)
+[![Version](https://img.shields.io/badge/version-0.0.1--alpha-yellow.svg)](https://github.com/jorelcb/ai-context-generator)
+[![Status](https://img.shields.io/badge/status-prototype-orange.svg)](ROADMAP.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Task](https://img.shields.io/badge/task-v3.0+-orange.svg)](https://taskfile.dev)
+
+## ⚠️ Estado del Proyecto
+
+**Este es un prototipo inicial (v0.0.1-alpha)**. Actualmente genera documentación y estructura básica de carpetas.
+La implementación completa en Go con DDD/Clean Architecture está en desarrollo.
+
+📋 **Ver [ROADMAP.md](ROADMAP.md)** para el plan de desarrollo completo
+📊 **Ver [ESTADO_REAL.md](ESTADO_REAL.md)** para el inventario técnico detallado
 
 ## 📋 Tabla de Contenidos
 

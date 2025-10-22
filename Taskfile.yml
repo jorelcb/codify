@@ -1,10 +1,12 @@
-# Taskfile.yml - AI Context Generator v1.0.0
+# Taskfile.yml - AI Context Generator v0.0.1-alpha
+# Phase 0: Cleanup & Restructuring
 version: '3'
 
 vars:
   TEMPLATE_DIR: ./templates
   OUTPUT_DIR: ./output
-  SCRIPTS_DIR: ./scripts
+  BIN_DIR: ./bin
+  BINARY: '{{.BIN_DIR}}/ai-context-generator'
   TESTS_DIR: ./tests
   TIMESTAMP:
     sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
@@ -19,218 +21,82 @@ tasks:
 
   help:
     desc: Mostrar ayuda completa
-    silent: true
     cmds:
-      - echo "🤖 GENERADOR DE CONTEXTOS PARA AGENTES DE IA"
+      - echo "AI CONTEXT GENERATOR v0.0.1-alpha"
+      - echo "Phase 0 - Cleanup & Restructuring"
       - echo ""
-      - echo "Comandos principales:"
-      - echo "  task new          - Crear proyecto (interactivo)"
-      - echo "  task new:quick    - Crear proyecto (con parámetros)"
-      - echo "  task list         - Listar proyectos generados"
-      - echo "  task clean        - Limpiar todos los proyectos"
+      - echo "NOTA - Los comandos de generación están temporalmente deshabilitados"
+      - echo "mientras se reescribe el core en Go (ver ROADMAP.md)"
       - echo ""
-      - echo "Gestión de templates:"
+      - echo "Comandos disponibles"
+      - echo "  task build        - Compilar binario Go"
+      - echo "  task run          - Ejecutar binario"
+      - echo "  task test         - Ejecutar tests Go"
+      - echo "  task clean        - Limpiar binarios y cache"
+      - echo ""
       - echo "  task template:list     - Listar templates disponibles"
       - echo "  task template:validate - Validar templates"
       - echo ""
-      - echo "Testing:"
-      - echo "  task test         - Ejecutar todos los tests"
-      - echo "  task test:unit    - Ejecutar tests unitarios"
-      - echo "  task test:integration - Ejecutar tests de integración"
+      - echo "Documentación"
+      - echo "  README.md        - Estado actual del proyecto"
+      - echo "  ROADMAP.md       - Plan de desarrollo"
+      - echo "  ESTADO_REAL.md   - Inventario técnico"
+      - echo "  ARCHITECTURE.md  - Diseño arquitectónico"
       - echo ""
-      - echo "Ejemplos:"
-      - echo "  task new"
-      - echo "  task new:quick -- mi-api go api openai"
+      - echo "Próximos pasos - Ver ROADMAP.md Fase 0"
 
   # ============================================================================
-  # PROJECT GENERATION
+  # GO BUILD & RUN
+  # ============================================================================
+
+  build:
+    desc: Compilar binario Go
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - go build -o {{.BINARY}} ./cmd/ai-context-generator
+      - echo "[OK] Binario compilado en {{.BINARY}}"
+
+  run:
+    desc: Ejecutar binario
+    deps: [build]
+    cmds:
+      - '{{.BINARY}}'
+
+  # ============================================================================
+  # PROJECT GENERATION (TEMPORARILY DISABLED)
   # ============================================================================
 
   new:
-    desc: Crear nuevo proyecto con wizard interactivo
+    desc: "[DISABLED] Crear nuevo proyecto - En desarrollo"
     cmds:
-      - bash {{.SCRIPTS_DIR}}/wizard.sh > /tmp/project_config.json
-      - task: generate:from:config
-        vars:
-          CONFIG_FILE: /tmp/project_config.json
+      - echo "[DISABLED] Este comando está temporalmente deshabilitado"
+      - echo ""
+      - echo "[INFO] Estamos reescribiendo el generador en Go (Fase 0)"
+      - echo "   Ver ROADMAP.md para el plan completo"
+      - echo ""
+      - echo "[INFO] Scripts bash legacy movidos a docs/legacy/"
+      - echo "   (Solo para referencia histórica)"
+      - exit 1
 
   new:quick:
-    desc: "Quick project creation: task new:quick -- <name> <language> <type> <provider>"
-    vars:
-      PROJECT_NAME: '{{index .CLI_ARGS 0}}'
-      LANGUAGE: '{{index .CLI_ARGS 1}}'
-      PROJECT_TYPE: '{{index .CLI_ARGS 2}}'
-      AI_PROVIDER: '{{index .CLI_ARGS 3}}'
+    desc: "[DISABLED] Creación rápida - En desarrollo"
     cmds:
-      - task: validate:inputs
-        vars:
-          PROJECT_NAME: '{{.PROJECT_NAME}}'
-          LANGUAGE: '{{.LANGUAGE}}'
-          PROJECT_TYPE: '{{.PROJECT_TYPE}}'
-          AI_PROVIDER: '{{.AI_PROVIDER}}'
-      - task: generate:project
-        vars:
-          PROJECT_NAME: '{{.PROJECT_NAME}}'
-          LANGUAGE: '{{.LANGUAGE}}'
-          PROJECT_TYPE: '{{.PROJECT_TYPE}}'
-          AI_PROVIDER: '{{.AI_PROVIDER}}'
-
-  generate:from:config:
-    desc: Generar proyecto desde archivo de configuración
-    internal: true
-    vars:
-      PROJECT_NAME:
-        sh: jq -r '.project_name' {{.CONFIG_FILE}}
-      LANGUAGE:
-        sh: jq -r '.language' {{.CONFIG_FILE}}
-      PROJECT_TYPE:
-        sh: jq -r '.project_type' {{.CONFIG_FILE}}
-      AI_PROVIDER:
-        sh: jq -r '.ai_provider' {{.CONFIG_FILE}}
-      DESCRIPTION:
-        sh: jq -r '.description // "Project generated with AI Context Generator"' {{.CONFIG_FILE}}
-      CAPABILITIES:
-        sh: jq -r '.capabilities // [] | join(",")' {{.CONFIG_FILE}}
-    cmds:
-      - task: generate:project
-        vars:
-          PROJECT_NAME: '{{.PROJECT_NAME}}'
-          LANGUAGE: '{{.LANGUAGE}}'
-          PROJECT_TYPE: '{{.PROJECT_TYPE}}'
-          AI_PROVIDER: '{{.AI_PROVIDER}}'
-          DESCRIPTION: '{{.DESCRIPTION}}'
-          CAPABILITIES: '{{.CAPABILITIES}}'
-
-  generate:project:
-    desc: Generar todos los archivos del proyecto
-    internal: true
-    vars:
-      PROJECT_PATH: '{{.OUTPUT_DIR}}/{{.PROJECT_NAME}}'
-      CONTEXT_PATH: '{{.OUTPUT_DIR}}/{{.PROJECT_NAME}}/context'
-    cmds:
-      - echo "📁 Generando proyecto {{.PROJECT_NAME}}..."
-      - mkdir -p {{.CONTEXT_PATH}}
-
-      # Copy and process context templates
-      - |
-        for template in prompt context scaffolding interactions; do
-          if [ -f "{{.TEMPLATE_DIR}}/base/${template}.template" ]; then
-            cp "{{.TEMPLATE_DIR}}/base/${template}.template" "{{.CONTEXT_PATH}}/0$(echo $template | cut -c1)_$(echo $template | tr '[:lower:]' '[:upper:]').md"
-          fi
-        done
-      - cp {{.TEMPLATE_DIR}}/base/changelog.template {{.CONTEXT_PATH}}/CHANGELOG.md 2>/dev/null || true
-
-      # Generate project structure
-      - bash {{.SCRIPTS_DIR}}/generate_scaffolding.sh "{{.PROJECT_PATH}}" "{{.LANGUAGE}}" "{{.PROJECT_TYPE}}"
-
-      # Copy language-specific Taskfile
-      - |
-        if [ -f "{{.TEMPLATE_DIR}}/scaffolding/{{.LANGUAGE}}/Taskfile.yml" ]; then
-          cp "{{.TEMPLATE_DIR}}/scaffolding/{{.LANGUAGE}}/Taskfile.yml" "{{.PROJECT_PATH}}/Taskfile.yml"
-        fi
-
-      # Replace variables in all files
-      - task: replace:variables
-        vars:
-          FILES: '{{.CONTEXT_PATH}}/*.md {{.PROJECT_PATH}}/Taskfile.yml'
-          PROJECT_NAME: '{{.PROJECT_NAME}}'
-          LANGUAGE: '{{.LANGUAGE}}'
-          PROJECT_TYPE: '{{.PROJECT_TYPE}}'
-          AI_PROVIDER: '{{.AI_PROVIDER}}'
-          DESCRIPTION: '{{.DESCRIPTION}}'
-          CAPABILITIES: '{{.CAPABILITIES}}'
-
-      - echo "✅ Proyecto generado en: {{.PROJECT_PATH}}"
-      - echo ""
-      - echo "Próximos pasos:"
-      - echo "  cd {{.PROJECT_PATH}}"
-      - echo "  task dev"
-
-  replace:variables:
-    desc: Reemplazar variables en archivos
-    internal: true
-    cmds:
-      - |
-        for file in {{.FILES}}; do
-          if [ -f "$file" ]; then
-            sed -i.bak \
-              -e 's|{{PROJECT_NAME}}|{{.PROJECT_NAME}}|g' \
-              -e 's|{{LANGUAGE}}|{{.LANGUAGE}}|g' \
-              -e 's|{{PROJECT_TYPE}}|{{.PROJECT_TYPE}}|g' \
-              -e 's|{{AI_PROVIDER}}|{{.AI_PROVIDER}}|g' \
-              -e 's|{{DESCRIPTION}}|{{.DESCRIPTION}}|g' \
-              -e 's|{{CAPABILITIES}}|{{.CAPABILITIES}}|g' \
-              -e 's|{{TIMESTAMP}}|{{.TIMESTAMP}}|g' \
-              -e 's|{{DATE}}|{{.DATE}}|g' \
-              "$file"
-            rm -f "${file}.bak"
-          fi
-        done
-
-  validate:inputs:
-    desc: Validar inputs del proyecto
-    internal: true
-    preconditions:
-      - sh: 'test -n "{{.PROJECT_NAME}}"'
-        msg: "❌ El nombre del proyecto es requerido"
-      - sh: 'echo "{{.PROJECT_NAME}}" | grep -qE "^[a-zA-Z][a-zA-Z0-9_-]*$"'
-        msg: "❌ Nombre de proyecto inválido. Use solo letras, números, guiones y guiones bajos"
-      - sh: 'echo "go javascript python java rust" | grep -qw "{{.LANGUAGE}}"'
-        msg: "❌ Lenguaje no soportado. Use: go, javascript, python, java, rust"
-      - sh: 'echo "api cli library webapp service" | grep -qw "{{.PROJECT_TYPE}}"'
-        msg: "❌ Tipo no soportado. Use: api, cli, library, webapp, service"
-
-  # ============================================================================
-  # PROJECT MANAGEMENT
-  # ============================================================================
-
-  list:
-    desc: Listar proyectos generados
-    cmds:
-      - |
-        echo "📁 Proyectos generados:"
-        if [ -d "{{.OUTPUT_DIR}}" ] && [ "$(ls -A {{.OUTPUT_DIR}})" ]; then
-          for dir in {{.OUTPUT_DIR}}/*; do
-            if [ -d "$dir" ]; then
-              name=$(basename "$dir")
-              if [ -f "$dir/Taskfile.yml" ]; then
-                echo "  ✅ $name"
-              else
-                echo "  ⚠️  $name (sin configuración)"
-              fi
-            fi
-          done
-        else
-          echo "  No hay proyectos generados aún"
-        fi
+      - task: new
 
   clean:
-    desc: Limpiar todos los proyectos generados
-    prompt: "¿Estás seguro de que quieres eliminar todos los proyectos generados?"
+    desc: Limpiar binarios y cache de Go
     cmds:
+      - rm -rf {{.BIN_DIR}}
+      - go clean -cache -testcache
+      - echo "[OK] Binarios y cache limpiados"
+
+  clean:all:
+    desc: Limpiar todo (binarios, cache y proyectos generados)
+    prompt: "¿Estás seguro? Esto eliminará binarios, cache Y proyectos generados"
+    cmds:
+      - task: clean
       - rm -rf {{.OUTPUT_DIR}}/*
-      - echo "✅ Proyectos eliminados"
-
-  clean:project:
-    desc: "Eliminar un proyecto específico: task clean:project -- <nombre>"
-    vars:
-      PROJECT_NAME: '{{index .CLI_ARGS 0}}'
-    cmds:
-      - |
-        if [ -d "{{.OUTPUT_DIR}}/{{.PROJECT_NAME}}" ]; then
-          rm -rf {{.OUTPUT_DIR}}/{{.PROJECT_NAME}}
-          echo "✅ Proyecto {{.PROJECT_NAME}} eliminado"
-        else
-          echo "❌ Proyecto {{.PROJECT_NAME}} no encontrado"
-        fi
-
-  backup:
-    desc: Crear backup de todos los proyectos generados
-    vars:
-      BACKUP_FILE: 'projects_backup_{{.DATE}}.tar.gz'
-    cmds:
-      - tar -czf {{.BACKUP_FILE}} {{.OUTPUT_DIR}}/
-      - echo "✅ Backup created: {{.BACKUP_FILE}}"
+      - echo "[OK] Todo limpiado"
 
   # ============================================================================
   # TEMPLATE MANAGEMENT
@@ -239,40 +105,40 @@ tasks:
   template:list:
     desc: Listar templates disponibles
     cmds:
-      - echo "📚 Templates disponibles:"
+      - echo "Templates disponibles"
       - echo ""
-      - echo "Lenguajes:"
+      - echo "Lenguajes"
       - ls -1 {{.TEMPLATE_DIR}}/languages/ 2>/dev/null | sed 's/^/  - /'
       - echo ""
-      - echo "Tipos de proyecto:"
+      - echo "Tipos de proyecto"
       - ls -1 {{.TEMPLATE_DIR}}/types/ 2>/dev/null | sed 's/^/  - /'
 
   template:validate:
     desc: Validar que los templates requeridos existan
     cmds:
       - |
-        echo "🔍 Validando templates..."
+        echo "Validando templates..."
         missing=0
-        
+
         # Verificar templates base
         for template in prompt context scaffolding interactions changelog; do
           if [ ! -f "{{.TEMPLATE_DIR}}/base/${template}.template" ]; then
-            echo "❌ Falta: base/${template}.template"
+            echo "[ERROR] Falta base/${template}.template"
             missing=$((missing + 1))
           fi
         done
-        
+
         # Verificar Taskfiles de lenguajes
         for lang in go javascript python; do
           if [ ! -f "{{.TEMPLATE_DIR}}/scaffolding/${lang}/Taskfile.yml" ]; then
-            echo "⚠️  Falta: scaffolding/${lang}/Taskfile.yml"
+            echo "[WARN] Falta scaffolding/${lang}/Taskfile.yml"
           fi
         done
-        
+
         if [ $missing -eq 0 ]; then
-          echo "✅ Templates principales validados"
+          echo "[OK] Templates principales validados"
         else
-          echo "❌ Faltan $missing templates principales"
+          echo "[ERROR] Faltan $missing templates principales"
           exit 1
         fi
 
@@ -281,47 +147,30 @@ tasks:
   # ============================================================================
 
   test:
-    desc: Ejecutar suite completa de tests
+    desc: Ejecutar tests Go
     cmds:
-      - echo "🧪 Ejecutando suite completa de tests..."
-      - task: check:dependencies
-      - task: template:validate
-      - |
-        if [ -f "{{.TESTS_DIR}}/run_all_tests.sh" ]; then
-          bash {{.TESTS_DIR}}/run_all_tests.sh all
-        else
-          echo "⚠️  Suite de tests aún no implementada"
-        fi
+      - echo "Ejecutando tests Go..."
+      - go test ./... -v
 
-  test:unit:
-    desc: Ejecutar solo tests unitarios
+  test:coverage:
+    desc: Ejecutar tests con cobertura
     cmds:
-      - echo "🧪 Ejecutando tests unitarios..."
-      - |
-        if [ -f "{{.TESTS_DIR}}/run_all_tests.sh" ]; then
-          bash {{.TESTS_DIR}}/run_all_tests.sh unit
-        else
-          echo "⚠️  Tests unitarios aún no implementados"
-        fi
+      - echo "Ejecutando tests con cobertura..."
+      - go test ./... -coverprofile=coverage.out
+      - go tool cover -html=coverage.out -o coverage.html
+      - echo "[OK] Reporte de cobertura generado - coverage.html"
 
-  test:integration:
-    desc: Ejecutar solo tests de integración
+  test:watch:
+    desc: Ejecutar tests en modo watch
     cmds:
-      - echo "🧪 Ejecutando tests de integración..."
+      - echo "Ejecutando tests en modo watch..."
+      - echo "(Presiona Ctrl+C para detener)"
       - |
-        if [ -f "{{.TESTS_DIR}}/run_all_tests.sh" ]; then
-          bash {{.TESTS_DIR}}/run_all_tests.sh integration
-        else
-          echo "⚠️  Tests de integración aún no implementados"
-        fi
-
-  test:clean:
-    desc: Limpiar archivos temporales de tests
-    cmds:
-      - echo "🧹 Limpiando archivos temporales de tests..."
-      - rm -rf /tmp/ai-context-generator-test-*
-      - rm -rf /tmp/project_config.json
-      - echo "✅ Archivos temporales eliminados"
+        while true; do
+          clear
+          go test ./... -v
+          sleep 2
+        done
 
   # ============================================================================
   # UTILITIES
@@ -331,48 +180,68 @@ tasks:
     desc: Verificar dependencias requeridas
     cmds:
       - |
-        echo "📦 Verificando dependencias..."
+        echo "Verificando dependencias..."
         missing=""
-        for cmd in git jq; do
+        for cmd in go git; do
           if ! command -v $cmd &> /dev/null; then
             missing="$missing $cmd"
           fi
         done
         if [ -n "$missing" ]; then
-          echo "❌ Faltan dependencias:$missing"
-          echo "Por favor instálalas antes de continuar"
+          echo "[ERROR] Faltan dependencias $missing"
+          echo "Por favor instalalas antes de continuar"
           exit 1
         fi
-        echo "✅ Todas las dependencias instaladas"
+        echo "[OK] Todas las dependencias instaladas"
+        echo "   Go version $(go version)"
+        echo "   Git version $(git --version)"
 
   healthcheck:
-    desc: Verificar que el generador está funcionando correctamente
+    desc: Verificar que el proyecto está correctamente configurado
     cmds:
-      - echo "🩺 Ejecutando verificación de salud..."
+      - echo "Ejecutando verificacion de salud..."
       - task: check:dependencies
       - task: template:validate
       - |
-        if [ -x "{{.SCRIPTS_DIR}}/wizard.sh" ]; then
-          echo "✅ Script wizard encontrado y ejecutable"
+        if [ -f "go.mod" ]; then
+          echo "[OK] go.mod encontrado"
         else
-          echo "❌ Script wizard faltante o no ejecutable"
+          echo "[ERROR] go.mod no encontrado"
           exit 1
         fi
       - |
-        if [ -x "{{.SCRIPTS_DIR}}/generate_scaffolding.sh" ]; then
-          echo "✅ Script scaffolding encontrado y ejecutable"
+        if go build -o /tmp/test-build ./cmd/ai-context-generator; then
+          echo "[OK] El proyecto compila correctamente"
+          rm /tmp/test-build
         else
-          echo "❌ Script scaffolding faltante o no ejecutable"
+          echo "[ERROR] Error al compilar el proyecto"
           exit 1
         fi
-      - echo "✅ El generador está saludable"
+      - |
+        if go test ./... >/dev/null 2>&1; then
+          echo "[OK] Tests pasan correctamente"
+        else
+          echo "[ERROR] Algunos tests fallan"
+          exit 1
+        fi
+      - echo "[OK] El proyecto esta saludable"
 
   version:
     desc: Mostrar versión del generador
     cmds:
-      - echo "AI Context Generator v1.0.0"
-      - echo "Task version: $(task --version)"
-      - |
-        if [ -f ".version" ]; then
-          echo "Version file: $(cat .version)"
-        fi
+      - '{{.BINARY}} || task build && {{.BINARY}}'
+
+  info:
+    desc: Mostrar información del proyecto
+    cmds:
+      - echo "AI Context Generator - Project Info"
+      - echo ""
+      - echo "Version 0.0.1-alpha"
+      - echo "Phase 0 (Cleanup & Restructuring)"
+      - echo "Go version $(go version)"
+      - echo "Task version $(task --version)"
+      - echo ""
+      - echo "Directorio de trabajo $(pwd)"
+      - echo "Binario {{.BINARY}}"
+      - echo ""
+      - echo "Estado Reescribiendo en Go (ver ROADMAP.md)"
