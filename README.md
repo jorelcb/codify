@@ -2,15 +2,15 @@
 
 > Generador de contextos y documentación para agentes de desarrollo con IA
 
-[![Version](https://img.shields.io/badge/version-0.0.1--alpha-yellow.svg)](https://github.com/jorelcb/ai-context-generator)
-[![Status](https://img.shields.io/badge/status-prototype-orange.svg)](ROADMAP.md)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/jorelcb/ai-context-generator)
+[![Status](https://img.shields.io/badge/status-beta-green.svg)](ROADMAP.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Task](https://img.shields.io/badge/task-v3.0+-orange.svg)](https://taskfile.dev)
 
 ## ⚠️ Estado del Proyecto
 
-**Este es un prototipo inicial (v0.0.1-alpha)**. Actualmente genera documentación y estructura básica de carpetas.
-La implementación completa en Go con DDD/Clean Architecture está en desarrollo.
+**Versión v1.1.0 - Beta**. Implementación funcional con arquitectura DDD/Clean Architecture, CLI completo y tests BDD.
+La herramienta incluye comandos para generar, listar y validar proyectos con IA.
 
 📋 **Ver [ROADMAP.md](ROADMAP.md)** para el plan de desarrollo completo
 📊 **Ver [ESTADO_REAL.md](ESTADO_REAL.md)** para el inventario técnico detallado
