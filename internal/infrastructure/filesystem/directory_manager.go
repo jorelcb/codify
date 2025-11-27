@@ -3,13 +3,15 @@ package filesystem
 import (
 	"fmt"
 	"os"
+
+	"github.com/jorelcb/ai-context-generator/internal/domain/service" // Importar la interfaz
 )
 
 // DirectoryManager handles directory operations
 type DirectoryManager struct{}
 
-// NewDirectoryManager creates a new instance of DirectoryManager
-func NewDirectoryManager() *DirectoryManager {
+// NewDirectoryManager creates a new instance of DirectoryManager and returns it as a service.DirectoryManager interface.
+func NewDirectoryManager() service.DirectoryManager {
 	return &DirectoryManager{}
 }
 

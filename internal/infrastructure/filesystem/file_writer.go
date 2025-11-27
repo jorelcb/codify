@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/jorelcb/ai-context-generator/internal/domain/service" // Importar la interfaz
 )
 
 // FileWriter handles file writing operations securely
 type FileWriter struct{}
 
-// NewFileWriter creates a new instance of FileWriter
-func NewFileWriter() *FileWriter {
+// NewFileWriter creates a new instance of FileWriter and returns it as a service.FileWriter interface.
+func NewFileWriter() service.FileWriter {
 	return &FileWriter{}
 }
 
