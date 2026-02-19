@@ -9,6 +9,7 @@ import (
 	"github.com/jorelcb/ai-context-generator/internal/application/command"
 	"github.com/jorelcb/ai-context-generator/internal/application/dto"
 	"github.com/jorelcb/ai-context-generator/internal/domain/service"
+	"github.com/jorelcb/ai-context-generator/internal/infrastructure/filesystem"
 	"github.com/jorelcb/ai-context-generator/internal/infrastructure/persistence/memory"
 )
 
@@ -24,35 +25,29 @@ func NewGenerateCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "generate [project-name]",
-		Short: "Generate a new project with AI context documentation",
-		Long: `Generate a new project including:
-  - AI context documentation (PROMPT.md, CONTEXT.md, etc.)
-  - Project scaffolding based on language and architecture
-  - Taskfile for automation
-  - Basic project structure
+		Short: "Generate AI-optimized context files for a new project",
+		Long: `Generate context files using AI models:
+  - PROMPT.md - Role and mission for the development agent
+  - CONTEXT.md - Architecture, patterns, domain
+  - SCAFFOLDING.md - Recommended project structure
+  - INTERACTIONS_LOG.md - Initial development log
 
 Examples:
   # Interactive mode (recommended)
   ai-context-generator generate -i
 
   # Direct mode with flags
-  ai-context-generator generate my-api --language go --type api --architecture ddd
-
-  # Generate with positional argument
-  ai-context-generator generate my-service -l go -t microservice`,
+  ai-context-generator generate my-api --language go --type api --architecture ddd`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Get project name from args or flag
 			if len(args) > 0 {
 				projectName = args[0]
 			}
 
-			// Interactive mode
 			if interactive {
 				return runInteractiveGenerate()
 			}
 
-			// Validate required flags in non-interactive mode
 			if projectName == "" {
 				return fmt.Errorf("project name is required (use -i for interactive mode)")
 			}
@@ -63,12 +58,10 @@ Examples:
 				return fmt.Errorf("project type is required (use -i for interactive mode)")
 			}
 
-			// Run generation
 			return runGenerate(projectName, language, projectType, architecture)
 		},
 	}
 
-	// Flags
 	cmd.Flags().StringVarP(&projectName, "name", "n", "", "Project name")
 	cmd.Flags().StringVarP(&language, "language", "l", "", "Programming language (go, javascript, python, etc.)")
 	cmd.Flags().StringVarP(&projectType, "type", "t", "", "Project type (api, cli, library, etc.)")
@@ -79,8 +72,7 @@ Examples:
 }
 
 func runInteractiveGenerate() error {
-	// TODO: Implement interactive wizard
-	fmt.Println("Interactive mode - Coming soon in Phase 1")
+	fmt.Println("Interactive mode - Coming soon")
 	fmt.Println("Will use survey/bubbletea for interactive UI")
 	return nil
 }
@@ -88,21 +80,18 @@ func runInteractiveGenerate() error {
 func runGenerate(projectName, language, projectType, architecture string) error {
 	ctx := context.Background()
 
-	// Initialize repositories (in-memory for now)
+	// Initialize repositories
 	projectRepo := memory.NewProjectRepository()
-	templateRepo := memory.NewTemplateRepository()
 
-	// Initialize domain services
-	projectGen := service.NewProjectGenerator(projectRepo)
-	templateProc := service.NewTemplateProcessor(templateRepo)
+	// Initialize infrastructure
+	fileWriter := filesystem.NewFileWriter()
+	dirManager := filesystem.NewDirectoryManager()
+
+	// Initialize domain service
+	projectGen := service.NewProjectGenerator(projectRepo, fileWriter, dirManager)
 
 	// Initialize command
-	generateCmd := command.NewGenerateProjectCommand(
-		projectRepo,
-		templateRepo,
-		projectGen,
-		templateProc,
-	)
+	generateCmd := command.NewGenerateProjectCommand(projectRepo, projectGen)
 
 	// Build config
 	config := &dto.ProjectConfig{
@@ -111,11 +100,10 @@ func runGenerate(projectName, language, projectType, architecture string) error 
 		Type:         projectType,
 		Architecture: architecture,
 		OutputPath:   filepath.Join("output", projectName),
-		Capabilities: []string{}, // TODO: Get from flags/interactive
+		Capabilities: []string{},
 		Metadata:     make(map[string]string),
 	}
 
-	// Execute command
 	fmt.Printf("Generating project: %s\n", projectName)
 	fmt.Printf("  Language: %s\n", language)
 	fmt.Printf("  Type: %s\n", projectType)
@@ -127,16 +115,12 @@ func runGenerate(projectName, language, projectType, architecture string) error 
 		return fmt.Errorf("failed to generate project: %w", err)
 	}
 
-	// Success output
-	fmt.Println("✅ Project generated successfully!")
+	fmt.Println("Project entity created successfully!")
 	fmt.Printf("  ID: %s\n", projectInfo.ID)
 	fmt.Printf("  Output: %s\n", projectInfo.OutputPath)
 	fmt.Printf("  Created: %s\n", projectInfo.CreatedAt.Format("2006-01-02 15:04:05"))
 	fmt.Println()
-	fmt.Println("Next steps:")
-	fmt.Println("  1. cd", projectInfo.OutputPath)
-	fmt.Println("  2. Review the generated files")
-	fmt.Println("  3. Customize PROMPT.md and CONTEXT.md for your AI agent")
+	fmt.Println("Note: LLM-powered context generation coming soon.")
 
 	return nil
 }

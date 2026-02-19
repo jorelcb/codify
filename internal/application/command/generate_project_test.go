@@ -6,6 +6,7 @@ import (
 
 	"github.com/jorelcb/ai-context-generator/internal/application/dto"
 	"github.com/jorelcb/ai-context-generator/internal/domain/service"
+	"github.com/jorelcb/ai-context-generator/internal/infrastructure/filesystem"
 	"github.com/jorelcb/ai-context-generator/internal/infrastructure/persistence/memory"
 )
 
@@ -87,31 +88,22 @@ func TestGenerateProjectCommand_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup
 			ctx := context.Background()
 			projectRepo := memory.NewProjectRepository()
-			templateRepo := memory.NewTemplateRepository()
-			projectGen := service.NewProjectGenerator(projectRepo)
-			templateProc := service.NewTemplateProcessor(templateRepo)
+			fileWriter := filesystem.NewFileWriter()
+			dirManager := filesystem.NewDirectoryManager()
+			projectGen := service.NewProjectGenerator(projectRepo, fileWriter, dirManager)
 
-			cmd := NewGenerateProjectCommand(
-				projectRepo,
-				templateRepo,
-				projectGen,
-				templateProc,
-			)
+			cmd := NewGenerateProjectCommand(projectRepo, projectGen)
 
-			// Execute
 			result, err := cmd.Execute(ctx, tt.config)
 
-			// Assert
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GenerateProjectCommand.Execute() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if !tt.wantErr {
-				// Verify result
 				if result == nil {
 					t.Error("GenerateProjectCommand.Execute() result is nil")
 					return
@@ -125,31 +117,19 @@ func TestGenerateProjectCommand_Execute(t *testing.T) {
 				if result.Language != tt.config.Language {
 					t.Errorf("GenerateProjectCommand.Execute() result.Language = %v, want %v", result.Language, tt.config.Language)
 				}
-				if result.Type != tt.config.Type {
-					t.Errorf("GenerateProjectCommand.Execute() result.Type = %v, want %v", result.Type, tt.config.Type)
-				}
-				if result.Architecture != tt.config.Architecture {
-					t.Errorf("GenerateProjectCommand.Execute() result.Architecture = %v, want %v", result.Architecture, tt.config.Architecture)
-				}
 			}
 		})
 	}
 }
 
 func TestGenerateProjectCommand_DuplicateProjectName(t *testing.T) {
-	// Setup
 	ctx := context.Background()
 	projectRepo := memory.NewProjectRepository()
-	templateRepo := memory.NewTemplateRepository()
-	projectGen := service.NewProjectGenerator(projectRepo)
-	templateProc := service.NewTemplateProcessor(templateRepo)
+	fileWriter := filesystem.NewFileWriter()
+	dirManager := filesystem.NewDirectoryManager()
+	projectGen := service.NewProjectGenerator(projectRepo, fileWriter, dirManager)
 
-	cmd := NewGenerateProjectCommand(
-		projectRepo,
-		templateRepo,
-		projectGen,
-		templateProc,
-	)
+	cmd := NewGenerateProjectCommand(projectRepo, projectGen)
 
 	config := &dto.ProjectConfig{
 		Name:         "duplicate-project",

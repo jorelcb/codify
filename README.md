@@ -1,113 +1,97 @@
-# 🤖 AI Context Generator
+# AI Context Generator
 
-> **Plataforma de Bootstrapping para Desarrollo Asistido por IA**
+> **Genera contextos optimizados para agentes de IA usando modelos de lenguaje**
 
-[![Version](https://img.shields.io/badge/version-1.2.0--beta-blue.svg)](https://github.com/jorelcb/ai-context-generator/releases)
-[![Build](https://img.shields.io/badge/build-passing-green.svg)](actions)
+[![Version](https://img.shields.io/badge/version-2.0.0--alpha-blue.svg)](https://github.com/jorelcb/ai-context-generator/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ---
 
-## 🌀 El Concepto (Incepción)
+## El Problema
 
-Este proyecto es una exploración en **Ingeniería de Software Recursiva**:
-> Una herramienta construida por IA (Nivel 1), diseñada para generar contextos técnicos (Nivel 4), que permiten a otras IAs (Nivel 5) construir software de alta calidad.
+Los agentes de IA son ingenieros capaces pero empiezan desde cero. Sin contexto arquitectonico, sin restricciones de dominio, sin un plano maestro. El resultado: codigo inconsistente y decisiones fragmentadas.
 
-No es solo un generador de plantillas; es un **inyector de arquitectura**.
+## La Solucion
 
-## 🎯 La Misión
+**AI Context Generator** toma la descripcion de tu proyecto y genera archivos de contexto inteligentes usando modelos de IA. Estos archivos le dan a tu agente de desarrollo el contexto que necesita para construir con coherencia desde la primera linea.
 
-Transformar intenciones humanas vagas en **Entornos de Desarrollo Cognitivamente Optimizados**.
+## Como Funciona
 
-Cuando inicias un proyecto con `ai-context-generator`, no solo obtienes carpetas vacías. Obtienes un "Cerebro Exógeno" pre-configurado con:
-1.  **Contexto Semántico:** Archivos `.md` diseñados para ser leídos por LLMs, explicando la arquitectura del proyecto.
-2.  **Estructura Sólida:** Scaffolding DDD/Clean Architecture que impone orden desde el segundo cero.
-3.  **Reglas de Negocio:** Definiciones claras que evitan alucinaciones en el desarrollo futuro.
+```
+1. Tu describes tu proyecto:
+   "Sistema de pagos en Go con microservicios, DDD y PostgreSQL"
 
-## ⚡ Quick Start
+2. La herramienta usa templates (guias estructurales) + un LLM:
+   Templates definen la estructura -> LLM genera el contenido inteligente
 
-### Generar un Nuevo Contexto
-
-```bash
-# Crear el "Sustrato Cognitivo" para tu próximo proyecto
-ai-context-generator generate my-payment-service \
-  --type microservice \
-  --lang go \
-  --arch ddd
+3. Obtienes archivos de contexto listos para usar:
+   output/mi-sistema-de-pagos/
+   ├── PROMPT.md            # Rol y mision para tu agente de IA
+   ├── CONTEXT.md           # Arquitectura, patrones, dominio
+   ├── SCAFFOLDING.md       # Estructura recomendada
+   └── INTERACTIONS_LOG.md  # Bitacora inicial
 ```
 
-### ¿Qué sucede después?
-1.  La herramienta genera la carpeta `./my-payment-service`.
-2.  Tú abres esa carpeta en tu IDE con tu Agente de IA favorito (Cursor, Windsurf, Gemini Code Assist).
-3.  El Agente lee `context/PROMPT.md` y entiende inmediatamente su rol y las restricciones arquitectónicas.
-4.  El desarrollo comienza con **contexto perfecto**.
-
-## 🏗️ Estado del Proyecto (Realidad Técnica)
-
-Actualmente en **Fase Beta Técnica (v1.2.0)**.
-
-- ✅ **Core Logic:** Motor de plantillas y definiciones de dominio implementados.
-- ✅ **Arquitectura:** El diseño interno sigue estrictamente DDD.
-- 🚧 **Infraestructura:** La escritura en disco (Filesystem Adapter) está en desarrollo activo.
-- 🚧 **Modo Interactivo:** El CLI aún requiere argumentos explícitos.
-
-## 🤝 Contribución
-
-Este proyecto se construye mediante una dinámica de **Agentes Especializados**.
-Si deseas contribuir, consulta `ARCHITECTURE.md` para entender los patrones de diseño que replicamos.
-
-## 📖 Documentación
-
-- [Architecture Guide](ARCHITECTURE.md) - Deep dive into DDD/Clean implementation
-- [Contributing Guide](CONTRIBUTING.md) - How to contribute effectively
-- [Changelog](CHANGELOG.md) - Version history and updates
-
-## 🧪 Testing
-
-Built with **Behavior-Driven Development (BDD)**:
+## Quick Start
 
 ```bash
-# Run all tests
+# Generar contextos para tu proyecto
+ai-context-generator generate \
+  --description "API REST de gestion de inventarios en Go con Clean Architecture y PostgreSQL"
+
+# Listar proyectos generados
+ai-context-generator list
+```
+
+## Que genera
+
+Los archivos de contexto son el "sustrato cognitivo" que entregas a tu agente de IA (Claude, GPT, Gemini, Cursor, etc.) para que construya tu proyecto con contexto perfecto.
+
+| Archivo | Contenido |
+|---------|-----------|
+| `PROMPT.md` | Rol, mision, restricciones y directrices para el agente |
+| `CONTEXT.md` | Arquitectura, stack, patrones de diseno, dominio de negocio |
+| `SCAFFOLDING.md` | Estructura de directorios y archivos recomendada |
+| `INTERACTIONS_LOG.md` | Bitacora inicial con decisiones de diseno |
+
+## Arquitectura
+
+Construido en **Go** con **DDD/Clean Architecture**:
+
+- **Domain Layer**: Entidades, value objects, interfaces de servicio
+- **Application Layer**: Commands y Queries (CQRS)
+- **Infrastructure Layer**: LLM adapters, filesystem, persistence
+- **Interfaces Layer**: CLI con Cobra
+
+Ver [ARCHITECTURE.md](ARCHITECTURE.md) para detalles.
+
+## Testing
+
+BDD con Godog:
+
+```bash
 go test ./...
 ```
 
-Current status: **36/39 scenarios passing (92.3%)**
+## Estado del Proyecto
 
-## 📊 Project Status
+**v2.0.0-alpha** - En desarrollo activo tras redefinicion del objetivo.
 
-**Version 1.2.0 - Beta**
+- Infraestructura DDD/Clean Architecture
+- Filesystem (FileWriter, DirectoryManager)
+- CLI base con Cobra
+- **En progreso**: Integracion con LLM
 
-✅ **Working:**
-- Core DDD/Clean Architecture implementation
-- Template Engine v1 (AST, Tokenizer, Parser)
-- CLI structure
-- BDD test suite
+## Documentacion
 
-🚧 **In Progress:**
-- File system infrastructure (Writing to disk)
-- End-to-end integration
-- Advanced AI Context generation logic
+- [Architecture Guide](ARCHITECTURE.md) - DDD/Clean Architecture
+- [Roadmap](ROADMAP.md) - Plan de desarrollo
+- [Changelog](CHANGELOG.md) - Historial de cambios
 
-## 📄 License
+## Licencia
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 💝 Acknowledgments
-
-- [Domain-Driven Design](https://www.domainlanguage.com/ddd/) by Eric Evans
-- [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) by Robert C. Martin
-- [Godog](https://github.com/cucumber/godog) - BDD testing framework
-- The AI development community for inspiration and feedback
-
-## 🌟 Star History
-
-If this project helps you, please consider giving it a ⭐️!
-
-[![Star History Chart](https://api.star-history.com/svg?repos=jorelcb/ai-context-generator&type=Date)](https://star-history.com/#jorelcb/ai-context-generator&Date)
-
+MIT License - ver [LICENSE](LICENSE).
 
 ---
 
-**Built with ❤️ to empower developers working with AI assistants**
-
-[Report Bug](https://github.com/jorelcb/ai-context-generator/issues) · [Request Feature](https://github.com/jorelcb/ai-context-generator/issues) · [Join Discussions](https://github.com/jorelcb/ai-context-generator/discussions)
+**Construido para potenciar el desarrollo asistido por IA**

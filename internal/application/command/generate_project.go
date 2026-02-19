@@ -9,35 +9,28 @@ import (
 	"github.com/jorelcb/ai-context-generator/internal/domain/project"
 	"github.com/jorelcb/ai-context-generator/internal/domain/service"
 	"github.com/jorelcb/ai-context-generator/internal/domain/shared"
-	"github.com/jorelcb/ai-context-generator/internal/domain/template"
 )
 
 // GenerateProjectCommand representa el comando para generar un proyecto
 type GenerateProjectCommand struct {
-	projectRepo   project.Repository
-	templateRepo  template.Repository
-	projectGen    *service.ProjectGenerator
-	templateProc  *service.TemplateProcessor
+	projectRepo project.Repository
+	projectGen  *service.ProjectGenerator
 }
 
 // NewGenerateProjectCommand crea una nueva instancia del comando
 func NewGenerateProjectCommand(
 	projectRepo project.Repository,
-	templateRepo template.Repository,
 	projectGen *service.ProjectGenerator,
-	templateProc *service.TemplateProcessor,
 ) *GenerateProjectCommand {
 	return &GenerateProjectCommand{
-		projectRepo:  projectRepo,
-		templateRepo: templateRepo,
-		projectGen:   projectGen,
-		templateProc: templateProc,
+		projectRepo: projectRepo,
+		projectGen:  projectGen,
 	}
 }
 
-// Execute ejecuta el comando de generación de proyecto
+// Execute ejecuta el comando de generacion de proyecto
 func (c *GenerateProjectCommand) Execute(ctx context.Context, config *dto.ProjectConfig) (*dto.ProjectInfo, error) {
-	// 1. Validar configuración
+	// 1. Validar configuracion
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
@@ -63,7 +56,7 @@ func (c *GenerateProjectCommand) Execute(ctx context.Context, config *dto.Projec
 		return nil, fmt.Errorf("invalid architecture: %w", err)
 	}
 
-	// 3. Generar ID único para el proyecto
+	// 3. Generar ID unico para el proyecto
 	id := fmt.Sprintf("proj_%d", time.Now().UnixNano())
 
 	// 4. Crear entidad Project usando el domain service
@@ -87,7 +80,7 @@ func (c *GenerateProjectCommand) Execute(ctx context.Context, config *dto.Projec
 		}
 	}
 
-	// 6. Convertir a DTO y retornar (el proyecto ya fue guardado por el service)
+	// 6. Convertir a DTO y retornar
 	return &dto.ProjectInfo{
 		ID:           proj.ID(),
 		Name:         proj.Name().String(),
