@@ -40,6 +40,7 @@ func init() {
 	// Add subcommands
 	rootCmd.AddCommand(commands.NewGenerateCmd())
 	rootCmd.AddCommand(commands.NewListCmd())
+	rootCmd.AddCommand(commands.NewSpecCmd())
 
 	// Global flags can be added here
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.ai-context-generator.yaml)")

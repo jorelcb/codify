@@ -90,7 +90,12 @@ func (p *AnthropicProvider) generateSingleFile(
 	req service.GenerationRequest,
 	guide service.TemplateGuide,
 ) (content string, tokensIn int, tokensOut int, err error) {
-	systemPrompt := p.promptBuilder.BuildSystemPromptForFile(guide.Name)
+	var systemPrompt string
+	if req.Mode == "spec" {
+		systemPrompt = p.promptBuilder.BuildSpecSystemPrompt(req.ExistingContext)
+	} else {
+		systemPrompt = p.promptBuilder.BuildSystemPromptForFile(guide.Name)
+	}
 	userMessage := p.promptBuilder.BuildUserMessageForFile(req, guide)
 
 	stream := p.client.Messages.NewStreaming(ctx, anthropic.MessageNewParams{

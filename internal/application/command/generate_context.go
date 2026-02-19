@@ -10,6 +10,11 @@ import (
 	"github.com/jorelcb/ai-context-generator/internal/domain/service"
 )
 
+// rootFiles are written to the project root, not the context/ subdirectory.
+var rootFiles = map[string]bool{
+	"AGENTS.md": true,
+}
+
 // GenerateContextCommand orchestrates LLM-based context file generation.
 type GenerateContextCommand struct {
 	llmProvider      service.LLMProvider
@@ -33,8 +38,8 @@ func NewGenerateContextCommand(
 // Execute runs the full context generation pipeline:
 // 1. Build generation request from config + templates
 // 2. Call LLM provider
-// 3. Create output directory
-// 4. Write generated files to disk
+// 3. Create output directories
+// 4. Write generated files to disk (AGENTS.md at root, rest in context/)
 func (c *GenerateContextCommand) Execute(
 	ctx context.Context,
 	config *dto.ProjectConfig,
@@ -55,16 +60,26 @@ func (c *GenerateContextCommand) Execute(
 		return nil, fmt.Errorf("LLM generation failed: %w", err)
 	}
 
-	// 3. Create output directory
-	outputDir := filepath.Join(config.OutputPath, "context")
-	if err := c.directoryManager.CreateDir(outputDir, 0755); err != nil {
+	// 3. Create output directories
+	contextDir := filepath.Join(config.OutputPath, "context")
+	if err := c.directoryManager.CreateDir(config.OutputPath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create output directory: %w", err)
+	}
+	if err := c.directoryManager.CreateDir(contextDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create context directory: %w", err)
 	}
 
 	// 4. Write each generated file
 	var generatedFiles []string
 	for _, file := range response.Files {
-		filePath := filepath.Join(outputDir, file.Name)
+		// AGENTS.md goes to project root, rest goes to context/
+		var filePath string
+		if rootFiles[file.Name] {
+			filePath = filepath.Join(config.OutputPath, file.Name)
+		} else {
+			filePath = filepath.Join(contextDir, file.Name)
+		}
+
 		if err := c.fileWriter.WriteFile(filePath, []byte(file.Content), os.FileMode(0644)); err != nil {
 			return nil, fmt.Errorf("failed to write %s: %w", file.Name, err)
 		}
@@ -72,7 +87,7 @@ func (c *GenerateContextCommand) Execute(
 	}
 
 	return &dto.GenerationResult{
-		OutputPath:     outputDir,
+		OutputPath:     config.OutputPath,
 		GeneratedFiles: generatedFiles,
 		Model:          response.Model,
 		TokensIn:       response.TokensIn,

@@ -4,6 +4,20 @@ Todos los cambios notables de este proyecto seran documentados en este archivo.
 
 Basado en [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-02-19 - Restructure output (AGENTS.md standard) + spec command
+
+### Added
+- Output reestructurado: AGENTS.md (root) + context/ (CONTEXT.md, INTERACTIONS_LOG.md)
+- System prompts con XML tags (`<role>`, `<task>`, `<workflow>`, `<output_quality>`)
+- Templates optimizados para output conciso y accionable
+- Comando `spec`: genera CONSTITUTION.md, SPEC.md, PLAN.md, TASKS.md
+- Spec context-dependent: lee contexto existente via `--from-context`
+- Template loader configurable (mapping custom para spec/)
+- Context reader para leer AGENTS.md + CONTEXT.md existentes
+
+### Removed
+- PROMPT.md y SCAFFOLDING.md (absorbidos en AGENTS.md)
+
 ## [1.0.0] - 2026-02-19 - Primera version funcional
 
 ### Added

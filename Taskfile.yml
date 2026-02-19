@@ -1,4 +1,4 @@
-# Taskfile.yml - AI Context Generator v1.0.0
+# Taskfile.yml - AI Context Generator v2.0.0
 version: '3'
 
 vars:
@@ -17,7 +17,7 @@ tasks:
   help:
     desc: Mostrar ayuda completa
     cmds:
-      - echo "AI CONTEXT GENERATOR v1.0.0"
+      - echo "AI CONTEXT GENERATOR v2.0.0"
       - echo ""
       - echo "Comandos disponibles"
       - echo "  task build           - Compilar binario Go"
@@ -84,7 +84,7 @@ tasks:
         echo "Validando templates..."
         missing=0
 
-        for template in prompt context scaffolding interactions; do
+        for template in agents context interactions; do
           if [ ! -f "{{.TEMPLATE_DIR}}/base/${template}.template" ]; then
             echo "[ERROR] Falta base/${template}.template"
             missing=$((missing + 1))
@@ -191,7 +191,7 @@ tasks:
     cmds:
       - echo "AI Context Generator - Project Info"
       - echo ""
-      - echo "Version 1.0.0"
+      - echo "Version 2.0.0"
       - echo "Go version $(go version)"
       - echo ""
       - echo "Directorio de trabajo $(pwd)"

@@ -14,9 +14,8 @@ func TestPromptBuilder_BuildSystemPromptForFile(t *testing.T) {
 		guideName    string
 		wantFileName string
 	}{
-		{"prompt", "PROMPT.md"},
+		{"agents", "AGENTS.md"},
 		{"context", "CONTEXT.md"},
-		{"scaffolding", "SCAFFOLDING.md"},
 		{"interactions", "INTERACTIONS_LOG.md"},
 	}
 
@@ -29,6 +28,16 @@ func TestPromptBuilder_BuildSystemPromptForFile(t *testing.T) {
 			}
 			if !strings.Contains(prompt, tt.wantFileName) {
 				t.Errorf("BuildSystemPromptForFile() should mention %s", tt.wantFileName)
+			}
+			// Verify XML tag structure
+			if !strings.Contains(prompt, "<role>") {
+				t.Error("BuildSystemPromptForFile() should contain <role> XML tag")
+			}
+			if !strings.Contains(prompt, "<workflow>") {
+				t.Error("BuildSystemPromptForFile() should contain <workflow> XML tag")
+			}
+			if !strings.Contains(prompt, "<output_quality>") {
+				t.Error("BuildSystemPromptForFile() should contain <output_quality> XML tag")
 			}
 		})
 	}
@@ -45,8 +54,8 @@ func TestPromptBuilder_BuildUserMessageForFile(t *testing.T) {
 	}
 
 	guide := service.TemplateGuide{
-		Name:    "prompt",
-		Content: "# Prompt template content here",
+		Name:    "agents",
+		Content: "# Agents template content here",
 	}
 
 	msg := builder.BuildUserMessageForFile(req, guide)
@@ -55,24 +64,28 @@ func TestPromptBuilder_BuildUserMessageForFile(t *testing.T) {
 		t.Error("BuildUserMessageForFile() returned empty string")
 	}
 
-	// Verify description is included
+	// Verify description is included in XML tags
 	if !strings.Contains(msg, "API REST de gestion de inventarios en Go") {
 		t.Error("BuildUserMessageForFile() missing project description")
 	}
+	if !strings.Contains(msg, "<project_description>") {
+		t.Error("BuildUserMessageForFile() should use <project_description> XML tag")
+	}
 
-	// Verify optional fields
+	// Verify optional fields in metadata
 	if !strings.Contains(msg, "go") {
 		t.Error("BuildUserMessageForFile() missing language")
 	}
-
-	// Verify template content
-	if !strings.Contains(msg, "# Prompt template content here") {
-		t.Error("BuildUserMessageForFile() missing template content")
+	if !strings.Contains(msg, "<project_metadata>") {
+		t.Error("BuildUserMessageForFile() should use <project_metadata> XML tag")
 	}
 
-	// Verify file name reference
-	if !strings.Contains(msg, "PROMPT.md") {
-		t.Error("BuildUserMessageForFile() missing output file name")
+	// Verify template content in XML tag
+	if !strings.Contains(msg, "# Agents template content here") {
+		t.Error("BuildUserMessageForFile() missing template content")
+	}
+	if !strings.Contains(msg, "<template_guide") {
+		t.Error("BuildUserMessageForFile() should use <template_guide> XML tag")
 	}
 }
 
@@ -90,14 +103,8 @@ func TestPromptBuilder_BuildUserMessageForFile_WithoutOptionalFields(t *testing.
 
 	msg := builder.BuildUserMessageForFile(req, guide)
 
-	if strings.Contains(msg, "**Lenguaje:**") {
-		t.Error("should not include language when empty")
-	}
-	if strings.Contains(msg, "**Tipo de proyecto:**") {
-		t.Error("should not include type when empty")
-	}
-	if strings.Contains(msg, "**Arquitectura:**") {
-		t.Error("should not include architecture when empty")
+	if strings.Contains(msg, "<project_metadata>") {
+		t.Error("should not include project_metadata when all fields are empty")
 	}
 }
 
@@ -106,10 +113,13 @@ func TestFileOutputName(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"prompt", "PROMPT.md"},
+		{"agents", "AGENTS.md"},
 		{"context", "CONTEXT.md"},
-		{"scaffolding", "SCAFFOLDING.md"},
 		{"interactions", "INTERACTIONS_LOG.md"},
+		{"constitution", "CONSTITUTION.md"},
+		{"spec", "SPEC.md"},
+		{"plan", "PLAN.md"},
+		{"tasks", "TASKS.md"},
 		{"unknown", "unknown.md"},
 	}
 
@@ -120,5 +130,28 @@ func TestFileOutputName(t *testing.T) {
 				t.Errorf("FileOutputName(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestPromptBuilder_BuildSpecSystemPrompt(t *testing.T) {
+	builder := NewPromptBuilder()
+
+	existingContext := "# My Project Context\n\nThis is the architecture description."
+	prompt := builder.BuildSpecSystemPrompt(existingContext)
+
+	if prompt == "" {
+		t.Error("BuildSpecSystemPrompt() returned empty string")
+	}
+	if !strings.Contains(prompt, existingContext) {
+		t.Error("BuildSpecSystemPrompt() should embed existing context")
+	}
+	if !strings.Contains(prompt, "<existing_context>") {
+		t.Error("BuildSpecSystemPrompt() should use <existing_context> XML tag")
+	}
+	if !strings.Contains(prompt, "<role>") {
+		t.Error("BuildSpecSystemPrompt() should contain <role> XML tag")
+	}
+	if !strings.Contains(prompt, "SDD") {
+		t.Error("BuildSpecSystemPrompt() should mention SDD")
 	}
 }

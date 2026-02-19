@@ -1,363 +1,46 @@
-# {{PROJECT_NAME}} - Documento de Contexto Definitivo para Agentes de IA
+# {{PROJECT_NAME}} - Contexto Arquitectonico
 
-## Nota Importante sobre Flexibilidad Arquitectónica
+## Arquitectura
 
-**Este documento presenta una arquitectura de referencia basada en las mejores prácticas de la industria. Sin embargo, como arquitecto del proyecto, tienes completa autonomía para proponer y ejecutar mejoras en cualquier aspecto del diseño, modelado o implementación. Las definiciones aquí presentadas son guías, no restricciones. Si identificas oportunidades para optimizar, simplificar o mejorar la arquitectura, estructura, interfaces o cualquier otro aspecto, eres libre de proponer e implementar esos cambios, siempre justificando las decisiones con argumentos técnicos sólidos.**
+Patron principal: {{ARCHITECTURE_PATTERN}}
 
-## 1. Visión General del Proyecto
+### Capas y Responsabilidades
 
-### Propósito
-{{DESCRIPTION}}
+{{LAYER_DEFINITIONS}}
 
-### Características Principales
-{{#if (eq PROJECT_TYPE "api")}}
-- **API RESTful**: Endpoints bien definidos siguiendo estándares REST
-- **Documentación OpenAPI**: Swagger/OpenAPI 3.0 generado automáticamente
-- **Versionado de API**: Soporte para múltiples versiones
-{{/if}}
-{{#if (eq PROJECT_TYPE "webapp")}}
-- **Arquitectura SPA/SSR**: Según requisitos de SEO y performance
-- **State Management**: Gestión de estado centralizada
-- **Responsive Design**: Mobile-first approach
-{{/if}}
-{{#if (eq PROJECT_TYPE "cli")}}
-- **Comandos intuitivos**: Interfaz de línea de comandos clara
-- **Configuración flexible**: Archivos de config, env vars y flags
-- **Output formateado**: JSON, YAML, tabla o texto plano
-{{/if}}
-{{#if (eq PROJECT_TYPE "library")}}
-- **API pública clara**: Interfaces bien definidas y documentadas
-- **Zero dependencies**: Mínimas dependencias externas
-- **Compatibilidad**: Soporte para múltiples versiones del runtime
-{{/if}}
-- **Arquitectura basada en interfaces**: Abstracciones claras según DDD
-- **Observabilidad completa**: Instrumentación con OpenTelemetry desde el inicio
-- **Graceful shutdown**: Cierre ordenado y seguro de todos los componentes
-- **Extensibilidad**: Fácil adición de nuevas funcionalidades
+### Regla de Dependencia
 
-## 2. Arquitectura y Principios de Diseño
+{{DEPENDENCY_RULE}}
 
-### 2.1 Domain-Driven Design (DDD)
-El proyecto debe seguir estrictamente los principios de DDD con las siguientes capas:
+## Componentes Principales
 
-#### Capa de Dominio (`/internal/domain`)
-**Responsabilidad**: Contiene la lógica de negocio central, agnóstica a la tecnología.
+{{COMPONENTS}}
 
-**Componentes**:
-- **model/**:
-  - `entities.{{EXT}}`: Entidades del dominio con identidad
-  - `value_objects.{{EXT}}`: Objetos inmutables sin identidad
-  - `interfaces.{{EXT}}`: Contratos/puertos del dominio
-  - `errors.{{EXT}}`: Errores de dominio específicos
+Para cada componente:
+- Responsabilidad
+- Interfaces que expone
+- Dependencias que consume
 
-- **services/**:
-  - Servicios de dominio para lógica compleja que no pertenece a una entidad
+## Flujo de Datos
 
-#### Capa de Aplicación (`/internal/application`)
-**Responsabilidad**: Orquesta casos de uso utilizando el dominio.
+{{DATA_FLOW}}
 
-**Componentes**:
-- **services/**: Servicios de aplicación que coordinan el dominio
-- **dto/**: Data Transfer Objects para comunicación entre capas
-- **usecases/**: Casos de uso específicos del negocio (opcional, si se usa CQRS)
+Describir como fluyen las requests/datos a traves de las capas, desde el punto de entrada hasta la persistencia o respuesta.
 
-#### Capa de Infraestructura (`/internal/infrastructure`)
-**Responsabilidad**: Implementaciones concretas y adaptadores tecnológicos.
+## Decisiones de Diseno
 
-**Componentes**:
-- **services/**:
-  - **repositories/**: Implementaciones de persistencia
-  - **gateways/**: Integraciones con APIs externas
-  {{#if (includes CAPABILITIES "messaging")}}
-  - **messaging/**: Productores y consumidores de mensajes
-  {{/if}}
-  - **config/**: Proveedores de configuración
-  - **observability/**: Tracing, logging y métricas
+| Decision | Justificacion | Alternativas Descartadas |
+|----------|--------------|-------------------------|
+| {{DESIGN_DECISIONS}} | | |
 
-#### Capa de Interfaces (`/internal/interfaces`)
-**Responsabilidad**: Puntos de entrada a la aplicación.
+## Integraciones Externas
 
-**Componentes**:
-{{#if (eq PROJECT_TYPE "api")}}
-- **http/**:
-  - **dto/**: DTOs específicos de HTTP
-  - **handlers/**: Manejadores de requests
-  - **mappers/**: Conversión entre DTOs
-  - **middleware/**: Auth, CORS, logging, etc.
-  - **router/**: Configuración de rutas
-{{/if}}
-{{#if (eq PROJECT_TYPE "cli")}}
-- **cli/**:
-  - **commands/**: Implementación de comandos
-  - **flags/**: Definición de flags y argumentos
-  - **output/**: Formatters para diferentes outputs
-{{/if}}
+{{EXTERNAL_INTEGRATIONS}}
 
-### 2.2 Principios Clean Architecture
-- **Dependency Rule**: Las dependencias apuntan hacia adentro (infraestructura → aplicación → dominio)
-- **Inyección de Dependencias**: Constructor injection para todas las dependencias
-- **Interfaces en el dominio**: Las abstracciones pertenecen al dominio, las implementaciones a la infraestructura
-- **Testabilidad**: Cada capa es testeable independientemente
+Solo incluir si el proyecto tiene integraciones con APIs externas, bases de datos, servicios de mensajeria, etc.
 
-### 2.3 Boundaries en Clean Architecture
-Para mantener la regla de dependencia, el núcleo de la aplicación se comunica con el mundo exterior a través de **Boundaries** (interfaces definidas en las capas internas):
+## Observabilidad
 
-- **Interfaces (Ports)**: Definidas en la capa de dominio o aplicación
-- **Implementaciones (Adapters)**: Residen en la capa de infraestructura
-- **Inversión de Dependencias**: El dominio define qué necesita, la infraestructura lo implementa
+{{OBSERVABILITY_STRATEGY}}
 
-### 2.4 Conceptos Domain-Driven Design (DDD)
-- **Lenguaje Ubicuo**: Terminología común y consistente en todo el código
-- **Agregados**: Definen límites de consistencia transaccional
-- **Value Objects**: Objetos inmutables sin identidad
-- **Repositories**: Abstracciones para persistencia definidas en el dominio
-- **Domain Events**: Eventos que representan cambios significativos en el dominio
-
-## 3. Requerimientos Técnicos Detallados
-
-### 3.1 Configuración y Bootstrap
-
-#### Fuentes de Configuración (en orden de precedencia)
-1. Variables de entorno
-2. Archivo de configuración (`config.{{CONFIG_EXT}}`)
-3. Valores por defecto
-
-#### Estructura de Configuración
-```yaml
-app:
-  name: "{{PROJECT_NAME}}"
-  environment: "development"
-  version: "0.1.0"
-
-{{#if (eq PROJECT_TYPE "api")}}
-http:
-  port: 8080
-  readTimeout: 30s
-  writeTimeout: 30s
-  maxHeaderBytes: 1048576
-{{/if}}
-
-telemetry:
-  enabled: true
-  exporter: "otlp"
-  endpoint: "localhost:4317"
-  
-{{#if (includes CAPABILITIES "database")}}
-database:
-  driver: "postgres"
-  host: "localhost"
-  port: 5432
-  name: "{{PROJECT_NAME}}_db"
-  sslMode: "disable"
-{{/if}}
-
-{{#if (includes CAPABILITIES "messaging")}}
-messaging:
-  broker: "kafka"
-  brokers: ["localhost:9092"]
-  groupId: "{{PROJECT_NAME}}-consumer"
-{{/if}}
-
-shutdown:
-  gracePeriod: 30s
-```
-
-### 3.2 Observabilidad con OpenTelemetry
-
-#### Requerimientos Críticos
-1. **NO usar variables globales para tracer**: Usar inyección de dependencias
-2. **Propagación de contexto completa**: En todas las operaciones
-3. **Spans detallados para todas las operaciones**
-4. **Métricas de negocio**: Contadores, histogramas, gauges
-5. **Logs estructurados**: Con correlación de TraceID
-
-#### Atributos Requeridos en Spans
-- `service.name`: {{PROJECT_NAME}}
-- `service.version`: Versión del servicio
-- Atributos semánticos de OpenTelemetry según el contexto
-
-### 3.3 Requisitos de Producción
-
-#### Graceful Shutdown
-- Captura de señales del SO (SIGINT, SIGTERM)
-- Timeout configurable para shutdown
-- Orden de cierre:
-  1. Dejar de aceptar nuevas requests/operaciones
-  2. Completar operaciones en proceso
-  3. Cerrar conexiones a servicios externos
-  4. Exportar telemetría pendiente
-  5. Terminar el proceso
-
-#### Resiliencia y Recuperación
-- Health checks endpoints (`/health/live`, `/health/ready`)
-- Circuit breakers para servicios externos
-- Políticas de retry configurables
-- Recuperación automática de conexiones
-
-#### Seguridad
-- TLS/mTLS para comunicaciones cuando sea necesario
-- Autenticación y autorización según el tipo de proyecto
-- Sanitización de logs (no exponer datos sensibles)
-- Gestión segura de credenciales (variables de entorno, secrets manager)
-
-## 4. Estructura del Proyecto
-
-```text
-{{PROJECT_NAME}}/
-├── cmd/
-│   ├── {{#if (eq PROJECT_TYPE "api")}}api/{{/if}}{{#if (eq PROJECT_TYPE "cli")}}cli/{{/if}}{{#if (eq PROJECT_TYPE "webapp")}}server/{{/if}}
-│   │   └── main.{{EXT}}           # Punto de entrada principal
-│   └── {{#if (eq PROJECT_TYPE "lambda")}}lambda/
-│       └── main.{{EXT}}{{/if}}    # Entry points adicionales
-├── config/                        # Archivos de configuración
-│   ├── development.{{CONFIG_EXT}}
-│   └── production.{{CONFIG_EXT}}
-├── internal/
-│   ├── domain/                   # Núcleo del negocio (sin dependencias)
-│   │   ├── model/
-│   │   │   ├── entities.{{EXT}}
-│   │   │   ├── value_objects.{{EXT}}
-│   │   │   ├── interfaces.{{EXT}}
-│   │   │   └── errors.{{EXT}}
-│   │   └── services/
-│   ├── application/              # Casos de uso y coordinación
-│   │   ├── dto/
-│   │   └── services/
-│   ├── infrastructure/           # Implementaciones concretas
-│   │   └── services/
-│   │       ├── repositories/
-│   │       ├── gateways/
-│   │       ├── config/
-│   │       └── observability/
-│   └── interfaces/              # Puntos de entrada
-│       └── {{#if (eq PROJECT_TYPE "api")}}http/{{/if}}{{#if (eq PROJECT_TYPE "cli")}}cli/{{/if}}
-├── docs/                        # Documentación
-├── context/                     # Contexto para agentes IA
-│   ├── 01_PROMPT.md
-│   ├── 02_CONTEXT.md
-│   ├── 03_SCAFFOLDING.md
-│   └── 04_INTERACTIONS_LOG.md
-├── scripts/                     # Scripts de utilidad
-├── tests/                       # Tests e2e y de integración
-├── README.md
-├── Makefile
-├── docker-compose.yml
-├── Dockerfile
-└── .gitignore
-```
-
-## 5. Checklist de Implementación
-
-### Fase 1: Fundación (MVP)
-- [ ] Estructura de proyecto según DDD
-- [ ] Dominio: Entidades e interfaces base
-- [ ] Aplicación: Servicios básicos
-- [ ] Infraestructura: Implementaciones mínimas
-- [ ] Configuración desde archivo
-- [ ] OpenTelemetry: Trazas básicas
-- [ ] Tests unitarios para dominio
-- [ ] README con instrucciones básicas
-
-### Fase 2: Robustez
-- [ ] Graceful shutdown completo
-- [ ] Políticas de retry
-- [ ] Circuit breaker implementation
-- [ ] Health check endpoints
-- [ ] OpenTelemetry: Métricas
-- [ ] Tests de integración
-- [ ] Documentación de API/CLI
-
-### Fase 3: Producción
-- [ ] Autenticación y autorización
-- [ ] TLS/mTLS support si aplica
-- [ ] Rate limiting
-- [ ] Métricas de negocio
-- [ ] Dashboard de monitoreo
-- [ ] Documentación completa
-- [ ] Tests E2E
-- [ ] CI/CD pipeline
-
-### Fase 4: Escalabilidad
-- [ ] Optimización de performance
-- [ ] Caching strategies
-- [ ] Horizontal scaling support
-- [ ] Feature flags
-- [ ] A/B testing capabilities
-- [ ] Multi-tenancy si aplica
-
-## 6. Comandos y Scripts Útiles
-
-### Desarrollo
-```bash
-# Ejecutar la aplicación
-make run
-
-# Ejecutar tests
-make test
-
-# Generar mocks
-make mocks
-
-# Lint del código
-make lint
-
-# Build
-make build
-
-# Docker
-make docker-build
-make docker-run
-```
-
-### OpenTelemetry Local
-```bash
-# Iniciar Jaeger para visualización
-docker run -d --name jaeger \
-  -p 16686:16686 \
-  -p 4317:4317 \
-  jaegertracing/all-in-one:latest
-```
-
-## 7. Notas para Agentes de IA
-
-### Al Implementar Nuevas Características
-1. **Siempre seguir la arquitectura DDD**: No mezclar capas
-2. **Agregar tests desde el inicio**: TDD cuando sea posible
-3. **Documentar decisiones importantes**: En código y documentación
-4. **Mantener la observabilidad**: Cada nueva operación debe tener spans
-5. **Considerar el impacto en producción**: Rendimiento, seguridad, mantenibilidad
-
-### Al Revisar Código
-1. **Verificar separación de capas**: El dominio no debe conocer la infraestructura
-2. **Validar manejo de errores**: Todos los errores deben ser manejados apropiadamente
-3. **Revisar concurrencia**: Buscar race conditions y deadlocks
-4. **Confirmar telemetría**: Spans con atributos correctos
-5. **Evaluar testabilidad**: El código debe ser fácil de testear
-
-## 8. Bitácora de Interacciones
-
-Para mantener continuidad entre sesiones de desarrollo y preservar las decisiones arquitectónicas tomadas, consulta el archivo `context/04_INTERACTIONS_LOG.md`.
-
-## 9. Referencias y Recursos
-
-- [Domain-Driven Design by Eric Evans](https://www.domainlanguage.com/ddd/)
-- [Clean Architecture by Robert C. Martin](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
-- [OpenTelemetry Documentation](https://opentelemetry.io/docs/)
-{{#if (eq LANGUAGE "go")}}
-- [Effective Go](https://go.dev/doc/effective_go)
-- [Go Concurrency Patterns](https://go.dev/blog/pipelines)
-{{/if}}
-{{#if (eq LANGUAGE "javascript")}}
-- [Node.js Best Practices](https://github.com/goldbergyoni/nodebestpractices)
-- [JavaScript Design Patterns](https://www.patterns.dev/)
-{{/if}}
-{{#if (eq LANGUAGE "python")}}
-- [Python Design Patterns](https://python-patterns.guide/)
-- [Type Hints PEP 484](https://www.python.org/dev/peps/pep-0484/)
-{{/if}}
-
----
-
-**Última actualización**: {{TIMESTAMP}}
-**Versión del documento**: 1.0.0
-**Mantenido por**: Equipo de Desarrollo
+Estrategia de tracing, logging y metricas. Solo incluir si es relevante para el tipo de proyecto.

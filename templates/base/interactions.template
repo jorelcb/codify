@@ -1,166 +1,56 @@
-# Bitácora de Interacciones - {{PROJECT_NAME}}
+# Bitacora de Interacciones - {{PROJECT_NAME}}
 
-## Guía de Uso de Esta Bitácora
-
-### Propósito
-Esta bitácora documenta todas las interacciones significativas durante el desarrollo de {{PROJECT_NAME}}. Sirve como:
-- **Contexto histórico** para futuras sesiones de desarrollo
-- **Registro de decisiones arquitectónicas** y sus justificaciones  
-- **Documentación de problemas y soluciones** implementadas
-- **Seguimiento del progreso** por fases y milestones
-
-### Estructura de Cada Sesión
-Cada entrada de sesión debe seguir esta estructura:
+## Formato de Sesion
 
 ```markdown
-## Sesión: [Fecha] - [Título Descriptivo]
+## Sesion: [Fecha] - [Titulo Descriptivo]
 
 ### Contexto
-- **Estado:** [Estado del proyecto al inicio de la sesión]
-- **Branch:** [Rama de trabajo principal] 
-- **Problema/Objetivo:** [Qué se buscaba resolver o implementar]
+- **Estado:** [Estado del proyecto]
+- **Branch:** [Rama de trabajo]
+- **Objetivo:** [Que se busca resolver o implementar]
 
 ### Tareas Realizadas
-#### [Número]. **[Título de la Tarea]**
-- **Problema identificado:** [Descripción del problema específico]
-- **Solución implementada:** [Cómo se resolvió]
-- **Archivos modificados/creados:** [Lista de archivos afectados]
-- **Resultado:** [Estado final y validación]
+1. **[Titulo]** - [Descripcion breve, archivos afectados, resultado]
 
-### Decisiones Arquitectónicas
-- **[Decisión]:** [Descripción de la decisión tomada]
-- **Razón:** [Por qué se tomó esa decisión]
-- **Alternativas consideradas:** [Otras opciones evaluadas]
-- **Trade-offs:** [Beneficios y costos de la decisión]
+### Decisiones Arquitectonicas
+- **[Decision]:** [Justificacion] | Alternativas: [descartadas y por que]
 
-### Problemas Encontrados y Soluciones
-1. **[Problema]:** [Descripción]
-   - **Causa:** [Causa raíz identificada]
-   - **Solución:** [Cómo se resolvió]
-   - **Prevención:** [Cómo evitarlo en el futuro]
+### Problemas y Soluciones
+- **[Problema]:** [Causa raiz] -> [Solucion aplicada]
 
-### Lecciones Aprendidas
-1. **[Lección]:** [Descripción de la lección aprendida]
-2. **[Lección]:** [Insight técnico o de proceso]
-
-### Estado Final de la Sesión
-- **Completado:** [Lista de tareas completadas]
-- **Pendiente:** [Lista de tareas que quedan por hacer]
-- **Próximos pasos:** [Qué debería hacerse en la siguiente sesión]
-
----
+### Estado Final
+- **Completado:** [lista]
+- **Pendiente:** [lista]
 ```
 
-### Categorías de Información a Documentar
-
-#### 🏗️ **Arquitectura y Diseño**
-- Decisiones sobre patrones arquitectónicos (DDD, Clean Architecture, etc.)
-- Cambios en la estructura de capas
-- Modificaciones en interfaces y contratos
-- Refactorizaciones significativas
-
-#### 🐛 **Problemas y Resolución**
-- Bugs críticos encontrados y sus fixes
-- Errores de configuración y sus soluciones
-- Problemas de dependencias o compatibilidad
-- Issues de performance y sus optimizaciones
-
-#### 🔧 **Implementación Técnica**
-- Nuevos componentes desarrollados
-- Integraciones con servicios externos
-- Configuraciones de infraestructura
-- Setup de herramientas de desarrollo
-
-#### 📊 **Testing y Validación**
-- Estrategias de testing implementadas
-- Cobertura de tests lograda
-- Validaciones de funcionalidad end-to-end
-- Performance benchmarks
-
-#### 📝 **Documentación y Proceso**
-- Actualizaciones de documentación técnica
-- Mejoras en procesos de desarrollo
-- Configuraciones de CI/CD
-- Guidelines y convenciones adoptadas
-
-### Convenciones de Formato
-
-#### Estados de Tareas
-- ✅ **Completado:** Tarea finalizada exitosamente
-- ⏳ **En progreso:** Tarea iniciada pero no terminada
-- ❌ **Fallido:** Intento fallido que requiere diferente approach
-- 🔄 **Revert:** Cambio revertido por problemas
-- 📋 **Pendiente:** Identificado para futuras sesiones
-
-#### Niveles de Impacto
-- 🚨 **Crítico:** Afecta funcionalidad core o bloquea desarrollo
-- ⚠️ **Alto:** Impacto significativo en arquitectura o UX
-- 📊 **Medio:** Mejora importante pero no crítica
-- 🔧 **Bajo:** Optimización menor o fix cosmético
-
-#### Tipos de Cambios
-- **FEAT:** Nueva funcionalidad implementada
-- **FIX:** Corrección de bug o problema
-- **REFACTOR:** Reestructuración de código sin cambio funcional
-- **CONFIG:** Cambios de configuración o setup
-- **DOCS:** Actualizaciones de documentación
-- **TEST:** Implementación o mejora de tests
-- **PERF:** Optimizaciones de performance
-- **STYLE:** Cambios de formato o estilo de código
-- **CHORE:** Tareas de mantenimiento
-
-### Template para Decisiones Arquitectónicas (ADR)
+## ADR Template
 
 ```markdown
-## ADR-[Número]: [Título de la Decisión]
-
-### Estado
-[Propuesta | Aceptada | Rechazada | Deprecada | Reemplazada por ADR-X]
-
-### Contexto
-[Descripción del problema o situación que requiere una decisión]
-
-### Decisión
-[Descripción de la decisión tomada]
-
-### Consecuencias
-**Positivas:**
-- [Beneficio 1]
-- [Beneficio 2]
-
-**Negativas:**
-- [Trade-off 1]
-- [Trade-off 2]
-
-### Alternativas Consideradas
-1. **[Alternativa 1]:** [Por qué fue descartada]
-2. **[Alternativa 2]:** [Por qué fue descartada]
+## ADR-[N]: [Titulo]
+**Estado:** [Propuesta | Aceptada | Deprecada]
+**Contexto:** [Situacion que requiere decision]
+**Decision:** [Lo que se decidio]
+**Consecuencias:** [Positivas y negativas]
 ```
+
+## Convenciones
+- Tipos: FEAT, FIX, REFACTOR, CONFIG, DOCS, TEST, PERF, CHORE
+- Estados: Completado, En progreso, Fallido, Pendiente
 
 ---
 
-# Registro de Sesiones - {{PROJECT_NAME}}
-
-## Sesión: {{DATE}} - Inicialización del Proyecto
+## Sesion: {{DATE}} - Inicializacion del Proyecto
 
 ### Contexto
-- **Estado:** Proyecto nuevo, sin código previo
+- **Estado:** Proyecto nuevo
 - **Branch:** main
-- **Problema/Objetivo:** Establecer la estructura base del proyecto siguiendo DDD y Clean Architecture
+- **Objetivo:** Establecer estructura base del proyecto
 
 ### Tareas Realizadas
-#### 1. **Creación de Estructura de Carpetas**
-- **Problema identificado:** Necesidad de una estructura clara que separe responsabilidades
-- **Solución implementada:** Estructura de carpetas según DDD con 4 capas principales
-- **Archivos modificados/creados:** Toda la estructura de directorios
-- **Resultado:** ✅ Estructura creada y documentada
+1. **Estructura de carpetas** - Creada segun {{ARCHITECTURE}}
+2. **Configuracion inicial** - Dependencias y archivos de config
 
-#### 2. **Configuración Inicial**
-- **Problema identificado:** Necesidad de configuración base para desarrollo
-- **Solución implementada:** Archivos de configuración para {{LANGUAGE}} y Docker
-- **Archivos modificados/creados:** {{#if (eq LANGUAGE "go")}}go.mod, go.sum{{/if}}{{#if (eq LANGUAGE "javascript")}}package.json{{/if}}{{#if (eq LANGUAGE "python")}}pyproject.toml{{/if}}, Dockerfile, docker-compose.yml
-- **Resultado:** ✅ Proyecto configurado y listo para desarrollo
-
-### Decisiones Arquitectónicas
-- **Usar DDD con Clean Architecture:** Proporciona separación clara de responsabilidades y facilita mantenimiento
-- **Razón:** Escalabilidad y
+### Estado Final
+- **Completado:** Estructura base, configuracion, documentacion inicial
+- **Pendiente:** Implementacion de dominio, tests, integraciones

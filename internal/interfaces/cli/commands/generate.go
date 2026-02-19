@@ -31,10 +31,9 @@ func NewGenerateCmd() *cobra.Command {
 		Use:   "generate [project-name]",
 		Short: "Generate AI-optimized context files for a project",
 		Long: `Generate context files using AI models:
-  - PROMPT.md - Role and mission for the development agent
-  - CONTEXT.md - Architecture, patterns, domain
-  - SCAFFOLDING.md - Recommended project structure
-  - INTERACTIONS_LOG.md - Initial development log
+  - AGENTS.md - Root file: tech stack, commands, conventions, structure (at project root)
+  - CONTEXT.md - Architecture and technical design (in context/)
+  - INTERACTIONS_LOG.md - Session history and ADR log (in context/)
 
 Requires ANTHROPIC_API_KEY environment variable.
 

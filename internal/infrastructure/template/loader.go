@@ -11,26 +11,31 @@ import (
 // FileSystemTemplateLoader loads template guides from the filesystem.
 type FileSystemTemplateLoader struct {
 	basePath string
+	mapping  map[string]string
 }
 
-// NewFileSystemTemplateLoader creates a new template loader.
-func NewFileSystemTemplateLoader(basePath string) service.TemplateLoader {
-	return &FileSystemTemplateLoader{basePath: basePath}
-}
-
-// templateMapping maps template file names to their guide names.
+// templateMapping maps template file names to their guide names (generate command).
 var templateMapping = map[string]string{
-	"prompt.template":       "prompt",
+	"agents.template":       "agents",
 	"context.template":      "context",
-	"scaffolding.template":  "scaffolding",
 	"interactions.template": "interactions",
+}
+
+// NewFileSystemTemplateLoader creates a new template loader with the default mapping.
+func NewFileSystemTemplateLoader(basePath string) service.TemplateLoader {
+	return &FileSystemTemplateLoader{basePath: basePath, mapping: templateMapping}
+}
+
+// NewFileSystemTemplateLoaderWithMapping creates a template loader with a custom mapping.
+func NewFileSystemTemplateLoaderWithMapping(basePath string, mapping map[string]string) service.TemplateLoader {
+	return &FileSystemTemplateLoader{basePath: basePath, mapping: mapping}
 }
 
 // LoadAll reads all template files and returns them as TemplateGuides.
 func (l *FileSystemTemplateLoader) LoadAll() ([]service.TemplateGuide, error) {
 	var guides []service.TemplateGuide
 
-	for filename, name := range templateMapping {
+	for filename, name := range l.mapping {
 		fullPath := filepath.Join(l.basePath, filename)
 
 		content, err := os.ReadFile(fullPath)

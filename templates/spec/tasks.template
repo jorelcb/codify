@@ -1,0 +1,47 @@
+# {{PROJECT_NAME}} - Tareas de Implementacion
+
+## Milestone 1: {{MILESTONE_NAME}}
+
+### Task 1.1: {{TASK_TITLE}}
+- **Descripcion:** {{TASK_DESCRIPTION}}
+- **Archivos a crear/modificar:** {{FILES}}
+- **Dependencias:** Ninguna
+- **Criterios de aceptacion:**
+  - [ ] {{ACCEPTANCE_CRITERION_1}}
+  - [ ] {{ACCEPTANCE_CRITERION_2}}
+  - [ ] Tests pasan
+- **Complejidad:** {{LOW|MEDIUM|HIGH}}
+
+### Task 1.2: {{TASK_TITLE}}
+- **Descripcion:** {{TASK_DESCRIPTION}}
+- **Archivos a crear/modificar:** {{FILES}}
+- **Dependencias:** Task 1.1
+- **Criterios de aceptacion:**
+  - [ ] {{ACCEPTANCE_CRITERION_1}}
+  - [ ] {{ACCEPTANCE_CRITERION_2}}
+  - [ ] Tests pasan
+- **Complejidad:** {{LOW|MEDIUM|HIGH}}
+
+---
+
+## Milestone 2: {{MILESTONE_NAME}}
+
+(Repetir estructura para cada milestone)
+
+---
+
+## Grafo de Dependencias
+
+```
+Task 1.1 ──> Task 1.2 ──> Task 2.1
+                |
+                └──> Task 1.3 ──> Task 2.2
+```
+
+## Resumen
+
+| Milestone | Tasks | Complejidad Total |
+|-----------|-------|------------------|
+| {{MILESTONE}} | {{TASK_COUNT}} | {{COMPLEXITY}} |
+
+**Total de tareas:** {{TOTAL_TASKS}}

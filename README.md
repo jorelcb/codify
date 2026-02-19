@@ -2,7 +2,7 @@
 
 > **Genera contextos optimizados para agentes de IA usando modelos de lenguaje**
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/jorelcb/ai-context-generator/releases)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/jorelcb/ai-context-generator/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ---
@@ -25,11 +25,11 @@ Los agentes de IA son ingenieros capaces pero empiezan desde cero. Sin contexto 
    Templates definen la estructura -> LLM genera el contenido inteligente
 
 3. Obtienes archivos de contexto listos para usar:
-   output/mi-sistema-de-pagos/context/
-   ├── PROMPT.md            # Rol y mision para tu agente de IA
-   ├── CONTEXT.md           # Arquitectura, patrones, dominio
-   ├── SCAFFOLDING.md       # Estructura recomendada
-   └── INTERACTIONS_LOG.md  # Bitacora inicial
+   output/mi-sistema-de-pagos/
+   ├── AGENTS.md              # Root file: tech stack, comandos, convenciones
+   └── context/
+       ├── CONTEXT.md         # Arquitectura y diseno tecnico
+       └── INTERACTIONS_LOG.md # Bitacora de sesiones y ADRs
 ```
 
 ## Quick Start
@@ -47,21 +47,33 @@ ai-context-generator generate my-api \
   --description "API REST de gestion de inventarios" \
   --language go --type api --architecture ddd
 
-# Usar un modelo especifico
-ai-context-generator generate my-api \
-  --description "..." --model claude-sonnet-4-6
+# Generar specs a partir de un contexto existente
+ai-context-generator spec my-api \
+  --from-context ./output/my-api/
 ```
 
 ## Que genera
 
-Los archivos de contexto son el "sustrato cognitivo" que entregas a tu agente de IA (Claude, GPT, Gemini, Cursor, etc.) para que construya tu proyecto con contexto perfecto.
+### Comando `generate`
+
+Archivos de contexto siguiendo el estandar [AGENTS.md](https://github.com/anthropics/AGENTS.md) — el "sustrato cognitivo" para tu agente de IA:
+
+| Archivo | Ubicacion | Contenido |
+|---------|-----------|-----------|
+| `AGENTS.md` | Raiz del proyecto | Root file: tech stack, comandos, convenciones, estructura |
+| `CONTEXT.md` | `context/` | Arquitectura, componentes, flujo de datos, decisiones de diseno |
+| `INTERACTIONS_LOG.md` | `context/` | Bitacora de sesiones y ADRs |
+
+### Comando `spec`
+
+Archivos de especificacion tecnica (SDD) generados a partir de contexto existente:
 
 | Archivo | Contenido |
 |---------|-----------|
-| `PROMPT.md` | Rol, mision, restricciones y directrices para el agente |
-| `CONTEXT.md` | Arquitectura, stack, patrones de diseno, dominio de negocio |
-| `SCAFFOLDING.md` | Estructura de directorios y archivos recomendada |
-| `INTERACTIONS_LOG.md` | Bitacora inicial con decisiones de diseno |
+| `CONSTITUTION.md` | DNA del proyecto: stack, principios, restricciones |
+| `SPEC.md` | Especificaciones de features con criterios de aceptacion |
+| `PLAN.md` | Diseno tecnico y decisiones de arquitectura |
+| `TASKS.md` | Desglose de tareas con dependencias y prioridad |
 
 ## Arquitectura
 
@@ -70,7 +82,7 @@ Construido en **Go** con **DDD/Clean Architecture**:
 - **Domain Layer**: Entidades, value objects, interfaces de servicio
 - **Application Layer**: Commands y Queries (CQRS)
 - **Infrastructure Layer**: LLM adapter (Anthropic), filesystem, template loader
-- **Interfaces Layer**: CLI con Cobra
+- **Interfaces Layer**: CLI con Cobra (`generate`, `spec`, `list`)
 
 Ver [ARCHITECTURE.md](ARCHITECTURE.md) para detalles.
 
@@ -85,7 +97,7 @@ go test ./...
 - [Architecture Guide](ARCHITECTURE.md) - DDD/Clean Architecture
 - [Getting Started](GETTING_STARTED.md) - Guia de inicio
 - [Roadmap](ROADMAP.md) - Plan de desarrollo
-- [Changelog](CHANGELOG.md) - Historial de cambios
+- [Changelog](context/CHANGELOG.md) - Historial de cambios
 
 ## Licencia
 

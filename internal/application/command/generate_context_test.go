@@ -31,9 +31,8 @@ func TestGenerateContextCommand_Execute(t *testing.T) {
 	mockProvider := &mockLLMProvider{
 		response: &service.GenerationResponse{
 			Files: []service.GeneratedFile{
-				{Name: "PROMPT.md", Content: "# Prompt content"},
+				{Name: "AGENTS.md", Content: "# Agents content"},
 				{Name: "CONTEXT.md", Content: "# Context content"},
-				{Name: "SCAFFOLDING.md", Content: "# Scaffolding content"},
 				{Name: "INTERACTIONS_LOG.md", Content: "# Interactions content"},
 			},
 			Model:     "claude-sonnet-4-6",
@@ -53,7 +52,7 @@ func TestGenerateContextCommand_Execute(t *testing.T) {
 	}
 
 	guides := []service.TemplateGuide{
-		{Name: "prompt", Content: "# Prompt guide"},
+		{Name: "agents", Content: "# Agents guide"},
 	}
 
 	result, err := cmd.Execute(context.Background(), config, guides)
@@ -70,17 +69,26 @@ func TestGenerateContextCommand_Execute(t *testing.T) {
 	if result.TokensOut != 5000 {
 		t.Errorf("Expected 5000 tokens out, got %d", result.TokensOut)
 	}
-	if len(result.GeneratedFiles) != 4 {
-		t.Errorf("Expected 4 generated files, got %d", len(result.GeneratedFiles))
+	if len(result.GeneratedFiles) != 3 {
+		t.Errorf("Expected 3 generated files, got %d", len(result.GeneratedFiles))
 	}
 
-	// Verify files were written to disk
-	expectedFiles := []string{"PROMPT.md", "CONTEXT.md", "SCAFFOLDING.md", "INTERACTIONS_LOG.md"}
-	for _, fname := range expectedFiles {
+	// Verify AGENTS.md was written to project root (not context/)
+	agentsPath := filepath.Join(tmpDir, "AGENTS.md")
+	content, err := os.ReadFile(agentsPath)
+	if err != nil {
+		t.Errorf("AGENTS.md not found at root: %v", err)
+	} else if len(content) == 0 {
+		t.Error("AGENTS.md is empty")
+	}
+
+	// Verify other files were written to context/ subdirectory
+	contextFiles := []string{"CONTEXT.md", "INTERACTIONS_LOG.md"}
+	for _, fname := range contextFiles {
 		fpath := filepath.Join(tmpDir, "context", fname)
 		content, err := os.ReadFile(fpath)
 		if err != nil {
-			t.Errorf("File %s not found: %v", fname, err)
+			t.Errorf("File %s not found in context/: %v", fname, err)
 			continue
 		}
 		if len(content) == 0 {
