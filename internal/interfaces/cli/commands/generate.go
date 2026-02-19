@@ -24,6 +24,7 @@ func NewGenerateCmd() *cobra.Command {
 		projectType  string
 		architecture string
 		model        string
+		preset       string
 		interactive  bool
 	)
 
@@ -35,15 +36,21 @@ func NewGenerateCmd() *cobra.Command {
   - CONTEXT.md - Architecture and technical design (in context/)
   - INTERACTIONS_LOG.md - Session history and ADR log (in context/)
 
+Presets:
+  default  - DDD/Clean Architecture/BDD opinionated templates (default)
+  neutral  - Generic templates without architectural opinions
+
 Requires ANTHROPIC_API_KEY environment variable.
 
 Examples:
-  # Interactive mode (coming soon)
-  ai-context-generator generate -i
-
-  # Generate with description
+  # Generate with description (uses default preset)
   ai-context-generator generate my-api \
     --description "API REST de gestion de inventarios en Go con Clean Architecture y PostgreSQL"
+
+  # With neutral preset
+  ai-context-generator generate my-api \
+    --description "API REST de gestion de inventarios" \
+    --preset neutral
 
   # With optional hints
   ai-context-generator generate my-api \
@@ -66,7 +73,7 @@ Examples:
 				return fmt.Errorf("description is required (use -d to describe your project)")
 			}
 
-			return runGenerate(projectName, description, language, projectType, architecture, model)
+			return runGenerate(projectName, description, language, projectType, architecture, model, preset)
 		},
 	}
 
@@ -76,6 +83,7 @@ Examples:
 	cmd.Flags().StringVarP(&projectType, "type", "t", "", "Project type hint (optional)")
 	cmd.Flags().StringVarP(&architecture, "architecture", "a", "", "Architecture pattern hint (optional)")
 	cmd.Flags().StringVarP(&model, "model", "m", "", "Claude model to use (default: claude-sonnet-4-6)")
+	cmd.Flags().StringVarP(&preset, "preset", "p", "default", "Template preset: default (DDD/Clean Architecture) or neutral")
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "Run in interactive mode")
 
 	return cmd
@@ -87,7 +95,20 @@ func runInteractiveGenerate() error {
 	return nil
 }
 
-func runGenerate(projectName, description, language, projectType, architecture, model string) error {
+// validPresets maps preset names to template directory paths.
+var validPresets = map[string]string{
+	"default": "templates/default",
+	"neutral": "templates/neutral",
+}
+
+func resolveTemplatePath(preset string) string {
+	if path, ok := validPresets[preset]; ok {
+		return path
+	}
+	return validPresets["default"]
+}
+
+func runGenerate(projectName, description, language, projectType, architecture, model, preset string) error {
 	ctx := context.Background()
 
 	// 1. Check API key
@@ -97,7 +118,7 @@ func runGenerate(projectName, description, language, projectType, architecture, 
 	}
 
 	// 2. Load templates
-	templateLoader := infratemplate.NewFileSystemTemplateLoader("templates/base")
+	templateLoader := infratemplate.NewFileSystemTemplateLoader(resolveTemplatePath(preset))
 	guides, err := templateLoader.LoadAll()
 	if err != nil {
 		return fmt.Errorf("failed to load templates: %w", err)
@@ -142,6 +163,7 @@ func runGenerate(projectName, description, language, projectType, architecture, 
 		usedModel = "claude-sonnet-4-6"
 	}
 	fmt.Printf("  Model: %s\n", usedModel)
+	fmt.Printf("  Preset: %s\n", preset)
 	fmt.Println()
 	fmt.Println("Generating context files via Claude API...")
 

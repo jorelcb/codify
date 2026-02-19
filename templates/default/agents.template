@@ -1,0 +1,89 @@
+# {{PROJECT_NAME}}
+
+{{DESCRIPTION}}
+
+## Tech Stack
+
+- **Lenguaje:** {{LANGUAGE}} {{LANGUAGE_VERSION}}
+- **Arquitectura:** {{ARCHITECTURE}} (siguiendo principios DDD/Clean Architecture)
+- **Testing:** {{TESTING_FRAMEWORK}} (BDD para aceptacion, TDD para logica de negocio compleja)
+- **Dependencias clave:** {{KEY_DEPENDENCIES}}
+- **Observabilidad:** OpenTelemetry (tracing, metricas, logging estructurado)
+
+## Comandos
+
+```bash
+# Build
+{{BUILD_COMMAND}}
+
+# Test
+{{TEST_COMMAND}}
+
+# Run
+{{RUN_COMMAND}}
+
+# Lint
+{{LINT_COMMAND}}
+```
+
+## Principios Arquitectonicos
+
+### DDD - Separacion de Capas
+- **Domain:** Logica de negocio pura, sin dependencias externas. Entidades, value objects, agregados, interfaces/puertos, errores de dominio
+- **Application:** Orquesta casos de uso. Commands, queries (CQRS), DTOs. Depende solo del dominio
+- **Infrastructure:** Adaptadores concretos (repositorios, gateways, providers). Implementa interfaces del dominio
+- **Interfaces:** Puntos de entrada (HTTP, CLI, gRPC). Adapta input/output al formato externo
+
+### Clean Architecture - Regla de Dependencia
+Las dependencias siempre apuntan hacia adentro: Interfaces -> Infrastructure -> Application -> Domain.
+El dominio NUNCA importa de capas externas. Las abstracciones se definen en el dominio, las implementaciones en infraestructura.
+
+### Inyeccion de Dependencias
+Constructor injection para TODAS las dependencias. NO variables globales para servicios o configuracion.
+
+## Convenciones Clave
+
+- **Naming:** {{NAMING_CONVENTIONS}} — seguir convenciones idiomaticas del lenguaje
+- **Estructura de imports:** {{IMPORT_CONVENTIONS}}
+- **Error handling:** {{ERROR_HANDLING_CONVENTIONS}} — todos los errores manejados o propagados con contexto, cero errores silenciosos
+- **Commits:** Conventional Commits (feat, fix, refactor, docs, test, chore)
+- **Branching:** {{BRANCHING_STRATEGY}}
+- **Testing:** Coverage minimo 80% en dominio, 70% en aplicacion, 60% en infraestructura. Tests unitarios junto con cada componente
+
+## Estructura del Proyecto
+
+```
+{{PROJECT_STRUCTURE}}
+```
+
+Generar la estructura siguiendo la convencion DDD del lenguaje detectado. Para Go: cmd/, internal/domain, internal/application, internal/infrastructure, internal/interfaces. Para TypeScript/Node: src/domain, src/application, src/infrastructure, src/interfaces. Para Python: src/domain, src/application, src/infrastructure, src/interfaces. Adaptar segun convenciones idiomaticas.
+
+Descripcion de directorios principales:
+- {{DIRECTORY_DESCRIPTIONS}}
+
+## Restricciones
+
+### DEBE:
+- Respetar la separacion de capas DDD en toda decision de diseno
+- Definir interfaces/puertos en el dominio, implementaciones en infraestructura
+- Implementar health checks e instrumentacion con OpenTelemetry desde el inicio
+- Manejar graceful shutdown para todos los componentes de larga vida
+- Propagar contexto de tracing end-to-end
+- Escribir tests unitarios junto con cada componente (no despues)
+- Usar inyeccion de dependencias explicita
+- {{MUST_RULES}}
+
+### NO DEBE:
+- Permitir que el dominio conozca detalles de infraestructura
+- Mezclar responsabilidades entre capas arquitectonicas
+- Usar frameworks pesados cuando la libreria estandar sea suficiente
+- Crear abstracciones prematuras — evolucionar segun necesidad real
+- Ignorar errores o propagarlos sin contexto
+- Hacer commits de credenciales — usar variables de entorno
+- Optimizar prematuramente — primero correcto, luego rapido
+- {{MUST_NOT_RULES}}
+
+## Contexto Adicional
+
+- Arquitectura y diseno tecnico: `context/CONTEXT.md`
+- Historial de decisiones y sesiones: `context/INTERACTIONS_LOG.md`

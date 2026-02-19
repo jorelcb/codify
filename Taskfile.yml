@@ -74,8 +74,14 @@ tasks:
   template:list:
     desc: Listar templates disponibles
     cmds:
-      - echo "Templates base"
-      - ls -1 {{.TEMPLATE_DIR}}/base/*.template 2>/dev/null | sed 's/^/  - /'
+      - echo "Templates default (DDD/Clean Architecture)"
+      - ls -1 {{.TEMPLATE_DIR}}/default/*.template 2>/dev/null | sed 's/^/  - /'
+      - echo ""
+      - echo "Templates neutral"
+      - ls -1 {{.TEMPLATE_DIR}}/neutral/*.template 2>/dev/null | sed 's/^/  - /'
+      - echo ""
+      - echo "Templates spec"
+      - ls -1 {{.TEMPLATE_DIR}}/spec/*.template 2>/dev/null | sed 's/^/  - /'
 
   template:validate:
     desc: Validar que los templates requeridos existan
@@ -84,9 +90,18 @@ tasks:
         echo "Validando templates..."
         missing=0
 
-        for template in agents context interactions; do
-          if [ ! -f "{{.TEMPLATE_DIR}}/base/${template}.template" ]; then
-            echo "[ERROR] Falta base/${template}.template"
+        for preset in default neutral; do
+          for template in agents context interactions; do
+            if [ ! -f "{{.TEMPLATE_DIR}}/${preset}/${template}.template" ]; then
+              echo "[ERROR] Falta ${preset}/${template}.template"
+              missing=$((missing + 1))
+            fi
+          done
+        done
+
+        for template in constitution spec plan tasks; do
+          if [ ! -f "{{.TEMPLATE_DIR}}/spec/${template}.template" ]; then
+            echo "[ERROR] Falta spec/${template}.template"
             missing=$((missing + 1))
           fi
         done
