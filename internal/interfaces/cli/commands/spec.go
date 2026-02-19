@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -121,7 +122,12 @@ func runSpec(projectName, fromContext, model string) error {
 		return fmt.Errorf("spec generation failed: %w", err)
 	}
 
-	// 10. Show results
+	// 10. Update AGENTS.md with specs references
+	if err := updateAgentsWithSpecsRef(fromContext); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not update AGENTS.md with specs reference: %v\n", err)
+	}
+
+	// 11. Show results
 	fmt.Println()
 	fmt.Println("Spec files generated successfully!")
 	fmt.Printf("  Output: %s\n", result.OutputPath)
@@ -134,4 +140,29 @@ func runSpec(projectName, fromContext, model string) error {
 	}
 
 	return nil
+}
+
+// updateAgentsWithSpecsRef appends specs file references to AGENTS.md if not already present.
+func updateAgentsWithSpecsRef(fromContextPath string) error {
+	agentsPath := filepath.Join(fromContextPath, "AGENTS.md")
+
+	content, err := os.ReadFile(agentsPath)
+	if err != nil {
+		// AGENTS.md might not exist — skip silently
+		return nil
+	}
+
+	// Check if specs reference already exists (idempotent)
+	if strings.Contains(string(content), "specs/") {
+		return nil
+	}
+
+	specsRef := "\n## Especificaciones\n\n" +
+		"- Constitucion del proyecto: `specs/CONSTITUTION.md`\n" +
+		"- Especificaciones de features: `specs/SPEC.md`\n" +
+		"- Diseno tecnico y plan: `specs/PLAN.md`\n" +
+		"- Desglose de tareas: `specs/TASKS.md`\n"
+
+	updated := string(content) + specsRef
+	return os.WriteFile(agentsPath, []byte(updated), 0644)
 }
