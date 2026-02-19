@@ -41,19 +41,28 @@ func (c *GenerateProjectCommand) Execute(ctx context.Context, config *dto.Projec
 		return nil, fmt.Errorf("invalid project name: %w", err)
 	}
 
-	language, err := shared.NewLanguage(config.Language)
-	if err != nil {
-		return nil, fmt.Errorf("invalid language: %w", err)
+	var language shared.Language
+	if config.Language != "" {
+		language, err = shared.NewLanguage(config.Language)
+		if err != nil {
+			return nil, fmt.Errorf("invalid language: %w", err)
+		}
 	}
 
-	projectType, err := shared.NewProjectType(config.Type)
-	if err != nil {
-		return nil, fmt.Errorf("invalid project type: %w", err)
+	var projectType shared.ProjectType
+	if config.Type != "" {
+		projectType, err = shared.NewProjectType(config.Type)
+		if err != nil {
+			return nil, fmt.Errorf("invalid project type: %w", err)
+		}
 	}
 
-	architecture, err := shared.NewArchitecture(config.Architecture)
-	if err != nil {
-		return nil, fmt.Errorf("invalid architecture: %w", err)
+	var architecture shared.Architecture
+	if config.Architecture != "" {
+		architecture, err = shared.NewArchitecture(config.Architecture)
+		if err != nil {
+			return nil, fmt.Errorf("invalid architecture: %w", err)
+		}
 	}
 
 	// 3. Generar ID unico para el proyecto

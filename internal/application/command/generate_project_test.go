@@ -20,6 +20,7 @@ func TestGenerateProjectCommand_Execute(t *testing.T) {
 			name: "successful project generation",
 			config: &dto.ProjectConfig{
 				Name:         "test-project",
+				Description:  "A REST API for inventory management with Go and Clean Architecture",
 				Language:     "go",
 				Type:         "api",
 				Architecture: "clean",
@@ -33,6 +34,7 @@ func TestGenerateProjectCommand_Execute(t *testing.T) {
 			name: "invalid config - missing name",
 			config: &dto.ProjectConfig{
 				Name:         "",
+				Description:  "A test project description for validation",
 				Language:     "go",
 				Type:         "api",
 				Architecture: "clean",
@@ -41,10 +43,11 @@ func TestGenerateProjectCommand_Execute(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "invalid config - missing language",
+			name: "invalid config - missing description",
 			config: &dto.ProjectConfig{
 				Name:         "test-project",
-				Language:     "",
+				Description:  "",
+				Language:     "go",
 				Type:         "api",
 				Architecture: "clean",
 				OutputPath:   "/tmp/test",
@@ -55,6 +58,7 @@ func TestGenerateProjectCommand_Execute(t *testing.T) {
 			name: "invalid language",
 			config: &dto.ProjectConfig{
 				Name:         "test-project",
+				Description:  "A test project description for validation",
 				Language:     "invalid-language",
 				Type:         "api",
 				Architecture: "clean",
@@ -66,6 +70,7 @@ func TestGenerateProjectCommand_Execute(t *testing.T) {
 			name: "invalid project type",
 			config: &dto.ProjectConfig{
 				Name:         "test-project",
+				Description:  "A test project description for validation",
 				Language:     "go",
 				Type:         "invalid-type",
 				Architecture: "clean",
@@ -77,6 +82,7 @@ func TestGenerateProjectCommand_Execute(t *testing.T) {
 			name: "invalid architecture",
 			config: &dto.ProjectConfig{
 				Name:         "test-project",
+				Description:  "A test project description for validation",
 				Language:     "go",
 				Type:         "api",
 				Architecture: "invalid-arch",
@@ -133,6 +139,7 @@ func TestGenerateProjectCommand_DuplicateProjectName(t *testing.T) {
 
 	config := &dto.ProjectConfig{
 		Name:         "duplicate-project",
+		Description:  "A duplicate project for testing uniqueness validation",
 		Language:     "go",
 		Type:         "api",
 		Architecture: "clean",

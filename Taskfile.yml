@@ -1,5 +1,4 @@
-# Taskfile.yml - AI Context Generator v0.0.1-alpha
-# Phase 0: Cleanup & Restructuring
+# Taskfile.yml - AI Context Generator v1.0.0
 version: '3'
 
 vars:
@@ -8,10 +7,6 @@ vars:
   BIN_DIR: ./bin
   BINARY: '{{.BIN_DIR}}/ai-context-generator'
   TESTS_DIR: ./tests
-  TIMESTAMP:
-    sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
-  DATE:
-    sh: date +"%Y-%m-%d"
 
 tasks:
   default:
@@ -22,28 +17,23 @@ tasks:
   help:
     desc: Mostrar ayuda completa
     cmds:
-      - echo "AI CONTEXT GENERATOR v0.0.1-alpha"
-      - echo "Phase 0 - Cleanup & Restructuring"
-      - echo ""
-      - echo "NOTA - Los comandos de generación están temporalmente deshabilitados"
-      - echo "mientras se reescribe el core en Go (ver ROADMAP.md)"
+      - echo "AI CONTEXT GENERATOR v1.0.0"
       - echo ""
       - echo "Comandos disponibles"
-      - echo "  task build        - Compilar binario Go"
-      - echo "  task run          - Ejecutar binario"
-      - echo "  task test         - Ejecutar tests Go"
-      - echo "  task clean        - Limpiar binarios y cache"
+      - echo "  task build           - Compilar binario Go"
+      - echo "  task run             - Ejecutar binario"
+      - echo "  task test            - Ejecutar tests Go"
+      - echo "  task test:coverage   - Tests con cobertura"
+      - echo "  task clean           - Limpiar binarios y cache"
       - echo ""
       - echo "  task template:list     - Listar templates disponibles"
       - echo "  task template:validate - Validar templates"
       - echo ""
-      - echo "Documentación"
-      - echo "  README.md        - Estado actual del proyecto"
-      - echo "  ROADMAP.md       - Plan de desarrollo"
-      - echo "  ESTADO_REAL.md   - Inventario técnico"
-      - echo "  ARCHITECTURE.md  - Diseño arquitectónico"
-      - echo ""
-      - echo "Próximos pasos - Ver ROADMAP.md Fase 0"
+      - echo "Documentacion"
+      - echo "  README.md           - Descripcion del proyecto"
+      - echo "  GETTING_STARTED.md  - Guia de inicio"
+      - echo "  ROADMAP.md          - Plan de desarrollo"
+      - echo "  ARCHITECTURE.md     - Diseno arquitectonico"
 
   # ============================================================================
   # GO BUILD & RUN
@@ -62,27 +52,6 @@ tasks:
     cmds:
       - '{{.BINARY}}'
 
-  # ============================================================================
-  # PROJECT GENERATION (TEMPORARILY DISABLED)
-  # ============================================================================
-
-  new:
-    desc: "[DISABLED] Crear nuevo proyecto - En desarrollo"
-    cmds:
-      - echo "[DISABLED] Este comando está temporalmente deshabilitado"
-      - echo ""
-      - echo "[INFO] Estamos reescribiendo el generador en Go (Fase 0)"
-      - echo "   Ver ROADMAP.md para el plan completo"
-      - echo ""
-      - echo "[INFO] Scripts bash legacy movidos a docs/legacy/"
-      - echo "   (Solo para referencia histórica)"
-      - exit 1
-
-  new:quick:
-    desc: "[DISABLED] Creación rápida - En desarrollo"
-    cmds:
-      - task: new
-
   clean:
     desc: Limpiar binarios y cache de Go
     cmds:
@@ -92,7 +61,7 @@ tasks:
 
   clean:all:
     desc: Limpiar todo (binarios, cache y proyectos generados)
-    prompt: "¿Estás seguro? Esto eliminará binarios, cache Y proyectos generados"
+    prompt: "Estas seguro? Esto eliminara binarios, cache Y proyectos generados"
     cmds:
       - task: clean
       - rm -rf {{.OUTPUT_DIR}}/*
@@ -105,13 +74,8 @@ tasks:
   template:list:
     desc: Listar templates disponibles
     cmds:
-      - echo "Templates disponibles"
-      - echo ""
-      - echo "Lenguajes"
-      - ls -1 {{.TEMPLATE_DIR}}/languages/ 2>/dev/null | sed 's/^/  - /'
-      - echo ""
-      - echo "Tipos de proyecto"
-      - ls -1 {{.TEMPLATE_DIR}}/types/ 2>/dev/null | sed 's/^/  - /'
+      - echo "Templates base"
+      - ls -1 {{.TEMPLATE_DIR}}/base/*.template 2>/dev/null | sed 's/^/  - /'
 
   template:validate:
     desc: Validar que los templates requeridos existan
@@ -120,25 +84,17 @@ tasks:
         echo "Validando templates..."
         missing=0
 
-        # Verificar templates base
-        for template in prompt context scaffolding interactions changelog; do
+        for template in prompt context scaffolding interactions; do
           if [ ! -f "{{.TEMPLATE_DIR}}/base/${template}.template" ]; then
             echo "[ERROR] Falta base/${template}.template"
             missing=$((missing + 1))
           fi
         done
 
-        # Verificar Taskfiles de lenguajes
-        for lang in go javascript python; do
-          if [ ! -f "{{.TEMPLATE_DIR}}/scaffolding/${lang}/Taskfile.yml" ]; then
-            echo "[WARN] Falta scaffolding/${lang}/Taskfile.yml"
-          fi
-        done
-
         if [ $missing -eq 0 ]; then
-          echo "[OK] Templates principales validados"
+          echo "[OK] Templates validados"
         else
-          echo "[ERROR] Faltan $missing templates principales"
+          echo "[ERROR] Faltan $missing templates"
           exit 1
         fi
 
@@ -189,7 +145,6 @@ tasks:
         done
         if [ -n "$missing" ]; then
           echo "[ERROR] Faltan dependencias $missing"
-          echo "Por favor instalalas antes de continuar"
           exit 1
         fi
         echo "[OK] Todas las dependencias instaladas"
@@ -197,7 +152,7 @@ tasks:
         echo "   Git version $(git --version)"
 
   healthcheck:
-    desc: Verificar que el proyecto está correctamente configurado
+    desc: Verificar que el proyecto esta correctamente configurado
     cmds:
       - echo "Ejecutando verificacion de salud..."
       - task: check:dependencies
@@ -227,21 +182,17 @@ tasks:
       - echo "[OK] El proyecto esta saludable"
 
   version:
-    desc: Mostrar versión del generador
+    desc: Mostrar version del generador
     cmds:
       - '{{.BINARY}} || task build && {{.BINARY}}'
 
   info:
-    desc: Mostrar información del proyecto
+    desc: Mostrar informacion del proyecto
     cmds:
       - echo "AI Context Generator - Project Info"
       - echo ""
-      - echo "Version 0.0.1-alpha"
-      - echo "Phase 0 (Cleanup & Restructuring)"
+      - echo "Version 1.0.0"
       - echo "Go version $(go version)"
-      - echo "Task version $(task --version)"
       - echo ""
       - echo "Directorio de trabajo $(pwd)"
       - echo "Binario {{.BINARY}}"
-      - echo ""
-      - echo "Estado Reescribiendo en Go (ver ROADMAP.md)"

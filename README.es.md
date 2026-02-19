@@ -2,7 +2,7 @@
 
 > **Genera contextos optimizados para agentes de IA usando modelos de lenguaje**
 
-[![Version](https://img.shields.io/badge/version-2.0.0--alpha-blue.svg)](https://github.com/jorelcb/ai-context-generator/releases)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/jorelcb/ai-context-generator/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 [English](README.md) | **Espanol**
@@ -15,7 +15,7 @@ Los agentes de IA son ingenieros capaces pero carecen de contexto inicial. Sin a
 
 ## La Solucion
 
-Describes tu proyecto, la herramienta usa templates como guias estructurales + un modelo de IA (LLM) para generar archivos de contexto inteligentes. Esos archivos le dan a tu agente de desarrollo el contexto perfecto desde el dia uno.
+Describes tu proyecto, la herramienta usa templates como guias estructurales + Anthropic Claude para generar archivos de contexto inteligentes. Esos archivos le dan a tu agente de desarrollo el contexto perfecto desde el dia uno.
 
 ## Como Funciona
 
@@ -23,11 +23,11 @@ Describes tu proyecto, la herramienta usa templates como guias estructurales + u
 1. Describes tu proyecto en texto libre:
    "Sistema de pagos en Go con microservicios, DDD y PostgreSQL"
 
-2. La herramienta combina templates (guias estructurales) + LLM:
+2. La herramienta combina templates (guias estructurales) + Claude API:
    Templates definen la estructura -> LLM genera contenido inteligente
 
 3. Obtienes archivos de contexto listos para usar:
-   output/mi-sistema/
+   output/mi-sistema/context/
    ├── PROMPT.md            # Rol y mision para tu agente de IA
    ├── CONTEXT.md           # Arquitectura, patrones, dominio
    ├── SCAFFOLDING.md       # Estructura recomendada
@@ -37,22 +37,32 @@ Describes tu proyecto, la herramienta usa templates como guias estructurales + u
 ## Quick Start
 
 ```bash
-ai-context-generator generate \
+# Requisito: API key de Anthropic
+export ANTHROPIC_API_KEY="sk-ant-..."
+
+# Generar contextos
+ai-context-generator generate my-api \
   --description "API REST de gestion de inventarios en Go con Clean Architecture"
+
+# Con hints opcionales
+ai-context-generator generate my-api \
+  --description "API REST de gestion de inventarios" \
+  --language go --type api --architecture ddd
 ```
 
 ## Estado
 
-**v2.0.0-alpha** - En desarrollo activo.
+**v1.0.0** - Primera version funcional.
 
 - DDD/Clean Architecture implementada
-- Filesystem infrastructure lista
-- CLI base funcional
-- **En progreso**: Integracion con LLM
+- Integracion con Anthropic Claude (streaming)
+- Generacion per-file (4 archivos de contexto)
+- CLI con flags: description, language, type, architecture, model
 
 ## Documentacion
 
 - [Architecture](ARCHITECTURE.md) - Guia de arquitectura
+- [Getting Started](GETTING_STARTED.md) - Guia de inicio
 - [Roadmap](ROADMAP.md) - Plan de desarrollo
 - [Changelog](CHANGELOG.md) - Historial de cambios
 

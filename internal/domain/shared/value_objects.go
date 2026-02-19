@@ -119,3 +119,25 @@ func NewProjectName(value string) (ProjectName, error) {
 
 func (p ProjectName) String() string { return p.value }
 func (p ProjectName) Value() string  { return p.value }
+
+// ProjectDescription represents a project description value object
+type ProjectDescription struct {
+	value string
+}
+
+// NewProjectDescription creates a new ProjectDescription value object
+func NewProjectDescription(value string) (ProjectDescription, error) {
+	if value == "" {
+		return ProjectDescription{}, fmt.Errorf("project description cannot be empty")
+	}
+	if len(value) < 10 {
+		return ProjectDescription{}, fmt.Errorf("project description must be at least 10 characters")
+	}
+	if len(value) > 10000 {
+		return ProjectDescription{}, fmt.Errorf("project description must be less than 10000 characters")
+	}
+	return ProjectDescription{value: value}, nil
+}
+
+func (d ProjectDescription) String() string { return d.value }
+func (d ProjectDescription) Value() string  { return d.value }

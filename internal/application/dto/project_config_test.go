@@ -13,26 +13,37 @@ func TestProjectConfig_Validate(t *testing.T) {
 		{
 			name: "valid config",
 			config: ProjectConfig{
-				Name:       "test-project",
-				Language:   "go",
-				OutputPath: "/tmp/test",
+				Name:        "test-project",
+				Description: "A REST API for inventory management with Go",
+				OutputPath:  "/tmp/test",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid config with optional fields",
+			config: ProjectConfig{
+				Name:         "test-project",
+				Description:  "A REST API for inventory management with Go",
+				Language:     "go",
+				Type:         "api",
+				Architecture: "clean",
+				OutputPath:   "/tmp/test",
 			},
 			wantErr: false,
 		},
 		{
 			name: "missing name",
 			config: ProjectConfig{
-				Name:       "",
-				Language:   "go",
-				OutputPath: "/tmp/test",
+				Name:        "",
+				Description: "A test project description",
+				OutputPath:  "/tmp/test",
 			},
 			wantErr: true,
 		},
 		{
-			name: "missing language",
+			name: "missing description",
 			config: ProjectConfig{
 				Name:       "test-project",
-				Language:   "",
 				OutputPath: "/tmp/test",
 			},
 			wantErr: true,
@@ -40,19 +51,15 @@ func TestProjectConfig_Validate(t *testing.T) {
 		{
 			name: "missing output path",
 			config: ProjectConfig{
-				Name:       "test-project",
-				Language:   "go",
-				OutputPath: "",
+				Name:        "test-project",
+				Description: "A test project description",
+				OutputPath:  "",
 			},
 			wantErr: true,
 		},
 		{
 			name: "all fields empty",
-			config: ProjectConfig{
-				Name:       "",
-				Language:   "",
-				OutputPath: "",
-			},
+			config: ProjectConfig{},
 			wantErr: true,
 		},
 	}

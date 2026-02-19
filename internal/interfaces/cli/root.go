@@ -16,12 +16,12 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "ai-context-generator",
-	Short: "AI Context Generator - Generate context-rich project documentation",
-	Long: `AI Context Generator is a tool to generate comprehensive project documentation
-and scaffolding for AI-assisted development.
+	Short: "AI Context Generator - Generate AI-optimized context files for your projects",
+	Long: `AI Context Generator takes your project description and generates
+context files using Anthropic Claude. These files give your AI development
+agent the architectural context it needs to build coherently.
 
-It creates structured markdown files (prompts, context, interactions, changelog)
-and project scaffolding based on templates.`,
+Requires ANTHROPIC_API_KEY environment variable.`,
 	Version: Version,
 }
 

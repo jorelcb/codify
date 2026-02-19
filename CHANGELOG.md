@@ -4,55 +4,25 @@ Todos los cambios notables de este proyecto seran documentados en este archivo.
 
 Basado en [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0-alpha] - 2026-02-18 - Pivot: Generador de Contextos con IA
+## [1.0.0] - 2026-02-19 - Primera version funcional
 
-### BREAKING CHANGE
-
-Redefinicion fundamental. El objetivo correcto: generar contextos usando LLM, no renderizar templates con variables.
-
-### Removed
-- Template Engine completo (~1300 lineas): tokenizer, AST, parser, engine, processor
-- Commands obsoletos: validate_template, list_templates
-- CLI validate command
-- Tests BDD de template_entity y template_repository
-
-### Changed
-- Archivos de contexto reescritos (PROMPT.md, CONTEXT.md, SESSION_STATE.md)
-- CLAUDE.md con descripcion inequivoca
-- README.md, ARCHITECTURE.md, ROADMAP.md alineados con objetivo correcto
-
-### Kept
+### Added
+- Generacion de archivos de contexto usando Anthropic Claude API
+- Streaming con progreso por archivo (`[1/4] Generating PROMPT.md... done`)
+- Generacion per-file (4 llamadas API independientes, una por archivo)
+- CLI con flags: `--description`, `--language`, `--type`, `--architecture`, `--model`
+- PromptBuilder para construir system/user prompts por archivo
+- FileSystemTemplateLoader para cargar templates como guias estructurales
+- GenerateContextCommand (orquesta flujo completo)
+- AnthropicProvider con SDK oficial (`anthropic-sdk-go`)
+- DDD/Clean Architecture: Domain, Application, Infrastructure, Interfaces
 - Filesystem infrastructure (FileWriter, DirectoryManager)
-- DDD/Clean Architecture structure
-- CLI base (Cobra)
-- Application patterns (CQRS, DTOs)
-- Templates como guias estructurales
+- Value objects con validacion (ProjectDescription, Language, Architecture, etc.)
+- Tests unitarios para prompt builder, template loader, generate command
 
-## [1.2.0-beta] - 2025-11-26
-
-### Added
-- Filesystem Infrastructure: FileWriter y DirectoryManager
-- Tests unitarios para filesystem
-
-## [1.1.0] - 2025-10-21
-
-### Added
-- Application Layer (Commands, Queries, DTOs)
-- CLI funcional conectado a Application Layer
-
-## [1.0.0] - 2024-12-10
-
-### Added
-- Suite de testing (bash)
-- Release estable inicial
-
-## [0.2.0-alpha] - 2024-06-28
-
-### Added
-- DDD/Clean Architecture en templates
-- Wizard interactivo
-
-## [0.1.0-alpha] - 2024-02-15
-
-### Added
-- Prototipo inicial
+### Output
+Genera 4 archivos de contexto optimizados para agentes de IA:
+- `PROMPT.md` - Rol y mision para el agente de desarrollo
+- `CONTEXT.md` - Arquitectura, patrones, dominio
+- `SCAFFOLDING.md` - Estructura recomendada del proyecto
+- `INTERACTIONS_LOG.md` - Bitacora inicial de desarrollo
