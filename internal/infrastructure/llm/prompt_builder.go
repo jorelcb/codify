@@ -17,14 +17,22 @@ func NewPromptBuilder() *PromptBuilder {
 
 // fileOutputNames maps template guide names to output file names.
 var fileOutputNames = map[string]string{
-	"agents":       "AGENTS.md",
-	"context":      "CONTEXT.md",
-	"interactions": "INTERACTIONS_LOG.md",
+	"agents":            "AGENTS.md",
+	"context":           "CONTEXT.md",
+	"interactions":      "INTERACTIONS_LOG.md",
+	"development_guide": "DEVELOPMENT_GUIDE.md",
+	"idioms":            "IDIOMS.md",
 	// Spec command output files
 	"constitution": "CONSTITUTION.md",
 	"spec":         "SPEC.md",
 	"plan":         "PLAN.md",
 	"tasks":        "TASKS.md",
+}
+
+// localeLanguageNames maps locale codes to their language name for the LLM directive.
+var localeLanguageNames = map[string]string{
+	"en": "English",
+	"es": "Spanish",
 }
 
 // FileOutputName returns the output file name for a given template guide name.
@@ -35,44 +43,70 @@ func FileOutputName(guideName string) string {
 	return guideName + ".md"
 }
 
+// outputLanguageName returns the language name for the given locale (defaults to English).
+func outputLanguageName(locale string) string {
+	if name, ok := localeLanguageNames[locale]; ok {
+		return name
+	}
+	return "English"
+}
+
 // BuildSystemPromptForFile returns a system prompt for generating a single context file.
-func (b *PromptBuilder) BuildSystemPromptForFile(guideName string) string {
+func (b *PromptBuilder) BuildSystemPromptForFile(guideName string, locale string) string {
 	return fmt.Sprintf(`<role>
-Eres un arquitecto de software senior y escritor tecnico experto.
-Tu tarea es generar archivos de contexto optimizados para desarrollo de software asistido por IA.
-Los archivos que generas seran consumidos por agentes de IA como contexto de trabajo.
+You are a senior software architect and expert technical writer.
+Your task is to generate context files optimized for AI-assisted software development.
+The files you generate will be consumed by AI agents as working context.
 </role>
 
 <task>
-Genera el contenido para el archivo %s.
-Recibiras una descripcion del proyecto y una guia de template estructural.
+Generate the content for the file %s.
+You will receive a project description and a structural template guide.
 </task>
 
+<grounding_rules>
+CRITICAL RULE — Distinguish between two types of content:
+
+1. TECHNICAL FRAMEWORK (you may opine freely): architectural patterns, project structure,
+   code conventions, testing strategy, observability, DDD layers. This is the template's value.
+
+2. DOMAIN LOGIC (only what the user stated): business rules, specific validations,
+   default values, edge cases, data formats, concrete behaviors, error messages.
+
+For domain logic:
+- Only include what is EXPLICITLY in the project description
+- DO NOT invent validation rules, default values, formats, or behaviors the user did not mention
+- DO NOT generate speculative edge cases or error scenarios
+- If a template section asks for domain details the description does not cover, indicate it must be defined by the team instead of inventing an answer
+- Prefer marking "[DEFINE]" over inventing a concrete business rule
+</grounding_rules>
+
 <workflow>
-1. Analiza la descripcion del proyecto: identifica lenguaje, arquitectura, tipo, capacidades clave
-2. Lee la guia de template proporcionada en el mensaje del usuario
-3. Para cada seccion del template, genera contenido ESPECIFICO y ACCIONABLE para el proyecto descrito
-4. Donde el template usa variables como {{VARIABLE}} o condicionales, genera contenido real inferido del proyecto
-5. Verifica que toda la informacion sea internamente consistente
-6. Coloca la informacion mas critica al INICIO y al FINAL del archivo
+1. Analyze the project description: identify language, architecture, type, key capabilities
+2. Read the template guide provided in the user message
+3. Mentally separate: what is technical framework (opine freely) vs domain logic (only what was stated)
+4. For each template section, generate SPECIFIC and ACTIONABLE content for the described project
+5. Where the template uses variables like {{VARIABLE}}, generate real content ONLY if the description supports it; otherwise mark as [DEFINE]
+6. Verify that no business rule or specific behavior was invented
+7. Place the most critical information at the BEGINNING and END of the file
 </workflow>
 
 <output_quality>
-- Maximo 200 lineas por archivo generado
-- Cero oraciones de relleno o boilerplate generico
-- Formatos estructurados (YAML, listas, tablas) sobre prosa para configuracion y specs
-- Cada oracion debe ser accionable y util para un agente de IA consumidor
-- Informacion critica al inicio y final del archivo (attention-aware ordering)
-- Comandos deben ser exactos y copy-pasteables, no placeholders genericos
+- Maximum 200 lines per generated file
+- Zero filler sentences or generic boilerplate
+- Structured formats (YAML, lists, tables) over prose for configuration and specs
+- Every sentence must be actionable and useful for a consuming AI agent
+- Critical information at the beginning and end of the file (attention-aware ordering)
+- Commands must be exact and copy-pasteable, not generic placeholders
 </output_quality>
 
 <rules>
-- Responde SOLO con el contenido markdown del archivo
-- NO envuelvas la respuesta en bloques de codigo
-- NO agregues explicaciones antes o despues del contenido
-- El contenido debe estar en Espanol
-- Usa la guia de template como referencia estructural, NO como template de reemplazo de variables
-</rules>`, FileOutputName(guideName))
+- Respond ONLY with the markdown content of the file
+- DO NOT wrap the response in code blocks
+- DO NOT add explanations before or after the content
+- Content must be in %s
+- Use the template guide as structural reference, NOT as a variable replacement template
+</rules>`, FileOutputName(guideName), outputLanguageName(locale))
 }
 
 // BuildUserMessageForFile constructs the user message for generating a single file.
@@ -87,13 +121,13 @@ func (b *PromptBuilder) BuildUserMessageForFile(req service.GenerationRequest, g
 	if hasMetadata {
 		sb.WriteString("<project_metadata>\n")
 		if req.Language != "" {
-			sb.WriteString(fmt.Sprintf("- Lenguaje: %s\n", req.Language))
+			sb.WriteString(fmt.Sprintf("- Language: %s\n", req.Language))
 		}
 		if req.ProjectType != "" {
-			sb.WriteString(fmt.Sprintf("- Tipo de proyecto: %s\n", req.ProjectType))
+			sb.WriteString(fmt.Sprintf("- Project type: %s\n", req.ProjectType))
 		}
 		if req.Architecture != "" {
-			sb.WriteString(fmt.Sprintf("- Arquitectura: %s\n", req.Architecture))
+			sb.WriteString(fmt.Sprintf("- Architecture: %s\n", req.Architecture))
 		}
 		sb.WriteString("</project_metadata>\n\n")
 	}
@@ -106,44 +140,64 @@ func (b *PromptBuilder) BuildUserMessageForFile(req service.GenerationRequest, g
 }
 
 // BuildSpecSystemPrompt returns a system prompt for generating spec files from existing context.
-func (b *PromptBuilder) BuildSpecSystemPrompt(existingContext string) string {
+func (b *PromptBuilder) BuildSpecSystemPrompt(existingContext string, locale string) string {
 	return fmt.Sprintf(`<role>
-Eres un arquitecto de software senior especializado en especificaciones tecnicas.
-Tu tarea es generar documentos de especificacion SDD (Spec-Driven Development) a partir de un contexto de proyecto existente.
-El contexto que recibes fue generado previamente y contiene la arquitectura, patrones y decisiones del proyecto.
+You are a senior software architect specialized in technical specifications.
+Your task is to generate SDD (Spec-Driven Development) specification documents from an existing project context.
+The context you receive was previously generated and contains the project's architecture, patterns, and decisions.
 </role>
 
 <task>
-Genera documentos de especificacion accionables basados en el contexto existente del proyecto.
-Recibiras el contexto completo del proyecto y una guia de template para el archivo especifico a generar.
+Generate actionable specification documents based on the existing project context.
+You will receive the complete project context and a template guide for the specific file to generate.
 </task>
 
 <existing_context>
 %s
 </existing_context>
 
+<grounding_rules>
+CRITICAL RULE — Distinguish between two types of content:
+
+1. TECHNICAL FRAMEWORK (you may opine freely): milestone structure, testing strategy,
+   implementation phases, task dependency graph, design patterns.
+
+2. DOMAIN LOGIC (only what is stated in the context): business rules, validations,
+   default values, data formats, edge cases, error messages, specific behaviors.
+
+For domain logic:
+- Only include rules, validations, formats, and behaviors EXPLICITLY mentioned in the existing context
+- DO NOT invent edge cases, default values, validation rules, or behaviors not documented
+- DO NOT speculate on how errors or edge cases should be handled if the context does not mention them
+- If a section requires domain details not covered, use "[DEFINE: brief description of what is missing]"
+- A precise but incomplete specification is better than a complete one with invented rules
+</grounding_rules>
+
 <workflow>
-1. Analiza profundamente el contexto existente: arquitectura, stack, patrones, restricciones
-2. Lee la guia de template proporcionada en el mensaje del usuario
-3. Genera especificaciones CONCRETAS y COHERENTES con el contexto existente
-4. Cada especificacion debe ser implementable y verificable
-5. Mantén coherencia total con las decisiones arquitectonicas ya documentadas
-6. Las tareas deben tener criterios de aceptacion claros
+1. Deeply analyze the existing context: architecture, stack, patterns, constraints
+2. Read the template guide provided in the user message
+3. Identify which domain information is EXPLICITLY in the context and which you would have to invent
+4. Generate CONCRETE specifications COHERENT with the existing context
+5. For domain details not covered in the context, mark [DEFINE] instead of inventing
+6. Each specification must be implementable and verifiable
+7. Maintain total coherence with already documented architectural decisions
 </workflow>
 
 <output_quality>
-- Especificaciones accionables, no genericas
-- Criterios de aceptacion verificables
-- Coherencia total con el contexto existente
-- Formatos estructurados (listas, tablas, YAML) sobre prosa
-- Maximo 200 lineas por archivo
+- Actionable specifications, not generic
+- Verifiable acceptance criteria based on real context information
+- Total coherence with existing context
+- Structured formats (lists, tables, YAML) over prose
+- Maximum 200 lines per file
+- Zero invented business rules — if not in the context, mark [DEFINE]
 </output_quality>
 
 <rules>
-- Responde SOLO con el contenido markdown del archivo
-- NO envuelvas la respuesta en bloques de codigo
-- NO agregues explicaciones antes o despues del contenido
-- El contenido debe estar en Espanol
-- Basa TODO el contenido en el contexto existente proporcionado
-</rules>`, existingContext)
+- Respond ONLY with the markdown content of the file
+- DO NOT wrap the response in code blocks
+- DO NOT add explanations before or after the content
+- Content must be in %s
+- Base ALL content on the existing context provided
+- Mark with [DEFINE] any business rule, validation, or behavior not in the context
+</rules>`, existingContext, outputLanguageName(locale))
 }

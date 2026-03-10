@@ -1,0 +1,56 @@
+# {{PROJECT_NAME}}
+
+{{DESCRIPTION}}
+
+## Tech Stack
+
+- **Language:** {{LANGUAGE}} {{LANGUAGE_VERSION}}
+- **Architecture:** {{ARCHITECTURE}}
+- **Testing:** {{TESTING_FRAMEWORK}}
+- **Key dependencies:** {{KEY_DEPENDENCIES}}
+
+## Commands
+
+```bash
+# Build
+{{BUILD_COMMAND}}
+
+# Test
+{{TEST_COMMAND}}
+
+# Run
+{{RUN_COMMAND}}
+
+# Lint
+{{LINT_COMMAND}}
+```
+
+## Key Conventions
+
+- **Naming:** {{NAMING_CONVENTIONS}}
+- **Import structure:** {{IMPORT_CONVENTIONS}}
+- **Error handling:** {{ERROR_HANDLING_CONVENTIONS}}
+- **Commits:** Conventional Commits (feat, fix, refactor, docs, test, chore)
+- **Branching:** {{BRANCHING_STRATEGY}}
+
+## Project Structure
+
+```
+{{PROJECT_STRUCTURE}}
+```
+
+Main directory descriptions:
+- {{DIRECTORY_DESCRIPTIONS}}
+
+## Constraints
+
+### MUST:
+- {{MUST_RULES}}
+
+### MUST NOT:
+- {{MUST_NOT_RULES}}
+
+## Additional Context
+
+- Architecture and technical design: `context/CONTEXT.md`
+- Decision history and sessions: `context/INTERACTIONS_LOG.md`

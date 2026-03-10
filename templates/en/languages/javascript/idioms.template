@@ -1,0 +1,76 @@
+# {{PROJECT_NAME}} - JavaScript/TypeScript Idiomatic Guide
+
+## Asynchrony and Parallelism
+
+### Fundamental Patterns
+- Use `async/await` as the main pattern — avoid callback hell and long `.then()` chains
+- Use `Promise.all()` for independent parallel operations
+- Use `Promise.allSettled()` when you need partial results without short-circuiting on failure
+- Implement throttling and debouncing for high-frequency operations
+- Use worker threads (`worker_threads`) for CPU-intensive operations
+- Apply the queue pattern for ordered asynchronous processing
+
+### AbortController
+- Use `AbortController` for cancellation of async operations (fetch, timers, streams)
+- Propagate `signal` across all cancellable operations
+- Implement timeouts with `AbortSignal.timeout(ms)` to prevent hanging operations
+
+### Event Loop
+- Do not block the event loop with heavy synchronous operations
+- Use `setImmediate()` or `process.nextTick()` to yield control in long loops
+- Understand the difference between microtasks (promises) and macrotasks (timers, I/O)
+
+## Error Handling
+
+- Use try/catch with async/await — don't leave promises without `.catch()`
+- Define custom error classes that extend `Error` with descriptive properties
+- Use `instanceof` to differentiate error types
+- In express/fastify, centralize error handling in error middleware
+- Never silence errors — log them or propagate with context
+- Use `cause` (ES2022) for error chaining: `new Error('msg', { cause: originalError })`
+
+## Language Conventions
+
+### Naming
+- `camelCase` for variables and functions
+- `PascalCase` for classes, interfaces, types, and enums
+- `kebab-case` for file and directory names
+- `UPPER_SNAKE_CASE` for constants and environment variables
+- Descriptive prefixes: `is`, `has`, `should` for booleans; `get`, `set`, `create` for functions
+
+### Import Organization
+```
+// stdlib / node builtins
+import path from 'node:path'
+
+// external dependencies
+import express from 'express'
+
+// internal modules
+import { UserService } from './services/user-service'
+```
+Separated by blank lines, grouped in that order.
+
+### TypeScript
+- Use `interface` for public contracts, `type` for unions and utility types
+- Avoid `any` — use `unknown` when the type is truly unknown
+- Use `readonly` for immutable properties
+- Prefer `as const` over enums when sufficient
+- Generate declarations (`.d.ts`) for libraries/SDKs
+
+## Version and Tooling Constraints
+
+- Node.js LTS (>= 18) with ES2022+ features
+- ESM (`import/export`) over CommonJS (`require`) in new projects
+- TypeScript for type safety in any non-trivial project
+- ESLint + Prettier as standard formatters
+- `package-lock.json` versioned in the repository
+
+## Testing in JavaScript/TypeScript
+
+- Jest or Vitest as main framework
+- Tests placed alongside code (`__tests__/` or `.test.ts` next to the file)
+- `jest.mock()` to mock complete modules
+- `jest.spyOn()` to intercept calls without replacing implementation
+- `supertest` for HTTP endpoint testing
+- `jest.useFakeTimers()` for tests with timers and delays

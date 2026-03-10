@@ -21,7 +21,7 @@ func TestPromptBuilder_BuildSystemPromptForFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.guideName, func(t *testing.T) {
-			prompt := builder.BuildSystemPromptForFile(tt.guideName)
+			prompt := builder.BuildSystemPromptForFile(tt.guideName, "en")
 
 			if prompt == "" {
 				t.Error("BuildSystemPromptForFile() returned empty string")
@@ -116,6 +116,8 @@ func TestFileOutputName(t *testing.T) {
 		{"agents", "AGENTS.md"},
 		{"context", "CONTEXT.md"},
 		{"interactions", "INTERACTIONS_LOG.md"},
+		{"development_guide", "DEVELOPMENT_GUIDE.md"},
+		{"idioms", "IDIOMS.md"},
 		{"constitution", "CONSTITUTION.md"},
 		{"spec", "SPEC.md"},
 		{"plan", "PLAN.md"},
@@ -137,7 +139,7 @@ func TestPromptBuilder_BuildSpecSystemPrompt(t *testing.T) {
 	builder := NewPromptBuilder()
 
 	existingContext := "# My Project Context\n\nThis is the architecture description."
-	prompt := builder.BuildSpecSystemPrompt(existingContext)
+	prompt := builder.BuildSpecSystemPrompt(existingContext, "en")
 
 	if prompt == "" {
 		t.Error("BuildSpecSystemPrompt() returned empty string")

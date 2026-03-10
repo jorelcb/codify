@@ -1,0 +1,72 @@
+# {{PROJECT_NAME}} - Guia Idiomatica Go
+
+## Concurrencia
+
+### Patrones Fundamentales
+- Gestiona goroutines explicitamente con `sync.WaitGroup`
+- Usa channels para comunicacion entre goroutines — prefiere comunicar compartiendo memoria, no compartir memoria comunicando
+- Evita race conditions con `sync.Mutex` o `sync.RWMutex` donde sea necesario
+- Usa `sync.Map` para estructuras compartidas entre goroutines cuando el patron de acceso lo justifique
+- Implementa backpressure y rate limiting con `semaphore` o buffered channels
+- Aplica el patron de worker pool con channels para procesamiento concurrente
+
+### Context
+- Propaga `context.Context` como primer parametro en toda funcion que pueda cancelarse o tener timeout
+- Usa `context.WithTimeout` y `context.WithCancel` para evitar operaciones colgadas
+- Respeta la cancelacion del contexto en loops y operaciones de larga duracion
+- Nunca almacenes context en structs — pasalo siempre como parametro
+
+### Channels
+- Prefiere channels unidireccionales (`<-chan`, `chan<-`) en firmas de funciones
+- Cierra channels desde el productor, nunca desde el consumidor
+- Usa `select` con `case <-ctx.Done()` para operaciones cancelables
+- Considera buffered channels para desacoplar productor-consumidor
+
+## Manejo de Errores
+
+- Usa error wrapping con `fmt.Errorf("contexto: %w", err)` para preservar la cadena de errores
+- Define errores de dominio como tipos con `errors.New()` o tipos custom que implementen `error`
+- Usa `errors.Is()` y `errors.As()` para comparacion de errores — nunca comparacion directa de strings
+- Retorna errores, no los logees y luego retornes — elige uno
+- Usa `panic` solo para errores de programacion irrecuperables, nunca para control de flujo
+
+## Convenciones del Lenguaje
+
+### Naming
+- `camelCase` para variables y funciones no exportadas
+- `PascalCase` para funciones, tipos, constantes e interfaces exportadas
+- Interfaces nombradas por comportamiento: `Reader`, `Writer`, `Storer` — no `IReader`
+- Interfaces de un solo metodo preferidas — componer para interfaces complejas
+- Acronimos en mayusculas consistentes: `HTTPHandler`, `APIClient`, `userID`
+
+### Organizacion de Imports
+```
+stdlib
+
+dependencias externas
+
+modulos internos del proyecto
+```
+Separados por linea en blanco, agrupados en ese orden.
+
+### Structs y Metodos
+- Constructor con `NewXxx()` que retorna la instancia (o puntero + error si puede fallar)
+- Receiver con nombre corto y consistente (1-2 letras del tipo, no `this` ni `self`)
+- Pointer receiver cuando el metodo muta estado o el struct es grande
+- Value receiver para metodos sin mutacion en structs pequenos
+
+## Restricciones de Version y Tooling
+
+- Go 1.21+ — aprovechar generics donde simplifiquen sin over-engineering
+- Usar la libreria estandar siempre que sea suficiente antes de agregar dependencias
+- `go vet`, `golangci-lint` como parte del CI
+- Modules con `go.mod` versionado en el repositorio
+
+## Testing en Go
+
+- Tests en el mismo paquete (`_test.go`) para tests de caja blanca
+- Tests en paquete `_test` separado para tests de caja negra (API publica)
+- Table-driven tests como patron principal
+- `testify` para assertions si se necesita legibilidad extra
+- `httptest` para testing de handlers HTTP
+- `t.Parallel()` en tests que no comparten estado

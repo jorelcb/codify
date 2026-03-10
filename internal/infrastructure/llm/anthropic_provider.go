@@ -92,9 +92,9 @@ func (p *AnthropicProvider) generateSingleFile(
 ) (content string, tokensIn int, tokensOut int, err error) {
 	var systemPrompt string
 	if req.Mode == "spec" {
-		systemPrompt = p.promptBuilder.BuildSpecSystemPrompt(req.ExistingContext)
+		systemPrompt = p.promptBuilder.BuildSpecSystemPrompt(req.ExistingContext, req.Locale)
 	} else {
-		systemPrompt = p.promptBuilder.BuildSystemPromptForFile(guide.Name)
+		systemPrompt = p.promptBuilder.BuildSystemPromptForFile(guide.Name, req.Locale)
 	}
 	userMessage := p.promptBuilder.BuildUserMessageForFile(req, guide)
 

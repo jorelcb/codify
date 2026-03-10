@@ -1,0 +1,41 @@
+# {{PROJECT_NAME}} - Feature Specification
+
+## Feature 1: {{FEATURE_NAME}}
+
+### Description
+{{FEATURE_DESCRIPTION}}
+
+### User Stories
+
+**US-1:** As a {{ACTOR}}, I want {{ACTION}}, so that {{BENEFIT}}.
+
+**Acceptance Criteria:**
+- GIVEN {{PRECONDITION}} WHEN {{TRIGGER}} THEN {{EXPECTED_RESULT}}
+- GIVEN {{PRECONDITION}} WHEN {{TRIGGER}} THEN {{EXPECTED_RESULT}}
+
+### Non-Functional Requirements
+- **Performance:** {{PERFORMANCE_REQUIREMENT}}
+- **Security:** {{SECURITY_REQUIREMENT}}
+- **Availability:** {{AVAILABILITY_REQUIREMENT}}
+
+### Edge Cases
+1. {{EDGE_CASE_1}}: {{EXPECTED_BEHAVIOR}}
+2. {{EDGE_CASE_2}}: {{EXPECTED_BEHAVIOR}}
+
+### Error Scenarios
+1. {{ERROR_SCENARIO_1}}: {{EXPECTED_HANDLING}}
+2. {{ERROR_SCENARIO_2}}: {{EXPECTED_HANDLING}}
+
+---
+
+## Feature 2: {{FEATURE_NAME}}
+
+(Repeat structure for each feature identified in the context)
+
+---
+
+## Priorities
+
+| Feature | Priority | Dependencies | Complexity |
+|---------|----------|-------------|-----------|
+| {{FEATURE}} | {{PRIORITY}} | {{DEPENDENCIES}} | {{COMPLEXITY}} |

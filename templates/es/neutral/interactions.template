@@ -1,0 +1,56 @@
+# Bitacora de Interacciones - {{PROJECT_NAME}}
+
+## Formato de Sesion
+
+```markdown
+## Sesion: [Fecha] - [Titulo Descriptivo]
+
+### Contexto
+- **Estado:** [Estado del proyecto]
+- **Branch:** [Rama de trabajo]
+- **Objetivo:** [Que se busca resolver o implementar]
+
+### Tareas Realizadas
+1. **[Titulo]** - [Descripcion breve, archivos afectados, resultado]
+
+### Decisiones Arquitectonicas
+- **[Decision]:** [Justificacion] | Alternativas: [descartadas y por que]
+
+### Problemas y Soluciones
+- **[Problema]:** [Causa raiz] -> [Solucion aplicada]
+
+### Estado Final
+- **Completado:** [lista]
+- **Pendiente:** [lista]
+```
+
+## ADR Template
+
+```markdown
+## ADR-[N]: [Titulo]
+**Estado:** [Propuesta | Aceptada | Deprecada]
+**Contexto:** [Situacion que requiere decision]
+**Decision:** [Lo que se decidio]
+**Consecuencias:** [Positivas y negativas]
+```
+
+## Convenciones
+- Tipos: FEAT, FIX, REFACTOR, CONFIG, DOCS, TEST, PERF, CHORE
+- Estados: Completado, En progreso, Fallido, Pendiente
+
+---
+
+## Sesion: {{DATE}} - Inicializacion del Proyecto
+
+### Contexto
+- **Estado:** Proyecto nuevo
+- **Branch:** main
+- **Objetivo:** Establecer estructura base del proyecto
+
+### Tareas Realizadas
+1. **Estructura de carpetas** - Creada segun {{ARCHITECTURE}}
+2. **Configuracion inicial** - Dependencias y archivos de config
+
+### Estado Final
+- **Completado:** Estructura base, configuracion, documentacion inicial
+- **Pendiente:** Implementacion de dominio, tests, integraciones

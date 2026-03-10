@@ -1,0 +1,56 @@
+# Interaction Log - {{PROJECT_NAME}}
+
+## Session Format
+
+```markdown
+## Session: [Date] - [Descriptive Title]
+
+### Context
+- **Status:** [Project status]
+- **Branch:** [Working branch]
+- **Goal:** [What to resolve or implement]
+
+### Tasks Completed
+1. **[Title]** - [Brief description, affected files, result]
+
+### Architectural Decisions
+- **[Decision]:** [Justification] | Alternatives: [discarded and why]
+
+### Problems and Solutions
+- **[Problem]:** [Root cause] -> [Applied solution]
+
+### Final Status
+- **Completed:** [list]
+- **Pending:** [list]
+```
+
+## ADR Template
+
+```markdown
+## ADR-[N]: [Title]
+**Status:** [Proposed | Accepted | Deprecated]
+**Context:** [Situation requiring a decision]
+**Decision:** [What was decided]
+**Consequences:** [Positive and negative]
+```
+
+## Conventions
+- Types: FEAT, FIX, REFACTOR, CONFIG, DOCS, TEST, PERF, CHORE
+- Status: Completed, In progress, Failed, Pending
+
+---
+
+## Session: {{DATE}} - Project Initialization
+
+### Context
+- **Status:** New project
+- **Branch:** main
+- **Goal:** Establish project base structure
+
+### Tasks Completed
+1. **Folder structure** - Created following {{ARCHITECTURE}}
+2. **Initial configuration** - Dependencies, config files, base setup
+
+### Final Status
+- **Completed:** Base structure, configuration, initial documentation
+- **Pending:** Core implementation, tests, integrations

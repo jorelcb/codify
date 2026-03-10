@@ -8,6 +8,7 @@ type SpecConfig struct {
 	FromContextPath string // ruta al directorio de output existente (contiene AGENTS.md y context/)
 	OutputPath      string
 	Model           string
+	Locale          string
 }
 
 // Validate valida la configuracion de spec

@@ -1,0 +1,78 @@
+# {{PROJECT_NAME}} - Python Idiomatic Guide
+
+## Asynchrony and Parallelism
+
+### Fundamental Patterns
+- Use `asyncio` for I/O-bound operations (HTTP, DB, files)
+- Use `multiprocessing` or `concurrent.futures.ProcessPoolExecutor` for CPU-intensive operations
+- Use `asyncio.gather()` to run independent coroutines in parallel
+- Use `asyncio.Semaphore` to limit concurrency on resource-constrained operations
+- Apply `asyncio.Lock` when there is concurrent access to shared state
+
+### Async Context Managers
+- Use `async with` for resources that need async setup/teardown
+- Implement `__aenter__` and `__aexit__` in classes that manage connections
+- Use `contextlib.asynccontextmanager` for lightweight context managers
+
+### Timeouts and Cancellation
+- Use `asyncio.wait_for(coro, timeout=)` for timeouts on async operations
+- Use `asyncio.TaskGroup` (Python 3.11+) for structured concurrency
+- Manage the event loop appropriately — don't mix sync and async without explicit bridges
+
+## Error Handling
+
+- Define custom exceptions that inherit from `Exception` (or specific subclasses)
+- Use `raise ... from original_error` to preserve the error chain
+- Catch specific exceptions, never bare `except Exception` (except at boundaries)
+- Use `logging.exception()` inside except blocks to include traceback automatically
+- In APIs, translate domain exceptions to appropriate HTTP responses at the interface layer
+
+## Language Conventions
+
+### Naming
+- `snake_case` for variables, functions, and modules
+- `PascalCase` for classes
+- `UPPER_SNAKE_CASE` for constants
+- `_` prefix for private attributes/methods (convention, not enforcement)
+- Descriptive suffix for booleans: `is_active`, `has_permission`, `should_retry`
+
+### Import Organization
+```python
+# stdlib
+import os
+from pathlib import Path
+
+# external dependencies
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+# internal modules
+from src.domain.models import User
+```
+Separated by blank lines, sorted alphabetically. Use `isort` to automate.
+
+### Type Hints
+- Type hints required on all public function signatures
+- Use `pydantic.BaseModel` for data validation at boundaries
+- Use `typing.Protocol` for interfaces (explicit duck typing)
+- Use `Optional[T]` or `T | None` (Python 3.10+) for optional values
+- Use `TypeVar` and `Generic` for generic classes and functions
+
+## Version and Tooling Constraints
+
+- Python 3.11+ with mandatory type hints
+- `pydantic` for data validation at boundaries
+- `poetry` or `pip-tools` for dependency management with lockfile
+- `ruff` as linter and formatter (replaces flake8, black, isort)
+- `mypy` or `pyright` for static type checking
+- `pyproject.toml` as central configuration file
+
+## Testing in Python
+
+- `pytest` as main framework
+- Tests in `tests/` directory mirroring `src/` structure
+- Fixtures with `@pytest.fixture` for reusable setup
+- `pytest-asyncio` for async function tests
+- `unittest.mock.patch` or `pytest-mock` for mocking
+- `httpx` with `AsyncClient` for FastAPI/Starlette API testing
+- Markers (`@pytest.mark.slow`, `@pytest.mark.integration`) to categorize tests

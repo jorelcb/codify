@@ -1,0 +1,47 @@
+# {{PROJECT_NAME}} - Plan Tecnico
+
+## Arquitectura de Alto Nivel
+
+{{HIGH_LEVEL_ARCHITECTURE}}
+
+Describir componentes principales y como interactuan.
+
+## Decisiones Tecnicas
+
+| Decision | Opcion Elegida | Alternativas Descartadas | Justificacion |
+|----------|---------------|------------------------|---------------|
+| {{DECISION}} | {{CHOSEN}} | {{ALTERNATIVES}} | {{JUSTIFICATION}} |
+
+## Modelo de Datos
+
+### Entidades Principales
+
+{{ENTITY_DEFINITIONS}}
+
+Para cada entidad: nombre, atributos clave, relaciones, invariantes.
+
+### Contratos de API
+
+{{API_CONTRACTS}}
+
+Endpoints, metodos, request/response schemas, codigos de error.
+
+## Flujo de Datos
+
+{{DATA_FLOW_DESCRIPTION}}
+
+Describir el flujo end-to-end para los casos de uso principales.
+
+## Estrategia de Testing
+
+| Nivel | Alcance | Framework | Cobertura Objetivo |
+|-------|---------|-----------|-------------------|
+| Unitario | Dominio y logica de negocio | {{UNIT_FRAMEWORK}} | {{COVERAGE}}% |
+| Integracion | Adaptadores e infraestructura | {{INT_FRAMEWORK}} | {{COVERAGE}}% |
+| E2E | Flujos completos | {{E2E_FRAMEWORK}} | Casos criticos |
+
+## Riesgos y Mitigaciones
+
+| Riesgo | Probabilidad | Impacto | Mitigacion |
+|--------|-------------|---------|-----------|
+| {{RISK}} | {{PROBABILITY}} | {{IMPACT}} | {{MITIGATION}} |

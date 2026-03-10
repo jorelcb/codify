@@ -1,0 +1,46 @@
+# {{PROJECT_NAME}} - Architectural Context
+
+## Architecture
+
+Main pattern: {{ARCHITECTURE_PATTERN}}
+
+### Layers and Responsibilities
+
+{{LAYER_DEFINITIONS}}
+
+### Dependency Rule
+
+{{DEPENDENCY_RULE}}
+
+## Main Components
+
+{{COMPONENTS}}
+
+For each component:
+- Responsibility
+- Interfaces it exposes
+- Dependencies it consumes
+
+## Data Flow
+
+{{DATA_FLOW}}
+
+Describe how requests/data flow through the layers, from entry point to persistence or response.
+
+## Design Decisions
+
+| Decision | Justification | Discarded Alternatives |
+|----------|--------------|----------------------|
+| {{DESIGN_DECISIONS}} | | |
+
+## External Integrations
+
+{{EXTERNAL_INTEGRATIONS}}
+
+Only include if the project has integrations with external APIs, databases, messaging services, etc.
+
+## Observability
+
+{{OBSERVABILITY_STRATEGY}}
+
+Tracing, logging, and metrics strategy. Only include if relevant to the project type.

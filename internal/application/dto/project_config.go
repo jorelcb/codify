@@ -11,6 +11,7 @@ type ProjectConfig struct {
 	Architecture string
 	OutputPath   string
 	Model        string
+	Locale       string
 	Capabilities []string
 	Metadata     map[string]string
 }

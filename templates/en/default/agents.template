@@ -1,0 +1,89 @@
+# {{PROJECT_NAME}}
+
+{{DESCRIPTION}}
+
+## Tech Stack
+
+- **Language:** {{LANGUAGE}} {{LANGUAGE_VERSION}}
+- **Architecture:** {{ARCHITECTURE}} (following DDD/Clean Architecture principles)
+- **Testing:** {{TESTING_FRAMEWORK}} (BDD for acceptance, BDD for complex business logic)
+- **Key dependencies:** {{KEY_DEPENDENCIES}}
+- **Observability:** OpenTelemetry (tracing, metrics, structured logging)
+
+## Commands
+
+```bash
+# Build
+{{BUILD_COMMAND}}
+
+# Test
+{{TEST_COMMAND}}
+
+# Run
+{{RUN_COMMAND}}
+
+# Lint
+{{LINT_COMMAND}}
+```
+
+## Architectural Principles
+
+### DDD - Layer Separation
+- **Domain:** Pure business logic, no external dependencies. Entities, value objects, aggregates, interfaces/ports, domain errors
+- **Application:** Orchestrates use cases. Commands, queries (CQRS), DTOs. Depends only on domain
+- **Infrastructure:** Concrete adapters (repositories, gateways, providers). Implements domain interfaces
+- **Interfaces:** Entry points (HTTP, CLI, gRPC). Adapts input/output to external format
+
+### Clean Architecture - Dependency Rule
+Dependencies always point inward: Interfaces -> Infrastructure -> Application -> Domain.
+Domain NEVER imports from outer layers. Abstractions are defined in domain, implementations in infrastructure.
+
+### Dependency Injection
+Constructor injection for ALL dependencies. NO global variables for services or configuration.
+
+## Key Conventions
+
+- **Naming:** {{NAMING_CONVENTIONS}} — follow idiomatic language conventions
+- **Import structure:** {{IMPORT_CONVENTIONS}}
+- **Error handling:** {{ERROR_HANDLING_CONVENTIONS}} — all errors handled or propagated with context, zero silent errors
+- **Commits:** Conventional Commits (feat, fix, refactor, docs, test, chore)
+- **Branching:** {{BRANCHING_STRATEGY}}
+- **Testing:** Minimum coverage 80% domain, 70% application, 60% infrastructure. Unit tests alongside each component
+
+## Project Structure
+
+```
+{{PROJECT_STRUCTURE}}
+```
+
+Generate the structure following the DDD convention for the detected language. For Go: cmd/, internal/domain, internal/application, internal/infrastructure, internal/interfaces. For TypeScript/Node: src/domain, src/application, src/infrastructure, src/interfaces. For Python: src/domain, src/application, src/infrastructure, src/interfaces. Adapt to idiomatic conventions.
+
+Main directory descriptions:
+- {{DIRECTORY_DESCRIPTIONS}}
+
+## Constraints
+
+### MUST:
+- Respect DDD layer separation in every design decision
+- Define interfaces/ports in domain, implementations in infrastructure
+- Implement health checks and OpenTelemetry instrumentation from the start
+- Handle graceful shutdown for all long-lived components
+- Propagate tracing context end-to-end
+- Write unit tests alongside each component (not after)
+- Use explicit dependency injection
+- {{MUST_RULES}}
+
+### MUST NOT:
+- Allow domain to know infrastructure details
+- Mix responsibilities across architectural layers
+- Use heavy frameworks when the standard library is sufficient
+- Create premature abstractions — evolve based on real need
+- Ignore errors or propagate them without context
+- Commit credentials — use environment variables
+- Optimize prematurely — first correct, then fast
+- {{MUST_NOT_RULES}}
+
+## Additional Context
+
+- Architecture and technical design: `context/CONTEXT.md`
+- Decision history and sessions: `context/INTERACTIONS_LOG.md`

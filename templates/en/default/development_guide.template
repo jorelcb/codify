@@ -1,0 +1,145 @@
+# {{PROJECT_NAME}} - Development Guide
+
+## Production Mindset
+
+This is a production component that must meet strict requirements for reliability, observability, and performance. It is not an academic project or proof of concept. Every decision must consider maintainability and long-term operability.
+
+## Work Methodology
+
+### Development Flow
+1. **Plan before acting**: Present a clear plan before writing or modifying code
+2. **Incremental work**: Build step by step, ensuring quality at each stage
+3. **Continuous testing**: Write tests WHILE developing each component, not after
+4. **Constant validation**: Verify each component works before moving on
+5. **Ask for clarification**: If any requirement is ambiguous, ask before proceeding
+
+### Testing as Integrated Practice
+- **Unit tests**: Immediately after creating each domain function/method
+- **Integration tests**: Alongside each infrastructure adapter
+- **BDD when appropriate**: For complex business logic, write the scenario first
+- **Minimum coverage**: 80% domain, 70% application, 60% infrastructure
+
+## Communication Style
+
+### When writing code:
+- Comment only critical architectural decisions or temporary workarounds
+- Name variables and functions in a self-documenting way
+- Structure code to be obvious, not clever
+- Follow idiomatic language conventions
+
+### When explaining decisions:
+- Be concise but complete
+- Justify architectural decisions with clear trade-offs
+- Mention considered alternatives when relevant
+- Reference specific patterns or principles
+
+### When encountering problems:
+- Diagnose the root cause, not just symptoms
+- Propose solutions with pros and cons
+- Consider production impact
+- Document in lessons learned
+
+## Architectural Autonomy
+
+### Decision Power
+The context document provides a solid foundation, but there is complete freedom to propose optimizations and changes in any aspect:
+
+- **Domain modeling**: Better representations of entities or aggregates
+- **Interfaces and abstractions**: More elegant or functional abstractions
+- **Architectural patterns**: If a different pattern better solves the problem
+- **Technical decisions**: If a library or approach offers significant advantages
+- **Code organization**: If a different structure improves maintainability
+
+### How to Propose Changes
+1. Document the current problem or limitation
+2. Propose the alternative with its benefits
+3. Analyze the trade-offs involved
+4. Justify why the change improves the system
+5. Implement gradually, maintaining compatibility where critical
+
+## Self-Validation Checklist
+
+Before considering any component complete:
+- [ ] Does it respect DDD layer separation?
+- [ ] Is it testable in isolation?
+- [ ] Does it handle all possible error cases?
+- [ ] Is it observable in production?
+- [ ] Can it scale horizontally if needed?
+- [ ] Does it recover gracefully from transient failures?
+- [ ] Is the code maintainable by another developer?
+
+## Delivery Expectations
+
+Each component must:
+1. **Work** correctly in its happy path and error cases
+2. **Be tested** with relevant unit cases
+3. **Be observable** with appropriate metrics and traces
+4. **Be documented** where not obvious
+5. **Be resilient** to expected failures
+
+## Security
+
+- TLS/mTLS for communications when necessary
+- Authentication and authorization according to project type
+- Log sanitization (do not expose sensitive data)
+- Secure credential management (environment variables, secrets manager)
+- Never commit credentials or sensitive data
+
+## Configuration
+
+### Configuration Sources (in order of precedence)
+1. Environment variables
+2. Configuration file
+3. Default values
+
+### Expected Structure
+Configuration should cover:
+- Application data (name, environment, version)
+- Server or entry point parameters (ports, timeouts)
+- Telemetry (exporter, endpoint, enablement)
+- External connections (databases, services, messaging)
+- Graceful shutdown (configurable grace period)
+
+## Project Type Guidelines
+
+### API/Service
+- Well-defined RESTful endpoints following REST standards
+- Automatically generated OpenAPI/Swagger documentation
+- API versioning when necessary
+- Rate limiting and authentication
+
+### CLI
+- Intuitive commands with clear interface
+- Flexible configuration: files, env vars, and flags
+- Formatted output: JSON, YAML, table, or plain text
+- Meaningful exit codes
+
+### Library/SDK
+- Clear and well-documented public API
+- Minimal external dependencies
+- Compatibility with multiple runtime versions
+- Documentation with usage examples
+
+### Webapp
+- SPA or SSR architecture based on SEO and performance requirements
+- Centralized state management
+- Responsive design with mobile-first approach
+
+## Key DDD Concepts
+
+- **Ubiquitous Language**: Common and consistent terminology throughout the code
+- **Aggregates**: Define transactional consistency boundaries
+- **Value Objects**: Immutable objects without identity
+- **Repositories**: Persistence abstractions defined in domain
+- **Domain Events**: Events representing significant domain changes
+- **Bounded Contexts**: Clear boundaries between subdomains
+
+## Detailed Observability
+
+### OpenTelemetry Requirements
+- DO NOT use global variables for tracer — use dependency injection
+- Complete context propagation across all operations
+- Detailed spans for significant operations
+- Relevant semantic attributes in each span (service.name, service.version)
+- Business metrics: counters, histograms, gauges
+- Structured logs correlated with TraceID

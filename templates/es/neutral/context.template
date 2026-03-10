@@ -1,0 +1,46 @@
+# {{PROJECT_NAME}} - Contexto Arquitectonico
+
+## Arquitectura
+
+Patron principal: {{ARCHITECTURE_PATTERN}}
+
+### Capas y Responsabilidades
+
+{{LAYER_DEFINITIONS}}
+
+### Regla de Dependencia
+
+{{DEPENDENCY_RULE}}
+
+## Componentes Principales
+
+{{COMPONENTS}}
+
+Para cada componente:
+- Responsabilidad
+- Interfaces que expone
+- Dependencias que consume
+
+## Flujo de Datos
+
+{{DATA_FLOW}}
+
+Describir como fluyen las requests/datos a traves de las capas, desde el punto de entrada hasta la persistencia o respuesta.
+
+## Decisiones de Diseno
+
+| Decision | Justificacion | Alternativas Descartadas |
+|----------|--------------|-------------------------|
+| {{DESIGN_DECISIONS}} | | |
+
+## Integraciones Externas
+
+{{EXTERNAL_INTEGRATIONS}}
+
+Solo incluir si el proyecto tiene integraciones con APIs externas, bases de datos, servicios de mensajeria, etc.
+
+## Observabilidad
+
+{{OBSERVABILITY_STRATEGY}}
+
+Estrategia de tracing, logging y metricas. Solo incluir si es relevante para el tipo de proyecto.

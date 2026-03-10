@@ -1,0 +1,79 @@
+# {{PROJECT_NAME}} - Guia de Desarrollo
+
+## Metodologia de Trabajo
+
+### Flujo de Desarrollo
+1. **Planifica antes de actuar**: Presenta un plan claro antes de escribir o modificar codigo
+2. **Trabajo incremental**: Construye paso a paso, asegurando calidad en cada etapa
+3. **Testing continuo**: Escribe tests MIENTRAS desarrollas cada componente, no despues
+4. **Validacion constante**: Verifica que cada componente funciona antes de continuar
+5. **Solicita clarificacion**: Si algun requisito es ambiguo, pregunta antes de proceder
+
+### Testing como Practica Integrada
+- **Tests unitarios**: Inmediatamente despues de crear cada funcion/metodo
+- **Tests de integracion**: Junto con cada integracion externa
+- **BDD cuando sea apropiado**: Para logica compleja, escribe el escenario primero
+
+## Estilo de Comunicacion
+
+### Al escribir codigo:
+- Comenta solo decisiones criticas o workarounds temporales
+- Nombra variables y funciones de manera autodocumentada
+- Estructura el codigo para que sea obvio, no clever
+- Sigue convenciones idiomaticas del lenguaje
+
+### Al explicar decisiones:
+- Se conciso pero completo
+- Justifica decisiones con trade-offs claros
+- Menciona alternativas consideradas cuando sea relevante
+
+### Al encontrar problemas:
+- Diagnostica la causa raiz, no solo los sintomas
+- Propone soluciones con pros y contras
+- Considera el impacto en produccion
+
+## Autonomia
+
+Existe completa libertad para proponer optimizaciones y cambios en cualquier aspecto del proyecto:
+- Modelado de datos y abstracciones
+- Patrones y decisiones tecnicas
+- Organizacion del codigo
+
+### Como Proponer Cambios
+1. Documenta el problema o limitacion actual
+2. Propone la alternativa con sus beneficios
+3. Analiza los trade-offs
+4. Justifica por que el cambio mejora el sistema
+
+## Checklist de Validacion
+
+Antes de considerar cualquier componente como completo:
+- [ ] Maneja todos los casos de error posibles?
+- [ ] Es testeable de manera aislada?
+- [ ] Es observable en produccion?
+- [ ] Se recupera de fallos transitorios?
+- [ ] El codigo es mantenible por otro desarrollador?
+
+## Expectativas de Entrega
+
+Cada componente debe:
+1. **Funcionar** correctamente en happy path y casos de error
+2. **Estar testeado** con casos relevantes
+3. **Estar documentado** donde no sea obvio
+4. **Ser resiliente** ante fallos esperados
+
+## Seguridad
+
+- Sanitizacion de logs (no exponer datos sensibles)
+- Gestion segura de credenciales (variables de entorno, secrets manager)
+- Nunca commitear credenciales o datos sensibles
+
+## Configuracion
+
+### Fuentes de Configuracion (en orden de precedencia)
+1. Variables de entorno
+2. Archivo de configuracion
+3. Valores por defecto
+
+### Estructura esperada
+La configuracion debe cubrir los parametros relevantes del proyecto: datos de la aplicacion, parametros del servidor o punto de entrada, conexiones externas y shutdown graceful.

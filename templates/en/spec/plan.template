@@ -1,0 +1,47 @@
+# {{PROJECT_NAME}} - Technical Plan
+
+## High-Level Architecture
+
+{{HIGH_LEVEL_ARCHITECTURE}}
+
+Describe main components and how they interact.
+
+## Technical Decisions
+
+| Decision | Chosen Option | Discarded Alternatives | Justification |
+|----------|--------------|----------------------|---------------|
+| {{DECISION}} | {{CHOSEN}} | {{ALTERNATIVES}} | {{JUSTIFICATION}} |
+
+## Data Model
+
+### Main Entities
+
+{{ENTITY_DEFINITIONS}}
+
+For each entity: name, key attributes, relationships, invariants.
+
+### API Contracts
+
+{{API_CONTRACTS}}
+
+Endpoints, methods, request/response schemas, error codes.
+
+## Data Flow
+
+{{DATA_FLOW_DESCRIPTION}}
+
+Describe the end-to-end flow for the main use cases.
+
+## Testing Strategy
+
+| Level | Scope | Framework | Target Coverage |
+|-------|-------|-----------|----------------|
+| Unit | Domain and business logic | {{UNIT_FRAMEWORK}} | {{COVERAGE}}% |
+| Integration | Adapters and infrastructure | {{INT_FRAMEWORK}} | {{COVERAGE}}% |
+| E2E | Complete flows | {{E2E_FRAMEWORK}} | Critical cases |
+
+## Risks and Mitigations
+
+| Risk | Probability | Impact | Mitigation |
+|------|------------|--------|-----------|
+| {{RISK}} | {{PROBABILITY}} | {{IMPACT}} | {{MITIGATION}} |

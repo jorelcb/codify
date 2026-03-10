@@ -1,0 +1,76 @@
+# {{PROJECT_NAME}} - Guia Idiomatica JavaScript/TypeScript
+
+## Asincronia y Paralelismo
+
+### Patrones Fundamentales
+- Usa `async/await` como patron principal — evita callback hell y `.then()` chains largas
+- Usa `Promise.all()` para operaciones independientes en paralelo
+- Usa `Promise.allSettled()` cuando necesites resultados parciales sin cortocircuitar por un fallo
+- Implementa throttling y debouncing para operaciones de alta frecuencia
+- Usa worker threads (`worker_threads`) para operaciones CPU-intensivas
+- Aplica el patron de queue para procesamiento asincrono ordenado
+
+### AbortController
+- Usa `AbortController` para cancelacion de operaciones async (fetch, timers, streams)
+- Propaga `signal` en todas las operaciones que puedan cancelarse
+- Implementa timeouts con `AbortSignal.timeout(ms)` para evitar operaciones colgadas
+
+### Event Loop
+- No bloquees el event loop con operaciones sincronas pesadas
+- Usa `setImmediate()` o `process.nextTick()` para ceder el control en loops largos
+- Entiende la diferencia entre microtasks (promises) y macrotasks (timers, I/O)
+
+## Manejo de Errores
+
+- Usa try/catch con async/await — no dejes promesas sin `.catch()`
+- Define clases de error custom que extiendan `Error` con propiedades descriptivas
+- Usa `instanceof` para diferenciar tipos de error
+- En express/fastify, centraliza el manejo de errores en middleware de error
+- Nunca silenices errores — logealos o propágalos con contexto
+- Usa `cause` (ES2022) para encadenar errores: `new Error('msg', { cause: originalError })`
+
+## Convenciones del Lenguaje
+
+### Naming
+- `camelCase` para variables y funciones
+- `PascalCase` para clases, interfaces, types y enums
+- `kebab-case` para nombres de archivos y directorios
+- `UPPER_SNAKE_CASE` para constantes y variables de entorno
+- Prefijos descriptivos: `is`, `has`, `should` para booleanos; `get`, `set`, `create` para funciones
+
+### Organizacion de Imports
+```
+// stdlib / node builtins
+import path from 'node:path'
+
+// dependencias externas
+import express from 'express'
+
+// modulos internos
+import { UserService } from './services/user-service'
+```
+Separados por linea en blanco, agrupados en ese orden.
+
+### TypeScript
+- Usa `interface` para contratos publicos, `type` para uniones y tipos utilitarios
+- Evita `any` — usa `unknown` cuando el tipo es realmente desconocido
+- Usa `readonly` para propiedades inmutables
+- Prefiere `as const` sobre enums cuando sea suficiente
+- Genera declarations (`.d.ts`) para librerias/SDKs
+
+## Restricciones de Version y Tooling
+
+- Node.js LTS (>= 18) con ES2022+ features
+- ESM (`import/export`) sobre CommonJS (`require`) en proyectos nuevos
+- TypeScript para type safety en cualquier proyecto no trivial
+- ESLint + Prettier como formateadores estandar
+- `package-lock.json` versionado en el repositorio
+
+## Testing en JavaScript/TypeScript
+
+- Jest o Vitest como framework principal
+- Tests colocados junto al codigo (`__tests__/` o `.test.ts` junto al archivo)
+- `jest.mock()` para mockear modulos completos
+- `jest.spyOn()` para interceptar llamadas sin reemplazar implementacion
+- `supertest` para testing de endpoints HTTP
+- `jest.useFakeTimers()` para tests con timers y delays

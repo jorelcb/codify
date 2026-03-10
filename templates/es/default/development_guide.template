@@ -1,0 +1,145 @@
+# {{PROJECT_NAME}} - Guia de Desarrollo
+
+## Mentalidad de Produccion
+
+Este es un componente de produccion que debe cumplir requisitos estrictos de confiabilidad, observabilidad y rendimiento. No es un proyecto academico ni prueba de concepto. Cada decision debe considerar mantenibilidad y operabilidad a largo plazo.
+
+## Metodologia de Trabajo
+
+### Flujo de Desarrollo
+1. **Planifica antes de actuar**: Presenta un plan claro antes de escribir o modificar codigo
+2. **Trabajo incremental**: Construye paso a paso, asegurando calidad en cada etapa
+3. **Testing continuo**: Escribe tests MIENTRAS desarrollas cada componente, no despues
+4. **Validacion constante**: Verifica que cada componente funciona antes de continuar
+5. **Solicita clarificacion**: Si algun requisito es ambiguo, pregunta antes de proceder
+
+### Testing como Practica Integrada
+- **Tests unitarios**: Inmediatamente despues de crear cada funcion/metodo del dominio
+- **Tests de integracion**: Junto con cada adaptador de infraestructura
+- **BDD cuando sea apropiado**: Para logica de negocio compleja, escribe el escenario primero
+- **Coverage minimo**: 80% en dominio, 70% en aplicacion, 60% en infraestructura
+
+## Estilo de Comunicacion
+
+### Al escribir codigo:
+- Comenta solo decisiones arquitectonicas criticas o workarounds temporales
+- Nombra variables y funciones de manera autodocumentada
+- Estructura el codigo para que sea obvio, no clever
+- Sigue convenciones idiomaticas del lenguaje
+
+### Al explicar decisiones:
+- Se conciso pero completo
+- Justifica decisiones arquitectonicas con trade-offs claros
+- Menciona alternativas consideradas cuando sea relevante
+- Referencia patrones o principios especificos
+
+### Al encontrar problemas:
+- Diagnostica la causa raiz, no solo los sintomas
+- Propone soluciones con pros y contras
+- Considera el impacto en produccion
+- Documenta en lecciones aprendidas
+
+## Autonomia Arquitectonica
+
+### Poder de Decision
+El documento de contexto proporciona una base solida, pero existe completa libertad para proponer optimizaciones y cambios en cualquier aspecto:
+
+- **Modelado del dominio**: Mejores representaciones de entidades o agregados
+- **Interfaces y abstracciones**: Abstracciones mas elegantes o funcionales
+- **Patrones arquitectonicos**: Si un patron diferente resuelve mejor el problema
+- **Decisiones tecnicas**: Si una libreria o approach ofrece ventajas significativas
+- **Organizacion del codigo**: Si una estructura diferente mejora la mantenibilidad
+
+### Como Proponer Cambios
+1. Documenta el problema o limitacion actual
+2. Propone la alternativa con sus beneficios
+3. Analiza los trade-offs involucrados
+4. Justifica por que el cambio mejora el sistema
+5. Implementa gradualmente, manteniendo compatibilidad donde sea critico
+
+## Checklist de Auto-Validacion
+
+Antes de considerar cualquier componente como completo:
+- [ ] Respeta la separacion de capas DDD?
+- [ ] Es testeable de manera aislada?
+- [ ] Maneja todos los casos de error posibles?
+- [ ] Es observable en produccion?
+- [ ] Puede escalar horizontalmente si es necesario?
+- [ ] Se recupera gracefully de fallos transitorios?
+- [ ] El codigo es mantenible por otro desarrollador?
+
+## Expectativas de Entrega
+
+Cada componente debe:
+1. **Funcionar** correctamente en su happy path y casos de error
+2. **Estar testeado** con casos unitarios relevantes
+3. **Ser observable** con metricas y trazas apropiadas
+4. **Estar documentado** donde no sea obvio
+5. **Ser resiliente** ante fallos esperados
+
+## Seguridad
+
+- TLS/mTLS para comunicaciones cuando sea necesario
+- Autenticacion y autorizacion segun el tipo de proyecto
+- Sanitizacion de logs (no exponer datos sensibles)
+- Gestion segura de credenciales (variables de entorno, secrets manager)
+- Nunca commitear credenciales o datos sensibles
+
+## Configuracion
+
+### Fuentes de Configuracion (en orden de precedencia)
+1. Variables de entorno
+2. Archivo de configuracion
+3. Valores por defecto
+
+### Estructura esperada
+La configuracion debe cubrir:
+- Datos de la aplicacion (nombre, entorno, version)
+- Parametros del servidor o punto de entrada (puertos, timeouts)
+- Telemetria (exporter, endpoint, habilitacion)
+- Conexiones externas (bases de datos, servicios, messaging)
+- Graceful shutdown (grace period configurable)
+
+## Guias por Tipo de Proyecto
+
+### API/Servicio
+- Endpoints RESTful bien definidos siguiendo estandares REST
+- Documentacion OpenAPI/Swagger generada automaticamente
+- Versionado de API cuando sea necesario
+- Rate limiting y autenticacion
+
+### CLI
+- Comandos intuitivos con interfaz clara
+- Configuracion flexible: archivos, env vars y flags
+- Output formateado: JSON, YAML, tabla o texto plano
+- Codigos de salida significativos
+
+### Library/SDK
+- API publica clara y bien documentada
+- Minimas dependencias externas
+- Compatibilidad con multiples versiones del runtime
+- Documentacion con ejemplos de uso
+
+### Webapp
+- Arquitectura SPA o SSR segun requisitos de SEO y performance
+- Gestion de estado centralizada
+- Responsive design con mobile-first approach
+
+## Conceptos DDD Clave
+
+- **Lenguaje Ubicuo**: Terminologia comun y consistente en todo el codigo
+- **Agregados**: Definen limites de consistencia transaccional
+- **Value Objects**: Objetos inmutables sin identidad
+- **Repositories**: Abstracciones de persistencia definidas en el dominio
+- **Domain Events**: Eventos que representan cambios significativos en el dominio
+- **Bounded Contexts**: Limites claros entre subdominios
+
+## Observabilidad Detallada
+
+### Requerimientos OpenTelemetry
+- NO usar variables globales para tracer — usar inyeccion de dependencias
+- Propagacion de contexto completa en todas las operaciones
+- Spans detallados para operaciones significativas
+- Atributos semanticos relevantes en cada span (service.name, service.version)
+- Metricas de negocio: contadores, histogramas, gauges
+- Logs estructurados correlacionados con TraceID

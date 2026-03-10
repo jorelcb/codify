@@ -1,0 +1,53 @@
+# {{PROJECT_NAME}} - Project Constitution
+
+## Identity
+
+- **Name:** {{PROJECT_NAME}}
+- **Purpose:** {{PURPOSE}}
+- **Target users:** {{TARGET_USERS}}
+
+## Technology Stack
+
+| Component | Technology | Version | Justification |
+|-----------|-----------|---------|---------------|
+| Language | {{LANGUAGE}} | {{VERSION}} | {{JUSTIFICATION}} |
+| Framework | {{FRAMEWORK}} | {{VERSION}} | {{JUSTIFICATION}} |
+| Testing | {{TESTING}} | {{VERSION}} | {{JUSTIFICATION}} |
+| Database | {{DATABASE}} | {{VERSION}} | {{JUSTIFICATION}} |
+
+## Immutable Principles
+
+Principles that apply to EVERY design and implementation decision:
+
+1. {{PRINCIPLE_1}}
+2. {{PRINCIPLE_2}}
+3. {{PRINCIPLE_3}}
+
+## Conventions
+
+### Code
+- **Naming:** {{NAMING_CONVENTIONS}}
+- **File structure:** {{FILE_STRUCTURE_CONVENTIONS}}
+- **Imports:** {{IMPORT_CONVENTIONS}}
+- **Error handling:** {{ERROR_HANDLING_CONVENTIONS}}
+
+### Process
+- **Commits:** {{COMMIT_CONVENTIONS}}
+- **Branching:** {{BRANCHING_CONVENTIONS}}
+- **Code review:** {{REVIEW_CONVENTIONS}}
+
+## Constraints
+
+### Mandatory
+- {{MANDATORY_CONSTRAINTS}}
+
+### Prohibited
+- {{PROHIBITED_PATTERNS}}
+
+## Approved Dependencies
+
+Libraries and frameworks approved for use in the project:
+
+| Library | Purpose | Restrictions |
+|---------|---------|-------------|
+| {{LIBRARY}} | {{PURPOSE}} | {{RESTRICTIONS}} |

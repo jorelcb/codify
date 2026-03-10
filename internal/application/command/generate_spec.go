@@ -47,6 +47,7 @@ func (c *GenerateSpecCommand) Execute(
 		TemplateGuides:     templateGuides,
 		ExistingContext:    existingContext,
 		Mode:              "spec",
+		Locale:            config.Locale,
 	}
 
 	// 2. Call LLM provider

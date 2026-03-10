@@ -1,0 +1,72 @@
+# {{PROJECT_NAME}} - Go Idiomatic Guide
+
+## Concurrency
+
+### Fundamental Patterns
+- Manage goroutines explicitly with `sync.WaitGroup`
+- Use channels for goroutine communication — prefer sharing memory by communicating, not communicating by sharing memory
+- Avoid race conditions with `sync.Mutex` or `sync.RWMutex` where needed
+- Use `sync.Map` for shared structures across goroutines when the access pattern justifies it
+- Implement backpressure and rate limiting with `semaphore` or buffered channels
+- Apply the worker pool pattern with channels for concurrent processing
+
+### Context
+- Propagate `context.Context` as the first parameter in every function that can be cancelled or timed out
+- Use `context.WithTimeout` and `context.WithCancel` to prevent hanging operations
+- Respect context cancellation in loops and long-running operations
+- Never store context in structs — always pass it as a parameter
+
+### Channels
+- Prefer unidirectional channels (`<-chan`, `chan<-`) in function signatures
+- Close channels from the producer, never from the consumer
+- Use `select` with `case <-ctx.Done()` for cancellable operations
+- Consider buffered channels to decouple producer-consumer
+
+## Error Handling
+
+- Use error wrapping with `fmt.Errorf("context: %w", err)` to preserve the error chain
+- Define domain errors as types with `errors.New()` or custom types implementing `error`
+- Use `errors.Is()` and `errors.As()` for error comparison — never direct string comparison
+- Return errors, don't log them and then return — pick one
+- Use `panic` only for unrecoverable programming errors, never for control flow
+
+## Language Conventions
+
+### Naming
+- `camelCase` for unexported variables and functions
+- `PascalCase` for exported functions, types, constants, and interfaces
+- Interfaces named by behavior: `Reader`, `Writer`, `Storer` — not `IReader`
+- Single-method interfaces preferred — compose for complex interfaces
+- Consistent uppercase acronyms: `HTTPHandler`, `APIClient`, `userID`
+
+### Import Organization
+```
+stdlib
+
+external dependencies
+
+internal project modules
+```
+Separated by blank lines, grouped in that order.
+
+### Structs and Methods
+- Constructor with `NewXxx()` that returns the instance (or pointer + error if it can fail)
+- Receiver with short, consistent name (1-2 letters from the type, not `this` or `self`)
+- Pointer receiver when the method mutates state or the struct is large
+- Value receiver for non-mutating methods on small structs
+
+## Version and Tooling Constraints
+
+- Go 1.21+ — leverage generics where they simplify without over-engineering
+- Use the standard library whenever sufficient before adding dependencies
+- `go vet`, `golangci-lint` as part of CI
+- Modules with `go.mod` versioned in the repository
+
+## Testing in Go
+
+- Tests in the same package (`_test.go`) for white-box tests
+- Tests in separate `_test` package for black-box tests (public API)
+- Table-driven tests as the main pattern
+- `testify` for assertions if readability is needed
+- `httptest` for HTTP handler testing
+- `t.Parallel()` on tests that don't share state

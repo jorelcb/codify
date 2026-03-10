@@ -1,0 +1,53 @@
+# {{PROJECT_NAME}} - Constitucion del Proyecto
+
+## Identidad
+
+- **Nombre:** {{PROJECT_NAME}}
+- **Proposito:** {{PURPOSE}}
+- **Usuarios objetivo:** {{TARGET_USERS}}
+
+## Stack Tecnologico
+
+| Componente | Tecnologia | Version | Justificacion |
+|-----------|-----------|---------|---------------|
+| Lenguaje | {{LANGUAGE}} | {{VERSION}} | {{JUSTIFICATION}} |
+| Framework | {{FRAMEWORK}} | {{VERSION}} | {{JUSTIFICATION}} |
+| Testing | {{TESTING}} | {{VERSION}} | {{JUSTIFICATION}} |
+| Base de datos | {{DATABASE}} | {{VERSION}} | {{JUSTIFICATION}} |
+
+## Principios Inmutables
+
+Principios que aplican a TODA decision de diseno e implementacion:
+
+1. {{PRINCIPLE_1}}
+2. {{PRINCIPLE_2}}
+3. {{PRINCIPLE_3}}
+
+## Convenciones
+
+### Codigo
+- **Naming:** {{NAMING_CONVENTIONS}}
+- **Estructura de archivos:** {{FILE_STRUCTURE_CONVENTIONS}}
+- **Imports:** {{IMPORT_CONVENTIONS}}
+- **Error handling:** {{ERROR_HANDLING_CONVENTIONS}}
+
+### Proceso
+- **Commits:** {{COMMIT_CONVENTIONS}}
+- **Branching:** {{BRANCHING_CONVENTIONS}}
+- **Code review:** {{REVIEW_CONVENTIONS}}
+
+## Restricciones
+
+### Obligatorias
+- {{MANDATORY_CONSTRAINTS}}
+
+### Prohibidas
+- {{PROHIBITED_PATTERNS}}
+
+## Dependencias Permitidas
+
+Librerias y frameworks aprobados para uso en el proyecto:
+
+| Libreria | Proposito | Restricciones |
+|---------|----------|---------------|
+| {{LIBRARY}} | {{PURPOSE}} | {{RESTRICTIONS}} |

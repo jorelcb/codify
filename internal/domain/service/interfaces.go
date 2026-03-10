@@ -35,6 +35,7 @@ type GenerationRequest struct {
 	Language           string
 	ProjectType        string
 	Architecture       string
+	Locale             string // Output language: "en", "es", etc.
 	ExistingContext    string // For spec mode: content of existing CONTEXT.md + AGENTS.md
 	Mode              string // "generate" (default) or "spec"
 }

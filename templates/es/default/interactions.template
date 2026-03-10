@@ -1,0 +1,68 @@
+# Bitacora de Interacciones - {{PROJECT_NAME}}
+
+## Formato de Sesion
+
+```markdown
+## Sesion: [Fecha] - [Titulo Descriptivo]
+
+### Contexto
+- **Estado:** [Estado del proyecto]
+- **Branch:** [Rama de trabajo]
+- **Objetivo:** [Que se busca resolver o implementar]
+
+### Tareas Realizadas
+1. **[Titulo]** - [Descripcion breve, archivos afectados, resultado]
+
+### Decisiones Arquitectonicas
+- **[Decision]:** [Justificacion] | Alternativas: [descartadas y por que]
+
+### Problemas y Soluciones
+- **[Problema]:** [Causa raiz] -> [Solucion aplicada]
+
+### Estado Final
+- **Completado:** [lista]
+- **Pendiente:** [lista]
+```
+
+## ADR Template
+
+```markdown
+## ADR-[N]: [Titulo]
+**Estado:** [Propuesta | Aceptada | Deprecada]
+**Contexto:** [Situacion que requiere decision]
+**Decision:** [Lo que se decidio]
+**Consecuencias:** [Positivas y negativas]
+```
+
+Documentar especialmente decisiones sobre:
+- Limites de agregados y bounded contexts (DDD)
+- Eleccion de patrones arquitectonicos y trade-offs
+- Domain events y su propagacion
+- Estrategias de testing (BDD scenarios, mocks vs fakes)
+- Decisiones de observabilidad y resiliencia
+
+## Convenciones
+- Tipos: FEAT, FIX, REFACTOR, CONFIG, DOCS, TEST, PERF, CHORE
+- Estados: Completado, En progreso, Fallido, Pendiente
+
+---
+
+## Sesion: {{DATE}} - Inicializacion del Proyecto
+
+### Contexto
+- **Estado:** Proyecto nuevo
+- **Branch:** main
+- **Objetivo:** Establecer estructura base del proyecto
+
+### Tareas Realizadas
+1. **Estructura de carpetas** - Creada segun {{ARCHITECTURE}} con separacion DDD de 4 capas
+2. **Configuracion inicial** - Dependencias, archivos de config, instrumentacion base
+
+### Decisiones Arquitectonicas
+- **DDD/Clean Architecture:** Separacion estricta de capas con dependency rule hacia adentro
+- **Inyeccion de dependencias:** Constructor injection, sin variables globales
+- **Observabilidad:** OpenTelemetry integrado desde el inicio
+
+### Estado Final
+- **Completado:** Estructura base, configuracion, documentacion inicial
+- **Pendiente:** Implementacion de dominio, tests, integraciones

@@ -1,0 +1,79 @@
+# {{PROJECT_NAME}} - Development Guide
+
+## Work Methodology
+
+### Development Flow
+1. **Plan before acting**: Present a clear plan before writing or modifying code
+2. **Incremental work**: Build step by step, ensuring quality at each stage
+3. **Continuous testing**: Write tests WHILE developing each component, not after
+4. **Constant validation**: Verify each component works before moving on
+5. **Ask for clarification**: If any requirement is ambiguous, ask before proceeding
+
+### Testing as Integrated Practice
+- **Unit tests**: Immediately after creating each function/method
+- **Integration tests**: Alongside each external integration
+- **BDD when appropriate**: For complex logic, write the scenario first
+
+## Communication Style
+
+### When writing code:
+- Comment only critical decisions or temporary workarounds
+- Name variables and functions in a self-documenting way
+- Structure code to be obvious, not clever
+- Follow idiomatic language conventions
+
+### When explaining decisions:
+- Be concise but complete
+- Justify decisions with clear trade-offs
+- Mention considered alternatives when relevant
+
+### When encountering problems:
+- Diagnose the root cause, not just symptoms
+- Propose solutions with pros and cons
+- Consider production impact
+
+## Autonomy
+
+There is complete freedom to propose optimizations and changes in any aspect of the project:
+- Data modeling and abstractions
+- Patterns and technical decisions
+- Code organization
+
+### How to Propose Changes
+1. Document the current problem or limitation
+2. Propose the alternative with its benefits
+3. Analyze the trade-offs
+4. Justify why the change improves the system
+
+## Validation Checklist
+
+Before considering any component complete:
+- [ ] Does it handle all possible error cases?
+- [ ] Is it testable in isolation?
+- [ ] Is it observable in production?
+- [ ] Does it recover from transient failures?
+- [ ] Is the code maintainable by another developer?
+
+## Delivery Expectations
+
+Each component must:
+1. **Work** correctly in happy path and error cases
+2. **Be tested** with relevant cases
+3. **Be documented** where not obvious
+4. **Be resilient** to expected failures
+
+## Security
+
+- Log sanitization (do not expose sensitive data)
+- Secure credential management (environment variables, secrets manager)
+- Never commit credentials or sensitive data
+
+## Configuration
+
+### Configuration Sources (in order of precedence)
+1. Environment variables
+2. Configuration file
+3. Default values
+
+### Expected Structure
+Configuration should cover relevant project parameters: application data, server or entry point parameters, external connections, and graceful shutdown.
