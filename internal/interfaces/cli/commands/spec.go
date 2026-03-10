@@ -29,6 +29,7 @@ func NewSpecCmd() *cobra.Command {
 	var (
 		fromContext string
 		model       string
+		locale      string
 	)
 
 	cmd := &cobra.Command{
@@ -52,18 +53,19 @@ Examples:
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectName := args[0]
-			return runSpec(projectName, fromContext, model)
+			return runSpec(projectName, fromContext, model, locale)
 		},
 	}
 
 	cmd.Flags().StringVar(&fromContext, "from-context", "", "Path to existing output directory (required)")
 	_ = cmd.MarkFlagRequired("from-context")
 	cmd.Flags().StringVarP(&model, "model", "m", "", "Claude model to use (default: claude-sonnet-4-6)")
+	cmd.Flags().StringVar(&locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
 
 	return cmd
 }
 
-func runSpec(projectName, fromContext, model string) error {
+func runSpec(projectName, fromContext, model, locale string) error {
 	ctx := context.Background()
 
 	// 1. Check API key
@@ -80,7 +82,7 @@ func runSpec(projectName, fromContext, model string) error {
 	}
 
 	// 3. Load spec templates
-	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping("templates/spec", specTemplateMapping)
+	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping(filepath.Join("templates", locale, "spec"), specTemplateMapping)
 	guides, err := templateLoader.LoadAll()
 	if err != nil {
 		return fmt.Errorf("failed to load spec templates: %w", err)
@@ -103,6 +105,7 @@ func runSpec(projectName, fromContext, model string) error {
 		FromContextPath: fromContext,
 		OutputPath:      outputPath,
 		Model:           model,
+		Locale:          locale,
 	}
 
 	// 8. Show progress
@@ -113,6 +116,7 @@ func runSpec(projectName, fromContext, model string) error {
 		usedModel = "claude-sonnet-4-6"
 	}
 	fmt.Printf("  Model: %s\n", usedModel)
+	fmt.Printf("  Locale: %s\n", locale)
 	fmt.Println()
 	fmt.Println("Generating spec files via Claude API...")
 
@@ -123,7 +127,7 @@ func runSpec(projectName, fromContext, model string) error {
 	}
 
 	// 10. Update AGENTS.md with specs references
-	if err := updateAgentsWithSpecsRef(fromContext); err != nil {
+	if err := updateAgentsWithSpecsRef(fromContext, locale); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: could not update AGENTS.md with specs reference: %v\n", err)
 	}
 
@@ -143,7 +147,7 @@ func runSpec(projectName, fromContext, model string) error {
 }
 
 // updateAgentsWithSpecsRef appends specs file references to AGENTS.md if not already present.
-func updateAgentsWithSpecsRef(fromContextPath string) error {
+func updateAgentsWithSpecsRef(fromContextPath string, locale string) error {
 	agentsPath := filepath.Join(fromContextPath, "AGENTS.md")
 
 	content, err := os.ReadFile(agentsPath)
@@ -157,11 +161,20 @@ func updateAgentsWithSpecsRef(fromContextPath string) error {
 		return nil
 	}
 
-	specsRef := "\n## Especificaciones\n\n" +
-		"- Constitucion del proyecto: `specs/CONSTITUTION.md`\n" +
-		"- Especificaciones de features: `specs/SPEC.md`\n" +
-		"- Diseno tecnico y plan: `specs/PLAN.md`\n" +
-		"- Desglose de tareas: `specs/TASKS.md`\n"
+	var specsRef string
+	if locale == "es" {
+		specsRef = "\n## Especificaciones\n\n" +
+			"- Constitucion del proyecto: `specs/CONSTITUTION.md`\n" +
+			"- Especificaciones de features: `specs/SPEC.md`\n" +
+			"- Diseno tecnico y plan: `specs/PLAN.md`\n" +
+			"- Desglose de tareas: `specs/TASKS.md`\n"
+	} else {
+		specsRef = "\n## Specifications\n\n" +
+			"- Project constitution: `specs/CONSTITUTION.md`\n" +
+			"- Feature specifications: `specs/SPEC.md`\n" +
+			"- Technical design and plan: `specs/PLAN.md`\n" +
+			"- Task breakdown: `specs/TASKS.md`\n"
+	}
 
 	updated := string(content) + specsRef
 	return os.WriteFile(agentsPath, []byte(updated), 0644)

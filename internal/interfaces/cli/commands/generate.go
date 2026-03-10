@@ -10,21 +10,27 @@ import (
 
 	"github.com/jorelcb/ai-context-generator/internal/application/command"
 	"github.com/jorelcb/ai-context-generator/internal/application/dto"
+	"github.com/jorelcb/ai-context-generator/internal/domain/service"
 	"github.com/jorelcb/ai-context-generator/internal/infrastructure/filesystem"
 	"github.com/jorelcb/ai-context-generator/internal/infrastructure/llm"
 	infratemplate "github.com/jorelcb/ai-context-generator/internal/infrastructure/template"
 )
+
+const defaultLocale = "en"
 
 // NewGenerateCmd creates the generate command
 func NewGenerateCmd() *cobra.Command {
 	var (
 		projectName  string
 		description  string
+		fromFile     string
 		language     string
 		projectType  string
 		architecture string
 		model        string
 		preset       string
+		locale       string
+		withSpecs    bool
 		interactive  bool
 	)
 
@@ -35,27 +41,48 @@ func NewGenerateCmd() *cobra.Command {
   - AGENTS.md - Root file: tech stack, commands, conventions, structure (at project root)
   - CONTEXT.md - Architecture and technical design (in context/)
   - INTERACTIONS_LOG.md - Session history and ADR log (in context/)
+  - DEVELOPMENT_GUIDE.md - Work methodology, testing, security, delivery (in context/)
+  - IDIOMS.md - Language-specific patterns and conventions (in context/, requires --language)
 
 Presets:
-  default  - DDD/Clean Architecture/BDD opinionated templates (default)
+  default  - DDD/Clean Architecture/BDD recommended templates (default)
   neutral  - Generic templates without architectural opinions
+
+Locales:
+  en  - English (default)
+  es  - Spanish
 
 Requires ANTHROPIC_API_KEY environment variable.
 
 Examples:
-  # Generate with description (uses default preset)
+  # Generate with description (English, default preset)
   ai-context-generator generate my-api \
-    --description "API REST de gestion de inventarios en Go con Clean Architecture y PostgreSQL"
+    --description "Inventory management REST API in Go with Clean Architecture and PostgreSQL"
+
+  # Generate in Spanish
+  ai-context-generator generate my-api \
+    --description "API REST de gestion de inventarios en Go" \
+    --locale es
+
+  # With language-specific guides
+  ai-context-generator generate my-api \
+    --description "Inventory management REST API in Go" \
+    --language go
+
+  # From a detailed description file
+  ai-context-generator generate my-api \
+    --from-file ./docs/project-description.md \
+    --language go
 
   # With neutral preset
   ai-context-generator generate my-api \
-    --description "API REST de gestion de inventarios" \
+    --description "Inventory management REST API" \
     --preset neutral
 
-  # With optional hints
+  # Generate context + specs in one command
   ai-context-generator generate my-api \
-    --description "API REST de gestion de inventarios" \
-    --language go --type api --architecture ddd`,
+    --description "Inventory management REST API in Go" \
+    --with-specs`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
@@ -69,21 +96,46 @@ Examples:
 			if projectName == "" {
 				return fmt.Errorf("project name is required (use -i for interactive mode)")
 			}
+			if fromFile != "" && description != "" {
+				return fmt.Errorf("--description and --from-file are mutually exclusive")
+			}
+			if fromFile != "" {
+				content, err := os.ReadFile(fromFile)
+				if err != nil {
+					return fmt.Errorf("failed to read description file: %w", err)
+				}
+				description = string(content)
+			}
 			if description == "" {
-				return fmt.Errorf("description is required (use -d to describe your project)")
+				return fmt.Errorf("description is required (use -d or --from-file)")
 			}
 
-			return runGenerate(projectName, description, language, projectType, architecture, model, preset)
+			if err := runGenerate(projectName, description, language, projectType, architecture, model, preset, locale); err != nil {
+				return err
+			}
+
+			if withSpecs {
+				outputPath := filepath.Join("output", projectName)
+				fmt.Println()
+				fmt.Println("--- Generating specs from context ---")
+				fmt.Println()
+				return runSpec(projectName, outputPath, model, locale)
+			}
+
+			return nil
 		},
 	}
 
 	cmd.Flags().StringVarP(&projectName, "name", "n", "", "Project name")
-	cmd.Flags().StringVarP(&description, "description", "d", "", "Project description (required)")
-	cmd.Flags().StringVarP(&language, "language", "l", "", "Programming language hint (optional)")
-	cmd.Flags().StringVarP(&projectType, "type", "t", "", "Project type hint (optional)")
-	cmd.Flags().StringVarP(&architecture, "architecture", "a", "", "Architecture pattern hint (optional)")
+	cmd.Flags().StringVarP(&description, "description", "d", "", "Project description (required unless --from-file)")
+	cmd.Flags().StringVarP(&fromFile, "from-file", "f", "", "Read project description from file (alternative to --description)")
+	cmd.Flags().StringVarP(&language, "language", "l", "", "Programming language (activates idiomatic guides)")
+	cmd.Flags().StringVarP(&projectType, "type", "t", "", "Project type hint (api, cli, lib...)")
+	cmd.Flags().StringVarP(&architecture, "architecture", "a", "", "Architecture pattern hint")
 	cmd.Flags().StringVarP(&model, "model", "m", "", "Claude model to use (default: claude-sonnet-4-6)")
 	cmd.Flags().StringVarP(&preset, "preset", "p", "default", "Template preset: default (DDD/Clean Architecture) or neutral")
+	cmd.Flags().StringVar(&locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
+	cmd.Flags().BoolVar(&withSpecs, "with-specs", false, "Also generate SDD spec files after context generation")
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "Run in interactive mode")
 
 	return cmd
@@ -95,20 +147,26 @@ func runInteractiveGenerate() error {
 	return nil
 }
 
-// validPresets maps preset names to template directory paths.
-var validPresets = map[string]string{
-	"default": "templates/default",
-	"neutral": "templates/neutral",
+// validPresets maps preset names to their directory name.
+var validPresets = map[string]bool{
+	"default": true,
+	"neutral": true,
 }
 
-func resolveTemplatePath(preset string) string {
-	if path, ok := validPresets[preset]; ok {
-		return path
+// resolveTemplatePath builds the full template path: templates/{locale}/{preset}
+func resolveTemplatePath(locale, preset string) string {
+	if !validPresets[preset] {
+		preset = "default"
 	}
-	return validPresets["default"]
+	return filepath.Join("templates", locale, preset)
 }
 
-func runGenerate(projectName, description, language, projectType, architecture, model, preset string) error {
+// resolveLocaleBase returns the locale base directory: templates/{locale}
+func resolveLocaleBase(locale string) string {
+	return filepath.Join("templates", locale)
+}
+
+func runGenerate(projectName, description, language, projectType, architecture, model, preset, locale string) error {
 	ctx := context.Background()
 
 	// 1. Check API key
@@ -117,8 +175,14 @@ func runGenerate(projectName, description, language, projectType, architecture, 
 		return fmt.Errorf("ANTHROPIC_API_KEY environment variable is required")
 	}
 
-	// 2. Load templates
-	templateLoader := infratemplate.NewFileSystemTemplateLoader(resolveTemplatePath(preset))
+	// 2. Load templates (base preset + language-specific if --language is provided)
+	templatePath := resolveTemplatePath(locale, preset)
+	var templateLoader service.TemplateLoader
+	if language != "" {
+		templateLoader = infratemplate.NewFileSystemTemplateLoaderWithLanguage(templatePath, resolveLocaleBase(locale), language)
+	} else {
+		templateLoader = infratemplate.NewFileSystemTemplateLoader(templatePath)
+	}
 	guides, err := templateLoader.LoadAll()
 	if err != nil {
 		return fmt.Errorf("failed to load templates: %w", err)
@@ -144,6 +208,7 @@ func runGenerate(projectName, description, language, projectType, architecture, 
 		Architecture: architecture,
 		Model:        model,
 		OutputPath:   outputPath,
+		Locale:       locale,
 	}
 
 	// 7. Show progress
@@ -164,6 +229,7 @@ func runGenerate(projectName, description, language, projectType, architecture, 
 	}
 	fmt.Printf("  Model: %s\n", usedModel)
 	fmt.Printf("  Preset: %s\n", preset)
+	fmt.Printf("  Locale: %s\n", locale)
 	fmt.Println()
 	fmt.Println("Generating context files via Claude API...")
 
