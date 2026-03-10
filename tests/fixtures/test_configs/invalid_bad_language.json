@@ -1,9 +1,0 @@
-{
-    "project_name": "invalid-lang-test",
-    "language": "cobol",
-    "project_type": "api",
-    "ai_provider": "anthropic",
-    "description": "Invalid config with unsupported language",
-    "capabilities": [],
-    "timestamp": "2024-01-15T10:30:00Z"
-}

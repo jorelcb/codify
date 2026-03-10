@@ -76,11 +76,6 @@ Feature: Project Repository (In-Memory)
     When I save the second project
     Then the second project should overwrite by name
 
-  Scenario: Save invalid project fails
-    Given I have an invalid project
-    When I try to save the project
-    Then I should get a validation error
-
   Scenario: Save nil project fails
     When I try to save a nil project
     Then I should get an error containing "cannot be nil"

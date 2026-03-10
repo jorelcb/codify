@@ -72,8 +72,14 @@ func (r *ProjectRepository) Save(proj *project.Project) error {
 		return fmt.Errorf("invalid project: %w", err)
 	}
 
+	// If a project with the same name but different ID exists, remove the old entry
+	name := proj.Name().Value()
+	if existing, ok := r.byName[name]; ok && existing.ID() != proj.ID() {
+		delete(r.projects, existing.ID())
+	}
+
 	r.projects[proj.ID()] = proj
-	r.byName[proj.Name().Value()] = proj
+	r.byName[name] = proj
 	return nil
 }
 

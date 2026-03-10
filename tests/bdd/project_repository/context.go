@@ -50,7 +50,7 @@ func (f *FeatureContext) anEmptyProjectRepository() error {
 }
 
 func (f *FeatureContext) iHaveAProjectWithID(id string) error {
-	name, err := shared.NewProjectName("test-project")
+	name, err := shared.NewProjectName("test-project-" + id)
 	if err != nil {
 		return err
 	}

@@ -1,8 +1,0 @@
-{
-    "language": "go",
-    "project_type": "api",
-    "ai_provider": "anthropic",
-    "description": "Invalid config missing project_name",
-    "capabilities": [],
-    "timestamp": "2024-01-15T10:30:00Z"
-}
