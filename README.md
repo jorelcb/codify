@@ -6,7 +6,8 @@
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.21)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Claude](https://img.shields.io/badge/Powered%20by-Claude-cc785c?style=for-the-badge)](https://www.anthropic.com)
+[![Claude](https://img.shields.io/badge/Claude-cc785c?style=for-the-badge)](https://www.anthropic.com)
+[![Gemini](https://img.shields.io/badge/Gemini-4285F4?style=for-the-badge&logo=google)](https://ai.google.dev)
 [![AGENTS.md](https://img.shields.io/badge/Standard-AGENTS.md-purple?style=for-the-badge)](https://github.com/anthropics/AGENTS.md)
 
 **Give your AI agent the master blueprint it needs before writing the first line of code** 🏗️
@@ -35,7 +36,7 @@ And the agent, with all its capability, improvises:
 
 ## 💡 The Solution
 
-**AI Context Generator** takes your project description and generates intelligent context files using Anthropic Claude. Files that give your agent the master blueprint, domain constraints, and architectural memory it needs.
+**AI Context Generator** takes your project description and generates intelligent context files using LLMs (Anthropic Claude or Google Gemini). Files that give your agent the master blueprint, domain constraints, and architectural memory it needs.
 
 It follows the [AGENTS.md standard](https://github.com/anthropics/AGENTS.md) — an open specification backed by the Linux Foundation for providing AI agents with project context. This means the files work out of the box with Claude Code, Cursor, Codex, and any agent that reads the standard.
 
@@ -99,8 +100,10 @@ cd ai-context-generator && go build -o bin/ai-context-generator ./cmd/ai-context
 ### Your first context in 30 seconds
 
 ```bash
-# 1. Set your API key
-export ANTHROPIC_API_KEY="sk-ant-..."
+# 1. Set your API key (Claude or Gemini)
+export ANTHROPIC_API_KEY="sk-ant-..."   # for Claude (default)
+# or
+export GEMINI_API_KEY="AI..."           # for Gemini
 
 # 2. Describe your project (with language for idiomatic guides)
 ai-context-generator generate payment-service \
@@ -108,7 +111,12 @@ ai-context-generator generate payment-service \
   DDD with Clean Architecture. Stripe as payment processor." \
   --language go
 
-# 3. Done. Files generated.
+# 3. Use Gemini instead of Claude
+ai-context-generator generate payment-service \
+  --description "Payment microservice in Go" \
+  --model gemini-3.1-pro-preview
+
+# 4. Done. Files generated.
 ```
 
 ### What you'll see
@@ -158,12 +166,15 @@ go install github.com/jorelcb/ai-context-generator/cmd/ai-context-generator@late
       "command": "ai-context-generator",
       "args": ["serve"],
       "env": {
-        "ANTHROPIC_API_KEY": "sk-ant-..."
+        "ANTHROPIC_API_KEY": "sk-ant-...",
+        "GEMINI_API_KEY": "AI..."
       }
     }
   }
 }
 ```
+
+> Set the API key(s) for the provider(s) you want to use. The provider is selected automatically based on the `model` parameter.
 
 > If `ai-context-generator` is not in your PATH, use the full path (e.g., `~/go/bin/ai-context-generator`).
 
@@ -180,7 +191,8 @@ Add to your project's `.mcp.json`:
       "command": "ai-context-generator",
       "args": ["serve"],
       "env": {
-        "ANTHROPIC_API_KEY": "sk-ant-..."
+        "ANTHROPIC_API_KEY": "sk-ant-...",
+        "GEMINI_API_KEY": "AI..."
       }
     }
   }
@@ -357,7 +369,7 @@ ai-context-generator generate <name> [flags]
 | `--description` | `-d` | Project description *(required unless `--from-file`)* | — |
 | `--from-file` | `-f` | Read description from file *(alternative to `-d`)* | — |
 | `--preset` | `-p` | Template preset | `default` |
-| `--model` | `-m` | Claude model | `claude-sonnet-4-6` |
+| `--model` | `-m` | LLM model (`claude-*` or `gemini-*`) | `claude-sonnet-4-6` |
 | `--language` | `-l` | Language (activates idiomatic guides) | — |
 | `--locale` | | Output language (`en`, `es`) | `en` |
 | `--with-specs` | | Also generate SDD specs after context | `false` |
@@ -380,7 +392,7 @@ internal/
 │   └── query/           ListProjects
 │
 ├── infrastructure/      🔧 Implementations
-│   ├── llm/             Anthropic Claude adapter + prompt builder
+│   ├── llm/             LLM providers (Claude, Gemini) + prompt builder
 │   ├── template/        Template loader (locale + preset + language-aware)
 │   ├── scanner/         Project scanner (language, deps, framework detection)
 │   └── filesystem/      File writer, directory manager, context reader
@@ -433,7 +445,8 @@ go test ./tests/...
 **v2.2.0** 🎉
 
 ✅ **Working:**
-- Context generation with Claude API (streaming)
+- Multi-provider LLM support (Anthropic Claude + Google Gemini)
+- Context generation with streaming
 - SDD spec generation from existing context
 - MCP Server mode (Claude Desktop, Claude Code, Cursor)
 - `analyze` command — scan existing projects and generate context
@@ -448,21 +461,18 @@ go test ./tests/...
 - End-to-end integration tests
 - Retries and rate limit handling
 - Interactive mode (wizard)
-- Second LLM provider
+- MCP server authentication (OAuth/BYOK for remote deployments)
 - Binary builds and distribution
 
 👉 [Full roadmap](ROADMAP.md)
 
 ## 💡 FAQ
 
-**Do I need an Anthropic API key?**
-Yes. Export it as `ANTHROPIC_API_KEY`. Get one at [console.anthropic.com](https://console.anthropic.com).
+**Which LLM providers are supported?**
+Anthropic Claude (default) and Google Gemini. Set `ANTHROPIC_API_KEY` for Claude or `GEMINI_API_KEY` for Gemini. The provider is auto-detected from the `--model` flag: `claude-*` models use Anthropic, `gemini-*` models use Google.
 
 **How much does each generation cost?**
-4-5 API calls for `generate` (depending on `--language`), 4 for `spec`. With claude-sonnet-4-6, each generation costs pennies.
-
-**Does it work with other LLMs?**
-Currently only Anthropic Claude. The `LLMProvider` interface is designed to add more providers without changing the core.
+4-5 API calls for `generate` (depending on `--language`), 4 for `spec`. Each generation costs pennies with either provider.
 
 **Are the templates fixed?**
 They're structural guides, not renderable output. The LLM generates intelligent, project-specific content following the template structure.
