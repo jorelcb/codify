@@ -52,7 +52,7 @@ Locales:
   en  - English (default)
   es  - Spanish
 
-Requires ANTHROPIC_API_KEY environment variable.
+Requires ANTHROPIC_API_KEY (for Claude) or GEMINI_API_KEY (for Gemini) environment variable.
 
 Examples:
   # Generate with description (English, default preset)
@@ -132,7 +132,7 @@ Examples:
 	cmd.Flags().StringVarP(&language, "language", "l", "", "Programming language (activates idiomatic guides)")
 	cmd.Flags().StringVarP(&projectType, "type", "t", "", "Project type hint (api, cli, lib...)")
 	cmd.Flags().StringVarP(&architecture, "architecture", "a", "", "Architecture pattern hint")
-	cmd.Flags().StringVarP(&model, "model", "m", "", "Claude model to use (default: claude-sonnet-4-6)")
+	cmd.Flags().StringVarP(&model, "model", "m", "", "LLM model (default: claude-sonnet-4-6, or gemini-3.1-pro-preview)")
 	cmd.Flags().StringVarP(&preset, "preset", "p", "default", "Template preset: default (DDD/Clean Architecture) or neutral")
 	cmd.Flags().StringVar(&locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
 	cmd.Flags().BoolVar(&withSpecs, "with-specs", false, "Also generate SDD spec files after context generation")
@@ -169,10 +169,10 @@ func resolveLocaleBase(locale string) string {
 func runGenerate(projectName, description, language, projectType, architecture, model, preset, locale string) error {
 	ctx := context.Background()
 
-	// 1. Check API key
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		return fmt.Errorf("ANTHROPIC_API_KEY environment variable is required")
+	// 1. Resolve API key for the selected provider
+	apiKey, err := llm.ResolveAPIKey(model)
+	if err != nil {
+		return err
 	}
 
 	// 2. Load templates (base preset + language-specific if --language is provided)
@@ -189,7 +189,10 @@ func runGenerate(projectName, description, language, projectType, architecture, 
 	}
 
 	// 3. Initialize LLM provider (os.Stdout for streaming progress)
-	provider := llm.NewAnthropicProvider(apiKey, model, os.Stdout)
+	provider, err := llm.NewProvider(ctx, model, apiKey, os.Stdout)
+	if err != nil {
+		return fmt.Errorf("failed to create LLM provider: %w", err)
+	}
 
 	// 4. Initialize infrastructure
 	fileWriter := filesystem.NewFileWriter()
@@ -223,11 +226,7 @@ func runGenerate(projectName, description, language, projectType, architecture, 
 	if architecture != "" {
 		fmt.Printf("  Architecture: %s\n", architecture)
 	}
-	usedModel := model
-	if usedModel == "" {
-		usedModel = "claude-sonnet-4-6"
-	}
-	fmt.Printf("  Model: %s\n", usedModel)
+	fmt.Printf("  Model: %s\n", llm.DefaultModel(model))
 	fmt.Printf("  Preset: %s\n", preset)
 	fmt.Printf("  Locale: %s\n", locale)
 	fmt.Println()

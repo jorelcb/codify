@@ -227,9 +227,9 @@ func handleAnalyzeProject(ctx context.Context, request mcp.CallToolRequest) (*mc
 // --- Execution helpers (shared by all handlers) ---
 
 func executeGenerate(ctx context.Context, name, description, language, preset, locale, model string) (*dto.GenerationResult, error) {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("ANTHROPIC_API_KEY environment variable is required")
+	apiKey, err := llm.ResolveAPIKey(model)
+	if err != nil {
+		return nil, err
 	}
 
 	if !validPresets[preset] {
@@ -251,7 +251,10 @@ func executeGenerate(ctx context.Context, name, description, language, preset, l
 		return nil, fmt.Errorf("failed to load templates: %w", err)
 	}
 
-	provider := llm.NewAnthropicProvider(apiKey, model, nil) // no stdout in MCP mode
+	provider, err := llm.NewProvider(ctx, model, apiKey, nil) // no stdout in MCP mode
+	if err != nil {
+		return nil, fmt.Errorf("failed to create LLM provider: %w", err)
+	}
 	fileWriter := filesystem.NewFileWriter()
 	dirManager := filesystem.NewDirectoryManager()
 
@@ -279,9 +282,9 @@ var specTemplateMapping = map[string]string{
 }
 
 func executeSpecs(ctx context.Context, name, fromContextPath, locale, model string) (*dto.GenerationResult, error) {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("ANTHROPIC_API_KEY environment variable is required")
+	apiKey, err := llm.ResolveAPIKey(model)
+	if err != nil {
+		return nil, err
 	}
 
 	contextReader := filesystem.NewContextReader()
@@ -298,7 +301,10 @@ func executeSpecs(ctx context.Context, name, fromContextPath, locale, model stri
 		return nil, fmt.Errorf("failed to load spec templates: %w", err)
 	}
 
-	provider := llm.NewAnthropicProvider(apiKey, model, nil)
+	provider, err := llm.NewProvider(ctx, model, apiKey, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create LLM provider: %w", err)
+	}
 	fileWriter := filesystem.NewFileWriter()
 	dirManager := filesystem.NewDirectoryManager()
 
