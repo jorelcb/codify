@@ -1,5 +1,20 @@
+# IDE
 .idea
+.vscode
+
+# OS
 .DS_Store
-input
-output
-bin
+
+# Build artifacts
+bin/
+ai-context-generator
+
+# Generated output
+input/
+output/
+
+# Coverage
+coverage.*
+
+# AI agent local config
+.claude/
