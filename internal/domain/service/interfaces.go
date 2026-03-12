@@ -37,7 +37,8 @@ type GenerationRequest struct {
 	Architecture       string
 	Locale             string // Output language: "en", "es", etc.
 	ExistingContext    string // For spec mode: content of existing CONTEXT.md + AGENTS.md
-	Mode              string // "generate" (default) or "spec"
+	Mode              string // "generate" (default), "spec", or "skills"
+	Target            string // For skills mode: target ecosystem ("claude", "codex", "antigravity")
 }
 
 // TemplateGuide represents a structural template used as a guide for the LLM.

@@ -1,0 +1,46 @@
+# Skill de Refactoring Seguro
+
+## Proposito
+Guiar a un agente de IA en el refactoring de codigo de manera segura y con confianza, preservando comportamiento mientras se mejora la estructura.
+
+## Secciones a Generar
+
+### Cuando Usar Este Skill
+Describe escenarios: mejorar legibilidad del codigo, reducir complejidad, extraer abstracciones, eliminar duplicacion, preparar codigo para nuevas funcionalidades.
+
+### Proceso de Refactoring Seguro
+Flujo de trabajo paso a paso:
+1. Asegurar que los tests existentes pasan (linea base en verde)
+2. Identificar el objetivo del refactoring
+3. Aplicar una transformacion pequena a la vez
+4. Correr tests despues de cada transformacion
+5. Hacer commit de cada paso exitoso
+6. Si los tests fallan, revertir el ultimo paso e intentar un cambio mas pequeno
+
+### Patrones Comunes de Refactoring
+- Extract method/function: reducir complejidad, mejorar nombrado
+- Extract interface: desacoplar dependencias
+- Rename: mejorar claridad y consistencia
+- Move: ubicar codigo en el modulo/paquete correcto
+- Inline: remover indirecciones innecesarias
+- Reemplazar condicional con polimorfismo
+
+### Cuando NO Refactorizar
+- Sin cobertura de tests (agregar tests primero)
+- Bajo presion de tiempo para un fix critico (arreglar primero, refactorizar despues)
+- Refactorizar y agregar funcionalidades simultaneamente (hacer una cosa a la vez)
+- Codigo que sera eliminado pronto
+
+### Evaluacion de Riesgo
+- Bajo riesgo: rename, extract method, reordenar parametros
+- Riesgo medio: extract class/interface, cambiar signatures
+- Alto riesgo: reestructurar modulos, cambiar flujo de datos, modificar estado compartido
+
+### Anti-patrones a Evitar
+- Refactoring big bang (demasiados cambios de golpe)
+- Refactorizar sin tests
+- Mezclar refactoring con trabajo de funcionalidades en el mismo commit
+- Gold plating (refactorizar mas alla de lo necesario)
+
+### Verificacion
+Como validar que el refactoring fue exitoso: todos los tests siguen pasando, comportamiento sin cambios, complejidad del codigo reducida, legibilidad mejorada.

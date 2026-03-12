@@ -1,0 +1,44 @@
+# Test Strategy Design Skill
+
+## Purpose
+Guide an AI agent through designing a comprehensive testing strategy for a codebase.
+
+## Sections to Generate
+
+### When to Use This Skill
+Describe scenarios: setting up testing for a new project, improving test coverage, choosing test types, defining test boundaries.
+
+### Test Pyramid
+- Unit tests: fast, isolated, test single units of logic
+- Integration tests: verify component interactions, database queries, API calls
+- End-to-end tests: validate complete user workflows, minimal count
+- Contract tests: verify API boundaries between services
+
+### Choosing What to Test
+Decision framework:
+1. Business-critical paths: always test thoroughly
+2. Complex logic: unit test with edge cases
+3. External integrations: integration test with real/container dependencies
+4. Happy paths: E2E for critical user journeys
+5. Skip: trivial getters/setters, framework boilerplate, generated code
+
+### Test Organization
+- Mirror source structure in test directories
+- Shared fixtures and builders
+- Test helpers for common setup
+- Clear naming: TestFunction_Scenario_ExpectedBehavior
+
+### Test Quality Indicators
+- Tests break when behavior changes (not when implementation changes)
+- Each test verifies one behavior
+- Tests are independent and can run in any order
+- Fast feedback loop (unit tests < 5s, integration < 30s)
+
+### Anti-patterns to Avoid
+- Testing implementation details instead of behavior
+- Mocking everything (test nothing real)
+- Shared mutable state between tests
+- Flaky tests from timing or external dependencies
+
+### Verification
+How to validate test strategy: coverage of critical paths, fast CI feedback, tests as documentation of behavior.

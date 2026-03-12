@@ -1,0 +1,42 @@
+# Skill de Port/Adapter en Arquitectura Hexagonal
+
+## Proposito
+Guiar a un agente de IA en la definicion de ports (interfaces) e implementacion de adapters siguiendo Arquitectura Hexagonal (Ports & Adapters).
+
+## Secciones a Generar
+
+### Cuando Usar Este Skill
+Describe escenarios: integrar servicios externos, definir contratos de repositorio, crear clientes API, implementar acceso a base de datos, agregar adapters de mensajeria.
+
+### Diseno de Ports
+- Los ports son interfaces definidas en la capa de dominio
+- Driven ports (inbound): definen como se usa la aplicacion (interfaces de use cases)
+- Driving ports (outbound): definen que necesita la aplicacion (interfaces de repository, gateway, notifier)
+- Nombrar ports por intencion de dominio, no por tecnologia (OrderRepository, no PostgresOrderStore)
+
+### Implementacion de Adapters
+Paso a paso:
+1. Identificar la necesidad de dominio (que capacidad se requiere?)
+2. Definir la interfaz del port en la capa de dominio con tipos de dominio
+3. Implementar el adapter en la capa de infrastructure
+4. Registrar el adapter en el composition root via dependency injection
+5. Escribir tests especificos del adapter (integration tests con dependencias reales o testcontainers)
+
+### Primary vs Secondary Adapters
+- Primary (driving): handlers HTTP, comandos CLI, servicios gRPC, consumers de mensajes — ellos llaman a la aplicacion
+- Secondary (driven): repos de base de datos, clientes API, senders de email, publishers de colas — la aplicacion los llama
+- Ambos implementan interfaces; los primary adapters llaman a ports de use cases, los secondary adapters implementan outbound ports
+
+### Estrategia de Testing
+- Logica de dominio: unit tests con mock adapters
+- Adapters: integration tests contra infraestructura real (testcontainers, bases de datos en memoria)
+- Ports: contract tests para verificar cumplimiento del adapter
+
+### Anti-patrones a Evitar
+- Tipos especificos de tecnologia en interfaces de ports (sql.DB, http.Request en dominio)
+- Logica de adapter escapando al dominio
+- Saltar el port y acoplar dominio directamente a infrastructure
+- Una interfaz de port gigante (dividir por capacidad cohesiva)
+
+### Verificacion
+Como validar la implementacion correcta de port/adapter: dominio tiene cero imports de infrastructure, adapters son intercambiables, tests corren sin dependencias externas.

@@ -27,6 +27,16 @@ var fileOutputNames = map[string]string{
 	"spec":         "SPEC.md",
 	"plan":         "PLAN.md",
 	"tasks":        "TASKS.md",
+	// Skills command output files (all produce SKILL.md in separate directories)
+	"ddd_entity":       "SKILL.md",
+	"clean_arch_layer": "SKILL.md",
+	"bdd_scenario":     "SKILL.md",
+	"cqrs_command":     "SKILL.md",
+	"hexagonal_port":   "SKILL.md",
+	"code_review":      "SKILL.md",
+	"test_strategy":    "SKILL.md",
+	"refactor_safely":  "SKILL.md",
+	"api_design":       "SKILL.md",
 }
 
 // localeLanguageNames maps locale codes to their language name for the LLM directive.
@@ -133,6 +143,107 @@ func (b *PromptBuilder) BuildUserMessageForFile(req service.GenerationRequest, g
 	}
 
 	sb.WriteString(fmt.Sprintf("<template_guide file=\"%s\">\n", FileOutputName(guide.Name)))
+	sb.WriteString(guide.Content)
+	sb.WriteString("\n</template_guide>\n")
+
+	return sb.String()
+}
+
+// targetEcosystemDescriptions provides context about each target ecosystem's SKILL.md format.
+var targetEcosystemDescriptions = map[string]string{
+	"claude": `Target ecosystem: Claude Code (Anthropic)
+Skills are installed in ~/.claude/skills/ (global) or .claude/skills/ (project).
+YAML frontmatter fields: name, description, allowed-tools, context, agent, user-invocable.
+The skill is invoked via /skill-name or auto-invoked when Claude detects relevance.
+Substitutions available: $ARGUMENTS, ${CLAUDE_SKILL_DIR}.`,
+
+	"codex": `Target ecosystem: Codex CLI (OpenAI)
+Skills are installed in ~/.codex/skills/ (global) or .agents/skills/ (project).
+YAML frontmatter fields: name, description.
+The skill is invoked via $skill-name or implicitly when Codex detects relevance.
+Optional: agents/openai.yaml for UI metadata.`,
+
+	"antigravity": `Target ecosystem: Antigravity IDE (Google)
+Skills are installed in ~/.gemini/antigravity/skills/ (global) or .agent/skills/ (project).
+YAML frontmatter fields: name, description, triggers.
+The skill is auto-invoked when the agent determines relevance to the current request.
+Skills can bundle scripts in scripts/ subdirectory.`,
+}
+
+// BuildSkillsSystemPrompt returns a system prompt for generating Agent Skills (SKILL.md files).
+func (b *PromptBuilder) BuildSkillsSystemPrompt(skillName string, target string, locale string) string {
+	ecosystemDesc := targetEcosystemDescriptions[target]
+	if ecosystemDesc == "" {
+		ecosystemDesc = targetEcosystemDescriptions["claude"]
+	}
+
+	return fmt.Sprintf(`<role>
+You are a senior software architect specialized in creating reusable Agent Skills.
+Agent Skills are markdown-based instruction packages (SKILL.md) that teach AI coding agents
+how to approach specific architectural and engineering tasks.
+</role>
+
+<task>
+Generate a complete, production-ready SKILL.md file for the skill: %s.
+The skill must be reusable across any project that follows the architectural pattern it teaches.
+The output must include proper YAML frontmatter for the target ecosystem.
+</task>
+
+<target_ecosystem>
+%s
+</target_ecosystem>
+
+<skill_format>
+The SKILL.md file MUST follow this structure:
+
+1. YAML frontmatter (between --- markers) with at minimum: name, description
+2. Clear description of WHEN to use this skill (triggers/scenarios)
+3. Step-by-step PROCESS the agent should follow
+4. Concrete CODE EXAMPLES showing before/after or correct patterns
+5. ANTI-PATTERNS to avoid with explanations of why
+6. VERIFICATION checklist to confirm correct application
+
+The skill must be:
+- Self-contained: works without needing other files or project-specific context
+- Actionable: every instruction is concrete and executable
+- Pattern-focused: teaches the pattern, not a specific implementation
+- Language-agnostic where possible, with notes for language-specific considerations
+</skill_format>
+
+<grounding_rules>
+CRITICAL — This skill must be REUSABLE across projects:
+
+1. DO NOT reference any specific project, codebase, or domain
+2. DO NOT use placeholder variables like {{PROJECT_NAME}} — use generic examples
+3. DO include concrete code examples using common patterns (e.g., Order, User, Product as example domains)
+4. DO make instructions specific enough to be actionable, not vague guidelines
+5. Every step should be something an AI agent can directly execute
+</grounding_rules>
+
+<output_quality>
+- Complete YAML frontmatter appropriate for the target ecosystem
+- Maximum 150 lines of content (skills should be focused, not encyclopedic)
+- Code examples in fenced blocks with language tags
+- Structured with clear markdown headers
+- Every sentence must be actionable for a consuming AI agent
+</output_quality>
+
+<rules>
+- Respond ONLY with the complete SKILL.md content (frontmatter + body)
+- DO NOT wrap the response in code blocks
+- DO NOT add explanations before or after the content
+- Content must be in %s
+- Start with the --- YAML frontmatter delimiter
+</rules>`, skillName, ecosystemDesc, outputLanguageName(locale))
+}
+
+// BuildSkillsUserMessage constructs the user message for generating a single skill.
+func (b *PromptBuilder) BuildSkillsUserMessage(guide service.TemplateGuide, target string) string {
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("<skill_name>%s</skill_name>\n\n", guide.Name))
+	sb.WriteString(fmt.Sprintf("<target_ecosystem>%s</target_ecosystem>\n\n", target))
+	sb.WriteString("<template_guide>\n")
 	sb.WriteString(guide.Content)
 	sb.WriteString("\n</template_guide>\n")
 

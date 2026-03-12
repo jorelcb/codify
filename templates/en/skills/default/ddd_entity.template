@@ -1,0 +1,39 @@
+# DDD Entity Creation Skill
+
+## Purpose
+Guide an AI agent through creating domain entities following Domain-Driven Design principles.
+
+## Sections to Generate
+
+### When to Use This Skill
+Describe the scenarios where this skill should be invoked: creating new aggregates, adding value objects, defining domain invariants, modeling business concepts.
+
+### Entity Design Process
+Step-by-step workflow:
+1. Identify the aggregate boundary
+2. Define the aggregate root
+3. Extract value objects from primitive obsession
+4. Define invariants and business rules
+5. Implement factory methods for valid construction
+6. Define domain events if applicable
+
+### Value Object Patterns
+- Immutable construction with validation
+- Equality by value, not by reference
+- Self-validating (invalid state is unrepresentable)
+- Examples: Email, Money, DateRange, Address
+
+### Aggregate Root Rules
+- All external access through the root
+- Transactional consistency boundary
+- Reference other aggregates by ID only
+- Keep aggregates small
+
+### Anti-patterns to Avoid
+- Anemic domain model (entity as data bag)
+- Primitive obsession (using strings/ints for domain concepts)
+- Large aggregates spanning multiple transactional boundaries
+- Domain logic leaking to application/infrastructure layers
+
+### Validation Checklist
+How to verify the entity was created correctly: invariants enforced, VOs extracted, no infrastructure dependencies, proper encapsulation.

@@ -1,0 +1,44 @@
+# BDD Scenario Writing Skill
+
+## Purpose
+Guide an AI agent through writing Behavior-Driven Development scenarios using Gherkin syntax and implementing step definitions.
+
+## Sections to Generate
+
+### When to Use This Skill
+Describe scenarios: defining acceptance criteria, writing feature files, implementing step definitions, testing domain behavior, validating business rules.
+
+### Feature File Structure
+- Feature description with business context
+- Background for shared setup
+- Scenario naming: behavior-focused, not implementation-focused
+- Scenario Outline for parameterized testing
+
+### Writing Good Scenarios
+Principles:
+1. One behavior per scenario
+2. Given (precondition) — When (action) — Then (assertion)
+3. Business language, not technical jargon
+4. Declarative style over imperative
+5. Avoid coupling to UI or implementation details
+
+### Step Definition Patterns
+- Reusable steps with regex/cucumber expressions
+- State sharing between steps via context struct
+- Setup and teardown hooks
+- Table-driven steps for complex data
+
+### Organizing Tests
+- Feature files grouped by domain concept
+- Step definitions in dedicated packages
+- Shared helpers for common operations
+- Test fixtures and builders
+
+### Anti-patterns to Avoid
+- Testing implementation instead of behavior
+- Too many steps per scenario (>7 is a smell)
+- Incidental details in scenarios
+- Brittle steps coupled to data format
+
+### Verification
+How to validate scenarios are well-written: readable by non-developers, independent scenarios, deterministic, fast execution.

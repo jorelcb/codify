@@ -18,10 +18,10 @@ var rootCmd = &cobra.Command{
 	Use:   "ai-context-generator",
 	Short: "AI Context Generator - Generate AI-optimized context files for your projects",
 	Long: `AI Context Generator takes your project description and generates
-context files using Anthropic Claude. These files give your AI development
-agent the architectural context it needs to build coherently.
+context files using LLMs (Anthropic Claude or Google Gemini). These files give
+your AI development agent the architectural context it needs to build coherently.
 
-Requires ANTHROPIC_API_KEY environment variable.`,
+Requires ANTHROPIC_API_KEY (for Claude) or GEMINI_API_KEY (for Gemini) environment variable.`,
 	Version: Version,
 }
 
@@ -41,6 +41,7 @@ func init() {
 	rootCmd.AddCommand(commands.NewGenerateCmd())
 	rootCmd.AddCommand(commands.NewAnalyzeCmd())
 	rootCmd.AddCommand(commands.NewSpecCmd())
+	rootCmd.AddCommand(commands.NewSkillsCmd())
 	rootCmd.AddCommand(commands.NewServeCmd())
 	rootCmd.AddCommand(commands.NewListCmd())
 

@@ -1,0 +1,42 @@
+# Hexagonal Architecture Port/Adapter Skill
+
+## Purpose
+Guide an AI agent through defining ports (interfaces) and implementing adapters following Hexagonal Architecture (Ports & Adapters).
+
+## Sections to Generate
+
+### When to Use This Skill
+Describe scenarios: integrating external services, defining repository contracts, creating API clients, implementing database access, adding messaging adapters.
+
+### Port Design
+- Ports are interfaces defined in the domain layer
+- Driven ports (inbound): define how the application is used (use case interfaces)
+- Driving ports (outbound): define what the application needs (repository, gateway, notifier interfaces)
+- Name ports by domain intent, not technology (OrderRepository, not PostgresOrderStore)
+
+### Adapter Implementation
+Step-by-step:
+1. Identify the domain need (what capability is required?)
+2. Define the port interface in domain layer with domain types
+3. Implement the adapter in infrastructure layer
+4. Register adapter in composition root via dependency injection
+5. Write adapter-specific tests (integration tests with real dependencies or testcontainers)
+
+### Primary vs Secondary Adapters
+- Primary (driving): HTTP handlers, CLI commands, gRPC services, message consumers — they call the application
+- Secondary (driven): database repos, API clients, email senders, queue publishers — the application calls them
+- Both implement interfaces; primary adapters call use case ports, secondary adapters implement outbound ports
+
+### Testing Strategy
+- Domain logic: unit tests with mock adapters
+- Adapters: integration tests against real infrastructure (testcontainers, in-memory databases)
+- Ports: contract tests to verify adapter compliance
+
+### Anti-patterns to Avoid
+- Technology-specific types in port interfaces (sql.DB, http.Request in domain)
+- Adapter logic leaking into domain
+- Skipping the port and coupling domain directly to infrastructure
+- One giant port interface (split by cohesive capability)
+
+### Verification
+How to validate correct port/adapter implementation: domain has zero infrastructure imports, adapters are swappable, tests run without external dependencies.

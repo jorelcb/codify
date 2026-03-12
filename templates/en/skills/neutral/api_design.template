@@ -1,0 +1,47 @@
+# API Design Skill
+
+## Purpose
+Guide an AI agent through designing well-structured REST or gRPC APIs with clear contracts.
+
+## Sections to Generate
+
+### When to Use This Skill
+Describe scenarios: designing new endpoints, defining API contracts, versioning APIs, documenting interfaces, reviewing API consistency.
+
+### REST API Design Principles
+- Resource-oriented URLs (nouns, not verbs)
+- Proper HTTP method usage (GET reads, POST creates, PUT replaces, PATCH updates, DELETE removes)
+- Consistent naming conventions (kebab-case for URLs, camelCase or snake_case for JSON)
+- Meaningful status codes (201 for created, 404 for not found, 422 for validation errors)
+- Pagination, filtering, and sorting conventions
+
+### API Contract Definition
+Step-by-step:
+1. Identify the resource and its lifecycle
+2. Define request/response schemas
+3. Specify validation rules and error responses
+4. Document authentication and authorization requirements
+5. Define rate limits and quotas if applicable
+6. Version the API from day one
+
+### Error Response Format
+- Consistent error structure across all endpoints
+- Machine-readable error codes
+- Human-readable error messages
+- Validation errors with field-level detail
+
+### Versioning Strategy
+- URL path versioning (/v1/resource) vs header versioning
+- Breaking vs non-breaking changes
+- Deprecation policy and timeline
+- Migration guides for consumers
+
+### Anti-patterns to Avoid
+- Inconsistent naming across endpoints
+- Exposing internal data models directly
+- Missing pagination on list endpoints
+- Overloading GET with query parameters for complex operations
+- Ignoring idempotency for write operations
+
+### Verification
+How to validate API design: consistent conventions, proper status codes, clear error messages, documented contracts, versioning strategy.

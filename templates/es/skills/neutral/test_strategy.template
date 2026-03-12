@@ -1,0 +1,44 @@
+# Skill de Diseno de Estrategia de Testing
+
+## Proposito
+Guiar a un agente de IA en el diseno de una estrategia de testing integral para un codebase.
+
+## Secciones a Generar
+
+### Cuando Usar Este Skill
+Describe escenarios: configurar testing para un nuevo proyecto, mejorar cobertura de tests, elegir tipos de test, definir limites de testing.
+
+### Piramide de Tests
+- Unit tests: rapidos, aislados, prueban unidades individuales de logica
+- Integration tests: verifican interacciones entre componentes, queries a base de datos, llamadas API
+- End-to-end tests: validan flujos completos de usuario, cantidad minima
+- Contract tests: verifican limites de API entre servicios
+
+### Elegir Que Probar
+Marco de decision:
+1. Flujos criticos de negocio: siempre probar exhaustivamente
+2. Logica compleja: unit test con casos borde
+3. Integraciones externas: integration test con dependencias reales/containers
+4. Happy paths: E2E para flujos criticos de usuario
+5. Omitir: getters/setters triviales, boilerplate de framework, codigo generado
+
+### Organizacion de Tests
+- Espejar estructura de codigo fuente en directorios de test
+- Fixtures y builders compartidos
+- Test helpers para setup comun
+- Nombrado claro: TestFuncion_Escenario_ComportamientoEsperado
+
+### Indicadores de Calidad de Tests
+- Los tests rompen cuando el comportamiento cambia (no cuando la implementacion cambia)
+- Cada test verifica un comportamiento
+- Los tests son independientes y pueden correr en cualquier orden
+- Ciclo de feedback rapido (unit tests < 5s, integration < 30s)
+
+### Anti-patrones a Evitar
+- Probar detalles de implementacion en lugar de comportamiento
+- Mockear todo (no probar nada real)
+- Estado mutable compartido entre tests
+- Tests inestables por timing o dependencias externas
+
+### Verificacion
+Como validar la estrategia de testing: cobertura de flujos criticos, feedback rapido en CI, tests como documentacion de comportamiento.

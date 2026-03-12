@@ -1,42 +1,87 @@
 # Changelog - AI Context Generator
 
-Todos los cambios notables de este proyecto seran documentados en este archivo.
+All notable changes to this project will be documented in this file.
 
-Basado en [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - 2026-02-19 - Restructure output (AGENTS.md standard) + spec command
+## [2.3.0] - 2026-03-12 - Agent Skills generation
 
 ### Added
-- Output reestructurado: AGENTS.md (root) + context/ (CONTEXT.md, INTERACTIONS_LOG.md)
-- System prompts con XML tags (`<role>`, `<task>`, `<workflow>`, `<output_quality>`)
-- Templates optimizados para output conciso y accionable
-- Comando `spec`: genera CONSTITUTION.md, SPEC.md, PLAN.md, TASKS.md
-- Spec context-dependent: lee contexto existente via `--from-context`
-- Template loader configurable (mapping custom para spec/)
-- Context reader para leer AGENTS.md + CONTEXT.md existentes
+- `skills` command: generates reusable Agent Skills (SKILL.md) based on architectural presets
+- Multi-ecosystem support: `--target claude|codex|antigravity` with ecosystem-specific YAML frontmatter
+- Default preset skills: DDD entity, Clean Architecture layer, BDD scenario, CQRS command, Hexagonal port/adapter
+- Neutral preset skills: code review, test strategy, safe refactoring, API design
+- Skill templates for both locales (en/es) in `templates/{locale}/skills/{preset}/`
+- `GenerateSkillsCommand` in application layer
+- `SkillsConfig` DTO with target ecosystem validation
+- `BuildSkillsSystemPrompt()` and `BuildSkillsUserMessage()` in PromptBuilder
+- `generate_skills` MCP tool
+- `Target` field in `GenerationRequest` for skills mode
+- Skills mode (`"skills"`) in both AnthropicProvider and GeminiProvider
+
+## [2.2.0] - 2026-03-11 - Multi-provider LLM, MCP server, analyze command, HTTP transport
+
+### Added
+- **Gemini LLM provider** (`gemini_provider.go`): Google Gemini API with streaming via `google.golang.org/genai` SDK
+- **Provider factory** (`provider_factory.go`): resolves provider by model prefix (`gemini-*` → Gemini, else → Anthropic)
+- Independent API key resolution: `ANTHROPIC_API_KEY` for Claude, `GEMINI_API_KEY`/`GOOGLE_API_KEY` for Gemini
+- Default Gemini model: `gemini-3.1-pro-preview`
+- MCP Server mode (`serve` command): exposes tools via Model Context Protocol
+- MCP tools: `generate_context`, `generate_specs`, `analyze_project`
+- Transport strategy pattern: `StdioTransport` (local) and `HTTPTransport` (remote)
+- `--transport` flag (stdio, http) and `--addr` flag for HTTP transport
+- `analyze` command: scans existing projects and generates context from structure
+- `ProjectScanner` infrastructure: detects language, framework, dependencies, directory tree, README, config signals
+- Framework detection for 20+ frameworks (Go, JS, Python, Rust, etc.)
+- Config signal detection (GitHub Actions, Docker, Makefile, Terraform, K8s, Helm)
+- `--with-specs` flag on `generate` and `analyze`: chains context + spec generation in one command
+- `google.golang.org/genai` v1.49.0 dependency
+- `mcp-go` v0.45.0 dependency
+
+### Changed
+- `generate.go`, `spec.go`, `server.go` refactored to use `llm.NewProvider()` factory instead of direct `NewAnthropicProvider()`
+- `serve.go` refactored from switch/case to transport strategy pattern
+- `--model` flag now accepts both `claude-*` and `gemini-*` models
+
+## [2.1.0] - 2026-03-06 - Locale support, anti-hallucination, legacy cleanup
+
+### Added
+- Multi-locale support: `--locale en|es` flag for both `generate` and `spec` commands
+- Templates reorganized into `templates/{locale}/{preset}/` hierarchy
+- `development_guide.template`: methodology, testing, security, delivery expectations
+- Language-specific `idioms.template` files for Go, JavaScript, Python
+- `<grounding_rules>` in system prompts: distinguishes TECHNICAL FRAMEWORK vs DOMAIN LOGIC
+- `[DEFINE]` markers for domain details not covered by user input
+- `--from-file` / `-f` flag on generate command: read description from file
+
+### Changed
+- System prompts rewritten in English (LLM's native language) with locale-controlled output
+- Template loader now locale-aware and language-aware
 
 ### Removed
-- PROMPT.md y SCAFFOLDING.md (absorbidos en AGENTS.md)
+- Legacy template directories, bash tests, unused domain/template layer
 
-## [1.0.0] - 2026-02-19 - Primera version funcional
+## [1.1.0] - 2026-02-19 - Template restructuring + spec command
 
 ### Added
-- Generacion de archivos de contexto usando Anthropic Claude API
-- Streaming con progreso por archivo (`[1/4] Generating PROMPT.md... done`)
-- Generacion per-file (4 llamadas API independientes, una por archivo)
-- CLI con flags: `--description`, `--language`, `--type`, `--architecture`, `--model`
-- PromptBuilder para construir system/user prompts por archivo
-- FileSystemTemplateLoader para cargar templates como guias estructurales
-- GenerateContextCommand (orquesta flujo completo)
-- AnthropicProvider con SDK oficial (`anthropic-sdk-go`)
-- DDD/Clean Architecture: Domain, Application, Infrastructure, Interfaces
-- Filesystem infrastructure (FileWriter, DirectoryManager)
-- Value objects con validacion (ProjectDescription, Language, Architecture, etc.)
-- Tests unitarios para prompt builder, template loader, generate command
+- `spec` command: generates SDD specifications (CONSTITUTION.md, SPEC.md, PLAN.md, TASKS.md) from existing context
+- `agents.template`: root file following AGENTS.md standard
+- XML tags in system prompts (`<role>`, `<task>`, `<workflow>`, `<output_quality>`)
+- `GenerateSpecCommand`, `SpecConfig`, `ContextReader`
+- `BuildSpecSystemPrompt()` with `<existing_context>`
 
-### Output
-Genera 4 archivos de contexto optimizados para agentes de IA:
-- `PROMPT.md` - Rol y mision para el agente de desarrollo
-- `CONTEXT.md` - Arquitectura, patrones, dominio
-- `SCAFFOLDING.md` - Estructura recomendada del proyecto
-- `INTERACTIONS_LOG.md` - Bitacora inicial de desarrollo
+### Changed
+- Output restructured: AGENTS.md at root, CONTEXT.md and INTERACTIONS_LOG.md in context/
+
+## [1.0.0] - 2026-02-19 - First functional version
+
+### Added
+- Context file generation using Anthropic Claude API with streaming
+- Per-file generation (independent API calls per output file)
+- CLI: `ai-context-generator generate <name> --description "..." [--language] [--type] [--architecture] [--model]`
+- PromptBuilder, FileSystemTemplateLoader, GenerateContextCommand
+- AnthropicProvider with official SDK (`anthropic-sdk-go v1.25.0`)
+- DDD/Clean Architecture: Domain, Application, Infrastructure, Interfaces layers
+- Value objects with validation
+- Unit tests for all components

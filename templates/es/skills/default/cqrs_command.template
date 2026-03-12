@@ -1,0 +1,42 @@
+# Skill de CQRS Command/Query
+
+## Proposito
+Guiar a un agente de IA en la implementacion del patron Command Query Responsibility Segregation para use cases.
+
+## Secciones a Generar
+
+### Cuando Usar Este Skill
+Describe escenarios: agregar nuevos use cases, separar operaciones de lectura/escritura, implementar command handlers, crear query handlers.
+
+### Commands vs Queries
+- Commands: cambian estado, retornan confirmacion/resultado, nombrados como verbos imperativos (CreateOrder, UpdateProfile)
+- Queries: leen estado, retornan datos, nombrados como preguntas (GetOrderById, ListActiveUsers)
+- Nunca mezclar: un command no debe retornar datos de dominio, un query no debe modificar estado
+
+### Patron de Implementacion de Commands
+Paso a paso:
+1. Definir el struct del Command (DTO de entrada con validacion)
+2. Crear el CommandHandler con dependencias inyectadas (domain services, repositories)
+3. Orquestar: validar entrada -> ejecutar logica de dominio -> persistir -> retornar resultado
+4. El command handler es el limite transaccional
+
+### Patron de Implementacion de Queries
+Paso a paso:
+1. Definir el struct del Query (parametros de filtro/paginacion)
+2. Crear el QueryHandler con dependencias optimizadas para lectura
+3. Retornar DTOs, nunca entidades de dominio
+4. Los queries pueden saltar la capa de dominio para rendimiento de lectura
+
+### Diseno de DTOs
+- DTOs de entrada: validacion en el limite, mapear a objetos de dominio dentro del handler
+- DTOs de salida: aplanar la complejidad del dominio para el consumidor
+- Nunca exponer entidades de dominio a traves de DTOs
+
+### Anti-patrones a Evitar
+- Commands gordos que hacen todo (dividir en commands mas pequenos)
+- Queries que disparan efectos secundarios
+- Logica de dominio en el handler (empujarla a domain services/entities)
+- Retornar entidades de dominio desde command handlers
+
+### Verificacion
+Como validar que CQRS esta aplicado correctamente: separacion clara, commands no retornan datos, queries no modifican estado, handlers son orquestadores delgados.

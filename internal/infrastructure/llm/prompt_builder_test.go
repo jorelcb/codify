@@ -122,6 +122,16 @@ func TestFileOutputName(t *testing.T) {
 		{"spec", "SPEC.md"},
 		{"plan", "PLAN.md"},
 		{"tasks", "TASKS.md"},
+		// Skills output files
+		{"ddd_entity", "SKILL.md"},
+		{"clean_arch_layer", "SKILL.md"},
+		{"bdd_scenario", "SKILL.md"},
+		{"cqrs_command", "SKILL.md"},
+		{"hexagonal_port", "SKILL.md"},
+		{"code_review", "SKILL.md"},
+		{"test_strategy", "SKILL.md"},
+		{"refactor_safely", "SKILL.md"},
+		{"api_design", "SKILL.md"},
 		{"unknown", "unknown.md"},
 	}
 
@@ -132,6 +142,72 @@ func TestFileOutputName(t *testing.T) {
 				t.Errorf("FileOutputName(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestPromptBuilder_BuildSkillsSystemPrompt(t *testing.T) {
+	builder := NewPromptBuilder()
+
+	tests := []struct {
+		skillName string
+		target    string
+		wantTag   string
+	}{
+		{"ddd_entity", "claude", "Claude Code"},
+		{"code_review", "codex", "Codex CLI"},
+		{"bdd_scenario", "antigravity", "Antigravity IDE"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.skillName+"_"+tt.target, func(t *testing.T) {
+			prompt := builder.BuildSkillsSystemPrompt(tt.skillName, tt.target, "en")
+
+			if prompt == "" {
+				t.Error("BuildSkillsSystemPrompt() returned empty string")
+			}
+			if !strings.Contains(prompt, tt.skillName) {
+				t.Errorf("BuildSkillsSystemPrompt() should mention skill name %s", tt.skillName)
+			}
+			if !strings.Contains(prompt, tt.wantTag) {
+				t.Errorf("BuildSkillsSystemPrompt() should mention target %s", tt.wantTag)
+			}
+			if !strings.Contains(prompt, "<role>") {
+				t.Error("BuildSkillsSystemPrompt() should contain <role> XML tag")
+			}
+			if !strings.Contains(prompt, "<skill_format>") {
+				t.Error("BuildSkillsSystemPrompt() should contain <skill_format> XML tag")
+			}
+			if !strings.Contains(prompt, "SKILL.md") {
+				t.Error("BuildSkillsSystemPrompt() should mention SKILL.md")
+			}
+		})
+	}
+}
+
+func TestPromptBuilder_BuildSkillsUserMessage(t *testing.T) {
+	builder := NewPromptBuilder()
+
+	guide := service.TemplateGuide{
+		Name:    "ddd_entity",
+		Content: "# DDD Entity Creation Skill\n\n## Purpose\nGuide an AI agent...",
+	}
+
+	msg := builder.BuildSkillsUserMessage(guide, "claude")
+
+	if msg == "" {
+		t.Error("BuildSkillsUserMessage() returned empty string")
+	}
+	if !strings.Contains(msg, "<skill_name>ddd_entity</skill_name>") {
+		t.Error("BuildSkillsUserMessage() should contain skill_name XML tag")
+	}
+	if !strings.Contains(msg, "<target_ecosystem>claude</target_ecosystem>") {
+		t.Error("BuildSkillsUserMessage() should contain target_ecosystem XML tag")
+	}
+	if !strings.Contains(msg, "<template_guide>") {
+		t.Error("BuildSkillsUserMessage() should contain template_guide XML tag")
+	}
+	if !strings.Contains(msg, "DDD Entity Creation Skill") {
+		t.Error("BuildSkillsUserMessage() should include guide content")
 	}
 }
 

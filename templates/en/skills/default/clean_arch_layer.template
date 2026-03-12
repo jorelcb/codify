@@ -1,0 +1,39 @@
+# Clean Architecture Layer Skill
+
+## Purpose
+Guide an AI agent through placing code in the correct architectural layer and wiring dependencies properly following Clean Architecture.
+
+## Sections to Generate
+
+### When to Use This Skill
+Describe scenarios: adding new features, creating services, implementing adapters, connecting layers, resolving "where does this code go?" decisions.
+
+### Layer Responsibilities
+Define each layer's scope and what belongs in it:
+1. Domain Layer — entities, value objects, repository interfaces, domain services, domain events
+2. Application Layer — use cases (commands/queries), DTOs, orchestration, no business logic
+3. Infrastructure Layer — database adapters, API clients, filesystem, external service implementations
+4. Interfaces Layer — HTTP handlers, CLI commands, gRPC services, message consumers
+
+### The Dependency Rule
+- Dependencies point inward ONLY (interfaces → application → domain)
+- Inner layers NEVER import from outer layers
+- Use interfaces (ports) defined in domain, implemented in infrastructure
+- Dependency injection wires everything together at composition root
+
+### Adding a New Feature Workflow
+Step-by-step for placing code correctly:
+1. Define the domain concept (entity/VO/service interface)
+2. Create the use case in application layer
+3. Implement infrastructure adapters
+4. Wire the interface handler
+5. Register dependencies at composition root
+
+### Common Violations
+- Domain importing infrastructure packages
+- Application layer doing HTTP/DB operations directly
+- Business logic in handlers/controllers
+- Circular dependencies between layers
+
+### Verification
+How to validate correct placement: import graph analysis, dependency direction check, layer isolation test.

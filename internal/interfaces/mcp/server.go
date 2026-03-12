@@ -39,6 +39,7 @@ func NewServer() *server.MCPServer {
 		generateContextTool(),
 		generateSpecsTool(),
 		analyzeProjectTool(),
+		generateSkillsTool(),
 	)
 
 	return s
@@ -87,6 +88,20 @@ func analyzeProjectTool() server.ServerTool {
 	)
 
 	return server.ServerTool{Tool: tool, Handler: handleAnalyzeProject}
+}
+
+// generateSkillsTool defines the generate_skills MCP tool.
+func generateSkillsTool() server.ServerTool {
+	tool := mcp.NewTool("generate_skills",
+		mcp.WithDescription("Generate reusable AI agent skills (SKILL.md) based on architectural presets"),
+		mcp.WithString("preset", mcp.Description("Template preset: default (DDD/Clean Architecture) or neutral"), mcp.DefaultString("default")),
+		mcp.WithString("locale", mcp.Description("Output language: en or es"), mcp.DefaultString("en")),
+		mcp.WithString("target", mcp.Description("Target ecosystem: claude, codex, or antigravity"), mcp.DefaultString("claude")),
+		mcp.WithString("model", mcp.Description("LLM model to use"), mcp.DefaultString("claude-sonnet-4-6")),
+		mcp.WithString("output", mcp.Description("Output directory"), mcp.DefaultString("./output/skills/default/")),
+	)
+
+	return server.ServerTool{Tool: tool, Handler: handleGenerateSkills}
 }
 
 // --- Tool Handlers ---
@@ -224,6 +239,31 @@ func handleAnalyzeProject(ctx context.Context, request mcp.CallToolRequest) (*mc
 	return mcp.NewToolResultText(sb.String()), nil
 }
 
+func handleGenerateSkills(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	preset := stringArgDefault(request, "preset", "default")
+	locale := stringArgDefault(request, "locale", "en")
+	target := stringArgDefault(request, "target", "claude")
+	model := stringArgDefault(request, "model", "")
+	output := stringArgDefault(request, "output", "./output/skills/default/")
+
+	result, err := executeSkills(ctx, preset, locale, target, model, output)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Skills generation failed: %v", err)), nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Agent skills generated (preset: %s, target: %s)\n", preset, target))
+	sb.WriteString(fmt.Sprintf("Output: %s\n", result.OutputPath))
+	sb.WriteString(fmt.Sprintf("Model: %s\n", result.Model))
+	sb.WriteString(fmt.Sprintf("Tokens: %d in / %d out\n", result.TokensIn, result.TokensOut))
+	sb.WriteString("\nGenerated skills:\n")
+	for _, f := range result.GeneratedFiles {
+		sb.WriteString(fmt.Sprintf("  - %s\n", f))
+	}
+
+	return mcp.NewToolResultText(sb.String()), nil
+}
+
 // --- Execution helpers (shared by all handlers) ---
 
 func executeGenerate(ctx context.Context, name, description, language, preset, locale, model string) (*dto.GenerationResult, error) {
@@ -346,6 +386,66 @@ func executeSpecs(ctx context.Context, name, fromContextPath, locale, model stri
 	}
 
 	return result, nil
+}
+
+// skillsDefaultTemplateMapping maps default preset skill template files to guide names.
+var skillsDefaultTemplateMapping = map[string]string{
+	"ddd_entity.template":       "ddd_entity",
+	"clean_arch_layer.template": "clean_arch_layer",
+	"bdd_scenario.template":     "bdd_scenario",
+	"cqrs_command.template":     "cqrs_command",
+	"hexagonal_port.template":   "hexagonal_port",
+}
+
+// skillsNeutralTemplateMapping maps neutral preset skill template files to guide names.
+var skillsNeutralTemplateMapping = map[string]string{
+	"code_review.template":     "code_review",
+	"test_strategy.template":   "test_strategy",
+	"refactor_safely.template": "refactor_safely",
+	"api_design.template":      "api_design",
+}
+
+func executeSkills(ctx context.Context, preset, locale, target, model, output string) (*dto.GenerationResult, error) {
+	apiKey, err := llm.ResolveAPIKey(model)
+	if err != nil {
+		return nil, err
+	}
+
+	if !validPresets[preset] {
+		preset = "default"
+	}
+
+	templateMapping := skillsDefaultTemplateMapping
+	if preset == "neutral" {
+		templateMapping = skillsNeutralTemplateMapping
+	}
+
+	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping(
+		filepath.Join("templates", locale, "skills", preset), templateMapping,
+	)
+	guides, err := templateLoader.LoadAll()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load skill templates: %w", err)
+	}
+
+	provider, err := llm.NewProvider(ctx, model, apiKey, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create LLM provider: %w", err)
+	}
+	fileWriter := filesystem.NewFileWriter()
+	dirManager := filesystem.NewDirectoryManager()
+
+	skillsCmd := command.NewGenerateSkillsCommand(provider, fileWriter, dirManager)
+
+	config := &dto.SkillsConfig{
+		Preset:     preset,
+		Locale:     locale,
+		Target:     target,
+		Model:      model,
+		OutputPath: output,
+	}
+
+	return skillsCmd.Execute(ctx, config, guides)
 }
 
 // --- Argument helpers ---

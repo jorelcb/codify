@@ -1,0 +1,44 @@
+# Skill de Escritura de Escenarios BDD
+
+## Proposito
+Guiar a un agente de IA en la escritura de escenarios de Behavior-Driven Development usando sintaxis Gherkin e implementando step definitions.
+
+## Secciones a Generar
+
+### Cuando Usar Este Skill
+Describe escenarios: definir criterios de aceptacion, escribir feature files, implementar step definitions, probar comportamiento de dominio, validar reglas de negocio.
+
+### Estructura del Feature File
+- Descripcion del feature con contexto de negocio
+- Background para setup compartido
+- Nombrado de escenarios: enfocado en comportamiento, no en implementacion
+- Scenario Outline para pruebas parametrizadas
+
+### Escribiendo Buenos Escenarios
+Principios:
+1. Un comportamiento por escenario
+2. Given (precondicion) — When (accion) — Then (asercion)
+3. Lenguaje de negocio, no jerga tecnica
+4. Estilo declarativo sobre imperativo
+5. Evitar acoplamiento a UI o detalles de implementacion
+
+### Patrones de Step Definitions
+- Steps reutilizables con regex/cucumber expressions
+- Estado compartido entre steps via context struct
+- Hooks de setup y teardown
+- Steps con tablas para datos complejos
+
+### Organizacion de Tests
+- Feature files agrupados por concepto de dominio
+- Step definitions en paquetes dedicados
+- Helpers compartidos para operaciones comunes
+- Test fixtures y builders
+
+### Anti-patrones a Evitar
+- Probar implementacion en lugar de comportamiento
+- Demasiados steps por escenario (>7 es un smell)
+- Detalles incidentales en escenarios
+- Steps fragiles acoplados al formato de datos
+
+### Verificacion
+Como validar que los escenarios estan bien escritos: legibles por no-desarrolladores, escenarios independientes, deterministicos, ejecucion rapida.

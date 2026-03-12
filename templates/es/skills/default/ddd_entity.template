@@ -1,0 +1,39 @@
+# Skill de Creacion de Entidades DDD
+
+## Proposito
+Guiar a un agente de IA en la creacion de entidades de dominio siguiendo los principios de Domain-Driven Design.
+
+## Secciones a Generar
+
+### Cuando Usar Este Skill
+Describe los escenarios donde este skill debe invocarse: crear nuevos aggregates, agregar value objects, definir invariantes de dominio, modelar conceptos de negocio.
+
+### Proceso de Diseno de Entidades
+Flujo de trabajo paso a paso:
+1. Identificar el limite del aggregate
+2. Definir el Aggregate Root
+3. Extraer Value Objects para eliminar primitive obsession
+4. Definir invariantes y reglas de negocio
+5. Implementar factory methods para construccion valida
+6. Definir domain events si aplica
+
+### Patrones de Value Objects
+- Construccion inmutable con validacion
+- Igualdad por valor, no por referencia
+- Auto-validacion (estado invalido es irrepresentable)
+- Ejemplos: Email, Money, DateRange, Address
+
+### Reglas del Aggregate Root
+- Todo acceso externo a traves del root
+- Limite de consistencia transaccional
+- Referenciar otros aggregates solo por ID
+- Mantener los aggregates pequenos
+
+### Anti-patrones a Evitar
+- Anemic domain model (entidad como bolsa de datos)
+- Primitive obsession (usar strings/ints para conceptos de dominio)
+- Aggregates grandes que cruzan multiples limites transaccionales
+- Logica de dominio escapando a capas de application/infrastructure
+
+### Lista de Verificacion
+Como verificar que la entidad fue creada correctamente: invariantes aplicadas, VOs extraidos, sin dependencias de infraestructura, encapsulamiento adecuado.

@@ -1,0 +1,42 @@
+# CQRS Command/Query Skill
+
+## Purpose
+Guide an AI agent through implementing the Command Query Responsibility Segregation pattern for use cases.
+
+## Sections to Generate
+
+### When to Use This Skill
+Describe scenarios: adding new use cases, separating read/write operations, implementing command handlers, creating query handlers.
+
+### Commands vs Queries
+- Commands: change state, return confirmation/result, named as imperative verbs (CreateOrder, UpdateProfile)
+- Queries: read state, return data, named as questions (GetOrderById, ListActiveUsers)
+- Never mix: a command should not return domain data, a query should not modify state
+
+### Command Implementation Pattern
+Step-by-step:
+1. Define the Command struct (input DTO with validation)
+2. Create the CommandHandler with injected dependencies (domain services, repositories)
+3. Orchestrate: validate input → execute domain logic → persist → return result
+4. Command handler is the transaction boundary
+
+### Query Implementation Pattern
+Step-by-step:
+1. Define the Query struct (filter/pagination parameters)
+2. Create the QueryHandler with read-optimized dependencies
+3. Return DTOs, never domain entities
+4. Queries can bypass domain layer for read performance
+
+### DTO Design
+- Input DTOs: validation at boundary, map to domain objects inside handler
+- Output DTOs: flatten domain complexity for the consumer
+- Never expose domain entities through DTOs
+
+### Anti-patterns to Avoid
+- Fat commands that do everything (split into smaller commands)
+- Queries that trigger side effects
+- Domain logic in the handler (push it to domain services/entities)
+- Returning domain entities from command handlers
+
+### Verification
+How to validate CQRS is applied correctly: clear separation, commands don't return data, queries don't modify state, handlers are thin orchestrators.

@@ -95,12 +95,18 @@ func (p *GeminiProvider) generateSingleFile(
 	guide service.TemplateGuide,
 ) (content string, tokensIn int, tokensOut int, err error) {
 	var systemPrompt string
-	if req.Mode == "spec" {
+	var userMessage string
+	switch req.Mode {
+	case "spec":
 		systemPrompt = p.promptBuilder.BuildSpecSystemPrompt(req.ExistingContext, req.Locale)
-	} else {
+		userMessage = p.promptBuilder.BuildUserMessageForFile(req, guide)
+	case "skills":
+		systemPrompt = p.promptBuilder.BuildSkillsSystemPrompt(guide.Name, req.Target, req.Locale)
+		userMessage = p.promptBuilder.BuildSkillsUserMessage(guide, req.Target)
+	default:
 		systemPrompt = p.promptBuilder.BuildSystemPromptForFile(guide.Name, req.Locale)
+		userMessage = p.promptBuilder.BuildUserMessageForFile(req, guide)
 	}
-	userMessage := p.promptBuilder.BuildUserMessageForFile(req, guide)
 
 	config := &genai.GenerateContentConfig{
 		SystemInstruction: genai.NewContentFromText(systemPrompt, genai.RoleUser),

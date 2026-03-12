@@ -1,0 +1,42 @@
+# Skill de Code Review
+
+## Proposito
+Guiar a un agente de IA en la realizacion de code reviews estructurados y accionables.
+
+## Secciones a Generar
+
+### Cuando Usar Este Skill
+Describe escenarios: revisar pull requests, auditar calidad de codigo, identificar bugs, sugerir mejoras, validacion pre-merge.
+
+### Proceso de Review
+Flujo de trabajo paso a paso:
+1. Entender la intencion (que intenta lograr este cambio?)
+2. Verificar correctitud (hace lo que dice?)
+3. Revisar casos borde y manejo de errores
+4. Evaluar legibilidad y mantenibilidad
+5. Evaluar implicaciones de rendimiento
+6. Verificar cobertura de tests
+7. Proveer feedback accionable
+
+### Que Buscar
+Categorias de problemas:
+- **Bugs**: errores de logica, off-by-one, manejo de null/nil, race conditions
+- **Seguridad**: injection, bypass de autenticacion, exposicion de datos, deserializacion insegura
+- **Rendimiento**: queries N+1, allocations innecesarias, indices faltantes, operaciones sin limite
+- **Mantenibilidad**: nombrado, complejidad, duplicacion, acoplamiento, abstracciones faltantes
+- **Testing**: casos faltantes, aserciones fragiles, aislamiento de tests
+
+### Formato del Feedback
+- Ser especifico: senalar lineas exactas, sugerir alternativas concretas
+- Categorizar: blocker / sugerencia / nitpick
+- Explicar el por que, no solo el que
+- Reconocer buenos patrones tambien
+
+### Anti-patrones en Reviews
+- Bikeshedding en estilo mientras se ignoran bugs de logica
+- Reescribir el PR en comentarios en lugar de colaborar
+- Aprobar sin realmente leer
+- Bloquear por preferencias subjetivas
+
+### Verificacion
+Como validar la calidad del review: todos los blockers tienen correcciones concretas, el feedback es accionable, sin falsos positivos.

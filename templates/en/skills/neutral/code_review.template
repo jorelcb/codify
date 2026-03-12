@@ -1,0 +1,42 @@
+# Code Review Skill
+
+## Purpose
+Guide an AI agent through performing structured, actionable code reviews.
+
+## Sections to Generate
+
+### When to Use This Skill
+Describe scenarios: reviewing pull requests, auditing code quality, identifying bugs, suggesting improvements, pre-merge validation.
+
+### Review Process
+Step-by-step workflow:
+1. Understand the intent (what is this change trying to achieve?)
+2. Check correctness (does it do what it claims?)
+3. Check edge cases and error handling
+4. Evaluate readability and maintainability
+5. Assess performance implications
+6. Verify test coverage
+7. Provide actionable feedback
+
+### What to Look For
+Categories of issues:
+- **Bugs**: logic errors, off-by-one, null/nil handling, race conditions
+- **Security**: injection, auth bypass, data exposure, unsafe deserialization
+- **Performance**: N+1 queries, unnecessary allocations, missing indexes, unbounded operations
+- **Maintainability**: naming, complexity, duplication, coupling, missing abstractions
+- **Testing**: missing cases, brittle assertions, test isolation
+
+### Feedback Format
+- Be specific: point to exact lines, suggest concrete alternatives
+- Categorize: blocker / suggestion / nitpick
+- Explain why, not just what
+- Praise good patterns too
+
+### Anti-patterns in Reviews
+- Bikeshedding on style while ignoring logic bugs
+- Rewriting the PR in comments instead of collaborating
+- Approving without actually reading
+- Blocking on subjective preferences
+
+### Verification
+How to validate review quality: all blockers have concrete fixes, feedback is actionable, no false positives.

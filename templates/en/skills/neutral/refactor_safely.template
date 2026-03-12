@@ -1,0 +1,46 @@
+# Safe Refactoring Skill
+
+## Purpose
+Guide an AI agent through refactoring code safely with confidence, preserving behavior while improving structure.
+
+## Sections to Generate
+
+### When to Use This Skill
+Describe scenarios: improving code readability, reducing complexity, extracting abstractions, removing duplication, preparing code for new features.
+
+### Safe Refactoring Process
+Step-by-step workflow:
+1. Ensure existing tests pass (green baseline)
+2. Identify the refactoring target and goal
+3. Apply one small transformation at a time
+4. Run tests after each transformation
+5. Commit each successful step
+6. If tests break, revert the last step and try a smaller change
+
+### Common Refactoring Patterns
+- Extract method/function: reduce complexity, improve naming
+- Extract interface: decouple dependencies
+- Rename: improve clarity and consistency
+- Move: place code in the correct module/package
+- Inline: remove unnecessary indirection
+- Replace conditional with polymorphism
+
+### When NOT to Refactor
+- No test coverage (add tests first)
+- Under time pressure for a critical fix (fix first, refactor later)
+- Refactoring and adding features simultaneously (do one at a time)
+- Code that will be deleted soon
+
+### Risk Assessment
+- Low risk: rename, extract method, reorder parameters
+- Medium risk: extract class/interface, change signatures
+- High risk: restructure modules, change data flow, modify shared state
+
+### Anti-patterns to Avoid
+- Big bang refactoring (too many changes at once)
+- Refactoring without tests
+- Mixing refactoring with feature work in the same commit
+- Gold plating (refactoring beyond what's needed)
+
+### Verification
+How to validate refactoring was successful: all tests still pass, behavior unchanged, code complexity reduced, readability improved.

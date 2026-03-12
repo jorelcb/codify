@@ -1,0 +1,47 @@
+# Skill de Diseno de APIs
+
+## Proposito
+Guiar a un agente de IA en el diseno de APIs REST o gRPC bien estructuradas con contratos claros.
+
+## Secciones a Generar
+
+### Cuando Usar Este Skill
+Describe escenarios: disenar nuevos endpoints, definir contratos de API, versionamiento de APIs, documentar interfaces, revisar consistencia de API.
+
+### Principios de Diseno de REST API
+- URLs orientadas a recursos (sustantivos, no verbos)
+- Uso correcto de metodos HTTP (GET lee, POST crea, PUT reemplaza, PATCH actualiza, DELETE elimina)
+- Convenciones de nombrado consistentes (kebab-case para URLs, camelCase o snake_case para JSON)
+- Codigos de estado significativos (201 para creado, 404 para no encontrado, 422 para errores de validacion)
+- Convenciones de paginacion, filtrado y ordenamiento
+
+### Definicion del Contrato de API
+Paso a paso:
+1. Identificar el recurso y su ciclo de vida
+2. Definir schemas de request/response
+3. Especificar reglas de validacion y respuestas de error
+4. Documentar requisitos de autenticacion y autorizacion
+5. Definir rate limits y quotas si aplica
+6. Versionar la API desde el dia uno
+
+### Formato de Respuesta de Error
+- Estructura de error consistente en todos los endpoints
+- Codigos de error legibles por maquina
+- Mensajes de error legibles por humanos
+- Errores de validacion con detalle a nivel de campo
+
+### Estrategia de Versionamiento
+- Versionamiento por path en URL (/v1/resource) vs versionamiento por header
+- Cambios breaking vs non-breaking
+- Politica de deprecacion y cronograma
+- Guias de migracion para consumidores
+
+### Anti-patrones a Evitar
+- Nombrado inconsistente entre endpoints
+- Exponer modelos de datos internos directamente
+- Paginacion faltante en endpoints de listado
+- Sobrecargar GET con query parameters para operaciones complejas
+- Ignorar idempotencia en operaciones de escritura
+
+### Verificacion
+Como validar el diseno de API: convenciones consistentes, codigos de estado apropiados, mensajes de error claros, contratos documentados, estrategia de versionamiento.

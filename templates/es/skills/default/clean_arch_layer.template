@@ -1,0 +1,39 @@
+# Skill de Capas de Clean Architecture
+
+## Proposito
+Guiar a un agente de IA para ubicar codigo en la capa arquitectonica correcta y conectar dependencias adecuadamente siguiendo Clean Architecture.
+
+## Secciones a Generar
+
+### Cuando Usar Este Skill
+Describe escenarios: agregar nuevas funcionalidades, crear servicios, implementar adapters, conectar capas, resolver decisiones de "donde va este codigo?".
+
+### Responsabilidades por Capa
+Define el alcance de cada capa y que pertenece a ella:
+1. Domain Layer — entidades, value objects, interfaces de repositorio, domain services, domain events
+2. Application Layer — use cases (commands/queries), DTOs, orquestacion, sin logica de negocio
+3. Infrastructure Layer — adapters de base de datos, clientes API, filesystem, implementaciones de servicios externos
+4. Interfaces Layer — handlers HTTP, comandos CLI, servicios gRPC, consumers de mensajes
+
+### La Regla de Dependencia
+- Las dependencias apuntan hacia adentro SOLAMENTE (interfaces -> application -> domain)
+- Las capas internas NUNCA importan de capas externas
+- Usar interfaces (ports) definidos en domain, implementados en infrastructure
+- Dependency injection conecta todo en el composition root
+
+### Flujo para Agregar una Nueva Funcionalidad
+Paso a paso para ubicar codigo correctamente:
+1. Definir el concepto de dominio (entity/VO/service interface)
+2. Crear el use case en la capa de application
+3. Implementar adapters de infrastructure
+4. Conectar el handler en la capa de interfaces
+5. Registrar dependencias en el composition root
+
+### Violaciones Comunes
+- Domain importando paquetes de infrastructure
+- Application layer haciendo operaciones HTTP/DB directamente
+- Logica de negocio en handlers/controllers
+- Dependencias circulares entre capas
+
+### Verificacion
+Como validar la ubicacion correcta: analisis del grafo de imports, verificacion de direccion de dependencias, prueba de aislamiento de capas.
