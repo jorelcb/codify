@@ -8,7 +8,7 @@ import (
 
 // Version information (will be set by build flags)
 var (
-	version = "0.0.1-alpha"
+	version = "1.3.0"
 	commit  = "dev"
 	date    = "unknown"
 )

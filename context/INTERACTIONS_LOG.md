@@ -23,10 +23,10 @@ This log documents the evolution of the project, serving as its institutional me
 
 ---
 
-## Session: 2026-03-06 - v2.1.0: Output Validation and Consistency Fixes
+## Session: 2026-03-06 - v1.1.0: Output Validation and Consistency Fixes
 
 ### Context
-- **Version:** 2.1.0
+- **Version:** 1.1.0
 - **Goal:** Validate generated output for a sample project (`market-signals-service`) against its business specification and correct all inconsistencies.
 
 ### Tasks Completed
@@ -46,10 +46,10 @@ This log documents the evolution of the project, serving as its institutional me
 
 ---
 
-## Session: 2026-03-05 - v2.1.0: Multi-Locale Support and BDD Fixes
+## Session: 2026-03-05 - v1.1.0: Multi-Locale Support and BDD Fixes
 
 ### Context
--   **Version:** 2.1.0
+-   **Version:** 1.1.0
 -   **Goal:** Implement multi-locale support (`en`/`es`), add a `--from-file` feature, and fix BDD test instability.
 
 ### Tasks Completed
@@ -65,10 +65,10 @@ This log documents the evolution of the project, serving as its institutional me
 
 ---
 
-## Session: 2026-02-19 - v1.1.0: Restructure to AGENTS.md Standard & Add Spec Command
+## Session: 2026-02-19 - v1.0.0: Restructure to AGENTS.md Standard & Add Spec Command
 
 ### Context
--   **Version:** 1.1.0
+-   **Version:** 1.0.0
 -   **Goal:** Align generated output with industry standards (AGENTS.md) and introduce a `spec` command for Spec-Driven Development (SDD).
 
 ### Tasks Completed
@@ -96,10 +96,10 @@ This log documents the evolution of the project, serving as its institutional me
 
 ---
 
-## Session: 2026-02-19 - v1.0.0: Initial Release
+## Session: 2026-02-19 - v0.1.0: Initial Release
 
 ### Context
--   **Version:** 1.0.0
+-   **Version:** 0.1.0
 -   **Goal:** Deliver the core functionality: generate context files from a user description via the Anthropic Claude API.
 
 ### Architectural Decisions

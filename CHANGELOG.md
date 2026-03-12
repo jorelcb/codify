@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.3.0] - 2026-03-12 - Agent Skills generation
+## [1.3.0] - 2026-03-12 - Agent Skills generation
 
 ### Added
 - `skills` command: generates reusable Agent Skills (SKILL.md) based on architectural presets
@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Target` field in `GenerationRequest` for skills mode
 - Skills mode (`"skills"`) in both AnthropicProvider and GeminiProvider
 
-## [2.2.0] - 2026-03-11 - Multi-provider LLM, MCP server, analyze command, HTTP transport
+## [1.2.0] - 2026-03-11 - Multi-provider LLM, MCP server, analyze command, HTTP transport
 
 ### Added
 - **Gemini LLM provider** (`gemini_provider.go`): Google Gemini API with streaming via `google.golang.org/genai` SDK
@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `serve.go` refactored from switch/case to transport strategy pattern
 - `--model` flag now accepts both `claude-*` and `gemini-*` models
 
-## [2.1.0] - 2026-03-06 - Locale support, anti-hallucination, legacy cleanup
+## [1.1.0] - 2026-03-06 - Locale support, anti-hallucination, legacy cleanup
 
 ### Added
 - Multi-locale support: `--locale en|es` flag for both `generate` and `spec` commands
@@ -62,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - Legacy template directories, bash tests, unused domain/template layer
 
-## [1.1.0] - 2026-02-19 - Template restructuring + spec command
+## [1.0.0] - 2026-02-19 - First stable release (AGENTS.md standard + spec command)
 
 ### Added
 - `spec` command: generates SDD specifications (CONSTITUTION.md, SPEC.md, PLAN.md, TASKS.md) from existing context
@@ -74,7 +74,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Output restructured: AGENTS.md at root, CONTEXT.md and INTERACTIONS_LOG.md in context/
 
-## [1.0.0] - 2026-02-19 - First functional version
+## [0.2.0] - 2026-02-19 - DDD architecture with CLI
+
+### Added
+- Full DDD/Clean Architecture implementation
+- CLI with Cobra (generate, list commands)
+- Template system with configurable loader
+
+## [0.1.0] - 2026-02-19 - Initial alpha
 
 ### Added
 - Context file generation using Anthropic Claude API with streaming
@@ -82,6 +89,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI: `ai-context-generator generate <name> --description "..." [--language] [--type] [--architecture] [--model]`
 - PromptBuilder, FileSystemTemplateLoader, GenerateContextCommand
 - AnthropicProvider with official SDK (`anthropic-sdk-go v1.25.0`)
-- DDD/Clean Architecture: Domain, Application, Infrastructure, Interfaces layers
 - Value objects with validation
 - Unit tests for all components

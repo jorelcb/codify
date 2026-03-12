@@ -19,7 +19,7 @@ import (
 	infratemplate "github.com/jorelcb/ai-context-generator/internal/infrastructure/template"
 )
 
-const serverVersion = "2.2.0"
+const serverVersion = "1.3.0"
 
 // validPresets maps preset names for validation.
 var validPresets = map[string]bool{

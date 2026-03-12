@@ -1,4 +1,4 @@
-# Taskfile.yml - AI Context Generator v2.0.0
+# Taskfile.yml - AI Context Generator v1.3.0
 version: '3'
 
 vars:
@@ -17,7 +17,7 @@ tasks:
   help:
     desc: Mostrar ayuda completa
     cmds:
-      - echo "AI CONTEXT GENERATOR v2.0.0"
+      - echo "AI CONTEXT GENERATOR v1.3.0"
       - echo ""
       - echo "Comandos disponibles"
       - echo "  task build           - Compilar binario Go"
@@ -206,7 +206,7 @@ tasks:
     cmds:
       - echo "AI Context Generator - Project Info"
       - echo ""
-      - echo "Version 2.0.0"
+      - echo "Version 1.3.0"
       - echo "Go version $(go version)"
       - echo ""
       - echo "Directorio de trabajo $(pwd)"

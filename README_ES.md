@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-2.3.0-blue?style=for-the-badge)](https://github.com/jorelcb/ai-context-generator/releases)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue?style=for-the-badge)](https://github.com/jorelcb/ai-context-generator/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.21)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -467,7 +467,7 @@ go test ./tests/...
 
 ## 📊 Estado del proyecto
 
-**v2.3.0** 🎉
+**v1.3.0** 🎉
 
 ✅ **Funcionando:**
 - Soporte multi-proveedor LLM (Anthropic Claude + Google Gemini)
