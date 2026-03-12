@@ -2,10 +2,10 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-2.2.0-blue?style=for-the-badge)](https://github.com/jorelcb/ai-context-generator/releases)
+[![Version](https://img.shields.io/badge/version-2.3.0-blue?style=for-the-badge)](https://github.com/jorelcb/ai-context-generator/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.21)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
 [![Claude](https://img.shields.io/badge/Claude-cc785c?style=for-the-badge)](https://www.anthropic.com)
 [![Gemini](https://img.shields.io/badge/Gemini-4285F4?style=for-the-badge&logo=google)](https://ai.google.dev)
 [![AGENTS.md](https://img.shields.io/badge/Standard-AGENTS.md-purple?style=for-the-badge)](https://github.com/anthropics/AGENTS.md)
@@ -16,7 +16,7 @@
 
 [English](README.md) | **[Español]**
 
-[Quick Start](#-quick-start) · [MCP Server](#-mcp-server) · [Features](#-features) · [Guias por Lenguaje](#-guias-por-lenguaje) · [Presets](#-presets) · [Arquitectura](#%EF%B8%8F-arquitectura) · [Docs](#-documentacion)
+[Quick Start](#-quick-start) · [MCP Server](#-mcp-server) · [Features](#-features) · [Skills](#-agent-skills) · [Guias por Lenguaje](#-guias-por-lenguaje) · [Presets](#-presets) · [Arquitectura](#%EF%B8%8F-arquitectura)
 
 </div>
 
@@ -215,6 +215,7 @@ Agrega en **Settings > MCP Servers**:
 | `generate_context` | Genera archivos de contexto a partir de una descripcion |
 | `generate_specs` | Genera specs SDD a partir de contexto existente |
 | `analyze_project` | Escanea un proyecto existente y genera contexto desde su estructura |
+| `generate_skills` | Genera Agent Skills (SKILL.md) basadas en presets arquitectonicos |
 
 Todas las herramientas soportan `locale` (`en`/`es`), `model` y `preset`. `generate_context` y `analyze_project` tambien aceptan `with_specs` para encadenar generacion de specs automaticamente.
 
@@ -285,6 +286,28 @@ ai-context-generator generate my-api \
   --language go \
   --with-specs
 ```
+
+### 🧩 Comando `skills` — Agent Skills
+
+Genera [Agent Skills](https://agentskills.io) reutilizables (SKILL.md) basadas en presets arquitectonicos. Las skills son cross-project — instaladas globalmente, cualquier agente de IA las usa cuando son relevantes.
+
+```bash
+# Preset default: DDD, Clean Arch, BDD, CQRS, Hexagonal
+ai-context-generator skills
+
+# Preset neutral para Codex
+ai-context-generator skills --preset neutral --target codex
+
+# Para Antigravity IDE en español
+ai-context-generator skills --target antigravity --locale es
+```
+
+| Preset | Skills generadas |
+|--------|-----------------|
+| `default` | DDD entity, Clean Architecture layer, BDD scenario, CQRS command, Hexagonal port/adapter |
+| `neutral` | Code review, test strategy, safe refactoring, API design |
+
+Ecosistemas target: `claude` (default), `codex`, `antigravity` — cada uno recibe frontmatter YAML especifico del ecosistema.
 
 ### 🔍 Comando `list` — Proyectos generados
 
@@ -387,7 +410,7 @@ internal/
 │   └── service/         Interfaces: LLMProvider, FileWriter, TemplateLoader
 │
 ├── application/         🔄 Casos de uso (CQRS)
-│   ├── command/         GenerateContext, GenerateSpec
+│   ├── command/         GenerateContext, GenerateSpec, GenerateSkills
 │   └── query/           ListProjects
 │
 ├── infrastructure/      🔧 Implementaciones
@@ -397,8 +420,8 @@ internal/
 │   └── filesystem/      File writer, directory manager, context reader
 │
 └── interfaces/          🎯 Puntos de entrada
-    ├── cli/commands/    generate, analyze, spec, serve, list
-    └── mcp/             Servidor MCP (transporte stdio, 3 herramientas)
+    ├── cli/commands/    generate, analyze, spec, skills, serve, list
+    └── mcp/             Servidor MCP (transporte stdio + HTTP, 4 herramientas)
 ```
 
 ### Sistema de templates
@@ -418,6 +441,9 @@ templates/
 │   │   ├── spec.template
 │   │   ├── plan.template
 │   │   └── tasks.template
+│   ├── skills/                  Templates de Agent Skills
+│   │   ├── default/             DDD, Clean Arch, BDD, CQRS, Hexagonal
+│   │   └── neutral/             Code review, testing, refactoring, API design
 │   └── languages/               Guias idiomaticas por lenguaje
 │       ├── go/idioms.template
 │       ├── javascript/idioms.template
@@ -427,7 +453,7 @@ templates/
 
 La regla de oro: `Infrastructure → Application → Domain`. Nada en domain depende de nada externo.
 
-Ver [ARCHITECTURE.md](ARCHITECTURE.md) para el detalle completo.
+Ver [context/CONTEXT.md](context/CONTEXT.md) para el detalle arquitectonico completo.
 
 ## 🧪 Tests
 
@@ -441,20 +467,21 @@ go test ./tests/...
 
 ## 📊 Estado del proyecto
 
-**v2.2.0** 🎉
+**v2.3.0** 🎉
 
 ✅ **Funcionando:**
 - Soporte multi-proveedor LLM (Anthropic Claude + Google Gemini)
 - Generacion de contextos con streaming
 - Generacion de specs SDD a partir de contexto existente
-- Servidor MCP (Claude Desktop, Claude Code, Cursor)
+- Generacion de Agent Skills (SKILL.md) para Claude Code, Codex, Antigravity
+- Servidor MCP (transporte stdio + HTTP)
 - Comando `analyze` — escanear proyectos existentes y generar contexto
 - Flag `--with-specs` — pipeline completo en un comando
 - Sistema de presets (default DDD/BDD, neutral)
 - Estandar AGENTS.md como root file
 - Guias idiomaticas por lenguaje (Go, JavaScript, Python)
 - Reglas de grounding anti-alucinacion en prompts
-- CLI con Cobra (generate, analyze, spec, serve, list)
+- CLI con Cobra (generate, analyze, spec, skills, serve, list)
 
 🚧 **Proximo:**
 - Tests de integracion end-to-end
@@ -462,8 +489,6 @@ go test ./tests/...
 - Modo interactivo (wizard)
 - Autenticacion MCP server remoto (OAuth/BYOK)
 - Binary builds y distribucion
-
-👉 [Roadmap completo](ROADMAP.md)
 
 ## 💡 FAQ
 
@@ -487,14 +512,14 @@ Una metodologia donde generas contexto y especificaciones *antes* de escribir co
 
 ## 📚 Documentacion
 
-- [🏛️ Architecture Guide](ARCHITECTURE.md) — DDD/Clean Architecture
-- [🚀 Getting Started](GETTING_STARTED.md) — Guia paso a paso
-- [🗺️ Roadmap](ROADMAP.md) — Plan de desarrollo
-- [📝 Changelog](context/CHANGELOG.md) — Historial de cambios
+- [📋 AGENTS.md](AGENTS.md) — Contexto del proyecto para agentes de IA
+- [🏛️ Arquitectura](context/CONTEXT.md) — Detalle DDD/Clean Architecture
+- [📝 Changelog](CHANGELOG.md) — Historial de cambios
+- [📐 Specs](specs/) — Especificaciones tecnicas (SDD)
 
 ## 📄 Licencia
 
-MIT License — ver [LICENSE](LICENSE).
+Apache License 2.0 — ver [LICENSE](LICENSE).
 
 ---
 
@@ -506,6 +531,6 @@ MIT License — ver [LICENSE](LICENSE).
 
 ⭐ Si te sirvio, dale una estrella — nos motiva a seguir construyendo
 
-[🐛 Reportar bug](https://github.com/jorelcb/ai-context-generator/issues) · [💡 Sugerir feature](https://github.com/jorelcb/ai-context-generator/issues) · [🗺️ Ver roadmap](ROADMAP.md)
+[🐛 Reportar bug](https://github.com/jorelcb/ai-context-generator/issues) · [💡 Sugerir feature](https://github.com/jorelcb/ai-context-generator/issues)
 
 </div>

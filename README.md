@@ -2,10 +2,10 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-2.2.0-blue?style=for-the-badge)](https://github.com/jorelcb/ai-context-generator/releases)
+[![Version](https://img.shields.io/badge/version-2.3.0-blue?style=for-the-badge)](https://github.com/jorelcb/ai-context-generator/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.21)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
 [![Claude](https://img.shields.io/badge/Claude-cc785c?style=for-the-badge)](https://www.anthropic.com)
 [![Gemini](https://img.shields.io/badge/Gemini-4285F4?style=for-the-badge&logo=google)](https://ai.google.dev)
 [![AGENTS.md](https://img.shields.io/badge/Standard-AGENTS.md-purple?style=for-the-badge)](https://github.com/anthropics/AGENTS.md)
@@ -16,7 +16,7 @@
 
 **[English]** | [Español](README_ES.md)
 
-[Quick Start](#-quick-start) · [MCP Server](#-mcp-server) · [Features](#-features) · [Language Guides](#-language-specific-guides) · [Presets](#-presets) · [Architecture](#%EF%B8%8F-architecture) · [Docs](#-documentation)
+[Quick Start](#-quick-start) · [MCP Server](#-mcp-server) · [Features](#-features) · [Skills](#-agent-skills) · [Language Guides](#-language-specific-guides) · [Presets](#-presets) · [Architecture](#%EF%B8%8F-architecture)
 
 </div>
 
@@ -216,6 +216,7 @@ Add in **Settings > MCP Servers**:
 | `generate_context` | Generate context files from a project description |
 | `generate_specs` | Generate SDD specs from existing context files |
 | `analyze_project` | Scan an existing project and generate context from its structure |
+| `generate_skills` | Generate reusable Agent Skills based on architectural presets |
 
 All tools support `locale` (`en`/`es`), `model`, and `preset` parameters. `generate_context` and `analyze_project` also accept `with_specs` to chain spec generation automatically.
 
@@ -286,6 +287,28 @@ ai-context-generator generate my-api \
   --language go \
   --with-specs
 ```
+
+### 🧩 `skills` command — Agent Skills
+
+Generates reusable [Agent Skills](https://agentskills.io) (SKILL.md) based on architectural presets. Skills are cross-project — install them globally and any AI agent will use them when relevant.
+
+```bash
+# Default preset: DDD, Clean Arch, BDD, CQRS, Hexagonal
+ai-context-generator skills
+
+# Neutral preset for Codex
+ai-context-generator skills --preset neutral --target codex
+
+# For Antigravity IDE in Spanish
+ai-context-generator skills --target antigravity --locale es
+```
+
+| Preset | Skills generated |
+|--------|-----------------|
+| `default` | DDD entity, Clean Architecture layer, BDD scenario, CQRS command, Hexagonal port/adapter |
+| `neutral` | Code review, test strategy, safe refactoring, API design |
+
+Target ecosystems: `claude` (default), `codex`, `antigravity` — each gets ecosystem-specific YAML frontmatter.
 
 ### 🔍 `list` command — Generated projects
 
@@ -398,8 +421,8 @@ internal/
 │   └── filesystem/      File writer, directory manager, context reader
 │
 └── interfaces/          🎯 Entry points
-    ├── cli/commands/    generate, analyze, spec, serve, list
-    └── mcp/             MCP server (stdio transport, 3 tools)
+    ├── cli/commands/    generate, analyze, spec, skills, serve, list
+    └── mcp/             MCP server (stdio + HTTP transport, 4 tools)
 ```
 
 ### Template system
@@ -419,6 +442,9 @@ templates/
 │   │   ├── spec.template
 │   │   ├── plan.template
 │   │   └── tasks.template
+│   ├── skills/                  Agent Skills templates
+│   │   ├── default/             DDD, Clean Arch, BDD, CQRS, Hexagonal
+│   │   └── neutral/             Code review, testing, refactoring, API design
 │   └── languages/               Language-specific idiomatic guides
 │       ├── go/idioms.template
 │       ├── javascript/idioms.template
@@ -428,7 +454,7 @@ templates/
 
 The golden rule: `Infrastructure → Application → Domain`. Nothing in domain depends on anything external.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for full details.
+See [context/CONTEXT.md](context/CONTEXT.md) for full architectural details.
 
 ## 🧪 Tests
 
@@ -442,20 +468,21 @@ go test ./tests/...
 
 ## 📊 Project status
 
-**v2.2.0** 🎉
+**v2.3.0** 🎉
 
 ✅ **Working:**
 - Multi-provider LLM support (Anthropic Claude + Google Gemini)
 - Context generation with streaming
 - SDD spec generation from existing context
-- MCP Server mode (Claude Desktop, Claude Code, Cursor)
+- Agent Skills generation (SKILL.md) for Claude Code, Codex, Antigravity
+- MCP Server mode (stdio + HTTP transport)
 - `analyze` command — scan existing projects and generate context
 - `--with-specs` flag — full pipeline in one command
 - Preset system (default DDD/BDD, neutral)
 - AGENTS.md standard as root file
 - Language-specific idiomatic guides (Go, JavaScript, Python)
 - Anti-hallucination grounding rules in prompts
-- CLI with Cobra (generate, analyze, spec, serve, list)
+- CLI with Cobra (generate, analyze, spec, skills, serve, list)
 
 🚧 **Coming next:**
 - End-to-end integration tests
@@ -463,8 +490,6 @@ go test ./tests/...
 - Interactive mode (wizard)
 - MCP server authentication (OAuth/BYOK for remote deployments)
 - Binary builds and distribution
-
-👉 [Full roadmap](ROADMAP.md)
 
 ## 💡 FAQ
 
@@ -488,14 +513,14 @@ A methodology where you generate context and specifications *before* writing cod
 
 ## 📚 Documentation
 
-- [🏛️ Architecture Guide](ARCHITECTURE.md) — DDD/Clean Architecture
-- [🚀 Getting Started](GETTING_STARTED.md) — Step-by-step guide
-- [🗺️ Roadmap](ROADMAP.md) — Development plan
-- [📝 Changelog](context/CHANGELOG.md) — Change history
+- [📋 AGENTS.md](AGENTS.md) — Project context for AI agents
+- [🏛️ Architecture](context/CONTEXT.md) — DDD/Clean Architecture details
+- [📝 Changelog](CHANGELOG.md) — Change history
+- [📐 Specs](specs/) — Technical specifications (SDD)
 
 ## 📄 License
 
-MIT License — see [LICENSE](LICENSE).
+Apache License 2.0 — see [LICENSE](LICENSE).
 
 ---
 
@@ -507,6 +532,6 @@ MIT License — see [LICENSE](LICENSE).
 
 ⭐ If this helped you, give it a star — it keeps us building
 
-[🐛 Report bug](https://github.com/jorelcb/ai-context-generator/issues) · [💡 Request feature](https://github.com/jorelcb/ai-context-generator/issues) · [🗺️ See roadmap](ROADMAP.md)
+[🐛 Report bug](https://github.com/jorelcb/ai-context-generator/issues) · [💡 Request feature](https://github.com/jorelcb/ai-context-generator/issues)
 
 </div>
