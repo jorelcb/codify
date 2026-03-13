@@ -147,39 +147,15 @@ ai-context-generator generate payment-service \
 
 ## 🔌 MCP Server
 
-Usa AI Context Generator como **servidor MCP (Model Context Protocol)** — sin necesidad de CLI. Tu agente de IA invoca las herramientas directamente.
+Usa AI Context Generator como **servidor MCP** — tu agente de IA invoca las herramientas directamente, sin necesidad de CLI manual.
 
-### Configuracion para Claude Desktop
-
-**1. Instala el binario:**
+### Instalacion
 
 ```bash
 go install github.com/jorelcb/ai-context-generator/cmd/ai-context-generator@latest
 ```
 
-**2. Agrega a la config de Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json` en macOS):
-
-```json
-{
-  "mcpServers": {
-    "ai-context-generator": {
-      "command": "ai-context-generator",
-      "args": ["serve"],
-      "env": {
-        "ANTHROPIC_API_KEY": "sk-ant-...",
-        "GEMINI_API_KEY": "AI..."
-      }
-    }
-  }
-}
-```
-
-> Configura la(s) API key(s) del proveedor que quieras usar. El proveedor se selecciona automaticamente segun el parametro `model`.
-> Si `ai-context-generator` no esta en tu PATH, usa la ruta completa (e.g., `~/go/bin/ai-context-generator`).
-
-**3. Reinicia Claude Desktop.** Las herramientas aparecen automaticamente.
-
-### Configuracion para Claude Code
+### Claude Code
 
 Agrega a `.mcp.json` en tu proyecto:
 
@@ -198,15 +174,32 @@ Agrega a `.mcp.json` en tu proyecto:
 }
 ```
 
-### Configuracion para Cursor
+### Codex CLI
 
-Agrega en **Settings > MCP Servers**:
+```bash
+# Registrar el servidor MCP
+codex mcp add ai-context-generator -- ai-context-generator serve
+```
 
-| Campo | Valor |
-|-------|-------|
-| Name | `ai-context-generator` |
-| Command | `ai-context-generator serve` |
-| Environment | `ANTHROPIC_API_KEY=sk-ant-...` |
+### Gemini CLI
+
+Agrega a `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "ai-context-generator": {
+      "command": "ai-context-generator",
+      "args": ["serve"],
+      "env": {
+        "GEMINI_API_KEY": "AI..."
+      }
+    }
+  }
+}
+```
+
+> Configura la(s) API key(s) del proveedor que quieras usar. El proveedor se auto-detecta segun el parametro `model`. Si el binario no esta en tu PATH, usa la ruta completa (e.g., `/Users/tu-usuario/go/bin/ai-context-generator`).
 
 ### Herramientas MCP disponibles
 
@@ -219,7 +212,7 @@ Agrega en **Settings > MCP Servers**:
 
 Todas las herramientas soportan `locale` (`en`/`es`), `model` y `preset`. `generate_context` y `analyze_project` tambien aceptan `with_specs` para encadenar generacion de specs automaticamente.
 
-### Prompts de ejemplo (Claude Desktop / Claude Code)
+### Prompts de ejemplo
 
 ```
 "Genera contexto para un microservicio de pagos en Go con gRPC y PostgreSQL"
