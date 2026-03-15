@@ -99,7 +99,7 @@ func generateSkillsTool() server.ServerTool {
 		mcp.WithString("locale", mcp.Description("Output language: en or es"), mcp.DefaultString("en")),
 		mcp.WithString("target", mcp.Description("Target ecosystem: claude, codex, or antigravity"), mcp.DefaultString("claude")),
 		mcp.WithString("model", mcp.Description("LLM model to use"), mcp.DefaultString("claude-sonnet-4-6")),
-		mcp.WithString("output", mcp.Description("Output directory"), mcp.DefaultString("./output/skills/default/")),
+		mcp.WithString("output", mcp.Description("Output directory (default: ecosystem-specific, e.g. .claude/skills/)")),
 	)
 
 	return server.ServerTool{Tool: tool, Handler: handleGenerateSkills}
@@ -245,7 +245,10 @@ func handleGenerateSkills(ctx context.Context, request mcp.CallToolRequest) (*mc
 	locale := stringArgDefault(request, "locale", "en")
 	target := stringArgDefault(request, "target", "claude")
 	model := stringArgDefault(request, "model", "")
-	output := stringArgDefault(request, "output", "./output/skills/default/")
+	output := stringArg(request, "output")
+	if output == "" {
+		output = defaultSkillsPath(target)
+	}
 
 	result, err := executeSkills(ctx, preset, locale, target, model, output)
 	if err != nil {
@@ -301,13 +304,12 @@ func executeGenerate(ctx context.Context, name, description, language, preset, l
 
 	generateCmd := command.NewGenerateContextCommand(provider, fileWriter, dirManager)
 
-	outputPath := filepath.Join("output", name)
 	config := &dto.ProjectConfig{
 		Name:        name,
 		Description: description,
 		Language:    language,
 		Model:       model,
-		OutputPath:  outputPath,
+		OutputPath:  ".",
 		Locale:      locale,
 	}
 
@@ -351,11 +353,10 @@ func executeSpecs(ctx context.Context, name, fromContextPath, locale, model stri
 
 	specCmd := command.NewGenerateSpecCommand(provider, fileWriter, dirManager)
 
-	outputPath := filepath.Join("output", name)
 	config := &dto.SpecConfig{
 		ProjectName:     name,
 		FromContextPath: fromContextPath,
-		OutputPath:      outputPath,
+		OutputPath:      fromContextPath,
 		Model:           model,
 		Locale:          locale,
 	}
@@ -490,4 +491,14 @@ func normalizeLanguageFlag(detected string) string {
 		return flag
 	}
 	return ""
+}
+
+// defaultSkillsPath returns the ecosystem-specific default skills directory.
+func defaultSkillsPath(target string) string {
+	switch target {
+	case "codex", "antigravity":
+		return filepath.Join(".agents", "skills")
+	default: // claude
+		return filepath.Join(".claude", "skills")
+	}
 }

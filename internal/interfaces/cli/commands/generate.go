@@ -31,6 +31,7 @@ func NewGenerateCmd() *cobra.Command {
 		model        string
 		preset       string
 		locale       string
+		output       string
 		withSpecs    bool
 		interactive  bool
 	)
@@ -80,6 +81,11 @@ Examples:
     --description "Inventory management REST API" \
     --preset neutral
 
+  # Generate to a specific directory
+  codify generate my-api \
+    --description "Inventory management REST API in Go" \
+    --output ./docs/
+
   # Generate context + specs in one command
   codify generate my-api \
     --description "Inventory management REST API in Go" \
@@ -111,16 +117,19 @@ Examples:
 				return fmt.Errorf("description is required (use -d or --from-file)")
 			}
 
-			if err := runGenerate(projectName, description, language, projectType, architecture, model, preset, locale); err != nil {
+			if output == "" {
+				output = "."
+			}
+
+			if err := runGenerate(projectName, description, language, projectType, architecture, model, preset, locale, output); err != nil {
 				return err
 			}
 
 			if withSpecs {
-				outputPath := filepath.Join("output", projectName)
 				fmt.Println()
 				fmt.Println("--- Generating specs from context ---")
 				fmt.Println()
-				return runSpec(projectName, outputPath, model, locale)
+				return runSpec(projectName, output, output, model, locale)
 			}
 
 			return nil
@@ -136,6 +145,7 @@ Examples:
 	cmd.Flags().StringVarP(&model, "model", "m", "", "LLM model (default: claude-sonnet-4-6, or gemini-3.1-pro-preview)")
 	cmd.Flags().StringVarP(&preset, "preset", "p", "default", "Template preset: default (DDD/Clean Architecture) or neutral")
 	cmd.Flags().StringVar(&locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
+	cmd.Flags().StringVarP(&output, "output", "o", "", "Output directory (default: current directory)")
 	cmd.Flags().BoolVar(&withSpecs, "with-specs", false, "Also generate SDD spec files after context generation")
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "Run in interactive mode")
 
@@ -167,7 +177,7 @@ func resolveLocaleBase(locale string) string {
 	return filepath.Join("templates", locale)
 }
 
-func runGenerate(projectName, description, language, projectType, architecture, model, preset, locale string) error {
+func runGenerate(projectName, description, language, projectType, architecture, model, preset, locale, output string) error {
 	ctx := context.Background()
 
 	// 1. Resolve API key for the selected provider
@@ -203,7 +213,6 @@ func runGenerate(projectName, description, language, projectType, architecture, 
 	generateCmd := command.NewGenerateContextCommand(provider, fileWriter, dirManager)
 
 	// 6. Build config
-	outputPath := filepath.Join("output", projectName)
 	config := &dto.ProjectConfig{
 		Name:         projectName,
 		Description:  description,
@@ -211,7 +220,7 @@ func runGenerate(projectName, description, language, projectType, architecture, 
 		Type:         projectType,
 		Architecture: architecture,
 		Model:        model,
-		OutputPath:   outputPath,
+		OutputPath:   output,
 		Locale:       locale,
 	}
 

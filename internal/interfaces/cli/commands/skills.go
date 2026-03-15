@@ -56,9 +56,9 @@ Presets:
   neutral  - Code review, test strategy, refactoring, API design
 
 Target ecosystems:
-  claude       - Claude Code (default)
-  codex        - Codex CLI (OpenAI)
-  antigravity  - Antigravity IDE (Google)
+  claude       - Claude Code → .claude/skills/ (default)
+  codex        - Codex CLI (OpenAI) → .agents/skills/
+  antigravity  - Antigravity (Google) → .agents/skills/
 
 Locales:
   en  - English (default)
@@ -67,14 +67,14 @@ Locales:
 Requires ANTHROPIC_API_KEY (for Claude) or GEMINI_API_KEY (for Gemini) environment variable.
 
 Examples:
-  # Generate default preset skills for Claude Code
+  # Generate default preset skills for Claude Code (.claude/skills/)
   codify skills
 
-  # Generate neutral skills for Codex
+  # Generate neutral skills for Codex (.agents/skills/)
   codify skills --preset neutral --target codex
 
-  # Generate in Spanish with custom output
-  codify skills --locale es --output ./my-skills/
+  # Generate to custom directory
+  codify skills --output ~/.claude/skills/
 
   # Generate with Gemini
   codify skills --model gemini-3.1-pro-preview`,
@@ -87,7 +87,7 @@ Examples:
 	cmd.Flags().StringVar(&locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
 	cmd.Flags().StringVar(&target, "target", "claude", "Target ecosystem: claude, codex, or antigravity")
 	cmd.Flags().StringVarP(&model, "model", "m", "", "LLM model (default: claude-sonnet-4-6, or gemini-3.1-pro-preview)")
-	cmd.Flags().StringVarP(&output, "output", "o", "", "Output directory (default: output/skills/{preset}/)")
+	cmd.Flags().StringVarP(&output, "output", "o", "", "Output directory (default: ecosystem-specific, e.g. .claude/skills/)")
 
 	return cmd
 }
@@ -137,9 +137,9 @@ func runSkills(preset, locale, target, model, output string) error {
 	// 7. Create command
 	skillsCmd := command.NewGenerateSkillsCommand(provider, fileWriter, dirManager)
 
-	// 8. Build config
+	// 8. Build config — default output based on target ecosystem
 	if output == "" {
-		output = filepath.Join("output", "skills", preset)
+		output = defaultSkillsPath(target)
 	}
 	config := &dto.SkillsConfig{
 		Preset:     preset,
@@ -179,4 +179,14 @@ func runSkills(preset, locale, target, model, output string) error {
 	}
 
 	return nil
+}
+
+// defaultSkillsPath returns the ecosystem-specific default skills directory.
+func defaultSkillsPath(target string) string {
+	switch target {
+	case "codex", "antigravity":
+		return filepath.Join(".agents", "skills")
+	default: // claude
+		return filepath.Join(".claude", "skills")
+	}
 }

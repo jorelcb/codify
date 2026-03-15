@@ -17,6 +17,7 @@ func NewAnalyzeCmd() *cobra.Command {
 		preset    string
 		locale    string
 		language  string
+		output    string
 		withSpecs bool
 	)
 
@@ -40,6 +41,9 @@ Examples:
   # Analyze and generate specs in one step
   codify analyze ./my-go-api --with-specs
 
+  # Output to a specific directory
+  codify analyze ./my-go-api --output ./docs/
+
   # In Spanish
   codify analyze ./my-go-api --locale es`,
 		Args: cobra.ExactArgs(1),
@@ -57,7 +61,11 @@ Examples:
 				name = filepath.Base(absPath)
 			}
 
-			return runAnalyze(absPath, name, language, model, preset, locale, withSpecs)
+			if output == "" {
+				output = "."
+			}
+
+			return runAnalyze(absPath, name, language, model, preset, locale, output, withSpecs)
 		},
 	}
 
@@ -66,12 +74,13 @@ Examples:
 	cmd.Flags().StringVarP(&model, "model", "m", "", "Claude model to use (default: claude-sonnet-4-6)")
 	cmd.Flags().StringVarP(&preset, "preset", "p", "default", "Template preset: default or neutral")
 	cmd.Flags().StringVar(&locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
+	cmd.Flags().StringVarP(&output, "output", "o", "", "Output directory (default: current directory)")
 	cmd.Flags().BoolVar(&withSpecs, "with-specs", false, "Also generate SDD spec files after context generation")
 
 	return cmd
 }
 
-func runAnalyze(projectPath, name, language, model, preset, locale string, withSpecs bool) error {
+func runAnalyze(projectPath, name, language, model, preset, locale, output string, withSpecs bool) error {
 	// 1. Scan project
 	fmt.Printf("Scanning project: %s\n", projectPath)
 	s := scanner.NewProjectScanner()
@@ -108,17 +117,16 @@ func runAnalyze(projectPath, name, language, model, preset, locale string, withS
 	// 4. Format scan as description and delegate to generate pipeline
 	description := result.FormatAsDescription()
 
-	if err := runGenerate(name, description, language, "", "", model, preset, locale); err != nil {
+	if err := runGenerate(name, description, language, "", "", model, preset, locale, output); err != nil {
 		return err
 	}
 
 	// 5. Optionally generate specs
 	if withSpecs {
-		outputPath := filepath.Join("output", name)
 		fmt.Println()
 		fmt.Println("--- Generating specs from context ---")
 		fmt.Println()
-		return runSpec(name, outputPath, model, locale)
+		return runSpec(name, output, output, model, locale)
 	}
 
 	return nil
