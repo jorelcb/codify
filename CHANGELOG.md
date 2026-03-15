@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-03-14 - Embedded templates, auto-detect provider, Homebrew distribution
+
+### Added
+- GoReleaser v2 config with cross-compilation (macOS/Linux, arm64/amd64)
+- GitHub Actions: CI (tests on push/PR) and release (on tag push)
+- Homebrew tap distribution (`brew tap jorelcb/tap && brew install ai-context-generator`)
+- Embedded templates via `embed.FS` — binary works from any directory
+- Auto-detect LLM provider from available API keys when `--model` is not specified
+
+### Fixed
+- Templates not found when running installed binary outside project root
+- `ANTHROPIC_API_KEY environment variable is required` error when only Gemini key was set
+- Version/ldflags not injected in CLI `--version` output
+
 ## [1.3.0] - 2026-03-12 - Agent Skills generation
 
 ### Added
