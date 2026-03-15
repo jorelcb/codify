@@ -8,13 +8,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	root "github.com/jorelcb/ai-context-generator"
-	"github.com/jorelcb/ai-context-generator/internal/application/command"
-	"github.com/jorelcb/ai-context-generator/internal/application/dto"
-	"github.com/jorelcb/ai-context-generator/internal/domain/service"
-	"github.com/jorelcb/ai-context-generator/internal/infrastructure/filesystem"
-	"github.com/jorelcb/ai-context-generator/internal/infrastructure/llm"
-	infratemplate "github.com/jorelcb/ai-context-generator/internal/infrastructure/template"
+	root "github.com/jorelcb/codify"
+	"github.com/jorelcb/codify/internal/application/command"
+	"github.com/jorelcb/codify/internal/application/dto"
+	"github.com/jorelcb/codify/internal/domain/service"
+	"github.com/jorelcb/codify/internal/infrastructure/filesystem"
+	"github.com/jorelcb/codify/internal/infrastructure/llm"
+	infratemplate "github.com/jorelcb/codify/internal/infrastructure/template"
 )
 
 const defaultLocale = "en"
@@ -57,31 +57,31 @@ Requires ANTHROPIC_API_KEY (for Claude) or GEMINI_API_KEY (for Gemini) environme
 
 Examples:
   # Generate with description (English, default preset)
-  ai-context-generator generate my-api \
+  codify generate my-api \
     --description "Inventory management REST API in Go with Clean Architecture and PostgreSQL"
 
   # Generate in Spanish
-  ai-context-generator generate my-api \
+  codify generate my-api \
     --description "API REST de gestion de inventarios en Go" \
     --locale es
 
   # With language-specific guides
-  ai-context-generator generate my-api \
+  codify generate my-api \
     --description "Inventory management REST API in Go" \
     --language go
 
   # From a detailed description file
-  ai-context-generator generate my-api \
+  codify generate my-api \
     --from-file ./docs/project-description.md \
     --language go
 
   # With neutral preset
-  ai-context-generator generate my-api \
+  codify generate my-api \
     --description "Inventory management REST API" \
     --preset neutral
 
   # Generate context + specs in one command
-  ai-context-generator generate my-api \
+  codify generate my-api \
     --description "Inventory management REST API in Go" \
     --with-specs`,
 		Args: cobra.MaximumNArgs(1),

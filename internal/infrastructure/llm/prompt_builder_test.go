@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jorelcb/ai-context-generator/internal/domain/service"
+	"github.com/jorelcb/codify/internal/domain/service"
 )
 
 func TestPromptBuilder_BuildSystemPromptForFile(t *testing.T) {

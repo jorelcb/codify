@@ -22,4 +22,4 @@ jobs:
         run: go test ./...
 
       - name: Build
-        run: go build -o /dev/null ./cmd/ai-context-generator
+        run: go build -o /dev/null ./cmd/codify

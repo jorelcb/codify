@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jorelcb/ai-context-generator/internal/domain/service"
+	"github.com/jorelcb/codify/internal/domain/service"
 )
 
 func envOrEmpty(key string) string {

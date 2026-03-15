@@ -8,7 +8,7 @@ import (
 
 	"google.golang.org/genai"
 
-	"github.com/jorelcb/ai-context-generator/internal/domain/service"
+	"github.com/jorelcb/codify/internal/domain/service"
 )
 
 const defaultGeminiModel = "gemini-3.1-pro-preview"

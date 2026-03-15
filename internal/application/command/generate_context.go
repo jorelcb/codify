@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/jorelcb/ai-context-generator/internal/application/dto"
-	"github.com/jorelcb/ai-context-generator/internal/domain/service"
+	"github.com/jorelcb/codify/internal/application/dto"
+	"github.com/jorelcb/codify/internal/domain/service"
 )
 
 // rootFiles are written to the project root, not the context/ subdirectory.

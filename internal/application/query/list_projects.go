@@ -3,8 +3,8 @@ package query
 import (
 	"context"
 
-	"github.com/jorelcb/ai-context-generator/internal/application/dto"
-	"github.com/jorelcb/ai-context-generator/internal/domain/project"
+	"github.com/jorelcb/codify/internal/application/dto"
+	"github.com/jorelcb/codify/internal/domain/project"
 )
 
 // ListProjectsQuery representa la consulta para listar proyectos

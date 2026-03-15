@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jorelcb/ai-context-generator/internal/application/dto"
-	"github.com/jorelcb/ai-context-generator/internal/domain/service"
+	"github.com/jorelcb/codify/internal/application/dto"
+	"github.com/jorelcb/codify/internal/domain/service"
 )
 
 // GenerateSkillsCommand orchestrates LLM-based Agent Skills generation.

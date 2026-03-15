@@ -1,9 +1,9 @@
 version: 2
 
 builds:
-  - id: ai-context-generator
-    main: ./cmd/ai-context-generator
-    binary: ai-context-generator
+  - id: codify
+    main: ./cmd/codify
+    binary: codify
     env:
       - CGO_ENABLED=0
     goos:
@@ -38,19 +38,19 @@ changelog:
 release:
   github:
     owner: jorelcb
-    name: ai-context-generator
+    name: codify
   draft: false
   prerelease: auto
   name_template: "{{ .Tag }}"
 
 homebrew_casks:
-  - name: ai-context-generator
+  - name: codify
     repository:
       owner: jorelcb
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     directory: Casks
-    homepage: "https://github.com/jorelcb/ai-context-generator"
+    homepage: "https://github.com/jorelcb/codify"
     description: "MCP server & CLI that generates context, specs, and skills for AI coding agents"
     binaries:
-      - ai-context-generator
+      - codify

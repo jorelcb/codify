@@ -5,7 +5,7 @@ import (
 	"io/fs"
 	"path/filepath"
 
-	"github.com/jorelcb/ai-context-generator/internal/domain/service"
+	"github.com/jorelcb/codify/internal/domain/service"
 )
 
 // FileSystemTemplateLoader loads template guides from an fs.FS (embedded or OS filesystem).

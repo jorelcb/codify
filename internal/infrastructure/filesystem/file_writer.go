@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/jorelcb/ai-context-generator/internal/domain/service" // Importar la interfaz
+	"github.com/jorelcb/codify/internal/domain/service" // Importar la interfaz
 )
 
 // FileWriter handles file writing operations securely

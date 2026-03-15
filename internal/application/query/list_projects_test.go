@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jorelcb/ai-context-generator/internal/domain/project"
-	"github.com/jorelcb/ai-context-generator/internal/domain/shared"
-	"github.com/jorelcb/ai-context-generator/internal/infrastructure/persistence/memory"
+	"github.com/jorelcb/codify/internal/domain/project"
+	"github.com/jorelcb/codify/internal/domain/shared"
+	"github.com/jorelcb/codify/internal/infrastructure/persistence/memory"
 )
 
 func TestListProjectsQuery_Execute(t *testing.T) {

@@ -1,6 +1,6 @@
 package dto
 
-import "github.com/jorelcb/ai-context-generator/internal/domain/shared"
+import "github.com/jorelcb/codify/internal/domain/shared"
 
 // SpecConfig representa la configuracion para generar especificaciones SDD
 type SpecConfig struct {

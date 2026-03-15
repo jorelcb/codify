@@ -1,4 +1,4 @@
-# AI Context Generator - Go Idiomatic Guide
+# Codify - Go Idiomatic Guide
 
 ## Concurrency
 
@@ -60,8 +60,8 @@ import (
 
 // Internal project modules
 import (
-    "ai-context-generator/internal/domain/project"
-    "ai-context-generator/internal/infrastructure/llm"
+    "codify/internal/domain/project"
+    "codify/internal/infrastructure/llm"
 )
 ```
 

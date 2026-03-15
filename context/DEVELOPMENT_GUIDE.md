@@ -1,4 +1,4 @@
-# AI Context Generator - Development Guide
+# Codify - Development Guide
 
 ## 1. Critical Information & Methodology
 

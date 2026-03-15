@@ -1,4 +1,4 @@
-package ai_context_generator
+package codify
 
 import "embed"
 

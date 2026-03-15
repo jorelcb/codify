@@ -1,4 +1,4 @@
-# AI Context Generator - Technical Plan
+# Codify - Technical Plan
 
 ## High-Level Architecture
 
@@ -36,7 +36,7 @@ The system uses a **Clean Architecture with Domain-Driven Design (DDD)** pattern
 The primary interface is the CLI, not a traditional web API.
 
 - **`generate` command:**
-  - **Usage:** `ai-context-generator generate <project-name> --description "<text>"`
+  - **Usage:** `codify generate <project-name> --description "<text>"`
   - **Inputs:** Project name (argument), Description (flag).
   - **Output:** Writes generated files to `output/<project-name>/` and returns a `GenerationResult` (file paths, tokens used) to stdout.
 - **MCP Server API:** `[DEFINE: Specification for MCP endpoints, requests, and responses]`

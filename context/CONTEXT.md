@@ -1,4 +1,4 @@
-# AI Context Generator - Architectural Context
+# Codify - Architectural Context
 
 ## Architecture
 

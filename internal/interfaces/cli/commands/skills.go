@@ -8,12 +8,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	root "github.com/jorelcb/ai-context-generator"
-	"github.com/jorelcb/ai-context-generator/internal/application/command"
-	"github.com/jorelcb/ai-context-generator/internal/application/dto"
-	"github.com/jorelcb/ai-context-generator/internal/infrastructure/filesystem"
-	"github.com/jorelcb/ai-context-generator/internal/infrastructure/llm"
-	infratemplate "github.com/jorelcb/ai-context-generator/internal/infrastructure/template"
+	root "github.com/jorelcb/codify"
+	"github.com/jorelcb/codify/internal/application/command"
+	"github.com/jorelcb/codify/internal/application/dto"
+	"github.com/jorelcb/codify/internal/infrastructure/filesystem"
+	"github.com/jorelcb/codify/internal/infrastructure/llm"
+	infratemplate "github.com/jorelcb/codify/internal/infrastructure/template"
 )
 
 // skillsDefaultTemplateMapping maps default preset skill template files to guide names.
@@ -68,16 +68,16 @@ Requires ANTHROPIC_API_KEY (for Claude) or GEMINI_API_KEY (for Gemini) environme
 
 Examples:
   # Generate default preset skills for Claude Code
-  ai-context-generator skills
+  codify skills
 
   # Generate neutral skills for Codex
-  ai-context-generator skills --preset neutral --target codex
+  codify skills --preset neutral --target codex
 
   # Generate in Spanish with custom output
-  ai-context-generator skills --locale es --output ./my-skills/
+  codify skills --locale es --output ./my-skills/
 
   # Generate with Gemini
-  ai-context-generator skills --model gemini-3.1-pro-preview`,
+  codify skills --model gemini-3.1-pro-preview`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runSkills(preset, locale, target, model, output)
 		},

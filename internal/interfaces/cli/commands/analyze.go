@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/jorelcb/ai-context-generator/internal/infrastructure/scanner"
+	"github.com/jorelcb/codify/internal/infrastructure/scanner"
 )
 
 // NewAnalyzeCmd creates the analyze command
@@ -32,16 +32,16 @@ be used to enrich the generated output.
 
 Examples:
   # Analyze a Go project
-  ai-context-generator analyze ./my-go-api
+  codify analyze ./my-go-api
 
   # With explicit name and language
-  ai-context-generator analyze ./my-go-api --name my-api --language go
+  codify analyze ./my-go-api --name my-api --language go
 
   # Analyze and generate specs in one step
-  ai-context-generator analyze ./my-go-api --with-specs
+  codify analyze ./my-go-api --with-specs
 
   # In Spanish
-  ai-context-generator analyze ./my-go-api --locale es`,
+  codify analyze ./my-go-api --locale es`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectPath := args[0]

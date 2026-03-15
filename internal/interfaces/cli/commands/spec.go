@@ -9,12 +9,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	root "github.com/jorelcb/ai-context-generator"
-	"github.com/jorelcb/ai-context-generator/internal/application/command"
-	"github.com/jorelcb/ai-context-generator/internal/application/dto"
-	"github.com/jorelcb/ai-context-generator/internal/infrastructure/filesystem"
-	"github.com/jorelcb/ai-context-generator/internal/infrastructure/llm"
-	infratemplate "github.com/jorelcb/ai-context-generator/internal/infrastructure/template"
+	root "github.com/jorelcb/codify"
+	"github.com/jorelcb/codify/internal/application/command"
+	"github.com/jorelcb/codify/internal/application/dto"
+	"github.com/jorelcb/codify/internal/infrastructure/filesystem"
+	"github.com/jorelcb/codify/internal/infrastructure/llm"
+	infratemplate "github.com/jorelcb/codify/internal/infrastructure/template"
 )
 
 // specTemplateMapping maps spec template file names to their guide names.
@@ -47,10 +47,10 @@ Requires ANTHROPIC_API_KEY (for Claude) or GEMINI_API_KEY (for Gemini) environme
 
 Examples:
   # Generate specs from existing context
-  ai-context-generator spec my-api --from-context ./output/my-api/
+  codify spec my-api --from-context ./output/my-api/
 
   # With custom model
-  ai-context-generator spec my-api --from-context ./output/my-api/ --model claude-sonnet-4-6`,
+  codify spec my-api --from-context ./output/my-api/ --model claude-sonnet-4-6`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectName := args[0]

@@ -1,4 +1,4 @@
-module github.com/jorelcb/ai-context-generator
+module github.com/jorelcb/codify
 
 go 1.25.1
 

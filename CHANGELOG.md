@@ -1,4 +1,4 @@
-# Changelog - AI Context Generator
+# Changelog - Codify
 
 All notable changes to this project will be documented in this file.
 
@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - GoReleaser v2 config with cross-compilation (macOS/Linux, arm64/amd64)
 - GitHub Actions: CI (tests on push/PR) and release (on tag push)
-- Homebrew tap distribution (`brew tap jorelcb/tap && brew install ai-context-generator`)
+- Homebrew tap distribution (`brew tap jorelcb/tap && brew install codify`)
 - Embedded templates via `embed.FS` — binary works from any directory
 - Auto-detect LLM provider from available API keys when `--model` is not specified
 
@@ -100,7 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Context file generation using Anthropic Claude API with streaming
 - Per-file generation (independent API calls per output file)
-- CLI: `ai-context-generator generate <name> --description "..." [--language] [--type] [--architecture] [--model]`
+- CLI: `codify generate <name> --description "..." [--language] [--type] [--architecture] [--model]`
 - PromptBuilder, FileSystemTemplateLoader, GenerateContextCommand
 - AnthropicProvider with official SDK (`anthropic-sdk-go v1.25.0`)
 - Value objects with validation

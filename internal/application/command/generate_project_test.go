@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jorelcb/ai-context-generator/internal/application/dto"
-	"github.com/jorelcb/ai-context-generator/internal/domain/service"
-	"github.com/jorelcb/ai-context-generator/internal/infrastructure/filesystem"
-	"github.com/jorelcb/ai-context-generator/internal/infrastructure/persistence/memory"
+	"github.com/jorelcb/codify/internal/application/dto"
+	"github.com/jorelcb/codify/internal/domain/service"
+	"github.com/jorelcb/codify/internal/infrastructure/filesystem"
+	"github.com/jorelcb/codify/internal/infrastructure/persistence/memory"
 )
 
 func TestGenerateProjectCommand_Execute(t *testing.T) {

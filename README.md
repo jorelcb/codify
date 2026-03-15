@@ -1,8 +1,8 @@
-# 🧠 AI Context Generator
+# 🧠 Codify
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.4.0-blue?style=for-the-badge)](https://github.com/jorelcb/ai-context-generator/releases)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.21)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -36,7 +36,7 @@ And the agent, with all its capability, improvises:
 
 ## 💡 The Solution
 
-**AI Context Generator** takes your project description and generates intelligent context files using LLMs (Anthropic Claude or Google Gemini). Files that give your agent the master blueprint, domain constraints, and architectural memory it needs.
+**Codify** takes your project description and generates intelligent context files using LLMs (Anthropic Claude or Google Gemini). Files that give your agent the master blueprint, domain constraints, and architectural memory it needs.
 
 It follows the [AGENTS.md standard](https://github.com/anthropics/AGENTS.md) — an open specification backed by the Linux Foundation for providing AI agents with project context. This means the files work out of the box with Claude Code, Cursor, Codex, and any agent that reads the standard.
 
@@ -70,7 +70,7 @@ Agent: "BDD tests? This is the first time you've mentioned that"
 Result: 45 minutes correcting the agent 😤
 ```
 
-### 🚀 With AI Context Generator
+### 🚀 With Codify
 
 ```
 You: "Create a payments API in Go"
@@ -91,13 +91,13 @@ Result: Coherent code from the first line ✨
 ```bash
 # Homebrew (macOS/Linux — no Go required)
 brew tap jorelcb/tap
-brew install ai-context-generator
+brew install codify
 
 # Or via go install
-go install github.com/jorelcb/ai-context-generator/cmd/ai-context-generator@latest
+go install github.com/jorelcb/codify/cmd/codify@latest
 
 # Or download pre-built binaries from GitHub Releases
-# https://github.com/jorelcb/ai-context-generator/releases
+# https://github.com/jorelcb/codify/releases
 ```
 
 ### Your first context in 30 seconds
@@ -109,13 +109,13 @@ export ANTHROPIC_API_KEY="sk-ant-..."   # for Claude (default)
 export GEMINI_API_KEY="AI..."           # for Gemini
 
 # 2. Describe your project (with language for idiomatic guides)
-ai-context-generator generate payment-service \
+codify generate payment-service \
   --description "Payment microservice in Go with gRPC, PostgreSQL and Kafka. \
   DDD with Clean Architecture. Stripe as payment processor." \
   --language go
 
 # 3. Use Gemini instead of Claude
-ai-context-generator generate payment-service \
+codify generate payment-service \
   --description "Payment microservice in Go" \
   --model gemini-3.1-pro-preview
 
@@ -150,12 +150,12 @@ ai-context-generator generate payment-service \
 
 ## 🔌 MCP Server
 
-Use AI Context Generator as an **MCP server** — your AI coding agent calls the tools directly, no manual CLI needed.
+Use Codify as an **MCP server** — your AI coding agent calls the tools directly, no manual CLI needed.
 
 ### Install
 
 ```bash
-go install github.com/jorelcb/ai-context-generator/cmd/ai-context-generator@latest
+go install github.com/jorelcb/codify/cmd/codify@latest
 ```
 
 ### Claude Code
@@ -165,8 +165,8 @@ Add to your project's `.mcp.json`:
 ```json
 {
   "mcpServers": {
-    "ai-context-generator": {
-      "command": "ai-context-generator",
+    "codify": {
+      "command": "codify",
       "args": ["serve"],
       "env": {
         "ANTHROPIC_API_KEY": "sk-ant-...",
@@ -181,7 +181,7 @@ Add to your project's `.mcp.json`:
 
 ```bash
 # Register the MCP server
-codex mcp add ai-context-generator -- ai-context-generator serve
+codex mcp add codify -- codify serve
 ```
 
 ### Gemini CLI
@@ -191,8 +191,8 @@ Add to `~/.gemini/settings.json`:
 ```json
 {
   "mcpServers": {
-    "ai-context-generator": {
-      "command": "ai-context-generator",
+    "codify": {
+      "command": "codify",
       "args": ["serve"],
       "env": {
         "GEMINI_API_KEY": "AI..."
@@ -202,7 +202,7 @@ Add to `~/.gemini/settings.json`:
 }
 ```
 
-> Set the API key(s) for the provider(s) you want to use. The provider is auto-detected from the `model` parameter. If the binary is not in your PATH, use the full path (e.g., `/Users/you/go/bin/ai-context-generator`).
+> Set the API key(s) for the provider(s) you want to use. The provider is auto-detected from the `model` parameter. If the binary is not in your PATH, use the full path (e.g., `/Users/you/go/bin/codify`).
 
 ### Available MCP Tools
 
@@ -251,7 +251,7 @@ Place these files at your project root. Compatible agents (Claude Code, Cursor, 
 From existing context, generates technical specifications ready for implementation:
 
 ```bash
-ai-context-generator spec payment-service \
+codify spec payment-service \
   --from-context ./output/payment-service/
 ```
 
@@ -267,7 +267,7 @@ ai-context-generator spec payment-service \
 Scans an existing codebase and generates context files automatically:
 
 ```bash
-ai-context-generator analyze /path/to/my-project --with-specs
+codify analyze /path/to/my-project --with-specs
 ```
 
 Auto-detects language, framework, dependencies, directory structure, README, existing context files, and infrastructure signals (Docker, CI/CD, Makefile, etc.). Everything feeds into the LLM for richer, project-aware generation.
@@ -277,7 +277,7 @@ Auto-detects language, framework, dependencies, directory structure, README, exi
 Available on both `generate` and `analyze`. Chains context generation + spec generation + AGENTS.md update in a single run:
 
 ```bash
-ai-context-generator generate my-api \
+codify generate my-api \
   --description "REST API in Go with PostgreSQL" \
   --language go \
   --with-specs
@@ -289,13 +289,13 @@ Generates reusable [Agent Skills](https://agentskills.io) (SKILL.md) based on ar
 
 ```bash
 # Default preset: DDD, Clean Arch, BDD, CQRS, Hexagonal
-ai-context-generator skills
+codify skills
 
 # Neutral preset for Codex
-ai-context-generator skills --preset neutral --target codex
+codify skills --preset neutral --target codex
 
 # For Antigravity IDE in Spanish
-ai-context-generator skills --target antigravity --locale es
+codify skills --target antigravity --locale es
 ```
 
 | Preset | Skills generated |
@@ -308,7 +308,7 @@ Target ecosystems: `claude` (default), `codex`, `antigravity` — each gets ecos
 ### 🔍 `list` command — Generated projects
 
 ```bash
-ai-context-generator list
+codify list
 ```
 
 ## 🌐 Language-Specific Guides
@@ -323,13 +323,13 @@ When you pass `--language`, the tool generates an additional `IDIOMS.md` file wi
 
 ```bash
 # Go project with idiomatic guides
-ai-context-generator generate my-api -d "REST API in Go" --language go
+codify generate my-api -d "REST API in Go" --language go
 
 # TypeScript SDK with JS idioms
-ai-context-generator generate my-sdk -d "SDK in TypeScript" --language javascript
+codify generate my-sdk -d "SDK in TypeScript" --language javascript
 
 # Python service with async patterns
-ai-context-generator generate my-service -d "FastAPI service" --language python
+codify generate my-service -d "FastAPI service" --language python
 ```
 
 Without `--language`, the tool generates 4 files. With it, you get 5 — and significantly richer output.
@@ -349,7 +349,7 @@ Recommended: **DDD + Clean Architecture + BDD**. Includes:
 - Development methodology and self-validation checklist
 
 ```bash
-ai-context-generator generate my-api \
+codify generate my-api \
   --description "Inventory management REST API in Go"
 # Uses default preset automatically
 ```
@@ -359,7 +359,7 @@ ai-context-generator generate my-api \
 No architectural stance. Lets the LLM adapt the structure to the project:
 
 ```bash
-ai-context-generator generate my-api \
+codify generate my-api \
   --description "Inventory management REST API in Go" \
   --preset neutral
 ```
@@ -369,7 +369,7 @@ ai-context-generator generate my-api \
 For detailed project descriptions (design docs, RFCs, 6-pagers), use `--from-file` instead of `--description`:
 
 ```bash
-ai-context-generator generate my-api \
+codify generate my-api \
   --from-file ./docs/project-description.md \
   --language go
 ```
@@ -379,7 +379,7 @@ The file content becomes the project description. Supports any text format — m
 ## ⚙️ Options
 
 ```bash
-ai-context-generator generate <name> [flags]
+codify generate <name> [flags]
 ```
 
 | Flag | Short | Description | Default |
@@ -526,6 +526,6 @@ Apache License 2.0 — see [LICENSE](LICENSE).
 
 ⭐ If this helped you, give it a star — it keeps us building
 
-[🐛 Report bug](https://github.com/jorelcb/ai-context-generator/issues) · [💡 Request feature](https://github.com/jorelcb/ai-context-generator/issues)
+[🐛 Report bug](https://github.com/jorelcb/codify/issues) · [💡 Request feature](https://github.com/jorelcb/codify/issues)
 
 </div>

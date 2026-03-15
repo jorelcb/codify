@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jorelcb/ai-context-generator/internal/domain/service" // Importar la interfaz
+	"github.com/jorelcb/codify/internal/domain/service" // Importar la interfaz
 )
 
 // DirectoryManager handles directory operations

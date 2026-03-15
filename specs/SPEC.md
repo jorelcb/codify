@@ -1,4 +1,4 @@
-# AI Context Generator - Feature Specification
+# Codify - Feature Specification
 
 ## Feature 1: Context Generation from Project Description
 

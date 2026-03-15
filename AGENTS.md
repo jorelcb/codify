@@ -1,4 +1,4 @@
-# AI Context Generator
+# Codify
 
 A Go CLI tool that generates intelligent context files for AI agents from a project description. It uses LLMs (Claude, Gemini) and follows a Clean Architecture/DDD pattern to bridge the gap between a high-level idea and AI-ready development specifications.
 
@@ -27,7 +27,7 @@ task build
 task test
 
 # Run the CLI tool (example: generate)
-go run ./cmd/ai-context-generator/ generate my-api --description "A new API"
+go run ./cmd/codify/ generate my-api --description "A new API"
 
 # Run linters
 task lint
@@ -57,7 +57,7 @@ Dependencies point inwards: `Interfaces` -> `Infrastructure` -> `Application` ->
 
 ```
 .
-├── cmd/ai-context-generator/  # Main application entry point
+├── cmd/codify/  # Main application entry point
 ├── internal/
 │   ├── domain/                  # Core business logic, entities, and interfaces
 │   │   ├── project/

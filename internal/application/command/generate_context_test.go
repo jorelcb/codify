@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/jorelcb/ai-context-generator/internal/application/dto"
-	"github.com/jorelcb/ai-context-generator/internal/domain/service"
-	"github.com/jorelcb/ai-context-generator/internal/infrastructure/filesystem"
+	"github.com/jorelcb/codify/internal/application/dto"
+	"github.com/jorelcb/codify/internal/domain/service"
+	"github.com/jorelcb/codify/internal/infrastructure/filesystem"
 )
 
 // mockLLMProvider implements service.LLMProvider for testing.

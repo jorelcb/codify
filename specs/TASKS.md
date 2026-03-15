@@ -1,4 +1,4 @@
-# AI Context Generator - Implementation Tasks
+# Codify - Implementation Tasks
 
 ## Milestone 1: Robustness
 
@@ -24,7 +24,7 @@
 
 ### Task 1.3: Implement Graceful Shutdown for MCP Server
 - **Description:** Implement graceful shutdown for the `serve` command to correctly handle `SIGINT`/`SIGTERM` signals, ensuring in-progress requests can complete before the server exits.
-- **Files to create/modify:** `cmd/ai-context-generator/main.go`, `internal/interfaces/mcp/server.go`
+- **Files to create/modify:** `cmd/codify/main.go`, `internal/interfaces/mcp/server.go`
 - **Dependencies:** None
 - **Acceptance criteria:**
   - [ ] The `serve` process captures `SIGINT` and `SIGTERM`.

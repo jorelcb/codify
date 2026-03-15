@@ -10,14 +10,14 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
-	root "github.com/jorelcb/ai-context-generator"
-	"github.com/jorelcb/ai-context-generator/internal/application/command"
-	"github.com/jorelcb/ai-context-generator/internal/application/dto"
-	"github.com/jorelcb/ai-context-generator/internal/domain/service"
-	"github.com/jorelcb/ai-context-generator/internal/infrastructure/filesystem"
-	"github.com/jorelcb/ai-context-generator/internal/infrastructure/llm"
-	"github.com/jorelcb/ai-context-generator/internal/infrastructure/scanner"
-	infratemplate "github.com/jorelcb/ai-context-generator/internal/infrastructure/template"
+	root "github.com/jorelcb/codify"
+	"github.com/jorelcb/codify/internal/application/command"
+	"github.com/jorelcb/codify/internal/application/dto"
+	"github.com/jorelcb/codify/internal/domain/service"
+	"github.com/jorelcb/codify/internal/infrastructure/filesystem"
+	"github.com/jorelcb/codify/internal/infrastructure/llm"
+	"github.com/jorelcb/codify/internal/infrastructure/scanner"
+	infratemplate "github.com/jorelcb/codify/internal/infrastructure/template"
 )
 
 const serverVersion = "1.4.0"
@@ -31,7 +31,7 @@ var validPresets = map[string]bool{
 // NewServer creates and configures the MCP server with all tools registered.
 func NewServer() *server.MCPServer {
 	s := server.NewMCPServer(
-		"ai-context-generator",
+		"codify",
 		serverVersion,
 		server.WithToolCapabilities(true),
 	)

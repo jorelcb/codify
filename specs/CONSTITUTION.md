@@ -1,8 +1,8 @@
-# AI Context Generator - Project Constitution
+# Codify - Project Constitution
 
 ## Identity
 
-- **Name:** AI Context Generator
+- **Name:** Codify
 - **Purpose:** A Go CLI tool that generates intelligent context files for AI agents from a project description.
 - **Target users:** [DEFINE: Describe the primary user personas, e.g., developers, architects, AI agents]
 

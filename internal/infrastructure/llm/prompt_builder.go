@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jorelcb/ai-context-generator/internal/domain/service"
+	"github.com/jorelcb/codify/internal/domain/service"
 )
 
 // PromptBuilder constructs prompts for the LLM from templates and project description.

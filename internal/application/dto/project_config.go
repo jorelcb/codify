@@ -1,6 +1,6 @@
 package dto
 
-import "github.com/jorelcb/ai-context-generator/internal/domain/shared"
+import "github.com/jorelcb/codify/internal/domain/shared"
 
 // ProjectConfig representa la configuración para generar un proyecto
 type ProjectConfig struct {

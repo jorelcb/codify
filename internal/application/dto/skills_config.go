@@ -1,6 +1,6 @@
 package dto
 
-import "github.com/jorelcb/ai-context-generator/internal/domain/shared"
+import "github.com/jorelcb/codify/internal/domain/shared"
 
 // ValidTargets maps valid target ecosystem names.
 var ValidTargets = map[string]bool{

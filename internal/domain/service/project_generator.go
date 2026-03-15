@@ -3,8 +3,8 @@ package service
 import (
 	"fmt"
 
-	"github.com/jorelcb/ai-context-generator/internal/domain/project"
-	"github.com/jorelcb/ai-context-generator/internal/domain/shared"
+	"github.com/jorelcb/codify/internal/domain/project"
+	"github.com/jorelcb/codify/internal/domain/shared"
 )
 
 // ProjectGenerator provides domain operations for managing projects

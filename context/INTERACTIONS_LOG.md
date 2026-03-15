@@ -1,4 +1,4 @@
-# Interaction Log - AI Context Generator
+# Interaction Log - Codify
 
 ## Guiding Principles
 This log documents the evolution of the project, serving as its institutional memory. It captures key decisions, problems solved, and lessons learned. New entries should follow the established format.

@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	mcpserver "github.com/jorelcb/ai-context-generator/internal/interfaces/mcp"
+	mcpserver "github.com/jorelcb/codify/internal/interfaces/mcp"
 )
 
 // NewServeCmd creates the serve command for MCP server mode
@@ -19,7 +19,7 @@ func NewServeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "serve",
 		Short: "Start as MCP (Model Context Protocol) server",
-		Long: `Start ai-context-generator as an MCP server, exposing tools for:
+		Long: `Start codify as an MCP server, exposing tools for:
   - generate_context: Generate AI context files from a description
   - generate_specs: Generate SDD specs from existing context
   - analyze_project: Scan a project and generate context files
@@ -31,8 +31,8 @@ Transports:
 Configuration for Claude Desktop (claude_desktop_config.json):
   {
     "mcpServers": {
-      "ai-context-generator": {
-        "command": "ai-context-generator",
+      "codify": {
+        "command": "codify",
         "args": ["serve"],
         "env": {
           "ANTHROPIC_API_KEY": "your-key-here"
@@ -42,7 +42,7 @@ Configuration for Claude Desktop (claude_desktop_config.json):
   }
 
 Remote HTTP mode:
-  ai-context-generator serve --transport http --addr :8080
+  codify serve --transport http --addr :8080
 
 Requires ANTHROPIC_API_KEY environment variable.`,
 		RunE: func(cmd *cobra.Command, args []string) error {

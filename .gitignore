@@ -8,7 +8,7 @@
 # Build artifacts
 bin/
 dist/
-ai-context-generator
+codify
 
 # Generated output
 input/

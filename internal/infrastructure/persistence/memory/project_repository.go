@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/jorelcb/ai-context-generator/internal/domain/project"
+	"github.com/jorelcb/codify/internal/domain/project"
 )
 
 // ProjectRepository is an in-memory implementation of project.Repository

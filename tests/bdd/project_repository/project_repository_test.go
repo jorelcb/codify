@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/cucumber/godog"
-	"github.com/jorelcb/ai-context-generator/tests/bdd/commons"
+	"github.com/jorelcb/codify/tests/bdd/commons"
 )
 
 func TestProjectRepositoryFeature(t *testing.T) {

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jorelcb/ai-context-generator/internal/application/dto"
-	"github.com/jorelcb/ai-context-generator/internal/domain/project"
-	"github.com/jorelcb/ai-context-generator/internal/domain/service"
-	"github.com/jorelcb/ai-context-generator/internal/domain/shared"
+	"github.com/jorelcb/codify/internal/application/dto"
+	"github.com/jorelcb/codify/internal/domain/project"
+	"github.com/jorelcb/codify/internal/domain/service"
+	"github.com/jorelcb/codify/internal/domain/shared"
 )
 
 // GenerateProjectCommand representa el comando para generar un proyecto
