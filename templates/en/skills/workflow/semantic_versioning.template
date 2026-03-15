@@ -1,0 +1,107 @@
+# Semantic Versioning Skill
+
+## Purpose
+Guide an AI agent to determine correct version bumps following Semantic Versioning 2.0.0. The agent must analyze commits since the last tag and recommend the appropriate version increment.
+
+## Sections to Generate
+
+### When to Use This Skill
+Describe scenarios: releasing a new version, determining version bump after a set of changes, creating release tags, managing changelogs, any version management operation.
+
+### Version Format
+Strict format from the specification:
+```
+MAJOR.MINOR.PATCH[-pre-release][+build]
+```
+
+Rules:
+- Each element is a non-negative integer, no leading zeros
+- Elements increase numerically: 1.9.0 → 1.10.0 → 1.11.0
+- Once released, the contents of a version MUST NOT be modified
+- The `v` prefix is a tag convention, not part of the version
+
+### Increment Rules
+Decision tree for version bumps:
+
+**MAJOR (X.0.0)** — Incompatible API changes:
+- Commits containing `BREAKING CHANGE:` in body or footer
+- Commits with `!` after type: `feat!:`, `fix!:`, `refactor!:`
+- Removing a public API, changing function signatures, renaming exports
+
+**MINOR (0.X.0)** — New backward-compatible functionality:
+- Commits with type `feat:` (without breaking changes)
+- Adding new endpoints, functions, options, or features
+- Deprecating existing functionality (without removing it)
+- Resets PATCH to 0
+
+**PATCH (0.0.X)** — Backward-compatible bug fixes:
+- Commits with type `fix:`
+- Commits with type `perf:` (performance improvements)
+- Internal changes that correct incorrect behavior
+
+**No bump needed:**
+- Commits with types: `docs:`, `style:`, `refactor:`, `test:`, `build:`, `ci:`, `chore:`
+- Unless combined with `feat:` or `fix:` commits in the same release
+
+### Analysis Process
+Step-by-step workflow for the agent:
+1. Find the last version tag: `git describe --tags --abbrev=0`
+2. List commits since that tag: `git log <last-tag>..HEAD --oneline`
+3. Classify each commit by its conventional commit type
+4. Check for BREAKING CHANGE markers (footer or `!` suffix)
+5. Apply the highest-priority rule: MAJOR > MINOR > PATCH
+6. Calculate the new version number
+7. Report: current version → new version, with justification
+
+### Pre-release and Build Metadata
+- Pre-release: appended with hyphen: `1.0.0-alpha`, `1.0.0-beta.1`, `1.0.0-rc.1`
+- Build metadata: appended with plus: `1.0.0+20240101`, `1.0.0-alpha+001`
+- Pre-release has lower precedence than release: `1.0.0-alpha < 1.0.0`
+- Build metadata is ignored in precedence comparisons
+
+### Precedence Rules
+Version comparison order:
+1. Compare MAJOR, then MINOR, then PATCH (numerically)
+2. Release > pre-release for same version
+3. Pre-release identifiers: numeric < alphanumeric, compared left to right
+4. Example: `1.0.0-alpha < 1.0.0-alpha.1 < 1.0.0-beta < 1.0.0-rc.1 < 1.0.0`
+
+### Initial Development (0.y.z)
+- Major version zero is for initial development
+- Anything may change at any time — public API is not stable
+- Start at 0.1.0, bump minor for each pre-stable release
+- Version 1.0.0 defines the first stable public API
+
+### Files to Update
+Common version files by ecosystem:
+- **Go**: `.version`, ldflags in build, MCP server version constant
+- **Node.js**: `package.json` (version field)
+- **Python**: `pyproject.toml`, `__version__`
+- **Rust**: `Cargo.toml`
+- **Java**: `pom.xml` or `build.gradle`
+
+### Release Workflow
+After determining the version bump:
+1. Update version files
+2. Commit: `chore(release): bump version to X.Y.Z`
+3. Create annotated tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
+4. Push commit and tag: `git push origin main && git push origin vX.Y.Z`
+
+### Anti-patterns
+- Bumping MAJOR for non-breaking changes (version inflation)
+- Skipping versions (1.2.0 → 1.4.0)
+- Modifying a released version instead of releasing a new one
+- Ignoring BREAKING CHANGE markers in commit analysis
+- Bumping version for docs/style/test-only changes
+- Forgetting to reset MINOR and PATCH when bumping MAJOR
+- Forgetting to reset PATCH when bumping MINOR
+
+### Verification
+Checklist for the agent before releasing:
+- [ ] All commits since last tag have been classified
+- [ ] Breaking changes trigger MAJOR (or MINOR if still on 0.y.z)
+- [ ] New features trigger at minimum MINOR
+- [ ] Bug fixes trigger at minimum PATCH
+- [ ] Version files are updated consistently
+- [ ] Tag format matches `vMAJOR.MINOR.PATCH`
+- [ ] No version was skipped

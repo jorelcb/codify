@@ -1,0 +1,107 @@
+# Skill de Versionado Semantico
+
+## Proposito
+Guiar a un agente de IA para determinar bumps de version correctos siguiendo Semantic Versioning 2.0.0. El agente debe analizar los commits desde el ultimo tag y recomendar el incremento de version apropiado.
+
+## Secciones a Generar
+
+### Cuando Usar Esta Skill
+Describir escenarios: liberar una nueva version, determinar bump de version despues de un conjunto de cambios, crear tags de release, gestionar changelogs, cualquier operacion de gestion de versiones.
+
+### Formato de Version
+Formato estricto de la especificacion:
+```
+MAJOR.MINOR.PATCH[-pre-release][+build]
+```
+
+Reglas:
+- Cada elemento es un entero no negativo, sin ceros a la izquierda
+- Los elementos incrementan numericamente: 1.9.0 → 1.10.0 → 1.11.0
+- Una vez publicada, el contenido de una version NO DEBE modificarse
+- El prefijo `v` es una convencion de tag, no parte de la version
+
+### Reglas de Incremento
+Arbol de decision para bumps de version:
+
+**MAJOR (X.0.0)** — Cambios incompatibles de API:
+- Commits con `BREAKING CHANGE:` en cuerpo o footer
+- Commits con `!` despues del tipo: `feat!:`, `fix!:`, `refactor!:`
+- Eliminar una API publica, cambiar firmas de funciones, renombrar exports
+
+**MINOR (0.X.0)** — Nueva funcionalidad compatible:
+- Commits con tipo `feat:` (sin breaking changes)
+- Agregar nuevos endpoints, funciones, opciones o features
+- Deprecar funcionalidad existente (sin eliminarla)
+- Resetea PATCH a 0
+
+**PATCH (0.0.X)** — Correcciones compatibles:
+- Commits con tipo `fix:`
+- Commits con tipo `perf:` (mejoras de rendimiento)
+- Cambios internos que corrigen comportamiento incorrecto
+
+**Sin bump necesario:**
+- Commits con tipos: `docs:`, `style:`, `refactor:`, `test:`, `build:`, `ci:`, `chore:`
+- A menos que se combinen con commits `feat:` o `fix:` en el mismo release
+
+### Proceso de Analisis
+Flujo paso a paso para el agente:
+1. Encontrar el ultimo tag de version: `git describe --tags --abbrev=0`
+2. Listar commits desde ese tag: `git log <last-tag>..HEAD --oneline`
+3. Clasificar cada commit por su tipo de conventional commit
+4. Verificar marcadores de BREAKING CHANGE (footer o sufijo `!`)
+5. Aplicar la regla de mayor prioridad: MAJOR > MINOR > PATCH
+6. Calcular el nuevo numero de version
+7. Reportar: version actual → nueva version, con justificacion
+
+### Pre-release y Build Metadata
+- Pre-release: se agrega con guion: `1.0.0-alpha`, `1.0.0-beta.1`, `1.0.0-rc.1`
+- Build metadata: se agrega con mas: `1.0.0+20240101`, `1.0.0-alpha+001`
+- Pre-release tiene menor precedencia que release: `1.0.0-alpha < 1.0.0`
+- Build metadata se ignora en comparaciones de precedencia
+
+### Reglas de Precedencia
+Orden de comparacion de versiones:
+1. Comparar MAJOR, luego MINOR, luego PATCH (numericamente)
+2. Release > pre-release para la misma version
+3. Identificadores pre-release: numerico < alfanumerico, comparados de izquierda a derecha
+4. Ejemplo: `1.0.0-alpha < 1.0.0-alpha.1 < 1.0.0-beta < 1.0.0-rc.1 < 1.0.0`
+
+### Desarrollo Inicial (0.y.z)
+- Major version cero es para desarrollo inicial
+- Cualquier cosa puede cambiar en cualquier momento — la API publica no es estable
+- Empezar en 0.1.0, bump minor para cada release pre-estable
+- La version 1.0.0 define la primera API publica estable
+
+### Archivos a Actualizar
+Archivos de version comunes por ecosistema:
+- **Go**: `.version`, ldflags en build, constante de version del MCP server
+- **Node.js**: `package.json` (campo version)
+- **Python**: `pyproject.toml`, `__version__`
+- **Rust**: `Cargo.toml`
+- **Java**: `pom.xml` o `build.gradle`
+
+### Flujo de Release
+Despues de determinar el bump de version:
+1. Actualizar archivos de version
+2. Commit: `chore(release): bump version to X.Y.Z`
+3. Crear tag anotado: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
+4. Push commit y tag: `git push origin main && git push origin vX.Y.Z`
+
+### Anti-patrones
+- Bump MAJOR por cambios no-breaking (inflacion de version)
+- Saltar versiones (1.2.0 → 1.4.0)
+- Modificar una version ya publicada en vez de publicar una nueva
+- Ignorar marcadores de BREAKING CHANGE en el analisis de commits
+- Bump de version por cambios solo de docs/style/test
+- Olvidar resetear MINOR y PATCH al hacer bump MAJOR
+- Olvidar resetear PATCH al hacer bump MINOR
+
+### Verificacion
+Checklist para el agente antes de liberar:
+- [ ] Todos los commits desde el ultimo tag han sido clasificados
+- [ ] Breaking changes disparan MAJOR (o MINOR si aun esta en 0.y.z)
+- [ ] Nuevas features disparan como minimo MINOR
+- [ ] Bug fixes disparan como minimo PATCH
+- [ ] Los archivos de version estan actualizados consistentemente
+- [ ] El formato del tag coincide con `vMAJOR.MINOR.PATCH`
+- [ ] No se salto ninguna version

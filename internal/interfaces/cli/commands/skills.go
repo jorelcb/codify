@@ -33,6 +33,12 @@ var skillsNeutralTemplateMapping = map[string]string{
 	"api_design.template":      "api_design",
 }
 
+// skillsWorkflowTemplateMapping maps workflow preset skill template files to guide names.
+var skillsWorkflowTemplateMapping = map[string]string{
+	"conventional_commit.template":  "conventional_commit",
+	"semantic_versioning.template":  "semantic_versioning",
+}
+
 // NewSkillsCmd creates the skills command
 func NewSkillsCmd() *cobra.Command {
 	var (
@@ -54,6 +60,7 @@ and can be installed globally for any AI agent ecosystem.
 Presets:
   default  - DDD, Clean Architecture, BDD, CQRS, Hexagonal (default)
   neutral  - Code review, test strategy, refactoring, API design
+  workflow - Conventional commits, semantic versioning
 
 Target ecosystems:
   claude       - Claude Code → .claude/skills/ (default)
@@ -83,7 +90,7 @@ Examples:
 		},
 	}
 
-	cmd.Flags().StringVarP(&preset, "preset", "p", "default", "Template preset: default (DDD/Clean Architecture) or neutral")
+	cmd.Flags().StringVarP(&preset, "preset", "p", "default", "Template preset: default, neutral, or workflow")
 	cmd.Flags().StringVar(&locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
 	cmd.Flags().StringVar(&target, "target", "claude", "Target ecosystem: claude, codex, or antigravity")
 	cmd.Flags().StringVarP(&model, "model", "m", "", "LLM model (default: claude-sonnet-4-6, or gemini-3.1-pro-preview)")
@@ -113,8 +120,11 @@ func runSkills(preset, locale, target, model, output string) error {
 
 	// 4. Select template mapping and load templates
 	templateMapping := skillsDefaultTemplateMapping
-	if preset == "neutral" {
+	switch preset {
+	case "neutral":
 		templateMapping = skillsNeutralTemplateMapping
+	case "workflow":
+		templateMapping = skillsWorkflowTemplateMapping
 	}
 
 	templatePath := filepath.Join("templates", locale, "skills", preset)

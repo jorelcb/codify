@@ -35,8 +35,10 @@ var fileOutputNames = map[string]string{
 	"hexagonal_port":   "SKILL.md",
 	"code_review":      "SKILL.md",
 	"test_strategy":    "SKILL.md",
-	"refactor_safely":  "SKILL.md",
-	"api_design":       "SKILL.md",
+	"refactor_safely":      "SKILL.md",
+	"api_design":           "SKILL.md",
+	"conventional_commit":  "SKILL.md",
+	"semantic_versioning":  "SKILL.md",
 }
 
 // localeLanguageNames maps locale codes to their language name for the LLM directive.

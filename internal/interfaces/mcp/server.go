@@ -24,8 +24,9 @@ const serverVersion = "1.6.0"
 
 // validPresets maps preset names for validation.
 var validPresets = map[string]bool{
-	"default": true,
-	"neutral": true,
+	"default":  true,
+	"neutral":  true,
+	"workflow": true,
 }
 
 // NewServer creates and configures the MCP server with all tools registered.
@@ -41,6 +42,8 @@ func NewServer() *server.MCPServer {
 		generateSpecsTool(),
 		analyzeProjectTool(),
 		generateSkillsTool(),
+		commitGuidanceTool(),
+		versionGuidanceTool(),
 	)
 
 	return s
@@ -53,7 +56,7 @@ func generateContextTool() server.ServerTool {
 		mcp.WithString("name", mcp.Required(), mcp.Description("Project name")),
 		mcp.WithString("description", mcp.Required(), mcp.Description("Project description")),
 		mcp.WithString("language", mcp.Description("Programming language (go, python, javascript, etc.)")),
-		mcp.WithString("preset", mcp.Description("Template preset: default (DDD/Clean Architecture) or neutral"), mcp.DefaultString("default")),
+		mcp.WithString("preset", mcp.Description("Template preset: default, neutral, or workflow"), mcp.DefaultString("default")),
 		mcp.WithString("locale", mcp.Description("Output language: en (English) or es (Spanish)"), mcp.DefaultString("en")),
 		mcp.WithString("model", mcp.Description("Claude model to use"), mcp.DefaultString("claude-sonnet-4-6")),
 		mcp.WithBoolean("with_specs", mcp.Description("Also generate SDD spec files after context generation")),
@@ -95,7 +98,7 @@ func analyzeProjectTool() server.ServerTool {
 func generateSkillsTool() server.ServerTool {
 	tool := mcp.NewTool("generate_skills",
 		mcp.WithDescription("Generate reusable AI agent skills (SKILL.md) based on architectural presets"),
-		mcp.WithString("preset", mcp.Description("Template preset: default (DDD/Clean Architecture) or neutral"), mcp.DefaultString("default")),
+		mcp.WithString("preset", mcp.Description("Template preset: default, neutral, or workflow"), mcp.DefaultString("default")),
 		mcp.WithString("locale", mcp.Description("Output language: en or es"), mcp.DefaultString("en")),
 		mcp.WithString("target", mcp.Description("Target ecosystem: claude, codex, or antigravity"), mcp.DefaultString("claude")),
 		mcp.WithString("model", mcp.Description("LLM model to use"), mcp.DefaultString("claude-sonnet-4-6")),
@@ -103,6 +106,26 @@ func generateSkillsTool() server.ServerTool {
 	)
 
 	return server.ServerTool{Tool: tool, Handler: handleGenerateSkills}
+}
+
+// commitGuidanceTool defines the commit_guidance MCP knowledge tool.
+func commitGuidanceTool() server.ServerTool {
+	tool := mcp.NewTool("commit_guidance",
+		mcp.WithDescription("Conventional Commits behavioral context. Returns the spec and instructions for generating proper commit messages. No API key needed."),
+		mcp.WithString("locale", mcp.Description("Language for the guidance: en or es"), mcp.DefaultString("en")),
+	)
+
+	return server.ServerTool{Tool: tool, Handler: handleCommitGuidance}
+}
+
+// versionGuidanceTool defines the version_guidance MCP knowledge tool.
+func versionGuidanceTool() server.ServerTool {
+	tool := mcp.NewTool("version_guidance",
+		mcp.WithDescription("Semantic Versioning behavioral context. Returns the spec and instructions for determining version bumps from conventional commits. No API key needed."),
+		mcp.WithString("locale", mcp.Description("Language for the guidance: en or es"), mcp.DefaultString("en")),
+	)
+
+	return server.ServerTool{Tool: tool, Handler: handleVersionGuidance}
 }
 
 // --- Tool Handlers ---
@@ -268,6 +291,34 @@ func handleGenerateSkills(ctx context.Context, request mcp.CallToolRequest) (*mc
 	return mcp.NewToolResultText(sb.String()), nil
 }
 
+func handleCommitGuidance(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	locale := stringArgDefault(request, "locale", "en")
+	content, err := loadKnowledgeTemplate(locale, "workflow", "conventional_commit.template")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to load commit guidance: %v", err)), nil
+	}
+	return mcp.NewToolResultText(content), nil
+}
+
+func handleVersionGuidance(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	locale := stringArgDefault(request, "locale", "en")
+	content, err := loadKnowledgeTemplate(locale, "workflow", "semantic_versioning.template")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to load version guidance: %v", err)), nil
+	}
+	return mcp.NewToolResultText(content), nil
+}
+
+// loadKnowledgeTemplate reads an embedded template and returns its content as behavioral context.
+func loadKnowledgeTemplate(locale, preset, filename string) (string, error) {
+	path := filepath.Join("templates", locale, "skills", preset, filename)
+	data, err := root.TemplatesFS.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("template not found: %s", path)
+	}
+	return string(data), nil
+}
+
 // --- Execution helpers (shared by all handlers) ---
 
 func executeGenerate(ctx context.Context, name, description, language, preset, locale, model string) (*dto.GenerationResult, error) {
@@ -407,6 +458,12 @@ var skillsNeutralTemplateMapping = map[string]string{
 	"api_design.template":      "api_design",
 }
 
+// skillsWorkflowTemplateMapping maps workflow preset skill template files to guide names.
+var skillsWorkflowTemplateMapping = map[string]string{
+	"conventional_commit.template": "conventional_commit",
+	"semantic_versioning.template": "semantic_versioning",
+}
+
 func executeSkills(ctx context.Context, preset, locale, target, model, output string) (*dto.GenerationResult, error) {
 	apiKey, err := llm.ResolveAPIKey(model)
 	if err != nil {
@@ -418,8 +475,11 @@ func executeSkills(ctx context.Context, preset, locale, target, model, output st
 	}
 
 	templateMapping := skillsDefaultTemplateMapping
-	if preset == "neutral" {
+	switch preset {
+	case "neutral":
 		templateMapping = skillsNeutralTemplateMapping
+	case "workflow":
+		templateMapping = skillsWorkflowTemplateMapping
 	}
 
 	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping(

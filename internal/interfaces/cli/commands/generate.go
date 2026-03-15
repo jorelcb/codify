@@ -160,8 +160,9 @@ func runInteractiveGenerate() error {
 
 // validPresets maps preset names to their directory name.
 var validPresets = map[string]bool{
-	"default": true,
-	"neutral": true,
+	"default":  true,
+	"neutral":  true,
+	"workflow": true,
 }
 
 // resolveTemplatePath builds the full template path: templates/{locale}/{preset}

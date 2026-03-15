@@ -206,6 +206,8 @@ Agrega a `~/.gemini/settings.json`:
 
 ### Herramientas MCP disponibles
 
+#### Herramientas generativas (requieren API key de LLM)
+
 | Herramienta | Descripcion |
 |-------------|-------------|
 | `generate_context` | Genera archivos de contexto a partir de una descripcion |
@@ -213,7 +215,16 @@ Agrega a `~/.gemini/settings.json`:
 | `analyze_project` | Escanea un proyecto existente y genera contexto desde su estructura |
 | `generate_skills` | Genera Agent Skills (SKILL.md) basadas en presets arquitectonicos |
 
-Todas las herramientas soportan `locale` (`en`/`es`), `model` y `preset`. `generate_context` y `analyze_project` tambien aceptan `with_specs` para encadenar generacion de specs automaticamente.
+Todas las herramientas generativas soportan `locale` (`en`/`es`), `model` y `preset`. `generate_context` y `analyze_project` tambien aceptan `with_specs` para encadenar generacion de specs automaticamente.
+
+#### Herramientas de conocimiento (sin API key)
+
+| Herramienta | Descripcion |
+|-------------|-------------|
+| `commit_guidance` | Spec de Conventional Commits y contexto comportamental para generar mensajes de commit |
+| `version_guidance` | Spec de Semantic Versioning y contexto comportamental para determinar bumps de version |
+
+Las herramientas de conocimiento inyectan contexto comportamental en el agente que las invoca — de la misma forma que un agente de Claude Code lo haria. El agente recibe la spec e instrucciones, y las aplica a la tarea actual. Soportan `locale` (`en`/`es`).
 
 ### Prompts de ejemplo
 
@@ -224,8 +235,11 @@ Todas las herramientas soportan `locale` (`en`/`es`), `model` y `preset`. `gener
 "Analiza mi proyecto en /path/to/my-app y genera specs"
 → El agente invoca analyze_project con with_specs=true
 
-"Genera specs desde el contexto en ./output/my-api"
-→ El agente invoca generate_specs
+"Ayudame a hacer commit de estos cambios siguiendo conventional commits"
+→ El agente invoca commit_guidance, recibe la spec, construye el mensaje
+
+"Que version deberia liberar con los cambios recientes?"
+→ El agente invoca version_guidance, recibe las reglas semver, analiza los commits
 ```
 
 ---
@@ -302,8 +316,9 @@ codify skills --target antigravity --locale es
 |--------|-----------------|
 | `default` | DDD entity, Clean Architecture layer, BDD scenario, CQRS command, Hexagonal port/adapter |
 | `neutral` | Code review, test strategy, safe refactoring, API design |
+| `workflow` | Conventional commits, semantic versioning |
 
-Ecosistemas target: `claude` (default), `codex`, `antigravity` — cada uno recibe frontmatter YAML especifico del ecosistema.
+Ecosistemas target: `claude` (default), `codex`, `antigravity` — cada uno recibe frontmatter YAML especifico del ecosistema y ruta de salida (`.claude/skills/`, `.agents/skills/`).
 
 ### 🔍 Comando `list` — Proyectos generados
 

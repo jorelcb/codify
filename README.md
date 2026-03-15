@@ -206,6 +206,8 @@ Add to `~/.gemini/settings.json`:
 
 ### Available MCP Tools
 
+#### Generative tools (require LLM API key)
+
 | Tool | Description |
 |------|-------------|
 | `generate_context` | Generate context files from a project description |
@@ -213,7 +215,16 @@ Add to `~/.gemini/settings.json`:
 | `analyze_project` | Scan an existing project and generate context from its structure |
 | `generate_skills` | Generate reusable Agent Skills based on architectural presets |
 
-All tools support `locale` (`en`/`es`), `model`, and `preset` parameters. `generate_context` and `analyze_project` also accept `with_specs` to chain spec generation automatically.
+All generative tools support `locale` (`en`/`es`), `model`, and `preset` parameters. `generate_context` and `analyze_project` also accept `with_specs` to chain spec generation automatically.
+
+#### Knowledge tools (no API key needed)
+
+| Tool | Description |
+|------|-------------|
+| `commit_guidance` | Conventional Commits spec and behavioral context for generating proper commit messages |
+| `version_guidance` | Semantic Versioning spec and behavioral context for determining version bumps |
+
+Knowledge tools inject behavioral context into the calling agent — the same way a Claude Code agent would. The agent receives the spec and instructions, then applies them to the current task. Supports `locale` (`en`/`es`).
 
 ### Example prompts
 
@@ -224,8 +235,11 @@ All tools support `locale` (`en`/`es`), `model`, and `preset` parameters. `gener
 "Analyze my project at /path/to/my-app and generate specs"
 → Agent calls analyze_project with with_specs=true
 
-"Generate specs from the context in ./output/my-api"
-→ Agent calls generate_specs
+"Help me commit these changes following conventional commits"
+→ Agent calls commit_guidance, receives the spec, crafts the message
+
+"What version should I release based on recent changes?"
+→ Agent calls version_guidance, receives semver rules, analyzes commits
 ```
 
 ---
@@ -302,8 +316,9 @@ codify skills --target antigravity --locale es
 |--------|-----------------|
 | `default` | DDD entity, Clean Architecture layer, BDD scenario, CQRS command, Hexagonal port/adapter |
 | `neutral` | Code review, test strategy, safe refactoring, API design |
+| `workflow` | Conventional commits, semantic versioning |
 
-Target ecosystems: `claude` (default), `codex`, `antigravity` — each gets ecosystem-specific YAML frontmatter.
+Target ecosystems: `claude` (default), `codex`, `antigravity` — each gets ecosystem-specific YAML frontmatter and output path (`.claude/skills/`, `.agents/skills/`).
 
 ### 🔍 `list` command — Generated projects
 

@@ -1,0 +1,94 @@
+# Skill de Conventional Commits
+
+## Proposito
+Guiar a un agente de IA para generar mensajes de commit que sigan estrictamente la especificacion Conventional Commits 1.0.0. El agente debe analizar los cambios staged y producir mensajes estructurados y significativos.
+
+## Secciones a Generar
+
+### Cuando Usar Esta Skill
+Describir escenarios: al hacer commit de cambios, preparar pull requests, generar changelogs, cualquier operacion git commit donde el mensaje deba seguir Conventional Commits.
+
+### Formato de Commit
+El formato estricto de la especificacion:
+```
+<tipo>[alcance opcional]: <descripcion>
+
+[cuerpo opcional]
+
+[notas de pie opcionales]
+```
+
+Reglas:
+- `tipo` es obligatorio: un sustantivo que describe la categoria del cambio
+- `alcance` es opcional: un sustantivo entre parentesis que describe la seccion del codigo
+- `!` antes de los dos puntos indica un BREAKING CHANGE
+- `descripcion` es obligatoria: resumen corto en modo imperativo, minusculas, sin punto final
+- `cuerpo` es opcional: formato libre, una linea en blanco despues de la descripcion
+- `notas de pie` son opcionales: una linea en blanco despues del cuerpo, formato `token: valor`
+
+### Tipos de Commit
+Ordenados por impacto semantico:
+- **feat**: nueva funcionalidad (dispara bump MINOR en SemVer)
+- **fix**: correccion de bug (dispara bump PATCH en SemVer)
+- **docs**: solo documentacion
+- **style**: formato, punto y coma, espacios (sin cambio de logica)
+- **refactor**: reestructuracion de codigo (sin cambio de comportamiento)
+- **perf**: mejora de rendimiento
+- **test**: agregar o corregir tests
+- **build**: sistema de build o dependencias externas
+- **ci**: configuracion de CI/CD
+- **chore**: tareas de mantenimiento
+
+### Breaking Changes
+Dos formas validas de indicar breaking changes (dispara bump MAJOR):
+1. Agregar `!` despues del tipo/alcance: `feat!: eliminar endpoint deprecado`
+2. Nota de pie: `BREAKING CHANGE: se elimino el endpoint /v1/users`
+Ambos pueden combinarse. Los breaking changes aplican a cualquier tipo.
+
+### Guia de Alcances
+- Usar el nombre del modulo, paquete o componente: `feat(auth):`, `fix(parser):`
+- Mantener alcances consistentes dentro del proyecto
+- Omitir alcance cuando el cambio es transversal
+
+### Proceso de Analisis
+Flujo paso a paso para el agente:
+1. Leer el diff staged (`git diff --staged`)
+2. Identificar la intencion principal: es una feature, fix, refactor, etc.?
+3. Determinar alcance a partir de los archivos/modulos modificados
+4. Verificar si introduce breaking changes en una API publica
+5. Escribir la descripcion en modo imperativo ("add", no "added" o "adds")
+6. Agregar cuerpo si el diff no es trivial o el "por que" no es obvio
+7. Agregar footer para breaking changes, referencias a issues o co-autores
+
+### Anti-patrones
+- Usar `update` o `change` como tipo (no estan en la spec)
+- Tiempo pasado en descripcion: "added feature" en vez de "add feature"
+- Descripciones vagas: "fix bug", "update code", "misc changes"
+- Mezclar cambios no relacionados en un commit (separarlos)
+- Omitir BREAKING CHANGE cuando una API publica cambia
+- Usar el cuerpo del commit para repetir lo que el diff ya muestra
+
+### Ejemplos
+Buenos commits mostrando variedad de tipos y convenciones:
+```
+feat(auth): add JWT token refresh endpoint
+
+fix: prevent null pointer on empty user profile
+
+refactor(db)!: change connection pool from sync to async
+
+BREAKING CHANGE: NewPool() now returns (Pool, error) instead of Pool
+
+docs: update API reference for v2 endpoints
+
+chore(deps): bump go.mod dependencies to latest
+```
+
+### Verificacion
+Checklist para el agente antes de hacer commit:
+- [ ] El tipo es uno de los tipos estandar
+- [ ] La descripcion esta en modo imperativo, minusculas, sin punto final
+- [ ] El alcance (si se usa) corresponde a un modulo/paquete existente
+- [ ] Los breaking changes estan marcados con `!` Y/O footer `BREAKING CHANGE:`
+- [ ] El cuerpo explica el "por que" (no el "que" — el diff muestra el "que")
+- [ ] Cada commit es atomico (un cambio logico)
