@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	root "github.com/jorelcb/ai-context-generator"
 	"github.com/jorelcb/ai-context-generator/internal/application/command"
 	"github.com/jorelcb/ai-context-generator/internal/application/dto"
 	"github.com/jorelcb/ai-context-generator/internal/infrastructure/filesystem"
@@ -117,7 +118,7 @@ func runSkills(preset, locale, target, model, output string) error {
 	}
 
 	templatePath := filepath.Join("templates", locale, "skills", preset)
-	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping(templatePath, templateMapping)
+	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping(root.TemplatesFS, templatePath, templateMapping)
 	guides, err := templateLoader.LoadAll()
 	if err != nil {
 		return fmt.Errorf("failed to load skill templates: %w", err)

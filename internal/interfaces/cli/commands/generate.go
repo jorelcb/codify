@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	root "github.com/jorelcb/ai-context-generator"
 	"github.com/jorelcb/ai-context-generator/internal/application/command"
 	"github.com/jorelcb/ai-context-generator/internal/application/dto"
 	"github.com/jorelcb/ai-context-generator/internal/domain/service"
@@ -179,9 +180,9 @@ func runGenerate(projectName, description, language, projectType, architecture, 
 	templatePath := resolveTemplatePath(locale, preset)
 	var templateLoader service.TemplateLoader
 	if language != "" {
-		templateLoader = infratemplate.NewFileSystemTemplateLoaderWithLanguage(templatePath, resolveLocaleBase(locale), language)
+		templateLoader = infratemplate.NewFileSystemTemplateLoaderWithLanguage(root.TemplatesFS, templatePath, resolveLocaleBase(locale), language)
 	} else {
-		templateLoader = infratemplate.NewFileSystemTemplateLoader(templatePath)
+		templateLoader = infratemplate.NewFileSystemTemplateLoader(root.TemplatesFS, templatePath)
 	}
 	guides, err := templateLoader.LoadAll()
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
+	root "github.com/jorelcb/ai-context-generator"
 	"github.com/jorelcb/ai-context-generator/internal/application/command"
 	"github.com/jorelcb/ai-context-generator/internal/application/dto"
 	"github.com/jorelcb/ai-context-generator/internal/domain/service"
@@ -281,9 +282,9 @@ func executeGenerate(ctx context.Context, name, description, language, preset, l
 
 	var templateLoader service.TemplateLoader
 	if language != "" {
-		templateLoader = infratemplate.NewFileSystemTemplateLoaderWithLanguage(templatePath, localeBase, language)
+		templateLoader = infratemplate.NewFileSystemTemplateLoaderWithLanguage(root.TemplatesFS, templatePath, localeBase, language)
 	} else {
-		templateLoader = infratemplate.NewFileSystemTemplateLoader(templatePath)
+		templateLoader = infratemplate.NewFileSystemTemplateLoader(root.TemplatesFS, templatePath)
 	}
 
 	guides, err := templateLoader.LoadAll()
@@ -334,7 +335,7 @@ func executeSpecs(ctx context.Context, name, fromContextPath, locale, model stri
 	}
 
 	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping(
-		filepath.Join("templates", locale, "spec"), specTemplateMapping,
+		root.TemplatesFS, filepath.Join("templates", locale, "spec"), specTemplateMapping,
 	)
 	guides, err := templateLoader.LoadAll()
 	if err != nil {
@@ -421,7 +422,7 @@ func executeSkills(ctx context.Context, preset, locale, target, model, output st
 	}
 
 	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping(
-		filepath.Join("templates", locale, "skills", preset), templateMapping,
+		root.TemplatesFS, filepath.Join("templates", locale, "skills", preset), templateMapping,
 	)
 	guides, err := templateLoader.LoadAll()
 	if err != nil {

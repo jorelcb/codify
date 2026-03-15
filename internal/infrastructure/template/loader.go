@@ -2,14 +2,15 @@ package template
 
 import (
 	"fmt"
-	"os"
+	"io/fs"
 	"path/filepath"
 
 	"github.com/jorelcb/ai-context-generator/internal/domain/service"
 )
 
-// FileSystemTemplateLoader loads template guides from the filesystem.
+// FileSystemTemplateLoader loads template guides from an fs.FS (embedded or OS filesystem).
 type FileSystemTemplateLoader struct {
+	fsys       fs.FS
 	basePath   string
 	mapping    map[string]string
 	language   string
@@ -30,19 +31,19 @@ var languageTemplateMapping = map[string]string{
 }
 
 // NewFileSystemTemplateLoader creates a new template loader with the default mapping.
-func NewFileSystemTemplateLoader(basePath string) service.TemplateLoader {
-	return &FileSystemTemplateLoader{basePath: basePath, mapping: templateMapping}
+func NewFileSystemTemplateLoader(fsys fs.FS, basePath string) service.TemplateLoader {
+	return &FileSystemTemplateLoader{fsys: fsys, basePath: basePath, mapping: templateMapping}
 }
 
 // NewFileSystemTemplateLoaderWithLanguage creates a template loader that also loads
 // language-specific templates from {localeBase}/languages/{language}/.
-func NewFileSystemTemplateLoaderWithLanguage(basePath string, localeBase string, language string) service.TemplateLoader {
-	return &FileSystemTemplateLoader{basePath: basePath, mapping: templateMapping, localeBase: localeBase, language: language}
+func NewFileSystemTemplateLoaderWithLanguage(fsys fs.FS, basePath string, localeBase string, language string) service.TemplateLoader {
+	return &FileSystemTemplateLoader{fsys: fsys, basePath: basePath, mapping: templateMapping, localeBase: localeBase, language: language}
 }
 
 // NewFileSystemTemplateLoaderWithMapping creates a template loader with a custom mapping.
-func NewFileSystemTemplateLoaderWithMapping(basePath string, mapping map[string]string) service.TemplateLoader {
-	return &FileSystemTemplateLoader{basePath: basePath, mapping: mapping}
+func NewFileSystemTemplateLoaderWithMapping(fsys fs.FS, basePath string, mapping map[string]string) service.TemplateLoader {
+	return &FileSystemTemplateLoader{fsys: fsys, basePath: basePath, mapping: mapping}
 }
 
 // LoadAll reads all template files and returns them as TemplateGuides.
@@ -71,7 +72,7 @@ func (l *FileSystemTemplateLoader) loadFromMapping(basePath string, mapping map[
 	for filename, name := range mapping {
 		fullPath := filepath.Join(basePath, filename)
 
-		content, err := os.ReadFile(fullPath)
+		content, err := fs.ReadFile(l.fsys, fullPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read template %s: %w", filename, err)
 		}
@@ -89,8 +90,8 @@ func (l *FileSystemTemplateLoader) loadFromMapping(basePath string, mapping map[
 func (l *FileSystemTemplateLoader) loadLanguageTemplates() ([]service.TemplateGuide, error) {
 	langDir := filepath.Join(l.localeBase, "languages", l.language)
 
-	info, err := os.Stat(langDir)
-	if err != nil || !info.IsDir() {
+	_, err := fs.Stat(l.fsys, langDir)
+	if err != nil {
 		return nil, nil // Language directory doesn't exist, skip silently
 	}
 

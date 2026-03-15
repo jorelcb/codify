@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	root "github.com/jorelcb/ai-context-generator"
 	"github.com/jorelcb/ai-context-generator/internal/application/command"
 	"github.com/jorelcb/ai-context-generator/internal/application/dto"
 	"github.com/jorelcb/ai-context-generator/internal/infrastructure/filesystem"
@@ -82,7 +83,7 @@ func runSpec(projectName, fromContext, model, locale string) error {
 	}
 
 	// 3. Load spec templates
-	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping(filepath.Join("templates", locale, "spec"), specTemplateMapping)
+	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping(root.TemplatesFS, filepath.Join("templates", locale, "spec"), specTemplateMapping)
 	guides, err := templateLoader.LoadAll()
 	if err != nil {
 		return fmt.Errorf("failed to load spec templates: %w", err)

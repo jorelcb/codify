@@ -27,6 +27,11 @@ Requires ANTHROPIC_API_KEY (for Claude) or GEMINI_API_KEY (for Gemini) environme
 
 // Execute runs the root command
 func Execute() error {
+	rootCmd.Version = Version
+	rootCmd.SetVersionTemplate(fmt.Sprintf(
+		"AI Context Generator v%s\nCommit: %s\nBuilt: %s\n",
+		Version, Commit, Date,
+	))
 	return rootCmd.Execute()
 }
 

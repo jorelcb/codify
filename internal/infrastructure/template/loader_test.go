@@ -4,26 +4,18 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"testing/fstest"
 )
 
 func TestFileSystemTemplateLoader_LoadAll(t *testing.T) {
-	// Create temp dir with test templates
-	tmpDir := t.TempDir()
-
-	templates := map[string]string{
-		"agents.template":            "# Agents template content",
-		"context.template":           "# Context template content",
-		"interactions.template":      "# Interactions template content",
-		"development_guide.template": "# Development guide content",
+	fsys := fstest.MapFS{
+		"templates/agents.template":            {Data: []byte("# Agents template content")},
+		"templates/context.template":           {Data: []byte("# Context template content")},
+		"templates/interactions.template":      {Data: []byte("# Interactions template content")},
+		"templates/development_guide.template": {Data: []byte("# Development guide content")},
 	}
 
-	for name, content := range templates {
-		if err := os.WriteFile(filepath.Join(tmpDir, name), []byte(content), 0644); err != nil {
-			t.Fatalf("failed to write test template %s: %v", name, err)
-		}
-	}
-
-	loader := NewFileSystemTemplateLoader(tmpDir)
+	loader := NewFileSystemTemplateLoader(fsys, "templates")
 	guides, err := loader.LoadAll()
 	if err != nil {
 		t.Fatalf("LoadAll() error = %v", err)
@@ -33,7 +25,6 @@ func TestFileSystemTemplateLoader_LoadAll(t *testing.T) {
 		t.Errorf("LoadAll() returned %d guides, want 4", len(guides))
 	}
 
-	// Verify all expected names are present
 	nameSet := make(map[string]bool)
 	for _, g := range guides {
 		nameSet[g.Name] = true
@@ -51,19 +42,11 @@ func TestFileSystemTemplateLoader_LoadAll(t *testing.T) {
 }
 
 func TestFileSystemTemplateLoader_LoadAll_WithCustomMapping(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	templates := map[string]string{
-		"constitution.template": "# Constitution content",
-		"spec.template":         "# Spec content",
-		"plan.template":         "# Plan content",
-		"tasks.template":        "# Tasks content",
-	}
-
-	for name, content := range templates {
-		if err := os.WriteFile(filepath.Join(tmpDir, name), []byte(content), 0644); err != nil {
-			t.Fatalf("failed to write test template %s: %v", name, err)
-		}
+	fsys := fstest.MapFS{
+		"templates/spec/constitution.template": {Data: []byte("# Constitution content")},
+		"templates/spec/spec.template":         {Data: []byte("# Spec content")},
+		"templates/spec/plan.template":         {Data: []byte("# Plan content")},
+		"templates/spec/tasks.template":        {Data: []byte("# Tasks content")},
 	}
 
 	customMapping := map[string]string{
@@ -73,7 +56,7 @@ func TestFileSystemTemplateLoader_LoadAll_WithCustomMapping(t *testing.T) {
 		"tasks.template":        "tasks",
 	}
 
-	loader := NewFileSystemTemplateLoaderWithMapping(tmpDir, customMapping)
+	loader := NewFileSystemTemplateLoaderWithMapping(fsys, "templates/spec", customMapping)
 	guides, err := loader.LoadAll()
 	if err != nil {
 		t.Fatalf("LoadAll() error = %v", err)
@@ -97,14 +80,11 @@ func TestFileSystemTemplateLoader_LoadAll_WithCustomMapping(t *testing.T) {
 }
 
 func TestFileSystemTemplateLoader_LoadAll_MissingFile(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	// Only create one template, not all three
-	if err := os.WriteFile(filepath.Join(tmpDir, "agents.template"), []byte("content"), 0644); err != nil {
-		t.Fatalf("failed to write test template: %v", err)
+	fsys := fstest.MapFS{
+		"templates/agents.template": {Data: []byte("content")},
 	}
 
-	loader := NewFileSystemTemplateLoader(tmpDir)
+	loader := NewFileSystemTemplateLoader(fsys, "templates")
 	_, err := loader.LoadAll()
 	if err == nil {
 		t.Error("LoadAll() should fail when templates are missing")
@@ -112,48 +92,38 @@ func TestFileSystemTemplateLoader_LoadAll_MissingFile(t *testing.T) {
 }
 
 func TestFileSystemTemplateLoader_LoadAll_WithLanguage(t *testing.T) {
-	// Create base template dir
 	tmpDir := t.TempDir()
 
 	baseTemplates := map[string]string{
-		"agents.template":            "# Agents",
-		"context.template":           "# Context",
-		"interactions.template":      "# Interactions",
-		"development_guide.template": "# Dev Guide",
+		"templates/default/agents.template":            "# Agents",
+		"templates/default/context.template":           "# Context",
+		"templates/default/interactions.template":      "# Interactions",
+		"templates/default/development_guide.template": "# Dev Guide",
 	}
 	for name, content := range baseTemplates {
-		if err := os.WriteFile(filepath.Join(tmpDir, name), []byte(content), 0644); err != nil {
-			t.Fatalf("failed to write base template %s: %v", name, err)
+		fullPath := filepath.Join(tmpDir, name)
+		if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+			t.Fatalf("failed to create dir: %v", err)
+		}
+		if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
+			t.Fatalf("failed to write template %s: %v", name, err)
 		}
 	}
 
-	// Create language template dir (simulating templates/languages/go/)
-	langDir := filepath.Join(tmpDir, "languages", "go")
-	if err := os.MkdirAll(langDir, 0755); err != nil {
+	langPath := filepath.Join(tmpDir, "templates", "languages", "go", "idioms.template")
+	if err := os.MkdirAll(filepath.Dir(langPath), 0755); err != nil {
 		t.Fatalf("failed to create lang dir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(langDir, "idioms.template"), []byte("# Go idioms"), 0644); err != nil {
+	if err := os.WriteFile(langPath, []byte("# Go idioms"), 0644); err != nil {
 		t.Fatalf("failed to write lang template: %v", err)
 	}
 
-	// The loader resolves language templates relative to "templates/languages/{lang}/"
-	// For testing, we override the language dir resolution by using the loader directly
-	loader := &FileSystemTemplateLoader{
-		basePath: tmpDir,
-		mapping:  templateMapping,
-		language: "go",
-	}
-	// Override language loading to use our temp dir
-	guides, err := loader.loadFromMapping(tmpDir, templateMapping)
+	fsys := os.DirFS(tmpDir)
+	loader := NewFileSystemTemplateLoaderWithLanguage(fsys, "templates/default", "templates", "go")
+	guides, err := loader.LoadAll()
 	if err != nil {
-		t.Fatalf("loadFromMapping() error = %v", err)
+		t.Fatalf("LoadAll() error = %v", err)
 	}
-
-	langGuides, err := loader.loadFromMapping(langDir, languageTemplateMapping)
-	if err != nil {
-		t.Fatalf("loadFromMapping() for language error = %v", err)
-	}
-	guides = append(guides, langGuides...)
 
 	if len(guides) != 5 {
 		t.Errorf("Expected 5 guides (4 base + 1 language), got %d", len(guides))
@@ -170,25 +140,19 @@ func TestFileSystemTemplateLoader_LoadAll_WithLanguage(t *testing.T) {
 }
 
 func TestFileSystemTemplateLoader_LoadAll_WithUnknownLanguage(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	baseTemplates := map[string]string{
-		"agents.template":            "# Agents",
-		"context.template":           "# Context",
-		"interactions.template":      "# Interactions",
-		"development_guide.template": "# Dev Guide",
-	}
-	for name, content := range baseTemplates {
-		if err := os.WriteFile(filepath.Join(tmpDir, name), []byte(content), 0644); err != nil {
-			t.Fatalf("failed to write base template %s: %v", name, err)
-		}
+	fsys := fstest.MapFS{
+		"templates/agents.template":            {Data: []byte("# Agents")},
+		"templates/context.template":           {Data: []byte("# Context")},
+		"templates/interactions.template":      {Data: []byte("# Interactions")},
+		"templates/development_guide.template": {Data: []byte("# Dev Guide")},
 	}
 
-	// Language "rust" has no template directory — should load base templates without error
 	loader := &FileSystemTemplateLoader{
-		basePath: tmpDir,
-		mapping:  templateMapping,
-		language: "rust",
+		fsys:       fsys,
+		basePath:   "templates",
+		mapping:    templateMapping,
+		language:   "rust",
+		localeBase: "templates",
 	}
 	guides, err := loader.LoadAll()
 	if err != nil {
@@ -200,8 +164,10 @@ func TestFileSystemTemplateLoader_LoadAll_WithUnknownLanguage(t *testing.T) {
 	}
 }
 
-func TestFileSystemTemplateLoader_LoadAll_EmptyPath(t *testing.T) {
-	loader := NewFileSystemTemplateLoader("/nonexistent/path")
+func TestFileSystemTemplateLoader_LoadAll_NonexistentPath(t *testing.T) {
+	fsys := fstest.MapFS{}
+
+	loader := NewFileSystemTemplateLoader(fsys, "nonexistent")
 	_, err := loader.LoadAll()
 	if err == nil {
 		t.Error("LoadAll() should fail with nonexistent path")
