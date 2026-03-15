@@ -89,12 +89,15 @@ Resultado: Codigo coherente desde la primera linea ✨
 ### Instalacion
 
 ```bash
-# go install (recomendado)
+# Homebrew (macOS/Linux — no requiere Go)
+brew tap jorelcb/tap
+brew install ai-context-generator
+
+# O via go install
 go install github.com/jorelcb/ai-context-generator/cmd/ai-context-generator@latest
 
-# O build from source
-git clone https://github.com/jorelcb/ai-context-generator.git
-cd ai-context-generator && go build -o bin/ai-context-generator ./cmd/ai-context-generator
+# O descarga binarios pre-compilados desde GitHub Releases
+# https://github.com/jorelcb/ai-context-generator/releases
 ```
 
 ### Tu primer contexto en 30 segundos
@@ -481,7 +484,6 @@ go test ./tests/...
 - Retries y manejo de rate limits
 - Modo interactivo (wizard)
 - Autenticacion MCP server remoto (OAuth/BYOK)
-- Binary builds y distribucion
 
 ## 💡 FAQ
 
