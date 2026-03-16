@@ -43,14 +43,17 @@ release:
   prerelease: auto
   name_template: "{{ .Tag }}"
 
-homebrew_casks:
+brews:
   - name: codify
     repository:
       owner: jorelcb
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    directory: Casks
+    directory: Formula
     homepage: "https://github.com/jorelcb/codify"
     description: "MCP server & CLI that generates context, specs, and skills for AI coding agents"
-    binaries:
-      - codify
+    license: "Apache-2.0"
+    install: |
+      bin.install "codify"
+    test: |
+      system "#{bin}/codify", "--version"
