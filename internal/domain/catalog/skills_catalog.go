@@ -1,0 +1,164 @@
+// Package catalog define el registro declarativo de categorías y opciones de skills.
+package catalog
+
+import (
+	"fmt"
+	"maps"
+)
+
+// SkillCategory representa una categoría de nivel 1 en el menú de skills.
+type SkillCategory struct {
+	Name      string        // identificador: "architecture", "workflow"
+	Label     string        // display: "Architecture", "Workflow"
+	Exclusive bool          // true = sub-opciones mutuamente excluyentes (sin "all")
+	Options   []SkillOption // sub-opciones disponibles
+}
+
+// SkillOption representa una sub-opción dentro de una categoría.
+type SkillOption struct {
+	Name            string            // identificador: "clean", "neutral", "conventional-commit"
+	Label           string            // display: "Clean (DDD, BDD, CQRS, Hexagonal)"
+	TemplateDir     string            // directorio en templates/{locale}/skills/
+	TemplateMapping map[string]string // nil = todos los templates del dir; map = solo los indicados
+}
+
+// ResolvedSelection es el resultado de resolver una selección del catálogo.
+type ResolvedSelection struct {
+	TemplateDir     string
+	TemplateMapping map[string]string // nil = cargar todos los templates del directorio
+}
+
+// Categories es el registro global de categorías de skills.
+var Categories = []SkillCategory{
+	{
+		Name:      "architecture",
+		Label:     "Architecture",
+		Exclusive: true,
+		Options: []SkillOption{
+			{
+				Name:        "clean",
+				Label:       "Clean (DDD, BDD, CQRS, Hexagonal)",
+				TemplateDir: "default",
+				TemplateMapping: map[string]string{
+					"ddd_entity.template":       "ddd_entity",
+					"clean_arch_layer.template": "clean_arch_layer",
+					"bdd_scenario.template":     "bdd_scenario",
+					"cqrs_command.template":     "cqrs_command",
+					"hexagonal_port.template":   "hexagonal_port",
+				},
+			},
+			{
+				Name:        "neutral",
+				Label:       "Neutral (Code review, testing, API design, refactoring)",
+				TemplateDir: "neutral",
+				TemplateMapping: map[string]string{
+					"code_review.template":     "code_review",
+					"test_strategy.template":   "test_strategy",
+					"refactor_safely.template": "refactor_safely",
+					"api_design.template":      "api_design",
+				},
+			},
+		},
+	},
+	{
+		Name:      "workflow",
+		Label:     "Workflow",
+		Exclusive: false,
+		Options: []SkillOption{
+			{
+				Name:        "conventional-commit",
+				Label:       "Conventional Commits",
+				TemplateDir: "workflow",
+				TemplateMapping: map[string]string{
+					"conventional_commit.template": "conventional_commit",
+				},
+			},
+			{
+				Name:        "semantic-versioning",
+				Label:       "Semantic Versioning",
+				TemplateDir: "workflow",
+				TemplateMapping: map[string]string{
+					"semantic_versioning.template": "semantic_versioning",
+				},
+			},
+		},
+	},
+}
+
+// CategoryNames devuelve los nombres de todas las categorías registradas.
+func CategoryNames() []string {
+	names := make([]string, len(Categories))
+	for i, c := range Categories {
+		names[i] = c.Name
+	}
+	return names
+}
+
+// FindCategory busca una categoría por nombre.
+func FindCategory(name string) (*SkillCategory, error) {
+	for i := range Categories {
+		if Categories[i].Name == name {
+			return &Categories[i], nil
+		}
+	}
+	return nil, fmt.Errorf("unknown category: %s", name)
+}
+
+// Resolve resuelve la selección de una sub-opción (o "all") dentro de la categoría.
+func (c *SkillCategory) Resolve(preset string) (*ResolvedSelection, error) {
+	if preset == "all" {
+		if c.Exclusive {
+			return nil, fmt.Errorf("category %q does not support 'all' (options are mutually exclusive)", c.Name)
+		}
+		return c.resolveAll(), nil
+	}
+
+	for _, opt := range c.Options {
+		if opt.Name == preset {
+			return &ResolvedSelection{
+				TemplateDir:     opt.TemplateDir,
+				TemplateMapping: opt.TemplateMapping,
+			}, nil
+		}
+	}
+	return nil, fmt.Errorf("unknown preset %q in category %q", preset, c.Name)
+}
+
+// resolveAll combina todas las opciones de la categoría en una sola selección.
+func (c *SkillCategory) resolveAll() *ResolvedSelection {
+	merged := make(map[string]string)
+	var dir string
+	for _, opt := range c.Options {
+		dir = opt.TemplateDir
+		maps.Copy(merged, opt.TemplateMapping)
+	}
+	return &ResolvedSelection{
+		TemplateDir:     dir,
+		TemplateMapping: merged,
+	}
+}
+
+// OptionNames devuelve los nombres de las sub-opciones de la categoría.
+func (c *SkillCategory) OptionNames() []string {
+	names := make([]string, len(c.Options))
+	for i, o := range c.Options {
+		names[i] = o.Name
+	}
+	return names
+}
+
+// OptionLabels devuelve los labels de las sub-opciones (para el menú interactivo).
+func (c *SkillCategory) OptionLabels() []string {
+	labels := make([]string, len(c.Options))
+	for i, o := range c.Options {
+		labels[i] = o.Label
+	}
+	return labels
+}
+
+// LegacyPresetMapping mapea presets legados (--preset flag antiguo) al nuevo modelo.
+var LegacyPresetMapping = map[string][2]string{
+	"default":  {"architecture", "clean"},
+	"neutral":  {"architecture", "neutral"},
+	"workflow": {"workflow", "all"},
+}

@@ -13,6 +13,7 @@ import (
 	root "github.com/jorelcb/codify"
 	"github.com/jorelcb/codify/internal/application/command"
 	"github.com/jorelcb/codify/internal/application/dto"
+	"github.com/jorelcb/codify/internal/domain/catalog"
 	"github.com/jorelcb/codify/internal/domain/service"
 	"github.com/jorelcb/codify/internal/infrastructure/filesystem"
 	"github.com/jorelcb/codify/internal/infrastructure/llm"
@@ -97,8 +98,9 @@ func analyzeProjectTool() server.ServerTool {
 // generateSkillsTool defines the generate_skills MCP tool.
 func generateSkillsTool() server.ServerTool {
 	tool := mcp.NewTool("generate_skills",
-		mcp.WithDescription("Generate reusable AI agent skills (SKILL.md) based on architectural presets"),
-		mcp.WithString("preset", mcp.Description("Template preset: default, neutral, or workflow"), mcp.DefaultString("default")),
+		mcp.WithDescription("Generate reusable AI agent skills (SKILL.md) by category and preset"),
+		mcp.WithString("category", mcp.Required(), mcp.Description("Skill category: architecture or workflow")),
+		mcp.WithString("preset", mcp.Required(), mcp.Description("Preset within category. architecture: clean, neutral. workflow: conventional-commit, semantic-versioning, all")),
 		mcp.WithString("locale", mcp.Description("Output language: en or es"), mcp.DefaultString("en")),
 		mcp.WithString("target", mcp.Description("Target ecosystem: claude, codex, or antigravity"), mcp.DefaultString("claude")),
 		mcp.WithString("model", mcp.Description("LLM model to use"), mcp.DefaultString("claude-sonnet-4-6")),
@@ -264,7 +266,8 @@ func handleAnalyzeProject(ctx context.Context, request mcp.CallToolRequest) (*mc
 }
 
 func handleGenerateSkills(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	preset := stringArgDefault(request, "preset", "default")
+	categoryName := stringArg(request, "category")
+	preset := stringArg(request, "preset")
 	locale := stringArgDefault(request, "locale", "en")
 	target := stringArgDefault(request, "target", "claude")
 	model := stringArgDefault(request, "model", "")
@@ -273,13 +276,24 @@ func handleGenerateSkills(ctx context.Context, request mcp.CallToolRequest) (*mc
 		output = defaultSkillsPath(target)
 	}
 
-	result, err := executeSkills(ctx, preset, locale, target, model, output)
+	// Resolver categoría y preset desde el catálogo
+	cat, err := catalog.FindCategory(categoryName)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Invalid category: %v", err)), nil
+	}
+
+	selection, err := cat.Resolve(preset)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Invalid preset: %v", err)), nil
+	}
+
+	result, err := executeSkills(ctx, selection, locale, target, model, output, cat.Name, preset)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Skills generation failed: %v", err)), nil
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Agent skills generated (preset: %s, target: %s)\n", preset, target))
+	sb.WriteString(fmt.Sprintf("Agent skills generated (category: %s, preset: %s, target: %s)\n", categoryName, preset, target))
 	sb.WriteString(fmt.Sprintf("Output: %s\n", result.OutputPath))
 	sb.WriteString(fmt.Sprintf("Model: %s\n", result.Model))
 	sb.WriteString(fmt.Sprintf("Tokens: %d in / %d out\n", result.TokensIn, result.TokensOut))
@@ -441,49 +455,14 @@ func executeSpecs(ctx context.Context, name, fromContextPath, locale, model stri
 	return result, nil
 }
 
-// skillsDefaultTemplateMapping maps default preset skill template files to guide names.
-var skillsDefaultTemplateMapping = map[string]string{
-	"ddd_entity.template":       "ddd_entity",
-	"clean_arch_layer.template": "clean_arch_layer",
-	"bdd_scenario.template":     "bdd_scenario",
-	"cqrs_command.template":     "cqrs_command",
-	"hexagonal_port.template":   "hexagonal_port",
-}
-
-// skillsNeutralTemplateMapping maps neutral preset skill template files to guide names.
-var skillsNeutralTemplateMapping = map[string]string{
-	"code_review.template":     "code_review",
-	"test_strategy.template":   "test_strategy",
-	"refactor_safely.template": "refactor_safely",
-	"api_design.template":      "api_design",
-}
-
-// skillsWorkflowTemplateMapping maps workflow preset skill template files to guide names.
-var skillsWorkflowTemplateMapping = map[string]string{
-	"conventional_commit.template": "conventional_commit",
-	"semantic_versioning.template": "semantic_versioning",
-}
-
-func executeSkills(ctx context.Context, preset, locale, target, model, output string) (*dto.GenerationResult, error) {
+func executeSkills(ctx context.Context, selection *catalog.ResolvedSelection, locale, target, model, output, categoryName, preset string) (*dto.GenerationResult, error) {
 	apiKey, err := llm.ResolveAPIKey(model)
 	if err != nil {
 		return nil, err
 	}
 
-	if !validPresets[preset] {
-		preset = "default"
-	}
-
-	templateMapping := skillsDefaultTemplateMapping
-	switch preset {
-	case "neutral":
-		templateMapping = skillsNeutralTemplateMapping
-	case "workflow":
-		templateMapping = skillsWorkflowTemplateMapping
-	}
-
 	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping(
-		root.TemplatesFS, filepath.Join("templates", locale, "skills", preset), templateMapping,
+		root.TemplatesFS, filepath.Join("templates", locale, "skills", selection.TemplateDir), selection.TemplateMapping,
 	)
 	guides, err := templateLoader.LoadAll()
 	if err != nil {
@@ -500,6 +479,7 @@ func executeSkills(ctx context.Context, preset, locale, target, model, output st
 	skillsCmd := command.NewGenerateSkillsCommand(provider, fileWriter, dirManager)
 
 	config := &dto.SkillsConfig{
+		Category:   categoryName,
 		Preset:     preset,
 		Locale:     locale,
 		Target:     target,

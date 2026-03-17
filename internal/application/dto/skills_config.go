@@ -11,7 +11,8 @@ var ValidTargets = map[string]bool{
 
 // SkillsConfig representa la configuracion para generar Agent Skills reutilizables
 type SkillsConfig struct {
-	Preset     string // "default" o "neutral"
+	Category   string // "architecture" o "workflow"
+	Preset     string // sub-opcion: "clean", "neutral", "conventional-commit", "all", etc.
 	Locale     string // "en" o "es"
 	Target     string // ecosistema destino: "claude", "codex", "antigravity"
 	Model      string

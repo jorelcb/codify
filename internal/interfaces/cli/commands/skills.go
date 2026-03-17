@@ -6,91 +6,77 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/charmbracelet/huh"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
 	root "github.com/jorelcb/codify"
 	"github.com/jorelcb/codify/internal/application/command"
 	"github.com/jorelcb/codify/internal/application/dto"
+	"github.com/jorelcb/codify/internal/domain/catalog"
 	"github.com/jorelcb/codify/internal/infrastructure/filesystem"
 	"github.com/jorelcb/codify/internal/infrastructure/llm"
 	infratemplate "github.com/jorelcb/codify/internal/infrastructure/template"
 )
 
-// skillsDefaultTemplateMapping maps default preset skill template files to guide names.
-var skillsDefaultTemplateMapping = map[string]string{
-	"ddd_entity.template":       "ddd_entity",
-	"clean_arch_layer.template": "clean_arch_layer",
-	"bdd_scenario.template":     "bdd_scenario",
-	"cqrs_command.template":     "cqrs_command",
-	"hexagonal_port.template":   "hexagonal_port",
-}
-
-// skillsNeutralTemplateMapping maps neutral preset skill template files to guide names.
-var skillsNeutralTemplateMapping = map[string]string{
-	"code_review.template":     "code_review",
-	"test_strategy.template":   "test_strategy",
-	"refactor_safely.template": "refactor_safely",
-	"api_design.template":      "api_design",
-}
-
-// skillsWorkflowTemplateMapping maps workflow preset skill template files to guide names.
-var skillsWorkflowTemplateMapping = map[string]string{
-	"conventional_commit.template":  "conventional_commit",
-	"semantic_versioning.template":  "semantic_versioning",
-}
-
 // NewSkillsCmd creates the skills command
 func NewSkillsCmd() *cobra.Command {
 	var (
-		preset string
-		locale string
-		target string
-		model  string
-		output string
+		category string
+		preset   string
+		locale   string
+		target   string
+		model    string
+		output   string
 	)
 
 	cmd := &cobra.Command{
 		Use:   "skills",
 		Short: "Generate reusable AI agent skills (SKILL.md)",
-		Long: `Generate reusable Agent Skills based on architectural presets.
+		Long: `Generate reusable Agent Skills based on skill categories and presets.
 Skills are SKILL.md files that teach AI coding agents how to approach
 specific architectural and engineering tasks. They are cross-project
 and can be installed globally for any AI agent ecosystem.
 
+Categories:
+  architecture  - Architecture patterns and best practices
+  workflow      - Development workflow automation
+
 Presets:
-  default  - DDD, Clean Architecture, BDD, CQRS, Hexagonal (default)
-  neutral  - Code review, test strategy, refactoring, API design
-  workflow - Conventional commits, semantic versioning
+  architecture:
+    clean    - DDD, Clean Architecture, BDD, CQRS, Hexagonal
+    neutral  - Code review, test strategy, refactoring, API design
+  workflow:
+    conventional-commit   - Conventional Commits spec
+    semantic-versioning   - Semantic Versioning spec
+    all                   - All workflow skills
+
+When run without --category, an interactive menu is displayed.
 
 Target ecosystems:
   claude       - Claude Code → .claude/skills/ (default)
   codex        - Codex CLI (OpenAI) → .agents/skills/
   antigravity  - Antigravity (Google) → .agents/skills/
 
-Locales:
-  en  - English (default)
-  es  - Spanish
-
-Requires ANTHROPIC_API_KEY (for Claude) or GEMINI_API_KEY (for Gemini) environment variable.
-
 Examples:
-  # Generate default preset skills for Claude Code (.claude/skills/)
+  # Interactive mode (select category and preset from menu)
   codify skills
 
-  # Generate neutral skills for Codex (.agents/skills/)
-  codify skills --preset neutral --target codex
+  # Non-interactive: architecture skills
+  codify skills --category architecture --preset clean
 
-  # Generate to custom directory
-  codify skills --output ~/.claude/skills/
+  # Non-interactive: all workflow skills
+  codify skills --category workflow --preset all
 
-  # Generate with Gemini
-  codify skills --model gemini-3.1-pro-preview`,
+  # Generate for Codex ecosystem
+  codify skills --category architecture --preset neutral --target codex`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runSkills(preset, locale, target, model, output)
+			return runSkills(category, preset, locale, target, model, output)
 		},
 	}
 
-	cmd.Flags().StringVarP(&preset, "preset", "p", "default", "Template preset: default, neutral, or workflow")
+	cmd.Flags().StringVarP(&category, "category", "c", "", "Skill category: architecture, workflow")
+	cmd.Flags().StringVarP(&preset, "preset", "p", "", "Preset within category (or 'all' if supported)")
 	cmd.Flags().StringVar(&locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
 	cmd.Flags().StringVar(&target, "target", "claude", "Target ecosystem: claude, codex, or antigravity")
 	cmd.Flags().StringVarP(&model, "model", "m", "", "LLM model (default: claude-sonnet-4-6, or gemini-3.1-pro-preview)")
@@ -99,7 +85,7 @@ Examples:
 	return cmd
 }
 
-func runSkills(preset, locale, target, model, output string) error {
+func runSkills(categoryName, preset, locale, target, model, output string) error {
 	ctx := context.Background()
 
 	// 1. Resolve API key
@@ -113,55 +99,56 @@ func runSkills(preset, locale, target, model, output string) error {
 		return fmt.Errorf("invalid target: %s (available: claude, codex, antigravity)", target)
 	}
 
-	// 3. Validate and resolve preset
-	if !validPresets[preset] {
-		preset = "default"
+	// 3. Resolve category and preset (interactive or flags)
+	cat, selectedPreset, err := resolveSelection(categoryName, preset)
+	if err != nil {
+		return err
 	}
 
-	// 4. Select template mapping and load templates
-	templateMapping := skillsDefaultTemplateMapping
-	switch preset {
-	case "neutral":
-		templateMapping = skillsNeutralTemplateMapping
-	case "workflow":
-		templateMapping = skillsWorkflowTemplateMapping
+	// 4. Resolve templates from catalog
+	selection, err := cat.Resolve(selectedPreset)
+	if err != nil {
+		return err
 	}
 
-	templatePath := filepath.Join("templates", locale, "skills", preset)
-	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping(root.TemplatesFS, templatePath, templateMapping)
+	// 5. Load templates
+	templatePath := filepath.Join("templates", locale, "skills", selection.TemplateDir)
+	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping(root.TemplatesFS, templatePath, selection.TemplateMapping)
 	guides, err := templateLoader.LoadAll()
 	if err != nil {
 		return fmt.Errorf("failed to load skill templates: %w", err)
 	}
 
-	// 5. Initialize LLM provider
+	// 6. Initialize LLM provider
 	provider, err := llm.NewProvider(ctx, model, apiKey, os.Stdout)
 	if err != nil {
 		return fmt.Errorf("failed to create LLM provider: %w", err)
 	}
 
-	// 6. Initialize infrastructure
+	// 7. Initialize infrastructure
 	fileWriter := filesystem.NewFileWriter()
 	dirManager := filesystem.NewDirectoryManager()
 
-	// 7. Create command
+	// 8. Create command
 	skillsCmd := command.NewGenerateSkillsCommand(provider, fileWriter, dirManager)
 
-	// 8. Build config — default output based on target ecosystem
+	// 9. Build config
 	if output == "" {
 		output = defaultSkillsPath(target)
 	}
 	config := &dto.SkillsConfig{
-		Preset:     preset,
+		Category:   cat.Name,
+		Preset:     selectedPreset,
 		Locale:     locale,
 		Target:     target,
 		Model:      model,
 		OutputPath: output,
 	}
 
-	// 9. Show progress
+	// 10. Show progress
 	fmt.Printf("Generating agent skills\n")
-	fmt.Printf("  Preset: %s\n", preset)
+	fmt.Printf("  Category: %s\n", cat.Name)
+	fmt.Printf("  Preset: %s\n", selectedPreset)
 	fmt.Printf("  Target: %s\n", target)
 	fmt.Printf("  Model: %s\n", llm.DefaultModel(model))
 	fmt.Printf("  Locale: %s\n", locale)
@@ -170,13 +157,13 @@ func runSkills(preset, locale, target, model, output string) error {
 	fmt.Println()
 	fmt.Println("Generating skills via LLM API...")
 
-	// 10. Execute
+	// 11. Execute
 	result, err := skillsCmd.Execute(ctx, config, guides)
 	if err != nil {
 		return fmt.Errorf("skills generation failed: %w", err)
 	}
 
-	// 11. Show results
+	// 12. Show results
 	fmt.Println()
 	fmt.Println("Agent skills generated successfully!")
 	fmt.Printf("  Output: %s\n", result.OutputPath)
@@ -189,6 +176,93 @@ func runSkills(preset, locale, target, model, output string) error {
 	}
 
 	return nil
+}
+
+// resolveSelection determina categoría y preset, interactivamente si es necesario.
+func resolveSelection(categoryName, preset string) (*catalog.SkillCategory, string, error) {
+	// Si ambos flags están presentes, usar directo
+	if categoryName != "" && preset != "" {
+		cat, err := catalog.FindCategory(categoryName)
+		if err != nil {
+			return nil, "", err
+		}
+		return cat, preset, nil
+	}
+
+	// Si no hay TTY, requerir flags
+	if !isInteractive() {
+		return nil, "", fmt.Errorf("interactive mode requires a terminal; use --category and --preset flags")
+	}
+
+	// Menú interactivo nivel 1: seleccionar categoría
+	if categoryName == "" {
+		categoryName = promptCategory()
+		if categoryName == "" {
+			return nil, "", fmt.Errorf("no category selected")
+		}
+	}
+
+	cat, err := catalog.FindCategory(categoryName)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Menú interactivo nivel 2: seleccionar preset
+	if preset == "" {
+		preset = promptPreset(cat)
+		if preset == "" {
+			return nil, "", fmt.Errorf("no preset selected")
+		}
+	}
+
+	return cat, preset, nil
+}
+
+// promptCategory muestra el menú interactivo de categorías.
+func promptCategory() string {
+	options := make([]huh.Option[string], len(catalog.Categories))
+	for i, c := range catalog.Categories {
+		options[i] = huh.NewOption(c.Label, c.Name)
+	}
+
+	var selected string
+	err := huh.NewSelect[string]().
+		Title("Select skill category").
+		Options(options...).
+		Value(&selected).
+		Run()
+	if err != nil {
+		return ""
+	}
+	return selected
+}
+
+// promptPreset muestra el menú interactivo de sub-opciones dentro de una categoría.
+func promptPreset(cat *catalog.SkillCategory) string {
+	options := make([]huh.Option[string], 0, len(cat.Options)+1)
+	for _, o := range cat.Options {
+		options = append(options, huh.NewOption(o.Label, o.Name))
+	}
+	// Agregar "All" solo si la categoría lo permite
+	if !cat.Exclusive {
+		options = append(options, huh.NewOption("All", "all"))
+	}
+
+	var selected string
+	err := huh.NewSelect[string]().
+		Title(fmt.Sprintf("Select %s preset", cat.Label)).
+		Options(options...).
+		Value(&selected).
+		Run()
+	if err != nil {
+		return ""
+	}
+	return selected
+}
+
+// isInteractive verifica si stdout es un terminal.
+func isInteractive() bool {
+	return isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
 }
 
 // defaultSkillsPath returns the ecosystem-specific default skills directory.
