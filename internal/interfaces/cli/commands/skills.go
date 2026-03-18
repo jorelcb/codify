@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	root "github.com/jorelcb/codify"
 	"github.com/jorelcb/codify/internal/application/command"
@@ -19,16 +20,19 @@ import (
 	infratemplate "github.com/jorelcb/codify/internal/infrastructure/template"
 )
 
+// skillsConfig agrupa todos los parámetros del comando skills.
+type skillsConfig struct {
+	category string
+	preset   string
+	target   string
+	locale   string
+	model    string
+	output   string
+}
+
 // NewSkillsCmd creates the skills command
 func NewSkillsCmd() *cobra.Command {
-	var (
-		category string
-		preset   string
-		locale   string
-		target   string
-		model    string
-		output   string
-	)
+	var cfg skillsConfig
 
 	cmd := &cobra.Command{
 		Use:   "skills",
@@ -51,7 +55,7 @@ Presets:
     semantic-versioning   - Semantic Versioning spec
     all                   - All workflow skills
 
-When run without --category, an interactive menu is displayed.
+When run without flags, an interactive menu is displayed.
 
 Target ecosystems:
   claude       - Claude Code → .claude/skills/ (default)
@@ -59,7 +63,7 @@ Target ecosystems:
   antigravity  - Antigravity (Google) → .agents/skills/
 
 Examples:
-  # Interactive mode (select category and preset from menu)
+  # Interactive mode (guided selection)
   codify skills
 
   # Non-interactive: architecture skills
@@ -71,42 +75,89 @@ Examples:
   # Generate for Codex ecosystem
   codify skills --category architecture --preset neutral --target codex`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runSkills(category, preset, locale, target, model, output)
+			// Detectar qué flags fueron proporcionados explícitamente
+			explicit := make(map[string]bool)
+			cmd.Flags().Visit(func(f *pflag.Flag) {
+				explicit[f.Name] = true
+			})
+			return runSkills(cfg, explicit)
 		},
 	}
 
-	cmd.Flags().StringVarP(&category, "category", "c", "", "Skill category: architecture, workflow")
-	cmd.Flags().StringVarP(&preset, "preset", "p", "", "Preset within category (or 'all' if supported)")
-	cmd.Flags().StringVar(&locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
-	cmd.Flags().StringVar(&target, "target", "claude", "Target ecosystem: claude, codex, or antigravity")
-	cmd.Flags().StringVarP(&model, "model", "m", "", "LLM model (default: claude-sonnet-4-6, or gemini-3.1-pro-preview)")
-	cmd.Flags().StringVarP(&output, "output", "o", "", "Output directory (default: ecosystem-specific, e.g. .claude/skills/)")
+	cmd.Flags().StringVarP(&cfg.category, "category", "c", "", "Skill category: architecture, workflow")
+	cmd.Flags().StringVarP(&cfg.preset, "preset", "p", "", "Preset within category (or 'all' if supported)")
+	cmd.Flags().StringVar(&cfg.target, "target", "claude", "Target ecosystem: claude, codex, or antigravity")
+	cmd.Flags().StringVar(&cfg.locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
+	cmd.Flags().StringVarP(&cfg.model, "model", "m", "", "LLM model (default: auto-detected from API key)")
+	cmd.Flags().StringVarP(&cfg.output, "output", "o", "", "Output directory (default: ecosystem-specific)")
 
 	return cmd
 }
 
-func runSkills(categoryName, preset, locale, target, model, output string) error {
+func runSkills(cfg skillsConfig, explicit map[string]bool) error {
 	ctx := context.Background()
+	interactive := isInteractive()
 
-	// 1. Resolve API key
+	// 1. Resolve category and preset (interactive or flags)
+	cat, preset, err := resolveSelection(cfg.category, cfg.preset)
+	if err != nil {
+		return err
+	}
+
+	// 2. Resolve remaining config interactively if needed
+	target := cfg.target
+	if !explicit["target"] && interactive {
+		target, err = promptSelect("Select target ecosystem", []selectOption{
+			{"Claude Code → .claude/skills/", "claude"},
+			{"Codex CLI → .agents/skills/", "codex"},
+			{"Antigravity → .agents/skills/", "antigravity"},
+		}, "claude")
+		if err != nil {
+			return err
+		}
+	}
+	if !dto.ValidTargets[target] {
+		return fmt.Errorf("invalid target: %s (available: claude, codex, antigravity)", target)
+	}
+
+	locale := cfg.locale
+	if !explicit["locale"] && interactive {
+		locale, err = promptSelect("Select language", []selectOption{
+			{"English", "en"},
+			{"Spanish", "es"},
+		}, "en")
+		if err != nil {
+			return err
+		}
+	}
+
+	model := cfg.model
+	if !explicit["model"] && interactive {
+		model, err = promptModel()
+		if err != nil {
+			return err
+		}
+	}
+
+	output := cfg.output
+	if output == "" {
+		output = defaultSkillsPath(target)
+	}
+	if !explicit["output"] && interactive {
+		output, err = promptInput("Output directory", output)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 3. Resolve API key (now that model is known)
 	apiKey, err := llm.ResolveAPIKey(model)
 	if err != nil {
 		return err
 	}
 
-	// 2. Validate target
-	if !dto.ValidTargets[target] {
-		return fmt.Errorf("invalid target: %s (available: claude, codex, antigravity)", target)
-	}
-
-	// 3. Resolve category and preset (interactive or flags)
-	cat, selectedPreset, err := resolveSelection(categoryName, preset)
-	if err != nil {
-		return err
-	}
-
 	// 4. Resolve templates from catalog
-	selection, err := cat.Resolve(selectedPreset)
+	selection, err := cat.Resolve(preset)
 	if err != nil {
 		return err
 	}
@@ -133,12 +184,9 @@ func runSkills(categoryName, preset, locale, target, model, output string) error
 	skillsCmd := command.NewGenerateSkillsCommand(provider, fileWriter, dirManager)
 
 	// 9. Build config
-	if output == "" {
-		output = defaultSkillsPath(target)
-	}
 	config := &dto.SkillsConfig{
 		Category:   cat.Name,
-		Preset:     selectedPreset,
+		Preset:     preset,
 		Locale:     locale,
 		Target:     target,
 		Model:      model,
@@ -146,9 +194,10 @@ func runSkills(categoryName, preset, locale, target, model, output string) error
 	}
 
 	// 10. Show progress
+	fmt.Println()
 	fmt.Printf("Generating agent skills\n")
 	fmt.Printf("  Category: %s\n", cat.Name)
-	fmt.Printf("  Preset: %s\n", selectedPreset)
+	fmt.Printf("  Preset: %s\n", preset)
 	fmt.Printf("  Target: %s\n", target)
 	fmt.Printf("  Model: %s\n", llm.DefaultModel(model))
 	fmt.Printf("  Locale: %s\n", locale)
@@ -178,6 +227,8 @@ func runSkills(categoryName, preset, locale, target, model, output string) error
 	return nil
 }
 
+// --- Resolución de selección (categoría + preset) ---
+
 // resolveSelection determina categoría y preset, interactivamente si es necesario.
 func resolveSelection(categoryName, preset string) (*catalog.SkillCategory, string, error) {
 	// Si ambos flags están presentes, usar directo
@@ -196,9 +247,14 @@ func resolveSelection(categoryName, preset string) (*catalog.SkillCategory, stri
 
 	// Menú interactivo nivel 1: seleccionar categoría
 	if categoryName == "" {
-		categoryName = promptCategory()
-		if categoryName == "" {
-			return nil, "", fmt.Errorf("no category selected")
+		options := make([]selectOption, len(catalog.Categories))
+		for i, c := range catalog.Categories {
+			options[i] = selectOption{c.Label, c.Name}
+		}
+		var err error
+		categoryName, err = promptSelect("Select skill category", options, "")
+		if err != nil {
+			return nil, "", err
 		}
 	}
 
@@ -209,60 +265,99 @@ func resolveSelection(categoryName, preset string) (*catalog.SkillCategory, stri
 
 	// Menú interactivo nivel 2: seleccionar preset
 	if preset == "" {
-		preset = promptPreset(cat)
-		if preset == "" {
-			return nil, "", fmt.Errorf("no preset selected")
+		options := make([]selectOption, 0, len(cat.Options)+1)
+		for _, o := range cat.Options {
+			options = append(options, selectOption{o.Label, o.Name})
+		}
+		if !cat.Exclusive {
+			options = append(options, selectOption{"All", "all"})
+		}
+
+		preset, err = promptSelect(fmt.Sprintf("Select %s preset", cat.Label), options, "")
+		if err != nil {
+			return nil, "", err
 		}
 	}
 
 	return cat, preset, nil
 }
 
-// promptCategory muestra el menú interactivo de categorías.
-func promptCategory() string {
-	options := make([]huh.Option[string], len(catalog.Categories))
-	for i, c := range catalog.Categories {
-		options[i] = huh.NewOption(c.Label, c.Name)
+// --- Prompts interactivos genéricos ---
+
+type selectOption struct {
+	Label string
+	Value string
+}
+
+// promptSelect muestra un selector interactivo con opciones y valor por defecto.
+func promptSelect(title string, options []selectOption, defaultVal string) (string, error) {
+	huhOpts := make([]huh.Option[string], len(options))
+	for i, o := range options {
+		huhOpts[i] = huh.NewOption(o.Label, o.Value)
 	}
 
-	var selected string
+	selected := defaultVal
 	err := huh.NewSelect[string]().
-		Title("Select skill category").
-		Options(options...).
+		Title(title).
+		Options(huhOpts...).
 		Value(&selected).
 		Run()
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("selection cancelled")
 	}
-	return selected
+	return selected, nil
 }
 
-// promptPreset muestra el menú interactivo de sub-opciones dentro de una categoría.
-func promptPreset(cat *catalog.SkillCategory) string {
-	options := make([]huh.Option[string], 0, len(cat.Options)+1)
-	for _, o := range cat.Options {
-		options = append(options, huh.NewOption(o.Label, o.Name))
-	}
-	// Agregar "All" solo si la categoría lo permite
-	if !cat.Exclusive {
-		options = append(options, huh.NewOption("All", "all"))
-	}
-
-	var selected string
-	err := huh.NewSelect[string]().
-		Title(fmt.Sprintf("Select %s preset", cat.Label)).
-		Options(options...).
-		Value(&selected).
+// promptInput muestra un campo de texto interactivo con valor por defecto.
+func promptInput(title, defaultVal string) (string, error) {
+	value := defaultVal
+	err := huh.NewInput().
+		Title(title).
+		Value(&value).
 		Run()
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("input cancelled")
 	}
-	return selected
+	if value == "" {
+		return defaultVal, nil
+	}
+	return value, nil
 }
 
-// isInteractive verifica si stdout es un terminal.
+// promptModel muestra un selector de modelo basado en las API keys disponibles.
+func promptModel() (string, error) {
+	var options []selectOption
+	hasAnthropic := os.Getenv("ANTHROPIC_API_KEY") != ""
+	hasGemini := os.Getenv("GEMINI_API_KEY") != "" || os.Getenv("GOOGLE_API_KEY") != ""
+
+	if hasAnthropic {
+		options = append(options, selectOption{"Claude Sonnet 4.6 (Anthropic)", "claude-sonnet-4-6"})
+		options = append(options, selectOption{"Claude Opus 4.6 (Anthropic)", "claude-opus-4-6"})
+	}
+	if hasGemini {
+		options = append(options, selectOption{"Gemini 3.1 Pro Preview (Google)", "gemini-3.1-pro-preview"})
+	}
+
+	if len(options) == 0 {
+		// Sin API keys detectadas, mostrar todos y dejar que falle después
+		options = []selectOption{
+			{"Claude Sonnet 4.6 (Anthropic)", "claude-sonnet-4-6"},
+			{"Claude Opus 4.6 (Anthropic)", "claude-opus-4-6"},
+			{"Gemini 3.1 Pro Preview (Google)", "gemini-3.1-pro-preview"},
+		}
+	}
+
+	// Si solo hay un proveedor disponible con un modelo, usar directo
+	if len(options) == 1 {
+		return options[0].Value, nil
+	}
+
+	return promptSelect("Select LLM model", options, options[0].Value)
+}
+
+// isInteractive verifica si stdin/stdout son terminales.
 func isInteractive() bool {
-	return isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
+	return isatty.IsTerminal(os.Stdin.Fd()) && isatty.IsTerminal(os.Stdout.Fd())
 }
 
 // defaultSkillsPath returns the ecosystem-specific default skills directory.
