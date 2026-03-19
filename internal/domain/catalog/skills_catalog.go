@@ -4,6 +4,7 @@ package catalog
 import (
 	"fmt"
 	"maps"
+	"strings"
 )
 
 // SkillCategory representa una categoría de nivel 1 en el menú de skills.
@@ -26,6 +27,52 @@ type SkillOption struct {
 type ResolvedSelection struct {
 	TemplateDir     string
 	TemplateMapping map[string]string // nil = cargar todos los templates del directorio
+}
+
+// SkillMeta contiene metadata de un skill para generación de frontmatter estático.
+type SkillMeta struct {
+	Description string
+	Triggers    []string // usado por ecosistemas que lo soportan (e.g. antigravity)
+}
+
+// SkillMetadata mapea guide names a su metadata para frontmatter.
+var SkillMetadata = map[string]SkillMeta{
+	// Architecture: clean
+	"ddd_entity":       {Description: "Create domain entities following DDD principles", Triggers: []string{"entity", "aggregate", "value object", "domain model"}},
+	"clean_arch_layer": {Description: "Implement features respecting Clean Architecture layers", Triggers: []string{"layer", "architecture", "dependency rule"}},
+	"bdd_scenario":     {Description: "Write BDD scenarios in Gherkin with proper step definitions", Triggers: []string{"test", "scenario", "gherkin", "bdd"}},
+	"cqrs_command":     {Description: "Implement CQRS commands and queries with proper separation", Triggers: []string{"command", "query", "cqrs", "handler"}},
+	"hexagonal_port":   {Description: "Design ports and adapters following Hexagonal Architecture", Triggers: []string{"port", "adapter", "hexagonal", "dependency inversion"}},
+	// Architecture: neutral
+	"code_review":     {Description: "Perform structured, actionable code reviews", Triggers: []string{"review", "pull request", "code quality"}},
+	"test_strategy":   {Description: "Design test strategies with proper test pyramid coverage", Triggers: []string{"test", "testing", "coverage", "test plan"}},
+	"refactor_safely": {Description: "Refactor code safely with incremental transformations", Triggers: []string{"refactor", "cleanup", "tech debt"}},
+	"api_design":      {Description: "Design REST APIs with consistent contracts and versioning", Triggers: []string{"api", "endpoint", "rest", "contract"}},
+	// Workflow
+	"conventional_commit":  {Description: "Write commit messages following Conventional Commits 1.0.0", Triggers: []string{"commit", "git commit", "conventional"}},
+	"semantic_versioning":  {Description: "Determine version bumps following Semantic Versioning 2.0.0", Triggers: []string{"version", "release", "tag", "semver"}},
+}
+
+// GenerateFrontmatter genera YAML frontmatter para un skill según el ecosistema target.
+func GenerateFrontmatter(guideName, target string) string {
+	name := strings.ReplaceAll(guideName, "_", "-")
+	meta, ok := SkillMetadata[guideName]
+	if !ok {
+		meta = SkillMeta{Description: fmt.Sprintf("Agent skill for %s", name)}
+	}
+
+	switch target {
+	case "codex":
+		return fmt.Sprintf("---\nname: %s\ndescription: %s\n---\n", name, meta.Description)
+	case "antigravity":
+		var triggers strings.Builder
+		for _, t := range meta.Triggers {
+			triggers.WriteString(fmt.Sprintf("  - %s\n", t))
+		}
+		return fmt.Sprintf("---\nname: %s\ndescription: %s\ntriggers:\n%s---\n", name, meta.Description, triggers.String())
+	default: // claude
+		return fmt.Sprintf("---\nname: %s\ndescription: %s\nuser-invocable: true\n---\n", name, meta.Description)
+	}
 }
 
 // Categories es el registro global de categorías de skills.

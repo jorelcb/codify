@@ -145,7 +145,7 @@ func TestFileOutputName(t *testing.T) {
 	}
 }
 
-func TestPromptBuilder_BuildSkillsSystemPrompt(t *testing.T) {
+func TestPromptBuilder_BuildPersonalizedSkillsSystemPrompt(t *testing.T) {
 	builder := NewPromptBuilder()
 
 	tests := []struct {
@@ -160,25 +160,31 @@ func TestPromptBuilder_BuildSkillsSystemPrompt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.skillName+"_"+tt.target, func(t *testing.T) {
-			prompt := builder.BuildSkillsSystemPrompt(tt.skillName, tt.target, "en")
+			prompt := builder.BuildPersonalizedSkillsSystemPrompt(tt.skillName, tt.target, "en", "Go project with DDD architecture")
 
 			if prompt == "" {
-				t.Error("BuildSkillsSystemPrompt() returned empty string")
+				t.Error("BuildPersonalizedSkillsSystemPrompt() returned empty string")
 			}
 			if !strings.Contains(prompt, tt.skillName) {
-				t.Errorf("BuildSkillsSystemPrompt() should mention skill name %s", tt.skillName)
+				t.Errorf("BuildPersonalizedSkillsSystemPrompt() should mention skill name %s", tt.skillName)
 			}
 			if !strings.Contains(prompt, tt.wantTag) {
-				t.Errorf("BuildSkillsSystemPrompt() should mention target %s", tt.wantTag)
+				t.Errorf("BuildPersonalizedSkillsSystemPrompt() should mention target %s", tt.wantTag)
 			}
 			if !strings.Contains(prompt, "<role>") {
-				t.Error("BuildSkillsSystemPrompt() should contain <role> XML tag")
+				t.Error("BuildPersonalizedSkillsSystemPrompt() should contain <role> XML tag")
 			}
 			if !strings.Contains(prompt, "<skill_format>") {
-				t.Error("BuildSkillsSystemPrompt() should contain <skill_format> XML tag")
+				t.Error("BuildPersonalizedSkillsSystemPrompt() should contain <skill_format> XML tag")
 			}
 			if !strings.Contains(prompt, "SKILL.md") {
-				t.Error("BuildSkillsSystemPrompt() should mention SKILL.md")
+				t.Error("BuildPersonalizedSkillsSystemPrompt() should mention SKILL.md")
+			}
+			if !strings.Contains(prompt, "<project_context>") {
+				t.Error("BuildPersonalizedSkillsSystemPrompt() should contain project_context XML tag")
+			}
+			if !strings.Contains(prompt, "<personalization_rules>") {
+				t.Error("BuildPersonalizedSkillsSystemPrompt() should contain personalization_rules XML tag")
 			}
 		})
 	}

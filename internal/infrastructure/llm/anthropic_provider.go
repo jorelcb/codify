@@ -97,7 +97,7 @@ func (p *AnthropicProvider) generateSingleFile(
 		systemPrompt = p.promptBuilder.BuildSpecSystemPrompt(req.ExistingContext, req.Locale)
 		userMessage = p.promptBuilder.BuildUserMessageForFile(req, guide)
 	case "skills":
-		systemPrompt = p.promptBuilder.BuildSkillsSystemPrompt(guide.Name, req.Target, req.Locale)
+		systemPrompt = p.promptBuilder.BuildPersonalizedSkillsSystemPrompt(guide.Name, req.Target, req.Locale, req.ProjectContext)
 		userMessage = p.promptBuilder.BuildSkillsUserMessage(guide, req.Target)
 	default:
 		systemPrompt = p.promptBuilder.BuildSystemPromptForFile(guide.Name, req.Locale)

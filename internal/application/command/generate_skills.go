@@ -41,12 +41,13 @@ func (c *GenerateSkillsCommand) Execute(
 	config *dto.SkillsConfig,
 	templateGuides []service.TemplateGuide,
 ) (*dto.GenerationResult, error) {
-	// 1. Build generation request in skills mode
+	// 1. Build generation request in skills mode (personalized with project context)
 	req := service.GenerationRequest{
 		TemplateGuides: templateGuides,
 		Mode:           "skills",
 		Target:         config.Target,
 		Locale:         config.Locale,
+		ProjectContext: config.ProjectContext,
 	}
 
 	// 2. Call LLM provider

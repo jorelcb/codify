@@ -9,14 +9,22 @@ var ValidTargets = map[string]bool{
 	"antigravity": true,
 }
 
+// Modos de generación de skills
+const (
+	SkillModeStatic       = "static"
+	SkillModePersonalized = "personalized"
+)
+
 // SkillsConfig representa la configuracion para generar Agent Skills reutilizables
 type SkillsConfig struct {
-	Category   string // "architecture" o "workflow"
-	Preset     string // sub-opcion: "clean", "neutral", "conventional-commit", "all", etc.
-	Locale     string // "en" o "es"
-	Target     string // ecosistema destino: "claude", "codex", "antigravity"
-	Model      string
-	OutputPath string
+	Category       string // "architecture" o "workflow"
+	Preset         string // sub-opcion: "clean", "neutral", "conventional-commit", "all", etc.
+	Mode           string // "static" o "personalized"
+	Locale         string // "en" o "es"
+	Target         string // ecosistema destino: "claude", "codex", "antigravity"
+	Model          string
+	OutputPath     string
+	ProjectContext string // contexto del proyecto para modo personalizado
 }
 
 // Validate valida la configuracion de skills

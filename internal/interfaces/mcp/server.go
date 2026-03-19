@@ -98,12 +98,14 @@ func analyzeProjectTool() server.ServerTool {
 // generateSkillsTool defines the generate_skills MCP tool.
 func generateSkillsTool() server.ServerTool {
 	tool := mcp.NewTool("generate_skills",
-		mcp.WithDescription("Generate reusable AI agent skills (SKILL.md) by category and preset"),
+		mcp.WithDescription("Generate AI agent skills (SKILL.md) by category, preset, and mode. Static mode delivers instant skills from the catalog. Personalized mode uses LLM to adapt skills to a specific project context."),
 		mcp.WithString("category", mcp.Required(), mcp.Description("Skill category: architecture or workflow")),
 		mcp.WithString("preset", mcp.Required(), mcp.Description("Preset within category. architecture: clean, neutral. workflow: conventional-commit, semantic-versioning, all")),
+		mcp.WithString("mode", mcp.Description("Generation mode: static (instant, no API key) or personalized (LLM-adapted)"), mcp.DefaultString("static")),
+		mcp.WithString("project_context", mcp.Description("Project description for personalized mode (language, architecture, domain, stack)")),
 		mcp.WithString("locale", mcp.Description("Output language: en or es"), mcp.DefaultString("en")),
 		mcp.WithString("target", mcp.Description("Target ecosystem: claude, codex, or antigravity"), mcp.DefaultString("claude")),
-		mcp.WithString("model", mcp.Description("LLM model to use"), mcp.DefaultString("claude-sonnet-4-6")),
+		mcp.WithString("model", mcp.Description("LLM model (only for personalized mode)"), mcp.DefaultString("claude-sonnet-4-6")),
 		mcp.WithString("output", mcp.Description("Output directory (default: ecosystem-specific, e.g. .claude/skills/)")),
 	)
 
@@ -268,6 +270,8 @@ func handleAnalyzeProject(ctx context.Context, request mcp.CallToolRequest) (*mc
 func handleGenerateSkills(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	categoryName := stringArg(request, "category")
 	preset := stringArg(request, "preset")
+	mode := stringArgDefault(request, "mode", dto.SkillModeStatic)
+	projectContext := stringArg(request, "project_context")
 	locale := stringArgDefault(request, "locale", "en")
 	target := stringArgDefault(request, "target", "claude")
 	model := stringArgDefault(request, "model", "")
@@ -287,16 +291,47 @@ func handleGenerateSkills(ctx context.Context, request mcp.CallToolRequest) (*mc
 		return mcp.NewToolResultError(fmt.Sprintf("Invalid preset: %v", err)), nil
 	}
 
-	result, err := executeSkills(ctx, selection, locale, target, model, output, cat.Name, preset)
+	// Cargar templates
+	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping(
+		root.TemplatesFS, filepath.Join("templates", locale, "skills", selection.TemplateDir), selection.TemplateMapping,
+	)
+	guides, err := templateLoader.LoadAll()
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to load templates: %v", err)), nil
+	}
+
+	config := &dto.SkillsConfig{
+		Category:       cat.Name,
+		Preset:         preset,
+		Mode:           mode,
+		Locale:         locale,
+		Target:         target,
+		Model:          model,
+		OutputPath:     output,
+		ProjectContext: projectContext,
+	}
+
+	var result *dto.GenerationResult
+
+	if mode == dto.SkillModePersonalized {
+		if projectContext == "" {
+			return mcp.NewToolResultError("personalized mode requires project_context parameter"), nil
+		}
+		result, err = executePersonalizedSkillsMCP(ctx, config, guides)
+	} else {
+		result, err = executeStaticSkillsMCP(config, guides)
+	}
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Skills generation failed: %v", err)), nil
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Agent skills generated (category: %s, preset: %s, target: %s)\n", categoryName, preset, target))
+	sb.WriteString(fmt.Sprintf("Agent skills delivered (category: %s, preset: %s, mode: %s, target: %s)\n", categoryName, preset, mode, target))
 	sb.WriteString(fmt.Sprintf("Output: %s\n", result.OutputPath))
-	sb.WriteString(fmt.Sprintf("Model: %s\n", result.Model))
-	sb.WriteString(fmt.Sprintf("Tokens: %d in / %d out\n", result.TokensIn, result.TokensOut))
+	if result.Model != "" && result.Model != "static" {
+		sb.WriteString(fmt.Sprintf("Model: %s\n", result.Model))
+		sb.WriteString(fmt.Sprintf("Tokens: %d in / %d out\n", result.TokensIn, result.TokensOut))
+	}
 	sb.WriteString("\nGenerated skills:\n")
 	for _, f := range result.GeneratedFiles {
 		sb.WriteString(fmt.Sprintf("  - %s\n", f))
@@ -455,37 +490,27 @@ func executeSpecs(ctx context.Context, name, fromContextPath, locale, model stri
 	return result, nil
 }
 
-func executeSkills(ctx context.Context, selection *catalog.ResolvedSelection, locale, target, model, output, categoryName, preset string) (*dto.GenerationResult, error) {
-	apiKey, err := llm.ResolveAPIKey(model)
+func executeStaticSkillsMCP(config *dto.SkillsConfig, guides []service.TemplateGuide) (*dto.GenerationResult, error) {
+	fileWriter := filesystem.NewFileWriter()
+	dirManager := filesystem.NewDirectoryManager()
+	cmd := command.NewDeliverStaticSkillsCommand(fileWriter, dirManager)
+	return cmd.Execute(config, guides)
+}
+
+func executePersonalizedSkillsMCP(ctx context.Context, config *dto.SkillsConfig, guides []service.TemplateGuide) (*dto.GenerationResult, error) {
+	apiKey, err := llm.ResolveAPIKey(config.Model)
 	if err != nil {
 		return nil, err
 	}
 
-	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping(
-		root.TemplatesFS, filepath.Join("templates", locale, "skills", selection.TemplateDir), selection.TemplateMapping,
-	)
-	guides, err := templateLoader.LoadAll()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load skill templates: %w", err)
-	}
-
-	provider, err := llm.NewProvider(ctx, model, apiKey, nil)
+	provider, err := llm.NewProvider(ctx, config.Model, apiKey, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create LLM provider: %w", err)
 	}
+
 	fileWriter := filesystem.NewFileWriter()
 	dirManager := filesystem.NewDirectoryManager()
-
 	skillsCmd := command.NewGenerateSkillsCommand(provider, fileWriter, dirManager)
-
-	config := &dto.SkillsConfig{
-		Category:   categoryName,
-		Preset:     preset,
-		Locale:     locale,
-		Target:     target,
-		Model:      model,
-		OutputPath: output,
-	}
 
 	return skillsCmd.Execute(ctx, config, guides)
 }
