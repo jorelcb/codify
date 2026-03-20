@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.4.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.9.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.21)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -213,9 +213,9 @@ Agrega a `~/.gemini/settings.json`:
 | `generate_context` | Genera archivos de contexto a partir de una descripcion |
 | `generate_specs` | Genera specs SDD a partir de contexto existente |
 | `analyze_project` | Escanea un proyecto existente y genera contexto desde su estructura |
-| `generate_skills` | Genera Agent Skills (SKILL.md) basadas en presets arquitectonicos |
+| `generate_skills` | Genera Agent Skills por categoria/preset — soporta modos `static` (instantaneo) y `personalized` (adaptado via LLM con `project_context`) |
 
-Todas las herramientas generativas soportan `locale` (`en`/`es`), `model` y `preset`. `generate_context` y `analyze_project` tambien aceptan `with_specs` para encadenar generacion de specs automaticamente.
+Todas las herramientas generativas soportan `locale` (`en`/`es`) y `model`. `generate_context` y `analyze_project` tambien aceptan `with_specs` para encadenar generacion de specs. `generate_skills` acepta `mode` (`static`/`personalized`), `category`, `preset` y `project_context`.
 
 #### Herramientas de conocimiento (sin API key)
 
@@ -234,6 +234,12 @@ Las herramientas de conocimiento inyectan contexto comportamental en el agente q
 
 "Analiza mi proyecto en /path/to/my-app y genera specs"
 → El agente invoca analyze_project con with_specs=true
+
+"Genera skills de workflow para mi proyecto"
+→ El agente invoca generate_skills con mode=static, category=workflow, preset=all
+
+"Crea skills de DDD adaptadas a mi proyecto Go con Clean Architecture"
+→ El agente invoca generate_skills con mode=personalized, project_context="Go con DDD..."
 
 "Ayudame a hacer commit de estos cambios siguiendo conventional commits"
 → El agente invoca commit_guidance, recibe la spec, construye el mensaje
@@ -299,26 +305,36 @@ codify generate my-api \
 
 ### 🧩 Comando `skills` — Agent Skills
 
-Genera [Agent Skills](https://agentskills.io) reutilizables (SKILL.md) basadas en presets arquitectonicos. Las skills son cross-project — instaladas globalmente, cualquier agente de IA las usa cuando son relevantes.
+Genera [Agent Skills](https://agentskills.io) reutilizables (SKILL.md) con seleccion guiada interactiva. Dos modos: **static** (instantaneo, sin API key) y **personalized** (adaptado a tu proyecto via LLM).
 
 ```bash
-# Preset default: DDD, Clean Arch, BDD, CQRS, Hexagonal
+# Modo interactivo — seleccion guiada de categoria, preset, modo, target, etc.
 codify skills
 
-# Preset neutral para Codex
-codify skills --preset neutral --target codex
+# Static: entrega instantanea desde el catalogo embebido (sin API key)
+codify skills --category workflow --preset all --mode static
 
-# Para Antigravity IDE en español
-codify skills --target antigravity --locale es
+# Personalized: el LLM adapta las skills a tu proyecto especifico
+codify skills --category architecture --preset clean --mode personalized \
+  --context "Microservicio Go con DDD, Godog BDD, PostgreSQL"
+
+# Skills de arquitectura para Codex
+codify skills --category architecture --preset neutral --target codex
 ```
 
-| Preset | Skills generadas |
-|--------|-----------------|
-| `default` | DDD entity, Clean Architecture layer, BDD scenario, CQRS command, Hexagonal port/adapter |
-| `neutral` | Code review, test strategy, safe refactoring, API design |
-| `workflow` | Conventional commits, semantic versioning |
+| Categoria | Preset | Skills |
+|-----------|--------|--------|
+| `architecture` | `clean` | DDD entity, Clean Architecture layer, BDD scenario, CQRS command, Hexagonal port |
+| `architecture` | `neutral` | Code review, test strategy, safe refactoring, API design |
+| `workflow` | `conventional-commit` | Conventional Commits |
+| `workflow` | `semantic-versioning` | Semantic Versioning |
+| `workflow` | `all` | Todas las skills de workflow |
 
-Ecosistemas target: `claude` (default), `codex`, `antigravity` — cada uno recibe frontmatter YAML especifico del ecosistema y ruta de salida (`.claude/skills/`, `.agents/skills/`).
+**Modos:**
+- **Static**: Entrega skills pre-construidas instantaneamente desde el catalogo embebido. Sin LLM, sin API key, sin costo. Incluye frontmatter YAML por ecosistema.
+- **Personalized**: Usa LLM para adaptar las skills a tu proyecto — los ejemplos usan tu dominio, lenguaje y stack.
+
+**Ecosistemas target**: `claude` (default), `codex`, `antigravity` — cada uno recibe frontmatter YAML especifico y ruta de salida (`.claude/skills/`, `.agents/skills/`).
 
 ### 🔍 Comando `list` — Proyectos generados
 
@@ -452,9 +468,10 @@ templates/
 │   │   ├── spec.template
 │   │   ├── plan.template
 │   │   └── tasks.template
-│   ├── skills/                  Templates de Agent Skills
-│   │   ├── default/             DDD, Clean Arch, BDD, CQRS, Hexagonal
-│   │   └── neutral/             Code review, testing, refactoring, API design
+│   ├── skills/                  Templates de Agent Skills (static + guias LLM)
+│   │   ├── default/             Architecture: Clean (DDD, BDD, CQRS, Hexagonal)
+│   │   ├── neutral/             Architecture: Neutral (review, testing, API)
+│   │   └── workflow/            Workflow (conventional commits, semver)
 │   └── languages/               Guias idiomaticas por lenguaje
 │       ├── go/idioms.template
 │       ├── javascript/idioms.template
@@ -478,26 +495,31 @@ go test ./tests/...
 
 ## 📊 Estado del proyecto
 
-**v1.4.0** 🎉
+**v1.9.0** 🎉
 
 ✅ **Funcionando:**
 - Soporte multi-proveedor LLM (Anthropic Claude + Google Gemini)
 - Generacion de contextos con streaming
 - Generacion de specs SDD a partir de contexto existente
-- Generacion de Agent Skills (SKILL.md) para Claude Code, Codex, Antigravity
-- Servidor MCP (transporte stdio + HTTP)
+- Agent Skills con seleccion guiada interactiva y modo dual (static/personalized)
+- Categorias de skills (architecture, workflow) con catalogo declarativo
+- Skills estaticas: entrega instantanea, sin API key, frontmatter por ecosistema
+- Skills personalizadas: adaptadas via LLM al contexto del proyecto (dominio, lenguaje, stack)
+- Servidor MCP (transporte stdio + HTTP) con 6 herramientas
+- Herramientas de conocimiento MCP (commit_guidance, version_guidance) — sin API key
 - Comando `analyze` — escanear proyectos existentes y generar contexto
 - Flag `--with-specs` — pipeline completo en un comando
-- Sistema de presets (default DDD/BDD, neutral)
+- Sistema de presets (architecture: clean/neutral, workflow: conventional-commit/semantic-versioning)
 - Estandar AGENTS.md como root file
 - Guias idiomaticas por lenguaje (Go, JavaScript, Python)
 - Reglas de grounding anti-alucinacion en prompts
-- CLI con Cobra (generate, analyze, spec, skills, serve, list)
+- CLI con Cobra + menus interactivos (charmbracelet/huh)
+- Distribucion via Homebrew formula (macOS/Linux)
 
 🚧 **Proximo:**
+- Categoria de skills Testing (unit, integration, e2e)
 - Tests de integracion end-to-end
 - Retries y manejo de rate limits
-- Modo interactivo (wizard)
 - Autenticacion MCP server remoto (OAuth/BYOK)
 
 ## 💡 FAQ
