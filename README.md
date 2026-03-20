@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.9.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.10.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.21)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -10,13 +10,13 @@
 [![Gemini](https://img.shields.io/badge/Gemini-4285F4?style=for-the-badge&logo=google)](https://ai.google.dev)
 [![AGENTS.md](https://img.shields.io/badge/Standard-AGENTS.md-purple?style=for-the-badge)](https://github.com/anthropics/AGENTS.md)
 
-**Give your AI agent the master blueprint it needs before writing the first line of code** 🏗️
+**Context. Specs. Skills. Everything your AI agent needs before writing the first line of code.** 🏗️
 
 *Because an agent without context is an intern with root access.*
 
 **[English]** | [Español](README_ES.md)
 
-[Quick Start](#-quick-start) · [MCP Server](#-mcp-server) · [Features](#-features) · [Skills](#-agent-skills) · [Language Guides](#-language-specific-guides) · [Presets](#-presets) · [Architecture](#%EF%B8%8F-architecture)
+[Quick Start](#-quick-start) · [Context](#-context-generation) · [Specs](#-spec-driven-development) · [Skills](#-agent-skills) · [MCP Server](#-mcp-server) · [Language Guides](#-language-specific-guides) · [Architecture](#%EF%B8%8F-architecture)
 
 </div>
 
@@ -36,25 +36,30 @@ And the agent, with all its capability, improvises:
 
 ## 💡 The Solution
 
-**Codify** takes your project description and generates intelligent context files using LLMs (Anthropic Claude or Google Gemini). Files that give your agent the master blueprint, domain constraints, and architectural memory it needs.
-
-It follows the [AGENTS.md standard](https://github.com/anthropics/AGENTS.md) — an open specification backed by the Linux Foundation for providing AI agents with project context. This means the files work out of the box with Claude Code, Cursor, Codex, and any agent that reads the standard.
-
-## 🧭 AI Spec-Driven Development
-
-This tool enables a methodology we call **AI Spec-Driven Development (AI SDD)**: instead of going straight from an idea to code, you first generate a rich specification layer that grounds your agent's work.
+**Codify** equips your AI agent with three things it needs to stop improvising:
 
 ```
-Your idea → generate (context) → spec (specifications) → Agent writes code with full context
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│   Context    │     │    Specs     │     │   Skills     │
+│              │     │              │     │              │
+│  What the    │     │  What to     │     │  How to      │
+│  project is  │────▶│  build next  │     │  do things   │
+│              │     │              │     │  right       │
+│  generate    │     │  spec        │     │  skills      │
+│  analyze     │     │  --with-specs│     │              │
+└──────────────┘     └──────────────┘     └──────────────┘
+     Memory             Plan              Abilities
 ```
 
-The `generate` command creates the **architectural blueprint** — what the project is, how it's built, what patterns it follows. The `spec` command takes that blueprint and produces **implementation-ready specifications** — features, acceptance criteria, technical plans, and task breakdowns.
+- **Context** gives the agent architectural memory — stack, patterns, conventions, domain knowledge
+- **Specs** give the agent an implementation plan — features, acceptance criteria, task breakdowns
+- **Skills** give the agent reusable abilities — how to commit, version, design entities, review code
 
-Your agent doesn't improvise. It implements a spec. That's the difference.
+It follows the [AGENTS.md standard](https://github.com/anthropics/AGENTS.md) — an open specification backed by the Linux Foundation for providing AI agents with project context. Files work out of the box with Claude Code, Cursor, Codex, and any agent that reads the standard.
 
 ## ✨ Before and after
 
-### 😱 Without context (the current reality)
+### 😱 Without Codify
 
 ```
 You: "Create a payments API in Go"
@@ -66,6 +71,8 @@ You: "Repositories go in infrastructure"
 Agent: *refactors for the third time*
 You: "What about the BDD tests I asked for yesterday?"
 Agent: "BDD tests? This is the first time you've mentioned that"
+You: "At least commit this properly"
+Agent: *writes "update code" as commit message*
 
 Result: 45 minutes correcting the agent 😤
 ```
@@ -75,11 +82,15 @@ Result: 45 minutes correcting the agent 😤
 ```
 You: "Create a payments API in Go"
 
-Agent: *reads AGENTS.md, CONTEXT.md, DEVELOPMENT_GUIDE.md and IDIOMS.md*
+Agent: *reads AGENTS.md, CONTEXT.md, DEVELOPMENT_GUIDE.md*
 Agent: "I see you use DDD with Clean Architecture, PostgreSQL,
         BDD testing with Godog, and idiomatic Go patterns.
         I'll create the payments endpoint in internal/domain/payment/
         following your patterns and concurrency conventions."
+
+Agent: *reads SKILL.md for conventional commits*
+Agent: "Done. Here's the commit following Conventional Commits:
+        feat(payment): add payment domain entity with Stripe integration"
 
 Result: Coherent code from the first line ✨
 ```
@@ -100,7 +111,7 @@ go install github.com/jorelcb/codify/cmd/codify@latest
 # https://github.com/jorelcb/codify/releases
 ```
 
-### Your first context in 30 seconds
+### Three ways to equip your agent
 
 ```bash
 # 1. Set your API key (Claude or Gemini)
@@ -108,18 +119,20 @@ export ANTHROPIC_API_KEY="sk-ant-..."   # for Claude (default)
 # or
 export GEMINI_API_KEY="AI..."           # for Gemini
 
-# 2. Describe your project (with language for idiomatic guides)
+# ── Context: give your agent project memory ──
 codify generate payment-service \
   --description "Payment microservice in Go with gRPC, PostgreSQL and Kafka. \
   DDD with Clean Architecture. Stripe as payment processor." \
   --language go
 
-# 3. Use Gemini instead of Claude
-codify generate payment-service \
-  --description "Payment microservice in Go" \
-  --model gemini-3.1-pro-preview
+# ── Specs: give your agent an implementation plan ──
+codify spec payment-service \
+  --from-context ./output/payment-service/
 
-# 4. Done. Files generated.
+# ── Skills: give your agent reusable abilities ──
+codify skills
+# Interactive mode guides you through category, preset, mode, and target.
+# No API key needed for static mode.
 ```
 
 ### What you'll see
@@ -147,6 +160,175 @@ codify generate payment-service \
 ✅ Done! 5 files generated
    Total tokens: ~18,200
 ```
+
+---
+
+## 📋 Context Generation
+
+The foundation. Generates files following the [AGENTS.md](https://github.com/anthropics/AGENTS.md) standard that give your agent deep project memory.
+
+### `generate` command — Context from a description
+
+```bash
+codify generate payment-service \
+  --description "Payment microservice in Go with gRPC and PostgreSQL" \
+  --language go
+```
+
+### `analyze` command — Context from an existing project
+
+Scans an existing codebase — auto-detects language, framework, dependencies, directory structure, README, infrastructure signals (Docker, CI/CD, Makefile) — and generates context files from what it finds.
+
+```bash
+codify analyze /path/to/my-project
+```
+
+### Generated files
+
+| File | What it does |
+|------|-------------|
+| `AGENTS.md` | Root file: tech stack, commands, conventions, structure |
+| `CONTEXT.md` | Architecture, components, data flow, design decisions |
+| `INTERACTIONS_LOG.md` | Session log and ADRs |
+| `DEVELOPMENT_GUIDE.md` | Work methodology, testing practices, security, delivery expectations |
+| `IDIOMS.md` | Language-specific concurrency, error handling, conventions *(requires `--language`)* |
+
+Place these files at your project root. Compatible agents (Claude Code, Cursor, Codex, etc.) read them automatically.
+
+### Options
+
+```bash
+codify generate <name> [flags]
+```
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--description` | `-d` | Project description *(required unless `--from-file`)* | — |
+| `--from-file` | `-f` | Read description from file *(alternative to `-d`)* | — |
+| `--preset` | `-p` | Template preset (`default`, `neutral`) | `default` |
+| `--model` | `-m` | LLM model (`claude-*` or `gemini-*`) | `claude-sonnet-4-6` |
+| `--language` | `-l` | Language (activates idiomatic guides) | — |
+| `--locale` | | Output language (`en`, `es`) | `en` |
+| `--with-specs` | | Also generate SDD specs after context | `false` |
+| `--type` | `-t` | Project type hint (api, cli, lib...) | — |
+| `--architecture` | `-a` | Architecture hint | — |
+
+---
+
+## 📐 Spec-Driven Development
+
+From existing context, generates implementation-ready specifications. This enables **AI Spec-Driven Development (AI SDD)**: your agent implements a spec, not an improvisation.
+
+```
+Your idea → generate (context) → spec (specifications) → Agent writes code with full context
+```
+
+### `spec` command
+
+```bash
+codify spec payment-service \
+  --from-context ./output/payment-service/
+```
+
+### `--with-specs` — Full pipeline in one command
+
+Available on both `generate` and `analyze`. Chains context generation + spec generation + AGENTS.md update in a single run:
+
+```bash
+codify generate my-api \
+  --description "REST API in Go with PostgreSQL" \
+  --language go \
+  --with-specs
+```
+
+### Generated spec files
+
+| File | What it does |
+|------|-------------|
+| `CONSTITUTION.md` | Project DNA: stack, principles, constraints |
+| `SPEC.md` | Feature specs with acceptance criteria |
+| `PLAN.md` | Technical design and architecture decisions |
+| `TASKS.md` | Task breakdown with dependencies and priority |
+
+---
+
+## 🧩 Agent Skills
+
+Skills are reusable [Agent Skills](https://agentskills.io) (SKILL.md files) that teach your agent *how* to perform specific tasks — following Conventional Commits, applying DDD patterns, doing code reviews, versioning releases. They complement context files: context tells the agent *what* your project is, skills tell it *how* to do things right.
+
+### Two modes
+
+| Mode | What it does | API key | Cost | Speed |
+|------|-------------|---------|------|-------|
+| **Static** | Delivers pre-built skills from the embedded catalog. Production-ready, ecosystem-aware frontmatter. | Not needed | Free | Instant |
+| **Personalized** | LLM adapts skills to your project — examples use your domain, language, and stack. | Required | ~pennies | ~10s |
+
+### Interactive mode
+
+Just run `codify skills` — the interactive menu guides you through every choice:
+
+```bash
+codify skills
+# → Select category (architecture, workflow)
+# → Select preset (clean, neutral, conventional-commit, ...)
+# → Select mode (static or personalized)
+# → Select target ecosystem (claude, codex, antigravity)
+# → Select locale, output path
+# → If personalized: describe your project, choose model
+```
+
+### CLI mode
+
+```bash
+# Static: instant delivery, no API key
+codify skills --category workflow --preset all --mode static
+
+# Personalized: LLM-adapted to your project
+codify skills --category architecture --preset clean --mode personalized \
+  --context "Go microservice with DDD, Godog BDD, PostgreSQL"
+
+# Architecture skills for Codex ecosystem
+codify skills --category architecture --preset neutral --target codex
+```
+
+### Skill catalog
+
+| Category | Preset | Skills |
+|----------|--------|--------|
+| `architecture` | `clean` | DDD entity, Clean Architecture layer, BDD scenario, CQRS command, Hexagonal port |
+| `architecture` | `neutral` | Code review, test strategy, safe refactoring, API design |
+| `workflow` | `conventional-commit` | Conventional Commits |
+| `workflow` | `semantic-versioning` | Semantic Versioning |
+| `workflow` | `all` | All workflow skills combined |
+
+### Target ecosystems
+
+Each ecosystem gets specific YAML frontmatter and output paths:
+
+| Target | Frontmatter | Output path |
+|--------|-------------|-------------|
+| `claude` *(default)* | `name`, `description`, `user-invocable: true` | `.claude/skills/` |
+| `codex` | `name`, `description` | `.agents/skills/` |
+| `antigravity` | `name`, `description`, `triggers` | `.agents/skills/` |
+
+### Options
+
+```bash
+codify skills [flags]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--category` | Skill category (`architecture`, `workflow`) | *(interactive)* |
+| `--preset` | Preset within category | *(interactive)* |
+| `--mode` | Generation mode: `static` or `personalized` | *(interactive)* |
+| `--context` | Project description for personalized mode | — |
+| `--target` | Target ecosystem (`claude`, `codex`, `antigravity`) | `claude` |
+| `--model` | `-m` | LLM model (personalized mode only) | `claude-sonnet-4-6` |
+| `--locale` | Output language (`en`, `es`) | `en` |
+| `--output` | `-o` | Output directory | `.claude/skills/` |
+
+---
 
 ## 🔌 MCP Server
 
@@ -213,9 +395,9 @@ Add to `~/.gemini/settings.json`:
 | `generate_context` | Generate context files from a project description |
 | `generate_specs` | Generate SDD specs from existing context files |
 | `analyze_project` | Scan an existing project and generate context from its structure |
-| `generate_skills` | Generate Agent Skills by category/preset — supports `static` (instant) and `personalized` (LLM-adapted with `project_context`) modes |
+| `generate_skills` | Generate Agent Skills — supports `static` (instant) and `personalized` (LLM-adapted) modes |
 
-All generative tools support `locale` (`en`/`es`) and `model` parameters. `generate_context` and `analyze_project` also accept `with_specs` to chain spec generation. `generate_skills` accepts `mode` (`static`/`personalized`), `category`, `preset`, and `project_context`.
+All generative tools support `locale` (`en`/`es`) and `model` parameters. `generate_context` and `analyze_project` also accept `with_specs`. `generate_skills` accepts `mode`, `category`, `preset`, and `project_context`.
 
 #### Knowledge tools (no API key needed)
 
@@ -224,7 +406,7 @@ All generative tools support `locale` (`en`/`es`) and `model` parameters. `gener
 | `commit_guidance` | Conventional Commits spec and behavioral context for generating proper commit messages |
 | `version_guidance` | Semantic Versioning spec and behavioral context for determining version bumps |
 
-Knowledge tools inject behavioral context into the calling agent — the same way a Claude Code agent would. The agent receives the spec and instructions, then applies them to the current task. Supports `locale` (`en`/`es`).
+Knowledge tools inject behavioral context into the calling agent — the agent receives the spec and instructions, then applies them to the current task. Supports `locale` (`en`/`es`).
 
 ### Example prompts
 
@@ -249,98 +431,6 @@ Knowledge tools inject behavioral context into the calling agent — the same wa
 ```
 
 ---
-
-## 🎨 Features
-
-### 📋 `generate` command — Context for your agent
-
-Generates files following the [AGENTS.md](https://github.com/anthropics/AGENTS.md) standard:
-
-| File | What it does |
-|------|-------------|
-| `AGENTS.md` | Root file: tech stack, commands, conventions, structure |
-| `CONTEXT.md` | Architecture, components, data flow, design decisions |
-| `INTERACTIONS_LOG.md` | Session log and ADRs |
-| `DEVELOPMENT_GUIDE.md` | Work methodology, testing practices, security, delivery expectations |
-| `IDIOMS.md` | Language-specific concurrency, error handling, conventions *(requires `--language`)* |
-
-Place these files at your project root. Compatible agents (Claude Code, Cursor, Codex, etc.) read them automatically.
-
-### 📐 `spec` command — AI SDD specifications
-
-From existing context, generates technical specifications ready for implementation:
-
-```bash
-codify spec payment-service \
-  --from-context ./output/payment-service/
-```
-
-| File | What it does |
-|------|-------------|
-| `CONSTITUTION.md` | Project DNA: stack, principles, constraints |
-| `SPEC.md` | Feature specs with acceptance criteria |
-| `PLAN.md` | Technical design and architecture decisions |
-| `TASKS.md` | Task breakdown with dependencies and priority |
-
-### 🔎 `analyze` command — Context from existing projects
-
-Scans an existing codebase and generates context files automatically:
-
-```bash
-codify analyze /path/to/my-project --with-specs
-```
-
-Auto-detects language, framework, dependencies, directory structure, README, existing context files, and infrastructure signals (Docker, CI/CD, Makefile, etc.). Everything feeds into the LLM for richer, project-aware generation.
-
-### ⚡ `--with-specs` — Full pipeline in one command
-
-Available on both `generate` and `analyze`. Chains context generation + spec generation + AGENTS.md update in a single run:
-
-```bash
-codify generate my-api \
-  --description "REST API in Go with PostgreSQL" \
-  --language go \
-  --with-specs
-```
-
-### 🧩 `skills` command — Agent Skills
-
-Generates reusable [Agent Skills](https://agentskills.io) (SKILL.md) with interactive guided selection. Two modes: **static** (instant, no API key) and **personalized** (LLM-adapted to your project).
-
-```bash
-# Interactive mode — guided selection of category, preset, mode, target, etc.
-codify skills
-
-# Static: instant delivery from built-in catalog (no API key needed)
-codify skills --category workflow --preset all --mode static
-
-# Personalized: LLM adapts skills to your specific project
-codify skills --category architecture --preset clean --mode personalized \
-  --context "Go microservice with DDD, Godog BDD, PostgreSQL"
-
-# Architecture skills for Codex
-codify skills --category architecture --preset neutral --target codex
-```
-
-| Category | Preset | Skills |
-|----------|--------|--------|
-| `architecture` | `clean` | DDD entity, Clean Architecture layer, BDD scenario, CQRS command, Hexagonal port |
-| `architecture` | `neutral` | Code review, test strategy, safe refactoring, API design |
-| `workflow` | `conventional-commit` | Conventional Commits |
-| `workflow` | `semantic-versioning` | Semantic Versioning |
-| `workflow` | `all` | All workflow skills |
-
-**Modes:**
-- **Static**: Delivers pre-built skills instantly from the embedded catalog. No LLM, no API key, no cost. Includes ecosystem-specific YAML frontmatter.
-- **Personalized**: Uses LLM to adapt skills to your project — examples use your domain, language, and stack.
-
-**Target ecosystems**: `claude` (default), `codex`, `antigravity` — each gets ecosystem-specific YAML frontmatter and output path (`.claude/skills/`, `.agents/skills/`).
-
-### 🔍 `list` command — Generated projects
-
-```bash
-codify list
-```
 
 ## 🌐 Language-Specific Guides
 
@@ -407,24 +497,6 @@ codify generate my-api \
 
 The file content becomes the project description. Supports any text format — markdown, plain text, etc. Mutually exclusive with `--description`.
 
-## ⚙️ Options
-
-```bash
-codify generate <name> [flags]
-```
-
-| Flag | Short | Description | Default |
-|------|-------|-------------|---------|
-| `--description` | `-d` | Project description *(required unless `--from-file`)* | — |
-| `--from-file` | `-f` | Read description from file *(alternative to `-d`)* | — |
-| `--preset` | `-p` | Template preset | `default` |
-| `--model` | `-m` | LLM model (`claude-*` or `gemini-*`) | `claude-sonnet-4-6` |
-| `--language` | `-l` | Language (activates idiomatic guides) | — |
-| `--locale` | | Output language (`en`, `es`) | `en` |
-| `--with-specs` | | Also generate SDD specs after context | `false` |
-| `--type` | `-t` | Project type hint (api, cli, lib...) | — |
-| `--architecture` | `-a` | Architecture hint | — |
-
 ## 🏗️ Architecture
 
 Built in Go with what it preaches — DDD/Clean Architecture:
@@ -433,11 +505,12 @@ Built in Go with what it preaches — DDD/Clean Architecture:
 internal/
 ├── domain/              💎 Pure business logic
 │   ├── project/         Project entity (aggregate root)
+│   ├── catalog/         Declarative skill catalog and metadata registry
 │   ├── shared/          Value objects, domain errors
 │   └── service/         Interfaces: LLMProvider, FileWriter, TemplateLoader
 │
 ├── application/         🔄 Use cases (CQRS)
-│   ├── command/         GenerateContext, GenerateSpec
+│   ├── command/         GenerateContext, GenerateSpec, GenerateSkills, DeliverStaticSkills
 │   └── query/           ListProjects
 │
 ├── infrastructure/      🔧 Implementations
@@ -448,7 +521,7 @@ internal/
 │
 └── interfaces/          🎯 Entry points
     ├── cli/commands/    generate, analyze, spec, skills, serve, list
-    └── mcp/             MCP server (stdio + HTTP transport, 4 tools)
+    └── mcp/             MCP server (stdio + HTTP transport, 6 tools)
 ```
 
 ### Template system
@@ -495,21 +568,17 @@ go test ./tests/...
 
 ## 📊 Project status
 
-**v1.9.0** 🎉
+**v1.10.0** 🎉
 
 ✅ **Working:**
 - Multi-provider LLM support (Anthropic Claude + Google Gemini)
-- Context generation with streaming
-- SDD spec generation from existing context
-- Agent Skills with interactive guided selection and dual mode (static/personalized)
-- Skill categories (architecture, workflow) with declarative catalog registry
-- Static skills: instant delivery, no API key, ecosystem-aware frontmatter
-- Personalized skills: LLM-adapted to project context (domain, language, stack)
+- **Context generation** with streaming (`generate`, `analyze`)
+- **SDD spec generation** from existing context (`spec`, `--with-specs`)
+- **Agent Skills** with dual mode (static/personalized), interactive guided selection, and declarative catalog
+- Skill categories (architecture, workflow) with ecosystem-aware frontmatter (Claude, Codex, Antigravity)
 - MCP Server mode (stdio + HTTP transport) with 6 tools
 - MCP knowledge tools (commit_guidance, version_guidance) — no API key needed
-- `analyze` command — scan existing projects and generate context
-- `--with-specs` flag — full pipeline in one command
-- Preset system (architecture: clean/neutral, workflow: conventional-commit/semantic-versioning)
+- Preset system (default: DDD/Clean, neutral: generic)
 - AGENTS.md standard as root file
 - Language-specific idiomatic guides (Go, JavaScript, Python)
 - Anti-hallucination grounding rules in prompts
@@ -528,7 +597,13 @@ go test ./tests/...
 Anthropic Claude (default) and Google Gemini. Set `ANTHROPIC_API_KEY` for Claude or `GEMINI_API_KEY` for Gemini. The provider is auto-detected from the `--model` flag: `claude-*` models use Anthropic, `gemini-*` models use Google.
 
 **How much does each generation cost?**
-4-5 API calls for `generate` (depending on `--language`), 4 for `spec`. Each generation costs pennies with either provider.
+4-5 API calls for `generate` (depending on `--language`), 4 for `spec`. Skills in static mode are free (no API calls). Personalized skills use 1 API call per skill. Each generation costs pennies with either provider.
+
+**Do I need an API key for skills?**
+Only for personalized mode. Static mode delivers pre-built skills instantly from the embedded catalog — no LLM, no API key, no cost.
+
+**What's the difference between static and personalized skills?**
+Static skills are production-ready, generic best practices delivered instantly. Personalized skills use an LLM to adapt examples, naming, and patterns to your specific project context (language, domain, stack).
 
 **Are the templates fixed?**
 They're structural guides, not renderable output. The LLM generates intelligent, project-specific content following the template structure.
@@ -557,7 +632,7 @@ Apache License 2.0 — see [LICENSE](LICENSE).
 
 <div align="center">
 
-**Built to supercharge AI-assisted development** 🧠
+**Context. Specs. Skills. Your agent, fully equipped.** 🧠
 
 *"An agent without context is an intern with root access"*
 
