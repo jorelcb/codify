@@ -21,7 +21,7 @@ import (
 	infratemplate "github.com/jorelcb/codify/internal/infrastructure/template"
 )
 
-const serverVersion = "1.10.0"
+const serverVersion = "1.11.0"
 
 // validPresets maps preset names for validation.
 var validPresets = map[string]bool{
