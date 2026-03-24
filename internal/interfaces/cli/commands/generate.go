@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	root "github.com/jorelcb/codify"
 	"github.com/jorelcb/codify/internal/application/command"
@@ -19,22 +20,24 @@ import (
 
 const defaultLocale = "en"
 
+// generateParams agrupa todos los parámetros del comando generate.
+type generateParams struct {
+	projectName  string
+	description  string
+	fromFile     string
+	language     string
+	projectType  string
+	architecture string
+	model        string
+	preset       string
+	locale       string
+	output       string
+	withSpecs    bool
+}
+
 // NewGenerateCmd creates the generate command
 func NewGenerateCmd() *cobra.Command {
-	var (
-		projectName  string
-		description  string
-		fromFile     string
-		language     string
-		projectType  string
-		architecture string
-		model        string
-		preset       string
-		locale       string
-		output       string
-		withSpecs    bool
-		interactive  bool
-	)
+	var p generateParams
 
 	cmd := &cobra.Command{
 		Use:   "generate [project-name]",
@@ -56,7 +59,12 @@ Locales:
 
 Requires ANTHROPIC_API_KEY (for Claude) or GEMINI_API_KEY (for Gemini) environment variable.
 
+When run without flags in a terminal, an interactive menu guides you through all options.
+
 Examples:
+  # Interactive mode (guided selection)
+  codify generate
+
   # Generate with description (English, default preset)
   codify generate my-api \
     --description "Inventory management REST API in Go with Clean Architecture and PostgreSQL"
@@ -76,16 +84,6 @@ Examples:
     --from-file ./docs/project-description.md \
     --language go
 
-  # With neutral preset
-  codify generate my-api \
-    --description "Inventory management REST API" \
-    --preset neutral
-
-  # Generate to a specific directory
-  codify generate my-api \
-    --description "Inventory management REST API in Go" \
-    --output ./docs/
-
   # Generate context + specs in one command
   codify generate my-api \
     --description "Inventory management REST API in Go" \
@@ -93,68 +91,132 @@ Examples:
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				projectName = args[0]
+				p.projectName = args[0]
 			}
 
-			if interactive {
-				return runInteractiveGenerate()
-			}
+			explicit := make(map[string]bool)
+			cmd.Flags().Visit(func(f *pflag.Flag) {
+				explicit[f.Name] = true
+			})
 
-			if projectName == "" {
-				return fmt.Errorf("project name is required (use -i for interactive mode)")
-			}
-			if fromFile != "" && description != "" {
-				return fmt.Errorf("--description and --from-file are mutually exclusive")
-			}
-			if fromFile != "" {
-				content, err := os.ReadFile(fromFile)
-				if err != nil {
-					return fmt.Errorf("failed to read description file: %w", err)
-				}
-				description = string(content)
-			}
-			if description == "" {
-				return fmt.Errorf("description is required (use -d or --from-file)")
-			}
-
-			if output == "" {
-				output = "."
-			}
-
-			if err := runGenerate(projectName, description, language, projectType, architecture, model, preset, locale, output); err != nil {
-				return err
-			}
-
-			if withSpecs {
-				fmt.Println()
-				fmt.Println("--- Generating specs from context ---")
-				fmt.Println()
-				return runSpec(projectName, output, output, model, locale)
-			}
-
-			return nil
+			return runGenerateInteractive(p, explicit)
 		},
 	}
 
-	cmd.Flags().StringVarP(&projectName, "name", "n", "", "Project name")
-	cmd.Flags().StringVarP(&description, "description", "d", "", "Project description (required unless --from-file)")
-	cmd.Flags().StringVarP(&fromFile, "from-file", "f", "", "Read project description from file (alternative to --description)")
-	cmd.Flags().StringVarP(&language, "language", "l", "", "Programming language (activates idiomatic guides)")
-	cmd.Flags().StringVarP(&projectType, "type", "t", "", "Project type hint (api, cli, lib...)")
-	cmd.Flags().StringVarP(&architecture, "architecture", "a", "", "Architecture pattern hint")
-	cmd.Flags().StringVarP(&model, "model", "m", "", "LLM model (default: claude-sonnet-4-6, or gemini-3.1-pro-preview)")
-	cmd.Flags().StringVarP(&preset, "preset", "p", "default", "Template preset: default (DDD/Clean Architecture) or neutral")
-	cmd.Flags().StringVar(&locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
-	cmd.Flags().StringVarP(&output, "output", "o", "", "Output directory (default: current directory)")
-	cmd.Flags().BoolVar(&withSpecs, "with-specs", false, "Also generate SDD spec files after context generation")
-	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "Run in interactive mode")
+	cmd.Flags().StringVarP(&p.projectName, "name", "n", "", "Project name")
+	cmd.Flags().StringVarP(&p.description, "description", "d", "", "Project description (required unless --from-file)")
+	cmd.Flags().StringVarP(&p.fromFile, "from-file", "f", "", "Read project description from file (alternative to --description)")
+	cmd.Flags().StringVarP(&p.language, "language", "l", "", "Programming language (activates idiomatic guides)")
+	cmd.Flags().StringVarP(&p.projectType, "type", "t", "", "Project type hint (api, cli, lib...)")
+	cmd.Flags().StringVarP(&p.architecture, "architecture", "a", "", "Architecture pattern hint")
+	cmd.Flags().StringVarP(&p.model, "model", "m", "", "LLM model (default: claude-sonnet-4-6, or gemini-3.1-pro-preview)")
+	cmd.Flags().StringVarP(&p.preset, "preset", "p", "default", "Template preset: default (DDD/Clean Architecture) or neutral")
+	cmd.Flags().StringVar(&p.locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
+	cmd.Flags().StringVarP(&p.output, "output", "o", "", "Output directory (default: current directory)")
+	cmd.Flags().BoolVar(&p.withSpecs, "with-specs", false, "Also generate SDD spec files after context generation")
 
 	return cmd
 }
 
-func runInteractiveGenerate() error {
-	fmt.Println("Interactive mode - Coming soon")
-	fmt.Println("Will use survey/bubbletea for interactive UI")
+func runGenerateInteractive(p generateParams, explicit map[string]bool) error {
+	interactive := isInteractive()
+	var err error
+
+	// 1. Resolve project name
+	if p.projectName == "" && interactive {
+		p.projectName, err = promptInput("Project name", "")
+		if err != nil {
+			return err
+		}
+	}
+	if p.projectName == "" {
+		return fmt.Errorf("project name is required")
+	}
+
+	// 2. Resolve description
+	if p.fromFile != "" && p.description != "" {
+		return fmt.Errorf("--description and --from-file are mutually exclusive")
+	}
+	if p.fromFile != "" {
+		content, err := os.ReadFile(p.fromFile)
+		if err != nil {
+			return fmt.Errorf("failed to read description file: %w", err)
+		}
+		p.description = string(content)
+	}
+	if p.description == "" && interactive {
+		p.description, err = promptInput("Project description", "")
+		if err != nil {
+			return err
+		}
+	}
+	if p.description == "" {
+		return fmt.Errorf("description is required (use -d or --from-file)")
+	}
+
+	// 3. Resolve preset
+	if !explicit["preset"] && interactive {
+		p.preset, err = promptPreset()
+		if err != nil {
+			return err
+		}
+	}
+
+	// 4. Resolve language
+	if !explicit["language"] && interactive {
+		p.language, err = promptLanguage()
+		if err != nil {
+			return err
+		}
+	}
+
+	// 5. Resolve locale
+	if !explicit["locale"] && interactive {
+		p.locale, err = promptLocale()
+		if err != nil {
+			return err
+		}
+	}
+
+	// 6. Resolve model
+	if !explicit["model"] && interactive {
+		p.model, err = promptModel()
+		if err != nil {
+			return err
+		}
+	}
+
+	// 7. Resolve output
+	if p.output == "" {
+		p.output = "."
+	}
+	if !explicit["output"] && interactive {
+		p.output, err = promptInput("Output directory", p.output)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 8. Resolve with-specs
+	if !explicit["with-specs"] && interactive {
+		p.withSpecs, err = promptConfirm("Also generate SDD specs?", false)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 9. Execute
+	if err := runGenerate(p.projectName, p.description, p.language, p.projectType, p.architecture, p.model, p.preset, p.locale, p.output); err != nil {
+		return err
+	}
+
+	if p.withSpecs {
+		fmt.Println()
+		fmt.Println("--- Generating specs from context ---")
+		fmt.Println()
+		return runSpec(p.projectName, p.output, p.output, p.model, p.locale)
+	}
+
 	return nil
 }
 
@@ -241,7 +303,7 @@ func runGenerate(projectName, description, language, projectType, architecture, 
 	fmt.Printf("  Preset: %s\n", preset)
 	fmt.Printf("  Locale: %s\n", locale)
 	fmt.Println()
-	fmt.Println("Generating context files via Claude API...")
+	fmt.Println("Generating context files via LLM API...")
 
 	// 8. Execute
 	result, err := generateCmd.Execute(ctx, config, guides)

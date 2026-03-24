@@ -15,6 +15,12 @@ const (
 	SkillModePersonalized = "personalized"
 )
 
+// Scopes de instalación de skills
+const (
+	InstallScopeGlobal  = "global"
+	InstallScopeProject = "project"
+)
+
 // SkillsConfig representa la configuracion para generar Agent Skills reutilizables
 type SkillsConfig struct {
 	Category       string // "architecture" o "workflow"
@@ -25,6 +31,7 @@ type SkillsConfig struct {
 	Model          string
 	OutputPath     string
 	ProjectContext string // contexto del proyecto para modo personalizado
+	Install        string // scope de instalación: "global", "project", o "" (custom output)
 }
 
 // Validate valida la configuracion de skills

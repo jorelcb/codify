@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/charmbracelet/huh"
-	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -30,6 +28,7 @@ type skillsParams struct {
 	locale         string
 	model          string
 	output         string
+	install        string
 	projectContext string
 }
 
@@ -61,6 +60,10 @@ Presets:
     semantic-versioning   - Semantic Versioning spec
     all                   - All workflow skills
 
+Install:
+  global   - Install to agent's global path (~/.claude/skills/, ~/.codex/skills/)
+  project  - Install to project-local path (./.claude/skills/, ./.agents/skills/)
+
 When run without flags, an interactive menu is displayed.
 
 Examples:
@@ -69,6 +72,12 @@ Examples:
 
   # Static: instant delivery, no API key
   codify skills --category workflow --preset all --mode static
+
+  # Install globally for Claude Code
+  codify skills --category workflow --preset all --mode static --install global
+
+  # Install to current project
+  codify skills --category architecture --preset clean --mode static --install project
 
   # Personalized: LLM-adapted to your project
   codify skills --category architecture --preset clean --mode personalized --context "Go microservice with DDD"
@@ -91,6 +100,7 @@ Examples:
 	cmd.Flags().StringVar(&p.locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
 	cmd.Flags().StringVarP(&p.model, "model", "m", "", "LLM model (only for personalized mode)")
 	cmd.Flags().StringVarP(&p.output, "output", "o", "", "Output directory (default: ecosystem-specific)")
+	cmd.Flags().StringVar(&p.install, "install", "", "Install scope: global (agent path) or project (current directory)")
 	cmd.Flags().StringVar(&p.projectContext, "context", "", "Project context for personalized mode")
 
 	return cmd
@@ -99,6 +109,7 @@ Examples:
 func runSkills(p skillsParams, explicit map[string]bool) error {
 	ctx := context.Background()
 	interactive := isInteractive()
+	var err error
 
 	// 1. Resolve category and preset
 	cat, preset, err := resolveSelection(p.category, p.preset)
@@ -125,9 +136,9 @@ func runSkills(p skillsParams, explicit map[string]bool) error {
 	target := p.target
 	if !explicit["target"] && interactive {
 		target, err = promptSelect("Select target ecosystem", []selectOption{
-			{"Claude Code → .claude/skills/", "claude"},
-			{"Codex CLI → .agents/skills/", "codex"},
-			{"Antigravity → .agents/skills/", "antigravity"},
+			{"Claude Code", "claude"},
+			{"Codex CLI", "codex"},
+			{"Antigravity", "antigravity"},
 		}, "claude")
 		if err != nil {
 			return err
@@ -140,25 +151,49 @@ func runSkills(p skillsParams, explicit map[string]bool) error {
 	// 4. Resolve locale
 	locale := p.locale
 	if !explicit["locale"] && interactive {
-		locale, err = promptSelect("Select language", []selectOption{
-			{"English", "en"},
-			{"Spanish", "es"},
-		}, "en")
+		locale, err = promptLocale()
 		if err != nil {
 			return err
 		}
 	}
 
-	// 5. Resolve output
+	// 5. Resolve install scope and output
+	install := p.install
 	output := p.output
-	if output == "" {
-		output = defaultSkillsPath(target)
-	}
-	if !explicit["output"] && interactive {
-		output, err = promptInput("Output directory", output)
+
+	if !explicit["install"] && !explicit["output"] && interactive {
+		// Interactivo: preguntar ubicación de instalación
+		globalPath := globalSkillsPath(target)
+		projectPath := defaultSkillsPath(target)
+
+		var location string
+		location, err = promptSelect("Install location", []selectOption{
+			{fmt.Sprintf("Global (%s)", globalPath), "global"},
+			{fmt.Sprintf("Project (%s)", projectPath), "project"},
+			{"Custom output directory", "custom"},
+		}, "project")
 		if err != nil {
 			return err
 		}
+
+		switch location {
+		case "global":
+			install = dto.InstallScopeGlobal
+			output = globalPath
+		case "project":
+			install = dto.InstallScopeProject
+			output = projectPath
+		default:
+			output, err = promptInput("Output directory", defaultSkillsPath(target))
+			if err != nil {
+				return err
+			}
+		}
+	} else if explicit["install"] {
+		// Flag --install pasado explícitamente: resolver path
+		output = resolveInstallPath(install, target)
+	} else if output == "" {
+		output = defaultSkillsPath(target)
 	}
 
 	// 6. Resolve templates from catalog
@@ -182,6 +217,7 @@ func runSkills(p skillsParams, explicit map[string]bool) error {
 		Locale:     locale,
 		Target:     target,
 		OutputPath: output,
+		Install:    install,
 	}
 
 	// 8. Execute based on mode
@@ -204,6 +240,9 @@ func executeStaticSkills(config *dto.SkillsConfig, guides []service.TemplateGuid
 	fmt.Printf("  Target: %s\n", config.Target)
 	fmt.Printf("  Locale: %s\n", config.Locale)
 	fmt.Printf("  Output: %s\n", config.OutputPath)
+	if config.Install != "" {
+		fmt.Printf("  Install: %s\n", config.Install)
+	}
 	fmt.Printf("  Skills: %d\n", len(guides))
 	fmt.Println()
 
@@ -214,6 +253,9 @@ func executeStaticSkills(config *dto.SkillsConfig, guides []service.TemplateGuid
 
 	fmt.Println("Agent skills delivered successfully!")
 	fmt.Printf("  Output: %s\n", result.OutputPath)
+	if config.Install != "" {
+		fmt.Printf("  Installed: %s scope\n", config.Install)
+	}
 	fmt.Println()
 	fmt.Println("Delivered skills:")
 	for _, f := range result.GeneratedFiles {
@@ -273,6 +315,9 @@ func executePersonalizedSkills(ctx context.Context, p skillsParams, config *dto.
 	fmt.Printf("  Model: %s\n", llm.DefaultModel(model))
 	fmt.Printf("  Locale: %s\n", config.Locale)
 	fmt.Printf("  Output: %s\n", config.OutputPath)
+	if config.Install != "" {
+		fmt.Printf("  Install: %s\n", config.Install)
+	}
 	fmt.Printf("  Skills: %d\n", len(guides))
 	fmt.Println()
 	fmt.Println("Generating personalized skills via LLM API...")
@@ -287,6 +332,9 @@ func executePersonalizedSkills(ctx context.Context, p skillsParams, config *dto.
 	fmt.Printf("  Output: %s\n", result.OutputPath)
 	fmt.Printf("  Model: %s\n", result.Model)
 	fmt.Printf("  Tokens: %d in / %d out\n", result.TokensIn, result.TokensOut)
+	if config.Install != "" {
+		fmt.Printf("  Installed: %s scope\n", config.Install)
+	}
 	fmt.Println()
 	fmt.Println("Generated skills:")
 	for _, f := range result.GeneratedFiles {
@@ -346,83 +394,42 @@ func resolveSelection(categoryName, preset string) (*catalog.SkillCategory, stri
 	return cat, preset, nil
 }
 
-// --- Prompts interactivos genéricos ---
+// --- Resolución de paths de instalación ---
 
-type selectOption struct {
-	Label string
-	Value string
-}
-
-func promptSelect(title string, options []selectOption, defaultVal string) (string, error) {
-	huhOpts := make([]huh.Option[string], len(options))
-	for i, o := range options {
-		huhOpts[i] = huh.NewOption(o.Label, o.Value)
-	}
-
-	selected := defaultVal
-	err := huh.NewSelect[string]().
-		Title(title).
-		Options(huhOpts...).
-		Value(&selected).
-		Run()
-	if err != nil {
-		return "", fmt.Errorf("selection cancelled")
-	}
-	return selected, nil
-}
-
-func promptInput(title, defaultVal string) (string, error) {
-	value := defaultVal
-	err := huh.NewInput().
-		Title(title).
-		Value(&value).
-		Run()
-	if err != nil {
-		return "", fmt.Errorf("input cancelled")
-	}
-	if value == "" {
-		return defaultVal, nil
-	}
-	return value, nil
-}
-
-func promptModel() (string, error) {
-	var options []selectOption
-	hasAnthropic := os.Getenv("ANTHROPIC_API_KEY") != ""
-	hasGemini := os.Getenv("GEMINI_API_KEY") != "" || os.Getenv("GOOGLE_API_KEY") != ""
-
-	if hasAnthropic {
-		options = append(options, selectOption{"Claude Sonnet 4.6 (Anthropic)", "claude-sonnet-4-6"})
-		options = append(options, selectOption{"Claude Opus 4.6 (Anthropic)", "claude-opus-4-6"})
-	}
-	if hasGemini {
-		options = append(options, selectOption{"Gemini 3.1 Pro Preview (Google)", "gemini-3.1-pro-preview"})
-	}
-
-	if len(options) == 0 {
-		options = []selectOption{
-			{"Claude Sonnet 4.6 (Anthropic)", "claude-sonnet-4-6"},
-			{"Claude Opus 4.6 (Anthropic)", "claude-opus-4-6"},
-			{"Gemini 3.1 Pro Preview (Google)", "gemini-3.1-pro-preview"},
-		}
-	}
-
-	if len(options) == 1 {
-		return options[0].Value, nil
-	}
-
-	return promptSelect("Select LLM model", options, options[0].Value)
-}
-
-func isInteractive() bool {
-	return isatty.IsTerminal(os.Stdin.Fd()) && isatty.IsTerminal(os.Stdout.Fd())
-}
-
+// defaultSkillsPath retorna el path por defecto relativo al proyecto.
 func defaultSkillsPath(target string) string {
 	switch target {
 	case "codex", "antigravity":
 		return filepath.Join(".agents", "skills")
 	default:
 		return filepath.Join(".claude", "skills")
+	}
+}
+
+// globalSkillsPath retorna el path global del agente en el home del usuario.
+func globalSkillsPath(target string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		home = "~"
+	}
+	switch target {
+	case "codex":
+		return filepath.Join(home, ".codex", "skills")
+	case "antigravity":
+		return filepath.Join(home, ".agents", "skills")
+	default:
+		return filepath.Join(home, ".claude", "skills")
+	}
+}
+
+// resolveInstallPath resuelve el path de salida basado en el scope de instalación.
+func resolveInstallPath(install, target string) string {
+	switch install {
+	case dto.InstallScopeGlobal:
+		return globalSkillsPath(target)
+	case dto.InstallScopeProject:
+		return defaultSkillsPath(target)
+	default:
+		return defaultSkillsPath(target)
 	}
 }

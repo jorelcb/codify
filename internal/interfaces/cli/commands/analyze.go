@@ -5,21 +5,25 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/jorelcb/codify/internal/infrastructure/scanner"
 )
 
+// analyzeParams agrupa todos los parámetros del comando analyze.
+type analyzeParams struct {
+	name      string
+	model     string
+	preset    string
+	locale    string
+	language  string
+	output    string
+	withSpecs bool
+}
+
 // NewAnalyzeCmd creates the analyze command
 func NewAnalyzeCmd() *cobra.Command {
-	var (
-		name      string
-		model     string
-		preset    string
-		locale    string
-		language  string
-		output    string
-		withSpecs bool
-	)
+	var p analyzeParams
 
 	cmd := &cobra.Command{
 		Use:   "analyze <project-path>",
@@ -31,8 +35,10 @@ This is the recommended way to add AI context to an existing codebase.
 If the project already has context files (AGENTS.md, CLAUDE.md), they will
 be used to enrich the generated output.
 
+When run in a terminal, interactive menus guide you through options not provided via flags.
+
 Examples:
-  # Analyze a Go project
+  # Analyze a Go project (interactive prompts for missing options)
   codify analyze ./my-go-api
 
   # With explicit name and language
@@ -48,43 +54,40 @@ Examples:
   codify analyze ./my-go-api --locale es`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectPath := args[0]
+			explicit := make(map[string]bool)
+			cmd.Flags().Visit(func(f *pflag.Flag) {
+				explicit[f.Name] = true
+			})
 
-			// Resolve to absolute path
-			absPath, err := filepath.Abs(projectPath)
-			if err != nil {
-				return fmt.Errorf("failed to resolve path: %w", err)
-			}
-
-			// Default name to directory name
-			if name == "" {
-				name = filepath.Base(absPath)
-			}
-
-			if output == "" {
-				output = "."
-			}
-
-			return runAnalyze(absPath, name, language, model, preset, locale, output, withSpecs)
+			return runAnalyzeInteractive(args[0], p, explicit)
 		},
 	}
 
-	cmd.Flags().StringVarP(&name, "name", "n", "", "Project name (defaults to directory name)")
-	cmd.Flags().StringVarP(&language, "language", "l", "", "Override detected language (activates idiomatic guides)")
-	cmd.Flags().StringVarP(&model, "model", "m", "", "Claude model to use (default: claude-sonnet-4-6)")
-	cmd.Flags().StringVarP(&preset, "preset", "p", "default", "Template preset: default or neutral")
-	cmd.Flags().StringVar(&locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
-	cmd.Flags().StringVarP(&output, "output", "o", "", "Output directory (default: current directory)")
-	cmd.Flags().BoolVar(&withSpecs, "with-specs", false, "Also generate SDD spec files after context generation")
+	cmd.Flags().StringVarP(&p.name, "name", "n", "", "Project name (defaults to directory name)")
+	cmd.Flags().StringVarP(&p.language, "language", "l", "", "Override detected language (activates idiomatic guides)")
+	cmd.Flags().StringVarP(&p.model, "model", "m", "", "Claude model to use (default: claude-sonnet-4-6)")
+	cmd.Flags().StringVarP(&p.preset, "preset", "p", "default", "Template preset: default or neutral")
+	cmd.Flags().StringVar(&p.locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
+	cmd.Flags().StringVarP(&p.output, "output", "o", "", "Output directory (default: current directory)")
+	cmd.Flags().BoolVar(&p.withSpecs, "with-specs", false, "Also generate SDD spec files after context generation")
 
 	return cmd
 }
 
-func runAnalyze(projectPath, name, language, model, preset, locale, output string, withSpecs bool) error {
+func runAnalyzeInteractive(projectPath string, p analyzeParams, explicit map[string]bool) error {
+	interactive := isInteractive()
+	var err error
+
+	// Resolve to absolute path
+	absPath, err := filepath.Abs(projectPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve path: %w", err)
+	}
+
 	// 1. Scan project
-	fmt.Printf("Scanning project: %s\n", projectPath)
+	fmt.Printf("Scanning project: %s\n", absPath)
 	s := scanner.NewProjectScanner()
-	result, err := s.Scan(projectPath)
+	result, err := s.Scan(absPath)
 	if err != nil {
 		return fmt.Errorf("scan failed: %w", err)
 	}
@@ -109,24 +112,100 @@ func runAnalyze(projectPath, name, language, model, preset, locale, output strin
 	}
 	fmt.Println()
 
-	// 3. Use detected language if not overridden
-	if language == "" && result.Language != "" {
-		language = normalizeLanguageFlag(result.Language)
+	// 3. Resolve name
+	defaultName := filepath.Base(absPath)
+	if p.name == "" {
+		p.name = defaultName
+	}
+	if !explicit["name"] && interactive {
+		p.name, err = promptInput("Project name", p.name)
+		if err != nil {
+			return err
+		}
 	}
 
-	// 4. Format scan as description and delegate to generate pipeline
+	// 4. Resolve language — confirm auto-detected or prompt
+	detectedLang := normalizeLanguageFlag(result.Language)
+	if !explicit["language"] && interactive {
+		if detectedLang != "" {
+			useDetected, confirmErr := promptConfirm(fmt.Sprintf("Use detected language: %s?", result.Language), true)
+			if confirmErr != nil {
+				return confirmErr
+			}
+			if useDetected {
+				p.language = detectedLang
+			} else {
+				p.language, err = promptLanguage()
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			p.language, err = promptLanguage()
+			if err != nil {
+				return err
+			}
+		}
+	} else if p.language == "" && detectedLang != "" {
+		p.language = detectedLang
+	}
+
+	// 5. Resolve preset
+	if !explicit["preset"] && interactive {
+		p.preset, err = promptPreset()
+		if err != nil {
+			return err
+		}
+	}
+
+	// 6. Resolve locale
+	if !explicit["locale"] && interactive {
+		p.locale, err = promptLocale()
+		if err != nil {
+			return err
+		}
+	}
+
+	// 7. Resolve model
+	if !explicit["model"] && interactive {
+		p.model, err = promptModel()
+		if err != nil {
+			return err
+		}
+	}
+
+	// 8. Resolve output
+	if p.output == "" {
+		p.output = "."
+	}
+	if !explicit["output"] && interactive {
+		p.output, err = promptInput("Output directory", p.output)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 9. Resolve with-specs
+	if !explicit["with-specs"] && interactive {
+		p.withSpecs, err = promptConfirm("Also generate SDD specs?", false)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 10. Generate — use scan description and delegate to generate pipeline
 	description := result.FormatAsDescription()
 
-	if err := runGenerate(name, description, language, "", "", model, preset, locale, output); err != nil {
+	if err := runGenerate(p.name, description, p.language, "", "", p.model, p.preset, p.locale, p.output); err != nil {
 		return err
 	}
 
-	// 5. Optionally generate specs
-	if withSpecs {
+	// 11. Optionally generate specs
+	if p.withSpecs {
 		fmt.Println()
 		fmt.Println("--- Generating specs from context ---")
 		fmt.Println()
-		return runSpec(name, output, output, model, locale)
+		return runSpec(p.name, p.output, p.output, p.model, p.locale)
 	}
 
 	return nil
