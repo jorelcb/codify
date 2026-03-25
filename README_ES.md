@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.11.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.12.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.21)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -594,7 +594,7 @@ go test ./tests/...
 
 ## 📊 Estado del proyecto
 
-**v1.11.0** 🎉
+**v1.12.0** 🎉
 
 ✅ **Funcionando:**
 - Soporte multi-proveedor LLM (Anthropic Claude + Google Gemini)
@@ -602,7 +602,7 @@ go test ./tests/...
 - **Generacion de specs SDD** a partir de contexto existente (`spec`, `--with-specs`)
 - **Agent Skills** con modo dual (static/personalized), seleccion guiada interactiva y catalogo declarativo
 - **Instalacion de skills** — `--install global` o `--install project` para instalacion directa en el path del agente
-- Categorias de skills (architecture, workflow) con frontmatter por ecosistema (Claude, Codex, Antigravity)
+- Categorias de skills (architecture, testing, workflow) con frontmatter por ecosistema (Claude, Codex, Antigravity)
 - **UX interactiva unificada** — todos los comandos preguntan por parametros faltantes en terminal
 - Servidor MCP (transporte stdio + HTTP) con 6 herramientas
 - Herramientas de conocimiento MCP (commit_guidance, version_guidance) — sin API key
