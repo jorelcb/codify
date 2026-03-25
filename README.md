@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.10.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.11.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.21)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -113,6 +113,8 @@ go install github.com/jorelcb/codify/cmd/codify@latest
 
 ### Three ways to equip your agent
 
+Every command supports **interactive mode** — run without flags and menus guide you through all options. Or pass flags explicitly for CI/scripting.
+
 ```bash
 # 1. Set your API key (Claude or Gemini)
 export ANTHROPIC_API_KEY="sk-ant-..."   # for Claude (default)
@@ -120,9 +122,12 @@ export ANTHROPIC_API_KEY="sk-ant-..."   # for Claude (default)
 export GEMINI_API_KEY="AI..."           # for Gemini
 
 # ── Context: give your agent project memory ──
+codify generate
+# Interactive menus for: name, description, preset, language, model, locale, output, specs
+
+# Or pass all flags explicitly (zero prompts):
 codify generate payment-service \
-  --description "Payment microservice in Go with gRPC, PostgreSQL and Kafka. \
-  DDD with Clean Architecture. Stripe as payment processor." \
+  --description "Payment microservice in Go with gRPC, PostgreSQL and Kafka" \
   --language go
 
 # ── Specs: give your agent an implementation plan ──
@@ -131,7 +136,7 @@ codify spec payment-service \
 
 # ── Skills: give your agent reusable abilities ──
 codify skills
-# Interactive mode guides you through category, preset, mode, and target.
+# Interactive menus for: category, preset, mode, target, install location
 # No API key needed for static mode.
 ```
 
@@ -198,15 +203,17 @@ Place these files at your project root. Compatible agents (Claude Code, Cursor, 
 ### Options
 
 ```bash
-codify generate <name> [flags]
+codify generate [project-name] [flags]
 ```
+
+All flags are optional in a terminal — interactive menus prompt for missing values.
 
 | Flag | Short | Description | Default |
 |------|-------|-------------|---------|
-| `--description` | `-d` | Project description *(required unless `--from-file`)* | — |
+| `--description` | `-d` | Project description *(required unless `--from-file`)* | *(interactive)* |
 | `--from-file` | `-f` | Read description from file *(alternative to `-d`)* | — |
-| `--preset` | `-p` | Template preset (`default`, `neutral`) | `default` |
-| `--model` | `-m` | LLM model (`claude-*` or `gemini-*`) | `claude-sonnet-4-6` |
+| `--preset` | `-p` | Template preset (`default`, `neutral`) | *(interactive)* |
+| `--model` | `-m` | LLM model (`claude-*` or `gemini-*`) | auto-detected |
 | `--language` | `-l` | Language (activates idiomatic guides) | — |
 | `--locale` | | Output language (`en`, `es`) | `en` |
 | `--with-specs` | | Also generate SDD specs after context | `false` |
@@ -273,7 +280,8 @@ codify skills
 # → Select preset (clean, neutral, conventional-commit, ...)
 # → Select mode (static or personalized)
 # → Select target ecosystem (claude, codex, antigravity)
-# → Select locale, output path
+# → Select install location (global, project, or custom)
+# → Select locale
 # → If personalized: describe your project, choose model
 ```
 
@@ -283,6 +291,12 @@ codify skills
 # Static: instant delivery, no API key
 codify skills --category workflow --preset all --mode static
 
+# Install globally — skills available from any project
+codify skills --category workflow --preset all --mode static --install global
+
+# Install to current project — shareable via git
+codify skills --category architecture --preset clean --mode static --install project
+
 # Personalized: LLM-adapted to your project
 codify skills --category architecture --preset clean --mode personalized \
   --context "Go microservice with DDD, Godog BDD, PostgreSQL"
@@ -290,6 +304,13 @@ codify skills --category architecture --preset clean --mode personalized \
 # Architecture skills for Codex ecosystem
 codify skills --category architecture --preset neutral --target codex
 ```
+
+### Install scopes
+
+| Scope | Path (Claude) | Path (Codex) | Use case |
+|-------|---------------|--------------|----------|
+| `global` | `~/.claude/skills/` | `~/.codex/skills/` | Available from any project |
+| `project` | `./.claude/skills/` | `./.agents/skills/` | Committed to git, shared with team |
 
 ### Skill catalog
 
@@ -322,11 +343,12 @@ codify skills [flags]
 | `--category` | Skill category (`architecture`, `workflow`) | *(interactive)* |
 | `--preset` | Preset within category | *(interactive)* |
 | `--mode` | Generation mode: `static` or `personalized` | *(interactive)* |
+| `--install` | Install scope: `global` (agent path) or `project` (current dir) | *(interactive)* |
 | `--context` | Project description for personalized mode | — |
 | `--target` | Target ecosystem (`claude`, `codex`, `antigravity`) | `claude` |
-| `--model` | `-m` | LLM model (personalized mode only) | `claude-sonnet-4-6` |
+| `--model` `-m` | LLM model (personalized mode only) | auto-detected |
 | `--locale` | Output language (`en`, `es`) | `en` |
-| `--output` | `-o` | Output directory | `.claude/skills/` |
+| `--output` `-o` | Output directory (overrides `--install`) | ecosystem-specific |
 
 ---
 
@@ -568,14 +590,16 @@ go test ./tests/...
 
 ## 📊 Project status
 
-**v1.10.0** 🎉
+**v1.11.0** 🎉
 
 ✅ **Working:**
 - Multi-provider LLM support (Anthropic Claude + Google Gemini)
 - **Context generation** with streaming (`generate`, `analyze`)
 - **SDD spec generation** from existing context (`spec`, `--with-specs`)
 - **Agent Skills** with dual mode (static/personalized), interactive guided selection, and declarative catalog
+- **Skills install** — `--install global` or `--install project` for direct agent path installation
 - Skill categories (architecture, workflow) with ecosystem-aware frontmatter (Claude, Codex, Antigravity)
+- **Unified interactive UX** — all commands prompt for missing parameters when run in a terminal
 - MCP Server mode (stdio + HTTP transport) with 6 tools
 - MCP knowledge tools (commit_guidance, version_guidance) — no API key needed
 - Preset system (default: DDD/Clean, neutral: generic)
