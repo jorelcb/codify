@@ -318,6 +318,9 @@ codify skills --category architecture --preset neutral --target codex
 |-----------|--------|--------|
 | `architecture` | `clean` | DDD entity, Clean Architecture layer, BDD scenario, CQRS command, Hexagonal port |
 | `architecture` | `neutral` | Code review, test strategy, safe refactoring, API design |
+| `testing` | `foundational` | Test Desiderata — Las 12 propiedades de Kent Beck para buenos tests |
+| `testing` | `tdd` | Test-Driven Development — Red-Green-Refactor *(incluye foundational)* |
+| `testing` | `bdd` | Behavior-Driven Development — Given/When/Then *(incluye foundational)* |
 | `workflow` | `conventional-commit` | Conventional Commits |
 | `workflow` | `semantic-versioning` | Semantic Versioning |
 | `workflow` | `all` | Todas las skills de workflow combinadas |
@@ -566,6 +569,7 @@ templates/
 │   ├── skills/                  Templates de Agent Skills (static + guias LLM)
 │   │   ├── default/             Architecture: Clean (DDD, BDD, CQRS, Hexagonal)
 │   │   ├── neutral/             Architecture: Neutral (review, testing, API)
+│   │   ├── testing/             Testing: Foundational, TDD, BDD
 │   │   └── workflow/            Workflow (conventional commits, semver)
 │   └── languages/               Guias idiomaticas por lenguaje
 │       ├── go/idioms.template

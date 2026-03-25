@@ -49,12 +49,17 @@ Modes:
 
 Categories:
   architecture  - Architecture patterns and best practices
+  testing       - Testing methodologies and quality properties
   workflow      - Development workflow automation
 
 Presets:
   architecture:
     clean    - DDD, Clean Architecture, BDD, CQRS, Hexagonal
     neutral  - Code review, test strategy, refactoring, API design
+  testing:
+    foundational  - Test Desiderata (Kent Beck's 12 properties)
+    tdd           - Test-Driven Development (includes foundational)
+    bdd           - Behavior-Driven Development (includes foundational)
   workflow:
     conventional-commit   - Conventional Commits spec
     semantic-versioning   - Semantic Versioning spec

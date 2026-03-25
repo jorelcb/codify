@@ -1,0 +1,179 @@
+# Behavior-Driven Development Skill
+
+## Purpose
+Guide an AI agent through Behavior-Driven Development as defined by its founders: Dan North (Introducing BDD, 2006), Matt Wynne and Aslak Hellesoy (Cucumber/Gherkin), and Seb Rose (BDD Books). This skill includes foundational test quality properties and the BDD practice of specifying behavior through examples in natural language.
+
+## Sections to Generate
+
+### When to Use This Skill
+Describe scenarios: defining acceptance criteria, writing feature files, specifying business rules with examples, bridging communication between technical and non-technical stakeholders, implementing outside-in development, creating living documentation.
+
+---
+
+## Part 1: Foundation — Test Desiderata (Kent Beck)
+
+The twelve properties of good developer tests. These are trade-offs, not a checklist.
+
+### The Twelve Properties
+1. **Isolated** — No test depends on another. Any order, any subset, any parallelism.
+2. **Composable** — Running any combination of tests produces valid results.
+3. **Fast** — Rapid feedback. Slow tests get run less, reducing their value.
+4. **Inspiring** — Passing tests give confidence to deploy. If all pass and you're still uneasy, the suite is failing this property.
+5. **Writable** — Low friction to create. Excessive setup discourages testing.
+6. **Readable** — Tests are documentation. A reader understands the behavior without tracing internals.
+7. **Behavioral** — Sensitive to behavior changes, insensitive to structural changes.
+8. **Structure-insensitive** — Refactoring internals doesn't break tests.
+9. **Automated** — No human intervention needed to run or verify.
+10. **Specific** — A failure points precisely to the problem.
+11. **Deterministic** — Same code, same result, every time. No flakiness.
+12. **Predictive** — Passing tests mean the code works in production.
+
+### The Trade-off Thesis
+These properties exist in tension. Fast vs. Predictive. Isolated vs. Predictive. Writable vs. Readable. Specific vs. Structure-insensitive. The right balance depends on context. BDD scenarios particularly optimize for Readable, Behavioral, and Inspiring.
+
+---
+
+## Part 2: The BDD Practice
+
+### Origin and Motivation (Dan North, 2006)
+North created BDD to solve five recurring problems with TDD:
+- Developers didn't know where to start
+- Developers didn't know what to test and what not to test
+- Developers didn't know how much to test in one go
+- Developers didn't know what to call their tests
+- Developers didn't understand why a test fails
+
+The root problem: the word "test" caused people to think about verification rather than specification of behavior. BDD replaces "test" with "behavior" and uses natural language to describe what the system should do.
+
+### The Three Practices of BDD (Wynne & Rose)
+
+#### 1. Discovery — The Most Important Phase
+Structured conversations to explore the problem space before writing any code.
+
+**Three Amigos:** Before implementing a feature, three perspectives meet:
+- **Business/Product** — What problem are we solving? What's the value?
+- **Development** — How might we build it? What are the edge cases?
+- **Testing/QA** — What could go wrong? What are the boundary conditions?
+
+**Example Mapping (Matt Wynne):** A time-boxed (25-minute) technique:
+- Pick a user story
+- Write business rules on cards
+- Write concrete examples for each rule
+- Write questions for anything unclear
+- Too many questions? The story isn't understood yet — stop and investigate
+- Too many rules? The story is too large — split it
+
+The output: concrete examples that all three perspectives agree define "done."
+
+#### 2. Formulation — Translating Examples to Gherkin
+Convert discovered examples into structured scenarios using ubiquitous language (Eric Evans, DDD). The act of writing precise Gherkin often reveals ambiguities missed in conversation.
+
+#### 3. Automation — The Least Important Phase
+Connect Gherkin scenarios to executable code via step definitions. This makes the documentation living — always in sync with the system because the scenarios ARE the tests.
+
+**Critical warning from the BDD founders:** Most teams skip Discovery and Formulation and jump straight to Automation. This is the primary reason BDD fails. The value is in the conversations, not the tooling.
+
+### The Given/When/Then Template (Chris Matts & Dan North)
+
+```
+Given [some initial context — preconditions]
+When [an event or action occurs — the trigger]
+Then [ensure some outcomes — observable consequences]
+```
+
+- **Given** — The world is in this state. Past tense or present state. Sets up preconditions. No actions, no assertions.
+- **When** — This thing happens. A single action or event. The behavior trigger. One When per scenario.
+- **Then** — This should be the result. Observable outcomes. What the system should have done or what state it should be in.
+
+This maps directly to Arrange-Act-Assert, elevated to business language.
+
+### Gherkin Syntax (Aslak Hellesoy, Cucumber)
+
+```gherkin
+@tag
+Feature: Short description of a business capability
+  Optional context about the feature.
+
+  Background:
+    Given a common precondition for all scenarios
+
+  Rule: A specific business rule
+    Scenario: A concrete example of the rule
+      Given some initial context
+      And another precondition
+      When an action is performed
+      Then an expected outcome occurs
+      But this other thing should not happen
+
+    Scenario Outline: A parameterized example
+      Given a user with balance of <initial>
+      When they withdraw <amount>
+      Then the balance should be <result>
+
+      Examples:
+        | initial | amount | result |
+        | 500     | 200    | 300    |
+        | 100     | 200    | 100    |
+```
+
+**Keywords:**
+- **Feature** — Groups related scenarios. One feature per file.
+- **Rule** (Gherkin 6+) — Groups scenarios under a business rule within a feature.
+- **Scenario** (or **Example**) — A single concrete example. Independent and self-contained.
+- **Background** — Steps that run before each scenario. For shared preconditions.
+- **Scenario Outline + Examples** — Data-driven scenario with placeholder variables.
+- **And / But** — Continue the previous Given/When/Then for readability.
+- **Tags** — Metadata annotations (`@wip`, `@smoke`, `@slow`) for filtering and hooks.
+
+### Outside-In Development (North & Wynne)
+BDD drives development from the outside in:
+1. Write an acceptance scenario first (failing)
+2. Drop down to unit level only when needed to implement a step
+3. Let the outer scenario pull the design inward
+4. Each layer's tests drive the next layer's implementation
+
+This contrasts with inside-out development. BDD says: start with the behavior the stakeholder cares about.
+
+### Ubiquitous Language (connection to DDD)
+Scenarios must use the same language the business uses. If the business says "policy holder" and the code says "customer," that's a problem. The Gherkin scenarios become the shared artifact that technical and non-technical people can both read and validate.
+
+### Living Documentation
+Gherkin scenarios are executable specifications always in sync with the system. If the system changes and the behavior diverges, the scenarios fail. This solves the perennial problem of documentation going stale.
+
+### Declarative vs. Imperative Style
+
+**Imperative (anti-pattern):**
+```gherkin
+Given I am on the login page
+And I enter "user@test.com" in the email field
+And I click the "Login" button
+Then I should see "Welcome"
+```
+
+**Declarative (correct):**
+```gherkin
+Given I am a registered customer
+When I sign in with valid credentials
+Then I should be welcomed back
+```
+
+Scenarios should survive a complete UI redesign. If moving a button breaks your scenario, you're testing UI, not behavior.
+
+### Anti-patterns in BDD
+
+**Writing anti-patterns:**
+- Incidental details — including data irrelevant to the behavior under test
+- Imperative style — step-by-step UI instructions instead of business intent
+- Too many scenarios per feature — usually means the feature is too large, split it
+- Interdependent scenarios — each scenario must be self-contained
+- Multiple When clauses — one trigger per scenario, split if you have two
+- Testing implementation — scenarios mention database tables, class names, or API endpoints
+
+**Process anti-patterns:**
+- Skipping Discovery — writing Gherkin without collaborative conversation first
+- BDD as a testing tool — using Cucumber for automation without the collaboration practices
+- Writing scenarios after implementation — scenarios should drive development, not document it
+- No Three Amigos — a single person writes all scenarios, losing cross-functional perspective
+
+### Verification
+How to validate BDD practice: scenarios are readable by non-developers, each scenario tests one business rule, scenarios use ubiquitous language, scenarios are declarative, the team practices Discovery before Formulation, the feature files serve as living documentation.

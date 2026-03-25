@@ -1,0 +1,101 @@
+# Test-Driven Development Skill
+
+## Purpose
+Guide an AI agent through Test-Driven Development as defined by its creators: Kent Beck (TDD By Example, Test Desiderata) and Robert C. Martin (Three Laws of TDD). This skill includes foundational test quality properties and the TDD discipline of writing tests before code.
+
+## Sections to Generate
+
+### When to Use This Skill
+Describe scenarios: implementing new features, fixing bugs, refactoring existing code, designing APIs through usage, exploring unfamiliar domains, any development where the design should emerge from tests.
+
+---
+
+## Part 1: Foundation — Test Desiderata (Kent Beck)
+
+The twelve properties of good developer tests. These are trade-offs, not a checklist.
+
+### The Twelve Properties
+1. **Isolated** — No test depends on another. Any order, any subset, any parallelism.
+2. **Composable** — Running any combination of tests produces valid results.
+3. **Fast** — Rapid feedback. Slow tests get run less, reducing their value.
+4. **Inspiring** — Passing tests give confidence to deploy. If all pass and you're still uneasy, the suite is failing this property.
+5. **Writable** — Low friction to create. Excessive setup discourages testing.
+6. **Readable** — Tests are documentation. A reader understands the behavior without tracing internals.
+7. **Behavioral** — Sensitive to behavior changes, insensitive to structural changes.
+8. **Structure-insensitive** — Refactoring internals doesn't break tests.
+9. **Automated** — No human intervention needed to run or verify.
+10. **Specific** — A failure points precisely to the problem.
+11. **Deterministic** — Same code, same result, every time. No flakiness.
+12. **Predictive** — Passing tests mean the code works in production.
+
+### The Trade-off Thesis
+These properties exist in tension. Fast vs. Predictive. Isolated vs. Predictive. Writable vs. Readable. Specific vs. Structure-insensitive. The right balance depends on context. TDD practitioners navigate these trade-offs deliberately.
+
+---
+
+## Part 2: The TDD Discipline
+
+### The Red-Green-Refactor Cycle (Kent Beck)
+The fundamental rhythm of TDD:
+
+1. **Red** — Write a test that fails. The test specifies a behavior the system does not yet have. The test must fail for the right reason (not a compile error or wrong assertion). This step defines what you want.
+
+2. **Green** — Write the minimum code to make the test pass. No more. Do not optimize, do not generalize, do not clean up. Just make it green. This step proves you can get what you want.
+
+3. **Refactor** — Clean up both production code and test code while keeping all tests green. Remove duplication, improve naming, extract abstractions. This step makes the code sustainable.
+
+Then repeat. Each cycle should be measured in minutes, not hours.
+
+### The Three Laws of TDD (Robert C. Martin)
+1. You may not write production code unless you have a failing test that requires it.
+2. You may not write more of a test than is sufficient to fail (including compilation failures).
+3. You may not write more production code than is sufficient to make the currently failing test pass.
+
+These laws enforce the discipline of tiny steps and continuous test coverage.
+
+### TDD Strategies (Kent Beck)
+
+**Fake It ('Til You Make It)**
+Return a constant that makes the test pass, then gradually replace constants with variables. This is not cheating — it reveals what the code actually needs.
+
+**Triangulation**
+Write a second test with different data that forces you to generalize the implementation. When one test passes with a constant, a second test with different expected output forces real logic.
+
+**Obvious Implementation**
+When you know the implementation and it's trivial, write it directly. But if it fails, revert to Fake It or Triangulation. Obvious Implementation is earned confidence, not assumption.
+
+### Transformation Priority Premise (Robert C. Martin)
+When making a failing test pass, prefer simpler transformations over complex ones:
+1. Constant → Variable
+2. Unconditional → Conditional
+3. Scalar → Collection
+4. Statement → Recursion/Iteration
+5. Value → Mutated value
+
+Choosing simpler transformations first leads to better-structured algorithms.
+
+### Baby Steps
+The defining characteristic of TDD: changes so small that if a test fails, you know exactly what broke. If you're ever unsure, make the step smaller. A step is too big if you can't explain exactly why the test is failing.
+
+### What to Test First
+Beck's guidance:
+- Start with the simplest case that forces you to write real code
+- Test behavior, not implementation
+- One assertion per test (logical assertion — one behavioral claim)
+- Test the happy path first, then edge cases, then error cases
+- If you don't know what to test next, write a test for what worries you most
+
+### Test List
+Before starting, write a list of all the tests you think you'll need. Cross them off as you implement. Add new ones as you discover them. This is not a plan — it's a thinking tool. The list will change.
+
+### Anti-patterns in TDD
+- Writing production code before the test (violates Law 1)
+- Writing a passing test (the test must fail first to prove it tests something)
+- Making large leaps (multiple behaviors in one Red-Green cycle)
+- Refactoring while red (only refactor when all tests are green)
+- Testing private methods (test behavior through the public interface)
+- Gold-plating during Green (adding code the failing test doesn't require)
+- Skipping Refactor (technical debt accumulates immediately)
+
+### Verification
+How to validate TDD discipline: each commit should correspond to a Red-Green-Refactor cycle. Tests should be written before the code they test. Refactoring should not change test outcomes. The test list should evolve with the implementation.

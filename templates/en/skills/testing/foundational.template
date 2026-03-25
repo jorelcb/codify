@@ -1,0 +1,75 @@
+# Test Desiderata Skill
+
+## Purpose
+Guide an AI agent to evaluate, write, and improve tests using Kent Beck's Test Desiderata — twelve properties that characterize good developer tests. These properties are trade-offs, not a checklist: maximizing all simultaneously is impossible, and the art of testing is navigating these tensions consciously.
+
+## Sections to Generate
+
+### When to Use This Skill
+Describe scenarios: writing new tests, reviewing test quality, refactoring existing tests, evaluating test suite health, deciding what kind of test to write, resolving disagreements about test design.
+
+### The Twelve Properties
+
+#### 1. Isolated
+Each test should be independent. No test relies on another having run first. Tests can execute in any order, in parallel, or individually. Shared mutable state between tests is a defect.
+
+#### 2. Composable
+Tests should compose freely. Running any subset of the test suite produces valid results. A test that only works when run as part of a specific sequence is not composable.
+
+#### 3. Fast
+Tests should provide rapid feedback. Slow tests get run less often, reducing their value. The faster the tests, the tighter the feedback loop and the more frequently developers run them.
+
+#### 4. Inspiring
+Passing tests should give confidence to deploy. If all tests pass but you still feel uneasy, the test suite is not inspiring. Tests should make you feel that the code works.
+
+#### 5. Writable
+Tests should be cheap to create. If writing a test requires excessive setup, complex fixtures, or deep knowledge of internals, the friction discourages testing. High writability means more behaviors get tested.
+
+#### 6. Readable
+Tests should serve as documentation. A reader should understand what behavior is being tested and why, without tracing through implementation details. A test that requires explanation has a readability problem.
+
+#### 7. Behavioral
+Tests should be sensitive to changes in behavior, not changes in structure. If you refactor the internals without changing what the code does, tests should continue to pass. Tests coupled to implementation are structural, not behavioral.
+
+#### 8. Structure-insensitive
+Tests should not break when the code is restructured (renamed methods, extracted classes, moved modules). If a pure refactoring breaks tests, those tests are too tightly coupled to internal structure.
+
+#### 9. Automated
+Tests should run without human intervention. Manual verification steps, visual inspection, or subjective judgment in the test process reduce reliability and frequency of execution.
+
+#### 10. Specific
+When a test fails, the failure should point precisely to what went wrong. A vague failure that requires debugging to locate the issue reduces the diagnostic value of the test.
+
+#### 11. Deterministic
+The same test on the same code should always produce the same result. Flaky tests — those that pass sometimes and fail sometimes — erode trust in the entire suite. Non-determinism from time, randomness, concurrency, or external dependencies must be controlled.
+
+#### 12. Predictive
+If tests pass, the code should work in production. If tests can pass while the system fails in real use, the tests are not predictive. Predictive tests cover the behaviors that matter in production.
+
+### The Trade-off Thesis
+Beck's central insight: these properties exist in tension. Examples:
+- **Fast vs. Predictive**: Unit tests are fast but less predictive of production behavior. Integration tests are more predictive but slower.
+- **Isolated vs. Predictive**: Mocking dependencies makes tests isolated but less predictive of real interactions.
+- **Writable vs. Readable**: Terse, DRY test setup is easier to write but harder to read. Explicit, verbose tests are readable but costly to write.
+- **Specific vs. Structure-insensitive**: Testing small units gives specific failures but couples to structure. Testing larger behaviors is structure-insensitive but less specific on failure.
+
+The right balance depends on context. Different parts of the codebase warrant different trade-off choices.
+
+### Applying the Properties
+Decision framework for the agent:
+1. Before writing a test, identify which properties matter most for this context
+2. For core domain logic: prioritize Behavioral, Deterministic, Specific, Readable
+3. For integration boundaries: prioritize Predictive, Isolated, Automated
+4. For performance-sensitive paths: prioritize Fast, Deterministic
+5. When reviewing tests: check which properties are sacrificed and whether the trade-off is intentional
+
+### Anti-patterns (through the Desiderata lens)
+- Tests that break on every refactor → lack Structure-insensitivity and Behavioral focus
+- Tests that pass locally but fail in CI → lack Determinism
+- Tests that require specific execution order → lack Isolation and Composability
+- Tests that pass but production breaks → lack Predictiveness
+- Tests nobody reads → lack Readability and Inspiration
+- Tests nobody writes → lack Writability
+
+### Verification
+How to evaluate a test using the Desiderata: for each of the 12 properties, rate the test. Identify which properties are strong, which are weak, and whether the trade-offs are deliberate and appropriate for the context.

@@ -51,6 +51,10 @@ var SkillMetadata = map[string]SkillMeta{
 	// Workflow
 	"conventional_commit":  {Description: "Write commit messages following Conventional Commits 1.0.0", Triggers: []string{"commit", "git commit", "conventional"}},
 	"semantic_versioning":  {Description: "Determine version bumps following Semantic Versioning 2.0.0", Triggers: []string{"version", "release", "tag", "semver"}},
+	// Testing
+	"test_foundational": {Description: "Evaluate and write tests using Kent Beck's Test Desiderata (12 properties)", Triggers: []string{"test", "testing", "test quality", "desiderata"}},
+	"test_tdd":          {Description: "Practice Test-Driven Development with Red-Green-Refactor discipline", Triggers: []string{"tdd", "test driven", "red green refactor", "test first"}},
+	"test_bdd":          {Description: "Specify behavior with BDD using Given/When/Then and Gherkin", Triggers: []string{"bdd", "gherkin", "cucumber", "given when then", "acceptance test"}},
 }
 
 // GenerateFrontmatter genera YAML frontmatter para un skill según el ecosistema target.
@@ -103,6 +107,37 @@ var Categories = []SkillCategory{
 					"test_strategy.template":   "test_strategy",
 					"refactor_safely.template": "refactor_safely",
 					"api_design.template":      "api_design",
+				},
+			},
+		},
+	},
+	{
+		Name:      "testing",
+		Label:     "Testing",
+		Exclusive: true,
+		Options: []SkillOption{
+			{
+				Name:        "foundational",
+				Label:       "Foundational (Test Desiderata — properties of good tests)",
+				TemplateDir: "testing",
+				TemplateMapping: map[string]string{
+					"foundational.template": "test_foundational",
+				},
+			},
+			{
+				Name:        "tdd",
+				Label:       "TDD (Test-Driven Development — includes foundational)",
+				TemplateDir: "testing",
+				TemplateMapping: map[string]string{
+					"tdd.template": "test_tdd",
+				},
+			},
+			{
+				Name:        "bdd",
+				Label:       "BDD (Behavior-Driven Development — includes foundational)",
+				TemplateDir: "testing",
+				TemplateMapping: map[string]string{
+					"bdd.template": "test_bdd",
 				},
 			},
 		},

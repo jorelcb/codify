@@ -1,0 +1,75 @@
+# Skill de Test Desiderata
+
+## Propósito
+Guiar a un agente de IA para evaluar, escribir y mejorar tests usando las Test Desiderata de Kent Beck — doce propiedades que caracterizan buenos tests de desarrollador. Estas propiedades son trade-offs, no una checklist: maximizar todas simultáneamente es imposible, y el arte del testing es navegar estas tensiones conscientemente.
+
+## Secciones a Generar
+
+### Cuándo Usar Este Skill
+Describir escenarios: escribir nuevos tests, revisar calidad de tests, refactorizar tests existentes, evaluar la salud del suite de tests, decidir qué tipo de test escribir, resolver desacuerdos sobre diseño de tests.
+
+### Las Doce Propiedades
+
+#### 1. Aislado (Isolated)
+Cada test debe ser independiente. Ningún test depende de que otro se haya ejecutado primero. Los tests pueden ejecutarse en cualquier orden, en paralelo, o individualmente. El estado mutable compartido entre tests es un defecto.
+
+#### 2. Componible (Composable)
+Los tests deben componerse libremente. Ejecutar cualquier subconjunto del suite produce resultados válidos. Un test que solo funciona como parte de una secuencia específica no es componible.
+
+#### 3. Rápido (Fast)
+Los tests deben proveer retroalimentación rápida. Tests lentos se ejecutan con menor frecuencia, reduciendo su valor. Mientras más rápidos, más frecuente el ciclo de retroalimentación.
+
+#### 4. Inspirador (Inspiring)
+Los tests al pasar deben dar confianza para desplegar. Si todos pasan pero aún sientes incertidumbre, el suite no es inspirador. Los tests deben hacerte sentir que el código funciona.
+
+#### 5. Escribible (Writable)
+Los tests deben ser baratos de crear. Si escribir un test requiere configuración excesiva, fixtures complejos, o conocimiento profundo de internos, la fricción desalienta el testing.
+
+#### 6. Legible (Readable)
+Los tests deben servir como documentación. Un lector debe entender qué comportamiento se está probando y por qué, sin rastrear detalles de implementación.
+
+#### 7. Conductual (Behavioral)
+Los tests deben ser sensibles a cambios de comportamiento, no a cambios de estructura. Si refactorizas los internos sin cambiar lo que el código hace, los tests deben seguir pasando.
+
+#### 8. Insensible a Estructura (Structure-insensitive)
+Los tests no deben romperse cuando el código se reestructura (renombrar métodos, extraer clases, mover módulos). Si un refactoring puro rompe tests, esos tests están demasiado acoplados a la estructura interna.
+
+#### 9. Automatizado (Automated)
+Los tests deben ejecutarse sin intervención humana. Pasos de verificación manual, inspección visual, o juicio subjetivo reducen la confiabilidad.
+
+#### 10. Específico (Specific)
+Cuando un test falla, la falla debe apuntar precisamente a qué salió mal. Una falla vaga que requiere depuración para localizar el problema reduce el valor diagnóstico.
+
+#### 11. Determinista (Deterministic)
+El mismo test sobre el mismo código debe producir siempre el mismo resultado. Tests inestables — que a veces pasan y a veces fallan — erosionan la confianza en todo el suite.
+
+#### 12. Predictivo (Predictive)
+Si los tests pasan, el código debería funcionar en producción. Si los tests pueden pasar mientras el sistema falla en uso real, los tests no son predictivos.
+
+### La Tesis de los Trade-offs
+La idea central de Beck: estas propiedades existen en tensión. Ejemplos:
+- **Rápido vs. Predictivo**: Tests unitarios son rápidos pero menos predictivos. Tests de integración son más predictivos pero más lentos.
+- **Aislado vs. Predictivo**: Mockear dependencias hace tests aislados pero menos predictivos de interacciones reales.
+- **Escribible vs. Legible**: Setup terso y DRY es más fácil de escribir pero más difícil de leer.
+- **Específico vs. Insensible a estructura**: Testear unidades pequeñas da fallas específicas pero acopla a la estructura.
+
+El balance correcto depende del contexto. Diferentes partes del codebase justifican diferentes trade-offs.
+
+### Aplicando las Propiedades
+Framework de decisión para el agente:
+1. Antes de escribir un test, identificar qué propiedades importan más en este contexto
+2. Para lógica de dominio core: priorizar Conductual, Determinista, Específico, Legible
+3. Para fronteras de integración: priorizar Predictivo, Aislado, Automatizado
+4. Para paths sensibles a rendimiento: priorizar Rápido, Determinista
+5. Al revisar tests: verificar qué propiedades se sacrifican y si el trade-off es intencional
+
+### Anti-patrones (a través del lente de Desiderata)
+- Tests que se rompen en cada refactor → falta de Insensibilidad a estructura y foco Conductual
+- Tests que pasan local pero fallan en CI → falta de Determinismo
+- Tests que requieren orden específico de ejecución → falta de Aislamiento y Componibilidad
+- Tests que pasan pero producción falla → falta de Predictividad
+- Tests que nadie lee → falta de Legibilidad e Inspiración
+- Tests que nadie escribe → falta de Escribibilidad
+
+### Verificación
+Cómo evaluar un test usando las Desiderata: para cada una de las 12 propiedades, calificar el test. Identificar qué propiedades son fuertes, cuáles débiles, y si los trade-offs son deliberados y apropiados para el contexto.

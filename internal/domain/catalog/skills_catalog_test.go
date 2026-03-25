@@ -10,6 +10,7 @@ func TestFindCategory(t *testing.T) {
 		wantErr bool
 	}{
 		{"architecture", false},
+		{"testing", false},
 		{"workflow", false},
 		{"unknown", true},
 	}
@@ -76,6 +77,30 @@ func TestCategoryResolve_NonExclusive(t *testing.T) {
 	}
 }
 
+func TestCategoryResolve_Testing(t *testing.T) {
+	cat, _ := FindCategory("testing")
+
+	// Exclusive category: "all" should fail
+	_, err := cat.Resolve("all")
+	if err == nil {
+		t.Error("expected error for 'all' on exclusive testing category, got nil")
+	}
+
+	// Each preset maps to exactly 1 template
+	for _, preset := range []string{"foundational", "tdd", "bdd"} {
+		sel, err := cat.Resolve(preset)
+		if err != nil {
+			t.Fatalf("unexpected error for preset %q: %v", preset, err)
+		}
+		if sel.TemplateDir != "testing" {
+			t.Errorf("preset %q: got dir %q, want %q", preset, sel.TemplateDir, "testing")
+		}
+		if len(sel.TemplateMapping) != 1 {
+			t.Errorf("preset %q: got %d mappings, want 1", preset, len(sel.TemplateMapping))
+		}
+	}
+}
+
 func TestCategoryResolve_UnknownPreset(t *testing.T) {
 	cat, _ := FindCategory("architecture")
 	_, err := cat.Resolve("nonexistent")
@@ -86,10 +111,10 @@ func TestCategoryResolve_UnknownPreset(t *testing.T) {
 
 func TestCategoryNames(t *testing.T) {
 	names := CategoryNames()
-	if len(names) != 2 {
-		t.Fatalf("got %d categories, want 2", len(names))
+	if len(names) != 3 {
+		t.Fatalf("got %d categories, want 3", len(names))
 	}
-	if names[0] != "architecture" || names[1] != "workflow" {
+	if names[0] != "architecture" || names[1] != "testing" || names[2] != "workflow" {
 		t.Errorf("unexpected names: %v", names)
 	}
 }

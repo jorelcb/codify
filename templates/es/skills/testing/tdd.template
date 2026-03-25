@@ -1,0 +1,101 @@
+# Skill de Desarrollo Guiado por Tests (TDD)
+
+## Propósito
+Guiar a un agente de IA a través del Desarrollo Guiado por Tests tal como lo definieron sus creadores: Kent Beck (TDD By Example, Test Desiderata) y Robert C. Martin (Three Laws of TDD). Este skill incluye las propiedades fundamentales de calidad de tests y la disciplina TDD de escribir tests antes del código.
+
+## Secciones a Generar
+
+### Cuándo Usar Este Skill
+Describir escenarios: implementar nuevas funcionalidades, corregir bugs, refactorizar código existente, diseñar APIs a través del uso, explorar dominios desconocidos, cualquier desarrollo donde el diseño deba emerger de los tests.
+
+---
+
+## Parte 1: Fundamento — Test Desiderata (Kent Beck)
+
+Las doce propiedades de buenos tests de desarrollador. Son trade-offs, no una checklist.
+
+### Las Doce Propiedades
+1. **Aislado** — Ningún test depende de otro. Cualquier orden, cualquier subconjunto, cualquier paralelismo.
+2. **Componible** — Ejecutar cualquier combinación de tests produce resultados válidos.
+3. **Rápido** — Retroalimentación rápida. Tests lentos se ejecutan menos, reduciendo su valor.
+4. **Inspirador** — Tests al pasar dan confianza para desplegar. Si todos pasan y aún hay incertidumbre, el suite falla esta propiedad.
+5. **Escribible** — Baja fricción para crear. Setup excesivo desalienta el testing.
+6. **Legible** — Los tests son documentación. El lector entiende el comportamiento sin rastrear internos.
+7. **Conductual** — Sensible a cambios de comportamiento, insensible a cambios estructurales.
+8. **Insensible a estructura** — Refactorizar internos no rompe tests.
+9. **Automatizado** — Sin intervención humana para ejecutar o verificar.
+10. **Específico** — Una falla apunta precisamente al problema.
+11. **Determinista** — Mismo código, mismo resultado, siempre. Sin inestabilidad.
+12. **Predictivo** — Tests pasando significa que el código funciona en producción.
+
+### La Tesis de los Trade-offs
+Estas propiedades existen en tensión. Rápido vs. Predictivo. Aislado vs. Predictivo. Escribible vs. Legible. Específico vs. Insensible a estructura. El balance correcto depende del contexto. Los practicantes de TDD navegan estos trade-offs deliberadamente.
+
+---
+
+## Parte 2: La Disciplina TDD
+
+### El Ciclo Red-Green-Refactor (Kent Beck)
+El ritmo fundamental de TDD:
+
+1. **Red** — Escribir un test que falle. El test especifica un comportamiento que el sistema aún no tiene. El test debe fallar por la razón correcta (no un error de compilación o aserción incorrecta). Este paso define qué quieres.
+
+2. **Green** — Escribir el código mínimo para que el test pase. Nada más. No optimizar, no generalizar, no limpiar. Solo hacerlo verde. Este paso prueba que puedes obtener lo que quieres.
+
+3. **Refactor** — Limpiar tanto el código de producción como el de tests manteniendo todos los tests en verde. Eliminar duplicación, mejorar nombres, extraer abstracciones. Este paso hace el código sostenible.
+
+Luego repetir. Cada ciclo debe medirse en minutos, no en horas.
+
+### Las Tres Leyes de TDD (Robert C. Martin)
+1. No puedes escribir código de producción a menos que tengas un test que falle que lo requiera.
+2. No puedes escribir más de un test de lo suficiente para fallar (incluyendo fallas de compilación).
+3. No puedes escribir más código de producción del suficiente para hacer pasar el test actualmente fallando.
+
+Estas leyes imponen la disciplina de pasos pequeños y cobertura continua de tests.
+
+### Estrategias TDD (Kent Beck)
+
+**Fake It ('Til You Make It)**
+Retornar una constante que haga pasar el test, luego gradualmente reemplazar constantes con variables. Esto no es trampa — revela qué necesita realmente el código.
+
+**Triangulación**
+Escribir un segundo test con datos diferentes que fuerce a generalizar la implementación. Cuando un test pasa con una constante, un segundo test con diferente salida esperada fuerza lógica real.
+
+**Implementación Obvia**
+Cuando conoces la implementación y es trivial, escríbela directamente. Pero si falla, revertir a Fake It o Triangulación. La Implementación Obvia es confianza ganada, no supuesta.
+
+### Transformation Priority Premise (Robert C. Martin)
+Al hacer pasar un test que falla, preferir transformaciones simples sobre complejas:
+1. Constante → Variable
+2. Incondicional → Condicional
+3. Escalar → Colección
+4. Sentencia → Recursión/Iteración
+5. Valor → Valor mutado
+
+Elegir transformaciones más simples primero conduce a algoritmos mejor estructurados.
+
+### Baby Steps
+La característica definitoria de TDD: cambios tan pequeños que si un test falla, sabes exactamente qué se rompió. Si alguna vez hay incertidumbre, hacer el paso más pequeño. Un paso es demasiado grande si no puedes explicar exactamente por qué el test está fallando.
+
+### Qué Testear Primero
+La guía de Beck:
+- Comenzar con el caso más simple que te fuerce a escribir código real
+- Testear comportamiento, no implementación
+- Una aserción por test (aserción lógica — una afirmación conductual)
+- Testear el camino feliz primero, luego casos borde, luego casos de error
+- Si no sabes qué testear después, escribe un test para lo que más te preocupe
+
+### Lista de Tests
+Antes de comenzar, escribir una lista de todos los tests que crees necesitar. Tacharlos conforme implementas. Agregar nuevos conforme los descubras. Esto no es un plan — es una herramienta de pensamiento. La lista cambiará.
+
+### Anti-patrones en TDD
+- Escribir código de producción antes del test (viola la Ley 1)
+- Escribir un test que pasa (el test debe fallar primero para probar que testea algo)
+- Dar saltos grandes (múltiples comportamientos en un ciclo Red-Green)
+- Refactorizar en rojo (solo refactorizar cuando todos los tests estén verdes)
+- Testear métodos privados (testear comportamiento a través de la interfaz pública)
+- Sobreelaborar durante Green (agregar código que el test fallando no requiere)
+- Saltarse Refactor (la deuda técnica se acumula inmediatamente)
+
+### Verificación
+Cómo validar la disciplina TDD: cada commit debe corresponder a un ciclo Red-Green-Refactor. Los tests deben escribirse antes del código que prueban. El refactoring no debe cambiar los resultados de los tests. La lista de tests debe evolucionar con la implementación.

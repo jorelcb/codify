@@ -1,0 +1,179 @@
+# Skill de Desarrollo Guiado por Comportamiento (BDD)
+
+## Propósito
+Guiar a un agente de IA a través del Desarrollo Guiado por Comportamiento tal como lo definieron sus fundadores: Dan North (Introducing BDD, 2006), Matt Wynne y Aslak Hellesoy (Cucumber/Gherkin), y Seb Rose (BDD Books). Este skill incluye las propiedades fundamentales de calidad de tests y la práctica BDD de especificar comportamiento a través de ejemplos en lenguaje natural.
+
+## Secciones a Generar
+
+### Cuándo Usar Este Skill
+Describir escenarios: definir criterios de aceptación, escribir archivos de features, especificar reglas de negocio con ejemplos, tender puentes de comunicación entre stakeholders técnicos y no técnicos, implementar desarrollo outside-in, crear documentación viva.
+
+---
+
+## Parte 1: Fundamento — Test Desiderata (Kent Beck)
+
+Las doce propiedades de buenos tests de desarrollador. Son trade-offs, no una checklist.
+
+### Las Doce Propiedades
+1. **Aislado** — Ningún test depende de otro. Cualquier orden, cualquier subconjunto, cualquier paralelismo.
+2. **Componible** — Ejecutar cualquier combinación de tests produce resultados válidos.
+3. **Rápido** — Retroalimentación rápida. Tests lentos se ejecutan menos, reduciendo su valor.
+4. **Inspirador** — Tests al pasar dan confianza para desplegar. Si todos pasan y aún hay incertidumbre, el suite falla esta propiedad.
+5. **Escribible** — Baja fricción para crear. Setup excesivo desalienta el testing.
+6. **Legible** — Los tests son documentación. El lector entiende el comportamiento sin rastrear internos.
+7. **Conductual** — Sensible a cambios de comportamiento, insensible a cambios estructurales.
+8. **Insensible a estructura** — Refactorizar internos no rompe tests.
+9. **Automatizado** — Sin intervención humana para ejecutar o verificar.
+10. **Específico** — Una falla apunta precisamente al problema.
+11. **Determinista** — Mismo código, mismo resultado, siempre. Sin inestabilidad.
+12. **Predictivo** — Tests pasando significa que el código funciona en producción.
+
+### La Tesis de los Trade-offs
+Estas propiedades existen en tensión. Rápido vs. Predictivo. Aislado vs. Predictivo. Escribible vs. Legible. Específico vs. Insensible a estructura. El balance correcto depende del contexto. Los escenarios BDD optimizan particularmente para Legible, Conductual e Inspirador.
+
+---
+
+## Parte 2: La Práctica BDD
+
+### Origen y Motivación (Dan North, 2006)
+North creó BDD para resolver cinco problemas recurrentes con TDD:
+- Los desarrolladores no sabían por dónde empezar
+- No sabían qué testear y qué no testear
+- No sabían cuánto testear de una vez
+- No sabían cómo nombrar sus tests
+- No entendían por qué un test falla
+
+El problema raíz: la palabra "test" causaba que las personas pensaran en verificación en vez de especificación de comportamiento. BDD reemplaza "test" con "comportamiento" y usa lenguaje natural para describir qué debe hacer el sistema.
+
+### Las Tres Prácticas de BDD (Wynne & Rose)
+
+#### 1. Descubrimiento (Discovery) — La Fase Más Importante
+Conversaciones estructuradas para explorar el espacio del problema antes de escribir código.
+
+**Three Amigos:** Antes de implementar una funcionalidad, tres perspectivas se reúnen:
+- **Negocio/Producto** — ¿Qué problema resolvemos? ¿Cuál es el valor?
+- **Desarrollo** — ¿Cómo podríamos construirlo? ¿Cuáles son los casos borde?
+- **Testing/QA** — ¿Qué podría salir mal? ¿Cuáles son las condiciones límite?
+
+**Example Mapping (Matt Wynne):** Técnica de 25 minutos:
+- Seleccionar una historia de usuario
+- Escribir reglas de negocio en tarjetas
+- Escribir ejemplos concretos para cada regla
+- Escribir preguntas para lo que no esté claro
+- ¿Demasiadas preguntas? La historia no se entiende bien — detenerse e investigar
+- ¿Demasiadas reglas? La historia es muy grande — dividirla
+
+El resultado: ejemplos concretos que las tres perspectivas acuerdan definen "terminado."
+
+#### 2. Formulación (Formulation) — Traducir Ejemplos a Gherkin
+Convertir los ejemplos descubiertos en escenarios estructurados usando lenguaje ubicuo (Eric Evans, DDD). El acto de escribir Gherkin preciso frecuentemente revela ambigüedades perdidas en la conversación.
+
+#### 3. Automatización (Automation) — La Fase Menos Importante
+Conectar los escenarios Gherkin a código ejecutable mediante definiciones de pasos. Esto hace la documentación viva — siempre sincronizada con el sistema porque los escenarios SON los tests.
+
+**Advertencia crítica de los fundadores de BDD:** La mayoría de equipos saltan Discovery y Formulation y van directo a Automation. Esta es la razón principal por la que BDD falla. El valor está en las conversaciones, no en las herramientas.
+
+### La Plantilla Given/When/Then (Chris Matts & Dan North)
+
+```
+Given [algún contexto inicial — precondiciones]
+When [ocurre un evento o acción — el disparador]
+Then [asegurar algunos resultados — consecuencias observables]
+```
+
+- **Given** — El mundo está en este estado. Tiempo pasado o estado presente. Establece precondiciones. Sin acciones, sin aserciones.
+- **When** — Esto sucede. Una sola acción o evento. El disparador del comportamiento. Un When por escenario.
+- **Then** — Este debería ser el resultado. Resultados observables. Qué debería haber hecho el sistema o en qué estado debería estar.
+
+Esto mapea directamente a Arrange-Act-Assert, elevado a lenguaje de negocio.
+
+### Sintaxis Gherkin (Aslak Hellesoy, Cucumber)
+
+```gherkin
+@etiqueta
+Feature: Descripción corta de una capacidad de negocio
+  Contexto opcional sobre la funcionalidad.
+
+  Background:
+    Given una precondición común para todos los escenarios
+
+  Rule: Una regla de negocio específica
+    Scenario: Un ejemplo concreto de la regla
+      Given algún contexto inicial
+      And otra precondición
+      When se realiza una acción
+      Then ocurre un resultado esperado
+      But esto otro no debería suceder
+
+    Scenario Outline: Un ejemplo parametrizado
+      Given un usuario con saldo de <inicial>
+      When retira <monto>
+      Then el saldo debería ser <resultado>
+
+      Examples:
+        | inicial | monto | resultado |
+        | 500     | 200   | 300       |
+        | 100     | 200   | 100       |
+```
+
+**Palabras clave:**
+- **Feature** — Agrupa escenarios relacionados. Una feature por archivo.
+- **Rule** (Gherkin 6+) — Agrupa escenarios bajo una regla de negocio dentro de una feature.
+- **Scenario** (o **Example**) — Un ejemplo concreto único. Independiente y autocontenido.
+- **Background** — Pasos que se ejecutan antes de cada escenario. Para precondiciones compartidas.
+- **Scenario Outline + Examples** — Escenario con datos parametrizados mediante variables placeholder.
+- **And / But** — Continúan el Given/When/Then anterior para legibilidad.
+- **Tags** — Anotaciones de metadata (`@wip`, `@smoke`, `@slow`) para filtrado y hooks.
+
+### Desarrollo Outside-In (North & Wynne)
+BDD impulsa el desarrollo de afuera hacia adentro:
+1. Escribir un escenario de aceptación primero (que falle)
+2. Bajar al nivel unitario solo cuando sea necesario para implementar un paso
+3. Dejar que el escenario exterior tire del diseño hacia adentro
+4. Los tests de cada capa impulsan la implementación de la siguiente
+
+Esto contrasta con el desarrollo inside-out. BDD dice: empezar por el comportamiento que le importa al stakeholder.
+
+### Lenguaje Ubicuo (conexión con DDD)
+Los escenarios deben usar el mismo lenguaje que usa el negocio. Si el negocio dice "titular de póliza" y el código dice "cliente," eso es un problema. Los escenarios Gherkin se convierten en el artefacto compartido que personas técnicas y no técnicas pueden leer y validar.
+
+### Documentación Viva
+Los escenarios Gherkin son especificaciones ejecutables siempre sincronizadas con el sistema. Si el sistema cambia y el comportamiento diverge, los escenarios fallan. Esto resuelve el problema perenne de la documentación desactualizada.
+
+### Estilo Declarativo vs. Imperativo
+
+**Imperativo (anti-patrón):**
+```gherkin
+Given estoy en la página de login
+And ingreso "user@test.com" en el campo de email
+And hago clic en el botón "Iniciar sesión"
+Then debería ver "Bienvenido"
+```
+
+**Declarativo (correcto):**
+```gherkin
+Given soy un cliente registrado
+When inicio sesión con credenciales válidas
+Then debería ser recibido de vuelta
+```
+
+Los escenarios deben sobrevivir un rediseño completo de UI. Si mover un botón rompe tu escenario, estás probando UI, no comportamiento.
+
+### Anti-patrones en BDD
+
+**Anti-patrones de escritura:**
+- Detalles incidentales — incluir datos irrelevantes al comportamiento bajo test
+- Estilo imperativo — instrucciones paso a paso de UI en vez de intención de negocio
+- Demasiados escenarios por feature — usualmente significa que la feature es muy grande, dividirla
+- Escenarios interdependientes — cada escenario debe ser autocontenido
+- Múltiples cláusulas When — un disparador por escenario, dividir si hay dos
+- Testear implementación — escenarios mencionan tablas de base de datos, nombres de clases, o endpoints
+
+**Anti-patrones de proceso:**
+- Saltarse Discovery — escribir Gherkin sin conversación colaborativa primero
+- BDD como herramienta de testing — usar Cucumber para automatización sin las prácticas de colaboración
+- Escribir escenarios después de la implementación — los escenarios deben guiar el desarrollo, no documentarlo
+- Sin Three Amigos — una sola persona escribe todos los escenarios, perdiendo la perspectiva multifuncional
+
+### Verificación
+Cómo validar la práctica BDD: los escenarios son legibles por no-desarrolladores, cada escenario prueba una regla de negocio, los escenarios usan lenguaje ubicuo, los escenarios son declarativos, el equipo practica Discovery antes de Formulation, los archivos de features sirven como documentación viva.

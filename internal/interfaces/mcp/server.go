@@ -99,8 +99,8 @@ func analyzeProjectTool() server.ServerTool {
 func generateSkillsTool() server.ServerTool {
 	tool := mcp.NewTool("generate_skills",
 		mcp.WithDescription("Generate AI agent skills (SKILL.md) by category, preset, and mode. Static mode delivers instant skills from the catalog. Personalized mode uses LLM to adapt skills to a specific project context."),
-		mcp.WithString("category", mcp.Required(), mcp.Description("Skill category: architecture or workflow")),
-		mcp.WithString("preset", mcp.Required(), mcp.Description("Preset within category. architecture: clean, neutral. workflow: conventional-commit, semantic-versioning, all")),
+		mcp.WithString("category", mcp.Required(), mcp.Description("Skill category: architecture, testing, or workflow")),
+		mcp.WithString("preset", mcp.Required(), mcp.Description("Preset within category. architecture: clean, neutral. testing: foundational, tdd, bdd. workflow: conventional-commit, semantic-versioning, all")),
 		mcp.WithString("mode", mcp.Description("Generation mode: static (instant, no API key) or personalized (LLM-adapted)"), mcp.DefaultString("static")),
 		mcp.WithString("project_context", mcp.Description("Project description for personalized mode (language, architecture, domain, stack)")),
 		mcp.WithString("locale", mcp.Description("Output language: en or es"), mcp.DefaultString("en")),
