@@ -2,16 +2,16 @@ package dto
 
 import "github.com/jorelcb/codify/internal/domain/shared"
 
-// SpecConfig representa la configuracion para generar especificaciones SDD
+// SpecConfig holds configuration for generating SDD specifications
 type SpecConfig struct {
 	ProjectName     string
-	FromContextPath string // ruta al directorio de output existente (contiene AGENTS.md y context/)
+	FromContextPath string // path to existing output directory (contains AGENTS.md and context/)
 	OutputPath      string
 	Model           string
 	Locale          string
 }
 
-// Validate valida la configuracion de spec
+// Validate validates the spec configuration
 func (sc *SpecConfig) Validate() error {
 	if sc.ProjectName == "" {
 		return shared.ErrInvalidInput("project name is required")

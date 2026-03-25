@@ -93,13 +93,10 @@ func resolveGeminiAPIKey() (string, error) {
 // DefaultModel returns the default model name for the given provider.
 // When model is empty, auto-detects based on available API keys.
 func DefaultModel(model string) string {
-	if isGeminiModel(model) {
-		return defaultGeminiModel
-	}
 	if model != "" {
-		return defaultModel
+		return model
 	}
-	// Auto-detect
+	// Auto-detect from available API keys
 	if envOrEmpty("ANTHROPIC_API_KEY") != "" {
 		return defaultModel
 	}

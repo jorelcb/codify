@@ -2,7 +2,7 @@ package dto
 
 import "github.com/jorelcb/codify/internal/domain/shared"
 
-// ProjectConfig representa la configuración para generar un proyecto
+// ProjectConfig holds configuration for generating a project
 type ProjectConfig struct {
 	Name         string
 	Description  string
@@ -16,7 +16,7 @@ type ProjectConfig struct {
 	Metadata     map[string]string
 }
 
-// Validate valida la configuración del proyecto
+// Validate validates the project configuration
 func (pc *ProjectConfig) Validate() error {
 	if pc.Name == "" {
 		return shared.ErrInvalidInput("project name is required")

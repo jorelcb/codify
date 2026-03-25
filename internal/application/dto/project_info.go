@@ -2,7 +2,7 @@ package dto
 
 import "time"
 
-// ProjectInfo representa información sobre un proyecto generado
+// ProjectInfo represents information about a generated project
 type ProjectInfo struct {
 	ID           string
 	Name         string
@@ -15,7 +15,7 @@ type ProjectInfo struct {
 	UpdatedAt    time.Time
 }
 
-// ProjectListResult representa el resultado de listar proyectos
+// ProjectListResult represents the result of listing projects
 type ProjectListResult struct {
 	Projects []ProjectInfo
 	Total    int

@@ -20,7 +20,7 @@ import (
 
 const defaultLocale = "en"
 
-// generateParams agrupa todos los parámetros del comando generate.
+// generateParams groups all parameters for the generate command.
 type generateParams struct {
 	projectName  string
 	description  string

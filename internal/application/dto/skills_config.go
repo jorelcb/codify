@@ -9,32 +9,32 @@ var ValidTargets = map[string]bool{
 	"antigravity": true,
 }
 
-// Modos de generación de skills
+// Skills generation modes
 const (
 	SkillModeStatic       = "static"
 	SkillModePersonalized = "personalized"
 )
 
-// Scopes de instalación de skills
+// Skills install scopes
 const (
 	InstallScopeGlobal  = "global"
 	InstallScopeProject = "project"
 )
 
-// SkillsConfig representa la configuracion para generar Agent Skills reutilizables
+// SkillsConfig holds configuration for generating reusable Agent Skills
 type SkillsConfig struct {
-	Category       string // "architecture" o "workflow"
-	Preset         string // sub-opcion: "clean", "neutral", "conventional-commit", "all", etc.
-	Mode           string // "static" o "personalized"
-	Locale         string // "en" o "es"
-	Target         string // ecosistema destino: "claude", "codex", "antigravity"
+	Category       string // "architecture" or "workflow"
+	Preset         string // "clean", "neutral", "conventional-commit", "all", etc.
+	Mode           string // "static" or "personalized"
+	Locale         string // "en" or "es"
+	Target         string // target ecosystem: "claude", "codex", "antigravity"
 	Model          string
 	OutputPath     string
-	ProjectContext string // contexto del proyecto para modo personalizado
-	Install        string // scope de instalación: "global", "project", o "" (custom output)
+	ProjectContext string // project context for personalized mode
+	Install        string // install scope: "global", "project", or "" (custom output)
 }
 
-// Validate valida la configuracion de skills
+// Validate validates the skills configuration
 func (sc *SkillsConfig) Validate() error {
 	if sc.OutputPath == "" {
 		return shared.ErrInvalidInput("output path is required")

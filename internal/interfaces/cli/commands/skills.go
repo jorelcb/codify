@@ -19,7 +19,7 @@ import (
 	infratemplate "github.com/jorelcb/codify/internal/infrastructure/template"
 )
 
-// skillsParams agrupa todos los parámetros del comando skills.
+// skillsParams groups all parameters for the skills command.
 type skillsParams struct {
 	category       string
 	preset         string
@@ -162,7 +162,7 @@ func runSkills(p skillsParams, explicit map[string]bool) error {
 	output := p.output
 
 	if !explicit["install"] && !explicit["output"] && interactive {
-		// Interactivo: preguntar ubicación de instalación
+		// Interactive: prompt install location
 		globalPath := globalSkillsPath(target)
 		projectPath := defaultSkillsPath(target)
 
@@ -190,7 +190,7 @@ func runSkills(p skillsParams, explicit map[string]bool) error {
 			}
 		}
 	} else if explicit["install"] {
-		// Flag --install pasado explícitamente: resolver path
+		// Flag --install explicitly provided: resolve path
 		output = resolveInstallPath(install, target)
 	} else if output == "" {
 		output = defaultSkillsPath(target)
@@ -344,7 +344,7 @@ func executePersonalizedSkills(ctx context.Context, p skillsParams, config *dto.
 	return nil
 }
 
-// --- Resolución de selección (categoría + preset) ---
+// --- Category + preset selection resolution ---
 
 func resolveSelection(categoryName, preset string) (*catalog.SkillCategory, string, error) {
 	if categoryName != "" && preset != "" {
@@ -394,7 +394,7 @@ func resolveSelection(categoryName, preset string) (*catalog.SkillCategory, stri
 	return cat, preset, nil
 }
 
-// --- Resolución de paths de instalación ---
+// --- Install path resolution ---
 
 // defaultSkillsPath retorna el path por defecto relativo al proyecto.
 func defaultSkillsPath(target string) string {
@@ -422,7 +422,7 @@ func globalSkillsPath(target string) string {
 	}
 }
 
-// resolveInstallPath resuelve el path de salida basado en el scope de instalación.
+// resolveInstallPath resolves the output path based on the install scope.
 func resolveInstallPath(install, target string) string {
 	switch install {
 	case dto.InstallScopeGlobal:

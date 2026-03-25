@@ -8,7 +8,7 @@ import (
 	"github.com/mattn/go-isatty"
 )
 
-// selectOption representa una opción en un menú interactivo.
+// selectOption represents an option in an interactive menu.
 type selectOption struct {
 	Label string
 	Value string
@@ -19,7 +19,7 @@ func isInteractive() bool {
 	return isatty.IsTerminal(os.Stdin.Fd()) && isatty.IsTerminal(os.Stdout.Fd())
 }
 
-// promptSelect muestra un menú de selección interactivo.
+// promptSelect displays an interactive selection menu.
 func promptSelect(title string, options []selectOption, defaultVal string) (string, error) {
 	huhOpts := make([]huh.Option[string], len(options))
 	for i, o := range options {
@@ -54,7 +54,7 @@ func promptInput(title, defaultVal string) (string, error) {
 	return value, nil
 }
 
-// promptConfirm muestra una confirmación booleana interactiva.
+// promptConfirm displays an interactive boolean confirmation.
 func promptConfirm(title string, defaultVal bool) (bool, error) {
 	value := defaultVal
 	err := huh.NewConfirm().
@@ -67,7 +67,7 @@ func promptConfirm(title string, defaultVal bool) (bool, error) {
 	return value, nil
 }
 
-// promptModel muestra selección de modelo LLM basada en API keys disponibles.
+// promptModel displays LLM model selection based on available API keys.
 func promptModel() (string, error) {
 	var options []selectOption
 	hasAnthropic := os.Getenv("ANTHROPIC_API_KEY") != ""
@@ -96,7 +96,7 @@ func promptModel() (string, error) {
 	return promptSelect("Select LLM model", options, options[0].Value)
 }
 
-// promptLocale muestra selección de idioma de salida.
+// promptLocale displays output language selection.
 func promptLocale() (string, error) {
 	return promptSelect("Select output language", []selectOption{
 		{"English", "en"},
@@ -104,7 +104,7 @@ func promptLocale() (string, error) {
 	}, "en")
 }
 
-// promptPreset muestra selección de preset de templates.
+// promptPreset displays template preset selection.
 func promptPreset() (string, error) {
 	return promptSelect("Select template preset", []selectOption{
 		{"Default (DDD / Clean Architecture / BDD)", "default"},
@@ -112,7 +112,7 @@ func promptPreset() (string, error) {
 	}, "default")
 }
 
-// promptLanguage muestra selección de lenguaje de programación.
+// promptLanguage displays programming language selection.
 func promptLanguage() (string, error) {
 	return promptSelect("Select programming language", []selectOption{
 		{"Go", "go"},

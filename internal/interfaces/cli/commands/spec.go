@@ -26,7 +26,7 @@ var specTemplateMapping = map[string]string{
 	"tasks.template":        "tasks",
 }
 
-// specParams agrupa todos los parámetros del comando spec.
+// specParams groups all parameters for the spec command.
 type specParams struct {
 	fromContext string
 	output     string
