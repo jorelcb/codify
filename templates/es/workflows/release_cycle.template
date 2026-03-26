@@ -1,0 +1,91 @@
+# Workflow de Ciclo de Release
+
+## Propósito
+Guiar a un agente de IA a través de un proceso estructurado de release: bump de versión, generación de changelog, tagging y despliegue. Este workflow asegura que los releases sean trazables, documentados y reversibles.
+
+## Pasos a Generar
+
+### 1. Verificar Preparación para Release
+Antes de iniciar el release:
+- Asegurar que todas las features/fixes planeados estén mergeados
+- Confirmar que la suite de tests pasa en la rama de release
+- Verificar que no hay blockers ni issues críticos abiertos
+- Revisar la lista de cambios desde el último release
+
+### 2. Determinar Número de Versión
+// capture: NEW_VERSION
+Determinar la nueva versión siguiendo Versionado Semántico:
+- **MAJOR** (X.0.0): Cambios que rompen APIs o contratos públicos
+- **MINOR** (x.Y.0): Nuevas funcionalidades, adiciones retrocompatibles
+- **PATCH** (x.y.Z): Correcciones de bugs, correcciones retrocompatibles
+
+Analizar commits desde el último release:
+- Cualquier `feat!:` o `BREAKING CHANGE:` → MAJOR
+- Cualquier `feat:` → al menos MINOR
+- Solo `fix:`, `docs:`, `chore:` → PATCH
+
+### 3. Actualizar Referencias de Versión
+// turbo
+Actualizar cadenas de versión en archivos del proyecto:
+- Archivo o constante de versión (ej: `version.go`, `package.json`, `.version`)
+- Badges de documentación
+- Cualquier configuración que referencie la versión
+
+### 4. Generar Changelog
+Crear o actualizar el changelog:
+- Agrupar cambios por tipo: Funcionalidades, Correcciones, Cambios que Rompen, Otros
+- Incluir referencias de commits para trazabilidad
+- Resaltar cambios que rompen prominentemente al inicio
+- Usar el formato de changelog del proyecto (CHANGELOG.md, GitHub releases, etc.)
+
+### 5. Crear Commit de Release
+// turbo
+Crear un solo commit con todos los cambios relacionados a la versión:
+- Mensaje de commit: `chore: bump version to vX.Y.Z`
+- Incluir cambios de archivo de versión y actualizaciones de changelog
+- No incluir cambios de código en este commit
+
+### 6. Crear Tag de Git
+// turbo
+Etiquetar el commit de release:
+- Formato del tag: `vX.Y.Z` (siguiendo la convención del proyecto)
+- Incluir un tag anotado con el resumen del changelog
+- Hacer push del tag a origin
+
+### 7. Push del Release
+// turbo
+Hacer push del release al remoto:
+- Push del commit de release
+- Push del tag
+- Verificar que ambos lleguen a origin
+
+### 8. Disparar Despliegue
+// if el proyecto tiene CI/CD de despliegue
+Iniciar el pipeline de despliegue:
+- Verificar que CI/CD detecte el nuevo tag
+- Monitorear el pipeline de despliegue por fallos
+- Validar el despliegue en el entorno objetivo
+
+### 9. Crear Notas de Release
+// if usa GitHub/GitLab releases
+Crear un release en la plataforma de hosting:
+- Usar el tag como objetivo del release
+- Incluir las entradas del changelog como notas del release
+- Adjuntar artefactos relevantes (binarios, paquetes)
+- Marcar como pre-release si es apropiado
+
+### 10. Verificación Post-Release
+// turbo
+Verificar que el release esté saludable:
+- Confirmar que la versión desplegada coincide con el release
+- Ejecutar smoke tests contra el entorno desplegado
+- Monitorear tasas de error y métricas de rendimiento por anomalías
+- Verificar publicación en registro de paquetes si aplica
+
+## Anti-patrones
+- Hacer release sin ejecutar la suite completa de tests
+- Saltarse la generación de changelog (dificulta depuración de regresiones)
+- Crear tag antes de hacer push del commit (riesgo de desincronización tag/commit)
+- Incluir cambios de código en el commit de bump de versión
+- No monitorear después del despliegue (detectar problemas temprano)
+- Formato de versión inconsistente (mantener semver)

@@ -1,0 +1,91 @@
+# Release Cycle Workflow
+
+## Purpose
+Guide an AI agent through a structured release process: version bump, changelog generation, tagging, and deployment. This workflow ensures releases are traceable, documented, and reversible.
+
+## Steps to Generate
+
+### 1. Verify Release Readiness
+Before starting the release:
+- Ensure all planned features/fixes are merged
+- Confirm the test suite passes on the release branch
+- Check for open blockers or critical issues
+- Review the list of changes since the last release
+
+### 2. Determine Version Number
+// capture: NEW_VERSION
+Determine the new version following Semantic Versioning:
+- **MAJOR** (X.0.0): Breaking changes to public APIs or contracts
+- **MINOR** (x.Y.0): New features, backward-compatible additions
+- **PATCH** (x.y.Z): Bug fixes, backward-compatible corrections
+
+Analyze commits since the last release:
+- Any `feat!:` or `BREAKING CHANGE:` → MAJOR
+- Any `feat:` → at least MINOR
+- Only `fix:`, `docs:`, `chore:` → PATCH
+
+### 3. Update Version References
+// turbo
+Update version strings in project files:
+- Version file or constant (e.g., `version.go`, `package.json`, `.version`)
+- Documentation badges
+- Any configuration that references the version
+
+### 4. Generate Changelog
+Create or update the changelog:
+- Group changes by type: Features, Bug Fixes, Breaking Changes, Other
+- Include commit references for traceability
+- Highlight breaking changes prominently at the top
+- Use the project's changelog format (CHANGELOG.md, GitHub releases, etc.)
+
+### 5. Create Release Commit
+// turbo
+Create a single commit with all version-related changes:
+- Commit message: `chore: bump version to vX.Y.Z`
+- Include version file changes and changelog updates
+- Do not include any code changes in this commit
+
+### 6. Create Git Tag
+// turbo
+Tag the release commit:
+- Tag format: `vX.Y.Z` (following the project's convention)
+- Include an annotated tag with the changelog summary
+- Push the tag to origin
+
+### 7. Push Release
+// turbo
+Push the release to the remote:
+- Push the release commit
+- Push the tag
+- Verify both arrive at origin
+
+### 8. Trigger Deployment
+// if the project has CI/CD deployment
+Initiate the deployment pipeline:
+- Verify CI/CD picks up the new tag
+- Monitor the deployment pipeline for failures
+- Validate the deployment in the target environment
+
+### 9. Create Release Notes
+// if using GitHub/GitLab releases
+Create a release on the hosting platform:
+- Use the tag as the release target
+- Include the changelog entries as release notes
+- Attach any relevant artifacts (binaries, packages)
+- Mark as pre-release if appropriate
+
+### 10. Post-Release Verification
+// turbo
+Verify the release is healthy:
+- Check the deployed version matches the release
+- Run smoke tests against the deployed environment
+- Monitor error rates and performance metrics for anomalies
+- Verify package registry publication if applicable
+
+## Anti-patterns
+- Releasing without running the full test suite
+- Skipping changelog generation (makes debugging regressions harder)
+- Tagging before the commit is pushed (risks tag/commit mismatch)
+- Including code changes in the version bump commit
+- Not monitoring after deployment (catch issues early)
+- Inconsistent version format (stick to semver)

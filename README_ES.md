@@ -355,6 +355,81 @@ codify skills [flags]
 
 ---
 
+## 🔄 Antigravity Workflows
+
+Los workflows son recetas multi-paso que los agentes de IA ejecutan bajo demanda via `/command`. Usan el primitivo nativo de workflows de Antigravity con anotaciones de ejecucion (`// turbo`, `// parallel`, `// capture`, `// if`, etc.) para orquestar tareas de desarrollo complejas.
+
+> **Target:** Antigravity IDE (Google) exclusivamente. Soporte para Claude Code planificado via plugin compuesto.
+
+### Dos modos
+
+| Modo | Que hace | API key | Costo | Velocidad |
+|------|----------|---------|-------|-----------|
+| **Static** | Entrega workflows pre-construidos del catalogo embebido. Frontmatter Antigravity listo para produccion. | No necesaria | Gratis | Instantaneo |
+| **Personalized** | LLM adapta workflows a tu proyecto — los pasos referencian tus herramientas, CI/CD y targets de despliegue. | Requerida | ~centavos | ~10s |
+
+### Modo interactivo
+
+```bash
+codify workflows
+# → Selecciona preset (feature-development, bug-fix, release-cycle, all)
+# → Selecciona modo (static o personalized)
+# → Selecciona locale
+# → Selecciona ubicacion de instalacion (global, project, o custom)
+# → Si personalized: describe tu proyecto, elige modelo
+```
+
+### Modo CLI
+
+```bash
+# Static: entrega instantanea, sin API key
+codify workflows --preset all --mode static
+
+# Instalar globalmente
+codify workflows --preset all --mode static --install global
+
+# Instalar en el proyecto actual
+codify workflows --preset feature-development --mode static --install project
+
+# Personalized: adaptado a tu proyecto via LLM
+codify workflows --preset all --mode personalized \
+  --context "Microservicio Go con CI/CD via GitHub Actions"
+```
+
+### Scopes de instalacion
+
+| Scope | Path | Caso de uso |
+|-------|------|-------------|
+| `global` | `~/.gemini/antigravity/global_workflows/` | Accesible desde cualquier proyecto |
+| `project` | `.agent/workflows/` | Commiteado a git, compartido con el equipo |
+
+### Catalogo de workflows
+
+| Preset | Workflow | Descripcion |
+|--------|----------|-------------|
+| `feature-development` | Feature Development | Branch → implementar → testear → PR → review |
+| `bug-fix` | Bug Fix | Reproducir → diagnosticar → corregir → testear → PR |
+| `release-cycle` | Release Cycle | Bump de version → changelog → tag → deploy |
+| `all` | Todos los workflows | Todos los presets de workflow combinados |
+
+### Opciones
+
+```bash
+codify workflows [flags]
+```
+
+| Flag | Descripcion | Default |
+|------|-------------|---------|
+| `--preset` `-p` | Preset de workflow | *(interactivo)* |
+| `--mode` | Modo de generacion: `static` o `personalized` | *(interactivo)* |
+| `--install` | Scope de instalacion: `global` o `project` | *(interactivo)* |
+| `--context` | Descripcion del proyecto para modo personalized | — |
+| `--model` `-m` | Modelo LLM (solo modo personalized) | auto-detectado |
+| `--locale` | Idioma de salida (`en`, `es`) | `en` |
+| `--output` `-o` | Directorio de salida (sobreescribe `--install`) | `.agent/workflows/` |
+
+---
+
 ## 🔌 MCP Server
 
 Usa Codify como **servidor MCP** — tu agente de IA invoca las herramientas directamente, sin necesidad de CLI manual.
@@ -421,8 +496,9 @@ Agrega a `~/.gemini/settings.json`:
 | `generate_specs` | Genera specs SDD a partir de contexto existente |
 | `analyze_project` | Escanea un proyecto existente y genera contexto desde su estructura |
 | `generate_skills` | Genera Agent Skills — soporta modos `static` (instantaneo) y `personalized` (adaptado via LLM) |
+| `generate_workflows` | Genera workflows Antigravity — soporta modos `static` (instantaneo) y `personalized` (adaptado via LLM) |
 
-Todas las herramientas generativas soportan `locale` (`en`/`es`) y `model`. `generate_context` y `analyze_project` tambien aceptan `with_specs`. `generate_skills` acepta `mode`, `category`, `preset` y `project_context`.
+Todas las herramientas generativas soportan `locale` (`en`/`es`) y `model`. `generate_context` y `analyze_project` tambien aceptan `with_specs`. `generate_skills` acepta `mode`, `category`, `preset` y `project_context`. `generate_workflows` acepta `mode`, `preset` y `project_context`.
 
 #### Herramientas de conocimiento (sin API key)
 
@@ -447,6 +523,9 @@ Las herramientas de conocimiento inyectan contexto comportamental en el agente q
 
 "Crea skills de DDD adaptadas a mi proyecto Go con Clean Architecture"
 → El agente invoca generate_skills con mode=personalized, project_context="Go con DDD..."
+
+"Genera workflow de feature-development para mi proyecto Go con GitHub Actions"
+→ El agente invoca generate_workflows con mode=personalized, preset=feature-development
 
 "Ayudame a hacer commit de estos cambios siguiendo conventional commits"
 → El agente invoca commit_guidance, recibe la spec, construye el mensaje
@@ -530,12 +609,12 @@ Construido en Go con lo que predica — DDD/Clean Architecture:
 internal/
 ├── domain/              💎 Logica de negocio pura
 │   ├── project/         Entidad Project (aggregate root)
-│   ├── catalog/         Catalogo declarativo de skills y registro de metadata
+│   ├── catalog/         Catalogos declarativos de skills + workflows y registros de metadata
 │   ├── shared/          Value objects, errores de dominio
 │   └── service/         Interfaces: LLMProvider, FileWriter, TemplateLoader
 │
 ├── application/         🔄 Casos de uso (CQRS)
-│   ├── command/         GenerateContext, GenerateSpec, GenerateSkills, DeliverStaticSkills
+│   ├── command/         GenerateContext, GenerateSpec, GenerateSkills, GenerateWorkflows
 │   └── query/           ListProjects
 │
 ├── infrastructure/      🔧 Implementaciones
@@ -545,8 +624,8 @@ internal/
 │   └── filesystem/      File writer, directory manager, context reader
 │
 └── interfaces/          🎯 Puntos de entrada
-    ├── cli/commands/    generate, analyze, spec, skills, serve, list
-    └── mcp/             Servidor MCP (transporte stdio + HTTP, 6 herramientas)
+    ├── cli/commands/    generate, analyze, spec, skills, workflows, serve, list
+    └── mcp/             Servidor MCP (transporte stdio + HTTP, 7 herramientas)
 ```
 
 ### Sistema de templates
@@ -571,6 +650,10 @@ templates/
 │   │   ├── neutral/             Architecture: Neutral (review, testing, API)
 │   │   ├── testing/             Testing: Foundational, TDD, BDD
 │   │   └── workflow/            Workflow (conventional commits, semver)
+│   ├── workflows/              Templates de workflows Antigravity
+│   │   ├── feature_development.template
+│   │   ├── bug_fix.template
+│   │   └── release_cycle.template
 │   └── languages/               Guias idiomaticas por lenguaje
 │       ├── go/idioms.template
 │       ├── javascript/idioms.template
@@ -594,7 +677,7 @@ go test ./tests/...
 
 ## 📊 Estado del proyecto
 
-**v1.12.0** 🎉
+**v1.13.0** 🎉
 
 ✅ **Funcionando:**
 - Soporte multi-proveedor LLM (Anthropic Claude + Google Gemini)
@@ -603,8 +686,10 @@ go test ./tests/...
 - **Agent Skills** con modo dual (static/personalized), seleccion guiada interactiva y catalogo declarativo
 - **Instalacion de skills** — `--install global` o `--install project` para instalacion directa en el path del agente
 - Categorias de skills (architecture, testing, workflow) con frontmatter por ecosistema (Claude, Codex, Antigravity)
+- **Workflows Antigravity** — recetas multi-paso con anotaciones de ejecucion (`// turbo`, `// parallel`, `// capture`, `// if`)
+- **Presets de workflows** — feature-development, bug-fix, release-cycle (modos static + personalized)
 - **UX interactiva unificada** — todos los comandos preguntan por parametros faltantes en terminal
-- Servidor MCP (transporte stdio + HTTP) con 6 herramientas
+- Servidor MCP (transporte stdio + HTTP) con 7 herramientas
 - Herramientas de conocimiento MCP (commit_guidance, version_guidance) — sin API key
 - Sistema de presets (default: DDD/Clean, neutral: generico)
 - Estandar AGENTS.md como root file
@@ -614,7 +699,7 @@ go test ./tests/...
 - Distribucion via Homebrew formula (macOS/Linux)
 
 🚧 **Proximo:**
-- Categoria de skills Testing (unit, integration, e2e)
+- Workflows compuestos para Claude Code (Skills + Hooks + Subagents)
 - Tests de integracion end-to-end
 - Retries y manejo de rate limits
 - Autenticacion MCP server remoto (OAuth/BYOK)

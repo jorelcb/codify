@@ -21,7 +21,7 @@ import (
 	infratemplate "github.com/jorelcb/codify/internal/infrastructure/template"
 )
 
-const serverVersion = "1.12.0"
+const serverVersion = "1.13.0"
 
 // validPresets maps preset names for validation.
 var validPresets = map[string]bool{
@@ -43,6 +43,7 @@ func NewServer() *server.MCPServer {
 		generateSpecsTool(),
 		analyzeProjectTool(),
 		generateSkillsTool(),
+		generateWorkflowsTool(),
 		commitGuidanceTool(),
 		versionGuidanceTool(),
 	)
@@ -110,6 +111,21 @@ func generateSkillsTool() server.ServerTool {
 	)
 
 	return server.ServerTool{Tool: tool, Handler: handleGenerateSkills}
+}
+
+// generateWorkflowsTool defines the generate_workflows MCP tool.
+func generateWorkflowsTool() server.ServerTool {
+	tool := mcp.NewTool("generate_workflows",
+		mcp.WithDescription("Generate Antigravity workflow files (.md) — multi-step recipes with execution annotations. Static mode delivers instant workflows. Personalized mode uses LLM to adapt workflows to a specific project context."),
+		mcp.WithString("preset", mcp.Required(), mcp.Description("Workflow preset: feature-development, bug-fix, release-cycle, or all")),
+		mcp.WithString("mode", mcp.Description("Generation mode: static (instant, no API key) or personalized (LLM-adapted)"), mcp.DefaultString("static")),
+		mcp.WithString("project_context", mcp.Description("Project description for personalized mode (language, tools, CI/CD, deployment)")),
+		mcp.WithString("locale", mcp.Description("Output language: en or es"), mcp.DefaultString("en")),
+		mcp.WithString("model", mcp.Description("LLM model (only for personalized mode)"), mcp.DefaultString("claude-sonnet-4-6")),
+		mcp.WithString("output", mcp.Description("Output directory (default: .agent/workflows/)")),
+	)
+
+	return server.ServerTool{Tool: tool, Handler: handleGenerateWorkflows}
 }
 
 // commitGuidanceTool defines the commit_guidance MCP knowledge tool.
@@ -340,6 +356,77 @@ func handleGenerateSkills(ctx context.Context, request mcp.CallToolRequest) (*mc
 	return mcp.NewToolResultText(sb.String()), nil
 }
 
+func handleGenerateWorkflows(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	preset := stringArg(request, "preset")
+	mode := stringArgDefault(request, "mode", dto.SkillModeStatic)
+	projectContext := stringArg(request, "project_context")
+	locale := stringArgDefault(request, "locale", "en")
+	model := stringArgDefault(request, "model", "")
+	output := stringArg(request, "output")
+	if output == "" {
+		output = filepath.Join(".agent", "workflows")
+	}
+
+	// Resolver categoría y preset desde el catálogo de workflows
+	cat, err := catalog.FindWorkflowCategory("workflows")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Invalid workflow category: %v", err)), nil
+	}
+
+	selection, err := cat.Resolve(preset)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Invalid preset: %v", err)), nil
+	}
+
+	// Cargar templates
+	templatePath := filepath.Join("templates", locale, selection.TemplateDir)
+	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping(
+		root.TemplatesFS, templatePath, selection.TemplateMapping,
+	)
+	guides, err := templateLoader.LoadAll()
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to load workflow templates: %v", err)), nil
+	}
+
+	config := &dto.WorkflowConfig{
+		Category:       "workflows",
+		Preset:         preset,
+		Mode:           mode,
+		Locale:         locale,
+		Model:          model,
+		OutputPath:     output,
+		ProjectContext: projectContext,
+	}
+
+	var result *dto.GenerationResult
+
+	if mode == dto.SkillModePersonalized {
+		if projectContext == "" {
+			return mcp.NewToolResultError("personalized mode requires project_context parameter"), nil
+		}
+		result, err = executePersonalizedWorkflowsMCP(ctx, config, guides)
+	} else {
+		result, err = executeStaticWorkflowsMCP(config, guides)
+	}
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Workflow generation failed: %v", err)), nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Antigravity workflows delivered (preset: %s, mode: %s)\n", preset, mode))
+	sb.WriteString(fmt.Sprintf("Output: %s\n", result.OutputPath))
+	if result.Model != "" && result.Model != "static" {
+		sb.WriteString(fmt.Sprintf("Model: %s\n", result.Model))
+		sb.WriteString(fmt.Sprintf("Tokens: %d in / %d out\n", result.TokensIn, result.TokensOut))
+	}
+	sb.WriteString("\nGenerated workflows:\n")
+	for _, f := range result.GeneratedFiles {
+		sb.WriteString(fmt.Sprintf("  - %s\n", f))
+	}
+
+	return mcp.NewToolResultText(sb.String()), nil
+}
+
 func handleCommitGuidance(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	locale := stringArgDefault(request, "locale", "en")
 	content, err := loadKnowledgeTemplate(locale, "workflow", "conventional_commit.template")
@@ -513,6 +600,31 @@ func executePersonalizedSkillsMCP(ctx context.Context, config *dto.SkillsConfig,
 	skillsCmd := command.NewGenerateSkillsCommand(provider, fileWriter, dirManager)
 
 	return skillsCmd.Execute(ctx, config, guides)
+}
+
+func executeStaticWorkflowsMCP(config *dto.WorkflowConfig, guides []service.TemplateGuide) (*dto.GenerationResult, error) {
+	fileWriter := filesystem.NewFileWriter()
+	dirManager := filesystem.NewDirectoryManager()
+	cmd := command.NewDeliverStaticWorkflowsCommand(fileWriter, dirManager)
+	return cmd.Execute(config, guides)
+}
+
+func executePersonalizedWorkflowsMCP(ctx context.Context, config *dto.WorkflowConfig, guides []service.TemplateGuide) (*dto.GenerationResult, error) {
+	apiKey, err := llm.ResolveAPIKey(config.Model)
+	if err != nil {
+		return nil, err
+	}
+
+	provider, err := llm.NewProvider(ctx, config.Model, apiKey, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create LLM provider: %w", err)
+	}
+
+	fileWriter := filesystem.NewFileWriter()
+	dirManager := filesystem.NewDirectoryManager()
+	workflowsCmd := command.NewGenerateWorkflowsCommand(provider, fileWriter, dirManager)
+
+	return workflowsCmd.Execute(ctx, config, guides)
 }
 
 // --- Argument helpers ---

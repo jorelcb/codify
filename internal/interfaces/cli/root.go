@@ -47,6 +47,7 @@ func init() {
 	rootCmd.AddCommand(commands.NewAnalyzeCmd())
 	rootCmd.AddCommand(commands.NewSpecCmd())
 	rootCmd.AddCommand(commands.NewSkillsCmd())
+	rootCmd.AddCommand(commands.NewWorkflowsCmd())
 	rootCmd.AddCommand(commands.NewServeCmd())
 	rootCmd.AddCommand(commands.NewListCmd())
 

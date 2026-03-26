@@ -1,0 +1,78 @@
+# Bug Fix Workflow
+
+## Purpose
+Guide an AI agent through a structured bug fix process: reproduce, diagnose, fix, test, and ship. This workflow prevents incomplete fixes and ensures the root cause is addressed, not just symptoms.
+
+## Steps to Generate
+
+### 1. Create Fix Branch
+// capture: BRANCH_NAME
+Create a branch from the latest main/develop:
+- Use the project's naming convention (e.g., `fix/issue-number-short-description`)
+- Link to the bug report/issue for traceability
+
+### 2. Reproduce the Bug
+Before fixing, confirm the bug exists:
+- Read the bug report: steps to reproduce, expected vs actual behavior
+- Set up the reproduction environment (specific data, configuration, state)
+- Execute the reproduction steps
+- Capture the actual (broken) behavior: error messages, logs, screenshots
+
+### 3. Write a Failing Test
+// if the bug is testable
+Write a test that captures the exact broken behavior:
+- The test should FAIL with the current code (proving the bug exists)
+- The test should describe the expected correct behavior
+- This test becomes the regression guard — it prevents the bug from returning
+
+### 4. Diagnose the Root Cause
+Investigate systematically:
+- Trace the execution path from the reproduction steps
+- Identify WHERE the behavior diverges from expected
+- Identify WHY — the root cause, not just the symptom
+- Check if the same pattern exists elsewhere (related bugs)
+- Document findings in the commit message or PR description
+
+### 5. Implement the Fix
+Fix the root cause, not the symptom:
+- Make the minimum change needed to fix the behavior
+- Ensure the failing test now passes
+- Do not refactor unrelated code in the same commit
+- If a broader refactor is needed, note it as a follow-up issue
+
+### 6. Verify No Regressions
+// turbo
+Run the full test suite:
+- All existing tests should still pass
+- The new regression test should pass
+- Run linting and static analysis
+
+### 7. Test Edge Cases
+// if the bug involves boundary conditions
+Check related edge cases:
+- What happens with empty/null inputs?
+- What about maximum/minimum values?
+- Concurrent access scenarios?
+- Add tests for any edge cases that aren't covered
+
+### 8. Create Pull Request
+Create a focused PR:
+- Title: `fix: description of what was broken`
+- Description: include root cause analysis, what the fix does, and how to verify
+- Link the original bug report/issue
+- Include before/after behavior comparison if applicable
+
+### 9. Merge and Verify
+// turbo
+After approval:
+- Merge using the project's preferred strategy
+- Verify the fix in the target environment
+- Close the bug report/issue with a reference to the fix
+- Delete the fix branch
+
+## Anti-patterns
+- Fixing symptoms without understanding the root cause
+- Making the fix and unrelated changes in the same PR
+- Not writing a regression test (the bug WILL return)
+- Fixing one bug and introducing another (run full test suite)
+- Not documenting the root cause (makes future debugging harder)

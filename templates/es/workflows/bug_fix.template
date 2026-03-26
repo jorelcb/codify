@@ -1,0 +1,78 @@
+# Workflow de Corrección de Bug
+
+## Propósito
+Guiar a un agente de IA a través de un proceso estructurado de corrección de bugs: reproducir, diagnosticar, corregir, testear y entregar. Este workflow previene correcciones incompletas y asegura que se aborde la causa raíz, no solo los síntomas.
+
+## Pasos a Generar
+
+### 1. Crear Rama de Fix
+// capture: BRANCH_NAME
+Crear una rama desde la última versión de main/develop:
+- Usar la convención de nombres del proyecto (ej: `fix/numero-issue-descripcion-corta`)
+- Vincular al reporte de bug/issue para trazabilidad
+
+### 2. Reproducir el Bug
+Antes de corregir, confirmar que el bug existe:
+- Leer el reporte: pasos para reproducir, comportamiento esperado vs real
+- Configurar el entorno de reproducción (datos específicos, configuración, estado)
+- Ejecutar los pasos de reproducción
+- Capturar el comportamiento actual (roto): mensajes de error, logs, capturas
+
+### 3. Escribir un Test que Falle
+// if el bug es testeable
+Escribir un test que capture el comportamiento roto exacto:
+- El test debe FALLAR con el código actual (probando que el bug existe)
+- El test debe describir el comportamiento correcto esperado
+- Este test se convierte en guardia de regresión — previene que el bug regrese
+
+### 4. Diagnosticar la Causa Raíz
+Investigar sistemáticamente:
+- Trazar el camino de ejecución desde los pasos de reproducción
+- Identificar DÓNDE el comportamiento diverge de lo esperado
+- Identificar POR QUÉ — la causa raíz, no solo el síntoma
+- Verificar si el mismo patrón existe en otros lugares (bugs relacionados)
+- Documentar hallazgos en el mensaje de commit o descripción del PR
+
+### 5. Implementar la Corrección
+Corregir la causa raíz, no el síntoma:
+- Hacer el cambio mínimo necesario para corregir el comportamiento
+- Asegurar que el test que fallaba ahora pasa
+- No refactorizar código no relacionado en el mismo commit
+- Si se necesita un refactor más amplio, anotarlo como issue de seguimiento
+
+### 6. Verificar Sin Regresiones
+// turbo
+Ejecutar la suite completa de tests:
+- Todos los tests existentes deben seguir pasando
+- El nuevo test de regresión debe pasar
+- Ejecutar linting y análisis estático
+
+### 7. Testear Casos Borde
+// if el bug involucra condiciones límite
+Verificar casos borde relacionados:
+- ¿Qué pasa con entradas vacías/nulas?
+- ¿Qué pasa con valores máximos/mínimos?
+- ¿Escenarios de acceso concurrente?
+- Agregar tests para casos borde no cubiertos
+
+### 8. Crear Pull Request
+Crear un PR enfocado:
+- Título: `fix: descripción de lo que estaba roto`
+- Descripción: incluir análisis de causa raíz, qué hace la corrección, y cómo verificar
+- Vincular el reporte de bug/issue original
+- Incluir comparación de comportamiento antes/después si aplica
+
+### 9. Merge y Verificación
+// turbo
+Después de la aprobación:
+- Hacer merge usando la estrategia preferida del proyecto
+- Verificar la corrección en el entorno objetivo
+- Cerrar el reporte de bug/issue con referencia a la corrección
+- Eliminar la rama de fix
+
+## Anti-patrones
+- Corregir síntomas sin entender la causa raíz
+- Hacer la corrección y cambios no relacionados en el mismo PR
+- No escribir test de regresión (el bug REGRESARÁ)
+- Corregir un bug e introducir otro (ejecutar suite completa)
+- No documentar la causa raíz (dificulta depuración futura)

@@ -355,6 +355,81 @@ codify skills [flags]
 
 ---
 
+## 🔄 Antigravity Workflows
+
+Workflows are multi-step recipes that AI agents execute on demand via `/command`. They use Antigravity's native workflow primitive with execution annotations (`// turbo`, `// parallel`, `// capture`, `// if`, etc.) to orchestrate complex development tasks.
+
+> **Target:** Antigravity IDE (Google) exclusively. Claude Code support planned via composite plugin.
+
+### Two modes
+
+| Mode | What it does | API key | Cost | Speed |
+|------|-------------|---------|------|-------|
+| **Static** | Delivers pre-built workflows from the embedded catalog. Production-ready Antigravity frontmatter. | Not needed | Free | Instant |
+| **Personalized** | LLM adapts workflows to your project — steps reference your tools, CI/CD, and deployment targets. | Required | ~pennies | ~10s |
+
+### Interactive mode
+
+```bash
+codify workflows
+# → Select preset (feature-development, bug-fix, release-cycle, all)
+# → Select mode (static or personalized)
+# → Select locale
+# → Select install location (global, project, or custom)
+# → If personalized: describe your project, choose model
+```
+
+### CLI mode
+
+```bash
+# Static: instant delivery, no API key
+codify workflows --preset all --mode static
+
+# Install globally
+codify workflows --preset all --mode static --install global
+
+# Install to current project
+codify workflows --preset feature-development --mode static --install project
+
+# Personalized: LLM-adapted to your project
+codify workflows --preset all --mode personalized \
+  --context "Go microservice with CI/CD via GitHub Actions"
+```
+
+### Install scopes
+
+| Scope | Path | Use case |
+|-------|------|----------|
+| `global` | `~/.gemini/antigravity/global_workflows/` | Available from any project |
+| `project` | `.agent/workflows/` | Committed to git, shared with team |
+
+### Workflow catalog
+
+| Preset | Workflow | Description |
+|--------|----------|-------------|
+| `feature-development` | Feature Development | Branch → implement → test → PR → review lifecycle |
+| `bug-fix` | Bug Fix | Reproduce → diagnose → fix → test → PR |
+| `release-cycle` | Release Cycle | Version bump → changelog → tag → deploy |
+| `all` | All workflows | All workflow presets combined |
+
+### Options
+
+```bash
+codify workflows [flags]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--preset` `-p` | Workflow preset | *(interactive)* |
+| `--mode` | Generation mode: `static` or `personalized` | *(interactive)* |
+| `--install` | Install scope: `global` or `project` | *(interactive)* |
+| `--context` | Project description for personalized mode | — |
+| `--model` `-m` | LLM model (personalized mode only) | auto-detected |
+| `--locale` | Output language (`en`, `es`) | `en` |
+| `--output` `-o` | Output directory (overrides `--install`) | `.agent/workflows/` |
+
+---
+
 ## 🔌 MCP Server
 
 Use Codify as an **MCP server** — your AI coding agent calls the tools directly, no manual CLI needed.
@@ -421,8 +496,9 @@ Add to `~/.gemini/settings.json`:
 | `generate_specs` | Generate SDD specs from existing context files |
 | `analyze_project` | Scan an existing project and generate context from its structure |
 | `generate_skills` | Generate Agent Skills — supports `static` (instant) and `personalized` (LLM-adapted) modes |
+| `generate_workflows` | Generate Antigravity workflows — supports `static` (instant) and `personalized` (LLM-adapted) modes |
 
-All generative tools support `locale` (`en`/`es`) and `model` parameters. `generate_context` and `analyze_project` also accept `with_specs`. `generate_skills` accepts `mode`, `category`, `preset`, and `project_context`.
+All generative tools support `locale` (`en`/`es`) and `model` parameters. `generate_context` and `analyze_project` also accept `with_specs`. `generate_skills` accepts `mode`, `category`, `preset`, and `project_context`. `generate_workflows` accepts `mode`, `preset`, and `project_context`.
 
 #### Knowledge tools (no API key needed)
 
@@ -447,6 +523,9 @@ Knowledge tools inject behavioral context into the calling agent — the agent r
 
 "Create DDD skills adapted to my Go project with Clean Architecture"
 → Agent calls generate_skills with mode=personalized, project_context="Go with DDD..."
+
+"Generate feature-development workflow for my Go project with GitHub Actions"
+→ Agent calls generate_workflows with mode=personalized, preset=feature-development
 
 "Help me commit these changes following conventional commits"
 → Agent calls commit_guidance, receives the spec, crafts the message
@@ -530,12 +609,12 @@ Built in Go with what it preaches — DDD/Clean Architecture:
 internal/
 ├── domain/              💎 Pure business logic
 │   ├── project/         Project entity (aggregate root)
-│   ├── catalog/         Declarative skill catalog and metadata registry
+│   ├── catalog/         Declarative skill + workflow catalogs and metadata registries
 │   ├── shared/          Value objects, domain errors
 │   └── service/         Interfaces: LLMProvider, FileWriter, TemplateLoader
 │
 ├── application/         🔄 Use cases (CQRS)
-│   ├── command/         GenerateContext, GenerateSpec, GenerateSkills, DeliverStaticSkills
+│   ├── command/         GenerateContext, GenerateSpec, GenerateSkills, GenerateWorkflows
 │   └── query/           ListProjects
 │
 ├── infrastructure/      🔧 Implementations
@@ -545,8 +624,8 @@ internal/
 │   └── filesystem/      File writer, directory manager, context reader
 │
 └── interfaces/          🎯 Entry points
-    ├── cli/commands/    generate, analyze, spec, skills, serve, list
-    └── mcp/             MCP server (stdio + HTTP transport, 6 tools)
+    ├── cli/commands/    generate, analyze, spec, skills, workflows, serve, list
+    └── mcp/             MCP server (stdio + HTTP transport, 7 tools)
 ```
 
 ### Template system
@@ -571,6 +650,10 @@ templates/
 │   │   ├── neutral/             Architecture: Neutral (review, testing, API)
 │   │   ├── testing/             Testing: Foundational, TDD, BDD
 │   │   └── workflow/            Workflow (conventional commits, semver)
+│   ├── workflows/              Antigravity workflow templates
+│   │   ├── feature_development.template
+│   │   ├── bug_fix.template
+│   │   └── release_cycle.template
 │   └── languages/               Language-specific idiomatic guides
 │       ├── go/idioms.template
 │       ├── javascript/idioms.template
@@ -594,7 +677,7 @@ go test ./tests/...
 
 ## 📊 Project status
 
-**v1.12.0** 🎉
+**v1.13.0** 🎉
 
 ✅ **Working:**
 - Multi-provider LLM support (Anthropic Claude + Google Gemini)
@@ -603,8 +686,10 @@ go test ./tests/...
 - **Agent Skills** with dual mode (static/personalized), interactive guided selection, and declarative catalog
 - **Skills install** — `--install global` or `--install project` for direct agent path installation
 - Skill categories (architecture, testing, workflow) with ecosystem-aware frontmatter (Claude, Codex, Antigravity)
+- **Antigravity Workflows** — multi-step recipes with execution annotations (`// turbo`, `// parallel`, `// capture`, `// if`)
+- **Workflow presets** — feature-development, bug-fix, release-cycle (static + personalized modes)
 - **Unified interactive UX** — all commands prompt for missing parameters when run in a terminal
-- MCP Server mode (stdio + HTTP transport) with 6 tools
+- MCP Server mode (stdio + HTTP transport) with 7 tools
 - MCP knowledge tools (commit_guidance, version_guidance) — no API key needed
 - Preset system (default: DDD/Clean, neutral: generic)
 - AGENTS.md standard as root file
@@ -614,7 +699,7 @@ go test ./tests/...
 - Homebrew formula distribution (macOS/Linux)
 
 🚧 **Coming next:**
-- Testing skill category (unit, integration, e2e)
+- Claude Code composite workflows (Skills + Hooks + Subagents)
 - End-to-end integration tests
 - Retries and rate limit handling
 - MCP server authentication (OAuth/BYOK for remote deployments)

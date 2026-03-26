@@ -1,0 +1,99 @@
+package catalog
+
+import (
+	"fmt"
+	"maps"
+	"strings"
+)
+
+// WorkflowMeta contains metadata for a workflow for static frontmatter generation.
+type WorkflowMeta struct {
+	Description string // max 250 chars (Antigravity constraint)
+}
+
+// WorkflowMetadata maps guide names to their metadata for frontmatter.
+var WorkflowMetadata = map[string]WorkflowMeta{
+	"feature_development": {Description: "Full feature lifecycle: branch, implement, test, PR, and review"},
+	"bug_fix":             {Description: "Structured bug fix: reproduce, diagnose, fix, test, and PR"},
+	"release_cycle":       {Description: "Release process: version bump, changelog, tag, and deploy"},
+}
+
+// GenerateWorkflowFrontmatter generates YAML frontmatter for an Antigravity workflow.
+func GenerateWorkflowFrontmatter(guideName string) string {
+	meta, ok := WorkflowMetadata[guideName]
+	if !ok {
+		name := strings.ReplaceAll(guideName, "_", "-")
+		meta = WorkflowMeta{Description: fmt.Sprintf("Workflow for %s", name)}
+	}
+	return fmt.Sprintf("---\ndescription: %s\n---\n", meta.Description)
+}
+
+// WorkflowCategories is the global registry of workflow categories.
+var WorkflowCategories = []SkillCategory{
+	{
+		Name:      "workflows",
+		Label:     "Workflows",
+		Exclusive: false,
+		Options: []SkillOption{
+			{
+				Name:        "feature-development",
+				Label:       "Feature Development (branch → implement → test → PR → review)",
+				TemplateDir: "workflows",
+				TemplateMapping: map[string]string{
+					"feature_development.template": "feature_development",
+				},
+			},
+			{
+				Name:        "bug-fix",
+				Label:       "Bug Fix (reproduce → diagnose → fix → test → PR)",
+				TemplateDir: "workflows",
+				TemplateMapping: map[string]string{
+					"bug_fix.template": "bug_fix",
+				},
+			},
+			{
+				Name:        "release-cycle",
+				Label:       "Release Cycle (version → changelog → tag → deploy)",
+				TemplateDir: "workflows",
+				TemplateMapping: map[string]string{
+					"release_cycle.template": "release_cycle",
+				},
+			},
+		},
+	},
+}
+
+// WorkflowCategoryNames returns the names of all registered workflow categories.
+func WorkflowCategoryNames() []string {
+	names := make([]string, len(WorkflowCategories))
+	for i, c := range WorkflowCategories {
+		names[i] = c.Name
+	}
+	return names
+}
+
+// FindWorkflowCategory looks up a workflow category by name.
+func FindWorkflowCategory(name string) (*SkillCategory, error) {
+	for i := range WorkflowCategories {
+		if WorkflowCategories[i].Name == name {
+			return &WorkflowCategories[i], nil
+		}
+	}
+	return nil, fmt.Errorf("unknown workflow category: %s", name)
+}
+
+// ResolveAllWorkflows combines all workflow options into a single selection.
+func ResolveAllWorkflows() *ResolvedSelection {
+	merged := make(map[string]string)
+	var dir string
+	for _, cat := range WorkflowCategories {
+		for _, opt := range cat.Options {
+			dir = opt.TemplateDir
+			maps.Copy(merged, opt.TemplateMapping)
+		}
+	}
+	return &ResolvedSelection{
+		TemplateDir:     dir,
+		TemplateMapping: merged,
+	}
+}

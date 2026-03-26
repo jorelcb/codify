@@ -1,0 +1,77 @@
+# Feature Development Workflow
+
+## Purpose
+Guide an AI agent through the complete feature development lifecycle: from branch creation to PR merge. This workflow enforces a disciplined process that produces well-tested, reviewable code.
+
+## Steps to Generate
+
+### 1. Create Feature Branch
+// capture: BRANCH_NAME
+Create a new branch from the latest main/develop branch following the project's naming convention (e.g., `feature/short-description`).
+- Pull latest changes from the base branch
+- Create and switch to the feature branch
+- Push the branch to origin to establish tracking
+
+### 2. Understand the Requirement
+Before writing code, ensure the requirement is clear:
+- Read the issue/ticket description
+- Identify acceptance criteria
+- List the files and modules likely to be affected
+- Identify edge cases and potential risks
+
+### 3. Plan the Implementation
+// if the change touches more than 3 files
+Break down the feature into small, incremental steps:
+- Define the order of changes (domain → application → infrastructure → interface)
+- Identify dependencies between changes
+- Plan the test strategy (unit, integration, acceptance)
+
+### 4. Implement with Tests
+Write code following the project's architecture and conventions:
+- Write tests first when possible (TDD cycle)
+- Keep commits atomic and focused (one logical change per commit)
+- Follow the project's coding standards and linting rules
+- Run tests after each significant change
+
+### 5. Run Full Test Suite
+// turbo
+Run the complete test suite to catch regressions:
+- Unit tests
+- Integration tests
+- Linting and static analysis
+
+### 6. Self-Review the Diff
+Before creating a PR, review your own changes:
+- Read the complete diff as if reviewing someone else's code
+- Check for: leftover debug code, TODOs, commented-out code, hardcoded values
+- Verify commit messages follow the project's convention
+- Ensure no sensitive data (keys, passwords) is included
+
+### 7. Create Pull Request
+Create a well-structured PR:
+- Write a clear title summarizing the change
+- Include a description with: what changed, why, and how to test
+- Link related issues/tickets
+- Add appropriate reviewers and labels
+
+### 8. Address Review Feedback
+// if there is review feedback
+Process each review comment:
+- Acknowledge each comment
+- Implement requested changes in new commits (don't amend during review)
+- Re-request review after addressing all feedback
+- Run tests again after changes
+
+### 9. Merge and Clean Up
+// turbo
+After approval:
+- Merge using the project's preferred strategy (squash, merge, rebase)
+- Delete the feature branch
+- Verify the merge in the base branch
+
+## Anti-patterns
+- Giant PRs with unrelated changes (split them)
+- Force-pushing during review (makes it impossible to see incremental changes)
+- Skipping tests before PR creation
+- Vague commit messages ("fix stuff", "updates")
+- Not pulling latest base branch before starting

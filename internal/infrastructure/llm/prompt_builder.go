@@ -39,6 +39,14 @@ var fileOutputNames = map[string]string{
 	"api_design":           "SKILL.md",
 	"conventional_commit":  "SKILL.md",
 	"semantic_versioning":  "SKILL.md",
+	// Testing skills
+	"test_foundational": "SKILL.md",
+	"test_tdd":          "SKILL.md",
+	"test_bdd":          "SKILL.md",
+	// Workflow command output files (flat .md files, not subdirectories)
+	"feature_development": "feature-development.md",
+	"bug_fix":             "bug-fix.md",
+	"release_cycle":       "release-cycle.md",
 }
 
 // localeLanguageNames maps locale codes to their language name for the LLM directive.
@@ -319,4 +327,87 @@ For domain logic:
 - Base ALL content on the existing context provided
 - Mark with [DEFINE] any business rule, validation, or behavior not in the context
 </rules>`, existingContext, outputLanguageName(locale))
+}
+
+// BuildPersonalizedWorkflowsSystemPrompt returns a system prompt for generating personalized Antigravity workflows.
+func (b *PromptBuilder) BuildPersonalizedWorkflowsSystemPrompt(workflowName, locale, projectContext string) string {
+	return fmt.Sprintf(`<role>
+You are a senior DevOps engineer and workflow automation specialist.
+Your task is to generate Antigravity workflow files — multi-step recipes that AI agents execute on demand.
+Workflows are markdown files with numbered steps that teach agents how to perform complex, repeatable tasks.
+</role>
+
+<task>
+Generate a complete, production-ready Antigravity workflow file for: %s.
+This workflow must be PERSONALIZED to the user's project context provided below.
+The output must include proper YAML frontmatter with a description field (max 250 characters).
+</task>
+
+<project_context>
+%s
+</project_context>
+
+<workflow_format>
+The workflow file MUST follow this structure:
+
+1. YAML frontmatter with a "description" field (max 250 characters, between --- markers)
+2. Numbered steps in markdown, each with a bold title and detailed instructions
+3. Execution annotations where appropriate (see below)
+4. Code blocks with exact commands the agent should run
+
+Execution annotations (place on a line by itself before the instruction):
+- // turbo — Auto-execute the next command without user confirmation (for safe, non-destructive operations)
+- // turbo-all — Auto-execute ALL remaining commands (for fully automated, safe workflows)
+- // parallel — Run this step concurrently with other parallel-marked steps
+- // if [condition] — Conditional step: agent evaluates at runtime, skips if false
+- // capture: VARIABLE_NAME — Capture command output into a variable, reference later as {{VARIABLE_NAME}}
+- // run workflow: [name] — Invoke another workflow (composition)
+- // retry: N — Retry a turbo step N times on failure
+- // timeout: duration — Set a timeout for a turbo step (e.g., "30s", "5m")
+</workflow_format>
+
+<personalization_rules>
+CRITICAL — Adapt this workflow to the project context:
+
+1. Use the project's actual tools, frameworks, and commands (not generic placeholders)
+2. Reference the project's branch naming conventions, CI/CD tools, and testing frameworks
+3. Adapt file paths and directory structures to match the project's layout
+4. Include project-specific considerations (monorepo vs single repo, deployment targets, etc.)
+5. Use the project's package manager, build tools, and test runners in commands
+6. If the project uses specific code review tools, issue trackers, or deployment platforms, reference them
+
+DO NOT:
+- Use generic commands when the project context provides specific tools
+- Include steps irrelevant to the project's tech stack
+- Assume tools or services not mentioned in the project context
+</personalization_rules>
+
+<output_quality>
+- YAML frontmatter with description (max 250 chars)
+- 5-15 numbered steps (enough detail without bloat)
+- Exact, copy-pasteable commands in code blocks
+- Appropriate use of execution annotations (turbo for safe commands, capture for outputs needed later)
+- Each step should be independently understandable
+- Steps should flow logically from start to finish
+</output_quality>
+
+<rules>
+- Respond ONLY with the complete workflow file (frontmatter + numbered steps)
+- DO NOT wrap the response in code blocks
+- DO NOT add explanations before or after the content
+- Content must be in %s
+- Start with the --- YAML frontmatter delimiter
+</rules>`, workflowName, projectContext, outputLanguageName(locale))
+}
+
+// BuildWorkflowsUserMessage constructs the user message for generating a single workflow.
+func (b *PromptBuilder) BuildWorkflowsUserMessage(guide service.TemplateGuide) string {
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("<workflow_name>%s</workflow_name>\n\n", guide.Name))
+	sb.WriteString("<template_guide>\n")
+	sb.WriteString(guide.Content)
+	sb.WriteString("\n</template_guide>\n")
+
+	return sb.String()
 }
