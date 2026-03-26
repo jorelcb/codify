@@ -276,7 +276,7 @@ Solo ejecuta `codify skills` — el menu interactivo te guia por cada decision:
 
 ```bash
 codify skills
-# → Selecciona categoria (architecture, workflow)
+# → Selecciona categoria (architecture, testing, conventions)
 # → Selecciona preset (clean, neutral, conventional-commit, ...)
 # → Selecciona modo (static o personalized)
 # → Selecciona ecosistema target (claude, codex, antigravity)
@@ -289,10 +289,10 @@ codify skills
 
 ```bash
 # Static: entrega instantanea, sin API key
-codify skills --category workflow --preset all --mode static
+codify skills --category conventions --preset all --mode static
 
 # Instalar globalmente — skills accesibles desde cualquier proyecto
-codify skills --category workflow --preset all --mode static --install global
+codify skills --category conventions --preset all --mode static --install global
 
 # Instalar en el proyecto actual — compartible via git
 codify skills --category architecture --preset clean --mode static --install project
@@ -321,9 +321,9 @@ codify skills --category architecture --preset neutral --target codex
 | `testing` | `foundational` | Test Desiderata — Las 12 propiedades de Kent Beck para buenos tests |
 | `testing` | `tdd` | Test-Driven Development — Red-Green-Refactor *(incluye foundational)* |
 | `testing` | `bdd` | Behavior-Driven Development — Given/When/Then *(incluye foundational)* |
-| `workflow` | `conventional-commit` | Conventional Commits |
-| `workflow` | `semantic-versioning` | Semantic Versioning |
-| `workflow` | `all` | Todas las skills de workflow combinadas |
+| `conventions` | `conventional-commit` | Conventional Commits |
+| `conventions` | `semantic-versioning` | Semantic Versioning |
+| `conventions` | `all` | Todas las skills de convenciones combinadas |
 
 ### Ecosistemas target
 
@@ -343,7 +343,7 @@ codify skills [flags]
 
 | Flag | Descripcion | Default |
 |------|-------------|---------|
-| `--category` | Categoria de skill (`architecture`, `workflow`) | *(interactivo)* |
+| `--category` | Categoria de skill (`architecture`, `testing`, `conventions`) | *(interactivo)* |
 | `--preset` | Preset dentro de la categoria | *(interactivo)* |
 | `--mode` | Modo de generacion: `static` o `personalized` | *(interactivo)* |
 | `--install` | Scope de instalacion: `global` (path del agente) o `project` (dir actual) | *(interactivo)* |
@@ -518,8 +518,8 @@ Las herramientas de conocimiento inyectan contexto comportamental en el agente q
 "Analiza mi proyecto en /path/to/my-app y genera specs"
 → El agente invoca analyze_project con with_specs=true
 
-"Genera skills de workflow para mi proyecto"
-→ El agente invoca generate_skills con mode=static, category=workflow, preset=all
+"Genera skills de convenciones para mi proyecto"
+→ El agente invoca generate_skills con mode=static, category=conventions, preset=all
 
 "Crea skills de DDD adaptadas a mi proyecto Go con Clean Architecture"
 → El agente invoca generate_skills con mode=personalized, project_context="Go con DDD..."
@@ -649,7 +649,7 @@ templates/
 │   │   ├── default/             Architecture: Clean (DDD, BDD, CQRS, Hexagonal)
 │   │   ├── neutral/             Architecture: Neutral (review, testing, API)
 │   │   ├── testing/             Testing: Foundational, TDD, BDD
-│   │   └── workflow/            Workflow (conventional commits, semver)
+│   │   └── conventions/         Conventions (conventional commits, semver)
 │   ├── workflows/              Templates de workflows Antigravity
 │   │   ├── feature_development.template
 │   │   ├── bug_fix.template
@@ -685,7 +685,7 @@ go test ./tests/...
 - **Generacion de specs SDD** a partir de contexto existente (`spec`, `--with-specs`)
 - **Agent Skills** con modo dual (static/personalized), seleccion guiada interactiva y catalogo declarativo
 - **Instalacion de skills** — `--install global` o `--install project` para instalacion directa en el path del agente
-- Categorias de skills (architecture, testing, workflow) con frontmatter por ecosistema (Claude, Codex, Antigravity)
+- Categorias de skills (architecture, testing, conventions) con frontmatter por ecosistema (Claude, Codex, Antigravity)
 - **Workflows Antigravity** — recetas multi-paso con anotaciones de ejecucion (`// turbo`, `// parallel`, `// capture`, `// if`)
 - **Presets de workflows** — feature-development, bug-fix, release-cycle (modos static + personalized)
 - **UX interactiva unificada** — todos los comandos preguntan por parametros faltantes en terminal

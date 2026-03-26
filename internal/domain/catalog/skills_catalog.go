@@ -143,14 +143,14 @@ var Categories = []SkillCategory{
 		},
 	},
 	{
-		Name:      "workflow",
-		Label:     "Workflow",
+		Name:      "conventions",
+		Label:     "Conventions",
 		Exclusive: false,
 		Options: []SkillOption{
 			{
 				Name:        "conventional-commit",
 				Label:       "Conventional Commits",
-				TemplateDir: "workflow",
+				TemplateDir: "conventions",
 				TemplateMapping: map[string]string{
 					"conventional_commit.template": "conventional_commit",
 				},
@@ -158,7 +158,7 @@ var Categories = []SkillCategory{
 			{
 				Name:        "semantic-versioning",
 				Label:       "Semantic Versioning",
-				TemplateDir: "workflow",
+				TemplateDir: "conventions",
 				TemplateMapping: map[string]string{
 					"semantic_versioning.template": "semantic_versioning",
 				},
@@ -242,5 +242,6 @@ func (c *SkillCategory) OptionLabels() []string {
 var LegacyPresetMapping = map[string][2]string{
 	"default":  {"architecture", "clean"},
 	"neutral":  {"architecture", "neutral"},
-	"workflow": {"workflow", "all"},
+	"workflow":    {"conventions", "all"},
+	"conventions": {"conventions", "all"},
 }

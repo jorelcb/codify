@@ -100,8 +100,8 @@ func analyzeProjectTool() server.ServerTool {
 func generateSkillsTool() server.ServerTool {
 	tool := mcp.NewTool("generate_skills",
 		mcp.WithDescription("Generate AI agent skills (SKILL.md) by category, preset, and mode. Static mode delivers instant skills from the catalog. Personalized mode uses LLM to adapt skills to a specific project context."),
-		mcp.WithString("category", mcp.Required(), mcp.Description("Skill category: architecture, testing, or workflow")),
-		mcp.WithString("preset", mcp.Required(), mcp.Description("Preset within category. architecture: clean, neutral. testing: foundational, tdd, bdd. workflow: conventional-commit, semantic-versioning, all")),
+		mcp.WithString("category", mcp.Required(), mcp.Description("Skill category: architecture, testing, or conventions")),
+		mcp.WithString("preset", mcp.Required(), mcp.Description("Preset within category. architecture: clean, neutral. testing: foundational, tdd, bdd. conventions: conventional-commit, semantic-versioning, all")),
 		mcp.WithString("mode", mcp.Description("Generation mode: static (instant, no API key) or personalized (LLM-adapted)"), mcp.DefaultString("static")),
 		mcp.WithString("project_context", mcp.Description("Project description for personalized mode (language, architecture, domain, stack)")),
 		mcp.WithString("locale", mcp.Description("Output language: en or es"), mcp.DefaultString("en")),
@@ -429,7 +429,7 @@ func handleGenerateWorkflows(ctx context.Context, request mcp.CallToolRequest) (
 
 func handleCommitGuidance(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	locale := stringArgDefault(request, "locale", "en")
-	content, err := loadKnowledgeTemplate(locale, "workflow", "conventional_commit.template")
+	content, err := loadKnowledgeTemplate(locale, "conventions", "conventional_commit.template")
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to load commit guidance: %v", err)), nil
 	}
@@ -438,7 +438,7 @@ func handleCommitGuidance(ctx context.Context, request mcp.CallToolRequest) (*mc
 
 func handleVersionGuidance(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	locale := stringArgDefault(request, "locale", "en")
-	content, err := loadKnowledgeTemplate(locale, "workflow", "semantic_versioning.template")
+	content, err := loadKnowledgeTemplate(locale, "conventions", "semantic_versioning.template")
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to load version guidance: %v", err)), nil
 	}

@@ -50,7 +50,7 @@ Modes:
 Categories:
   architecture  - Architecture patterns and best practices
   testing       - Testing methodologies and quality properties
-  workflow      - Development workflow automation
+  conventions   - Development conventions and standards
 
 Presets:
   architecture:
@@ -60,10 +60,10 @@ Presets:
     foundational  - Test Desiderata (Kent Beck's 12 properties)
     tdd           - Test-Driven Development (includes foundational)
     bdd           - Behavior-Driven Development (includes foundational)
-  workflow:
+  conventions:
     conventional-commit   - Conventional Commits spec
     semantic-versioning   - Semantic Versioning spec
-    all                   - All workflow skills
+    all                   - All convention skills
 
 Install:
   global   - Install to agent's global path (~/.claude/skills/, ~/.codex/skills/)
@@ -76,10 +76,10 @@ Examples:
   codify skills
 
   # Static: instant delivery, no API key
-  codify skills --category workflow --preset all --mode static
+  codify skills --category conventions --preset all --mode static
 
   # Install globally for Claude Code
-  codify skills --category workflow --preset all --mode static --install global
+  codify skills --category conventions --preset all --mode static --install global
 
   # Install to current project
   codify skills --category architecture --preset clean --mode static --install project
@@ -98,7 +98,7 @@ Examples:
 		},
 	}
 
-	cmd.Flags().StringVarP(&p.category, "category", "c", "", "Skill category: architecture, workflow")
+	cmd.Flags().StringVarP(&p.category, "category", "c", "", "Skill category: architecture, testing, conventions")
 	cmd.Flags().StringVarP(&p.preset, "preset", "p", "", "Preset within category (or 'all' if supported)")
 	cmd.Flags().StringVar(&p.mode, "mode", "", "Generation mode: static (instant) or personalized (LLM)")
 	cmd.Flags().StringVar(&p.target, "target", "claude", "Target ecosystem: claude, codex, or antigravity")

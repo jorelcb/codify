@@ -276,7 +276,7 @@ Just run `codify skills` — the interactive menu guides you through every choic
 
 ```bash
 codify skills
-# → Select category (architecture, workflow)
+# → Select category (architecture, testing, conventions)
 # → Select preset (clean, neutral, conventional-commit, ...)
 # → Select mode (static or personalized)
 # → Select target ecosystem (claude, codex, antigravity)
@@ -289,10 +289,10 @@ codify skills
 
 ```bash
 # Static: instant delivery, no API key
-codify skills --category workflow --preset all --mode static
+codify skills --category conventions --preset all --mode static
 
 # Install globally — skills available from any project
-codify skills --category workflow --preset all --mode static --install global
+codify skills --category conventions --preset all --mode static --install global
 
 # Install to current project — shareable via git
 codify skills --category architecture --preset clean --mode static --install project
@@ -321,9 +321,9 @@ codify skills --category architecture --preset neutral --target codex
 | `testing` | `foundational` | Test Desiderata — Kent Beck's 12 properties of good tests |
 | `testing` | `tdd` | Test-Driven Development — Red-Green-Refactor *(includes foundational)* |
 | `testing` | `bdd` | Behavior-Driven Development — Given/When/Then *(includes foundational)* |
-| `workflow` | `conventional-commit` | Conventional Commits |
-| `workflow` | `semantic-versioning` | Semantic Versioning |
-| `workflow` | `all` | All workflow skills combined |
+| `conventions` | `conventional-commit` | Conventional Commits |
+| `conventions` | `semantic-versioning` | Semantic Versioning |
+| `conventions` | `all` | All convention skills combined |
 
 ### Target ecosystems
 
@@ -343,7 +343,7 @@ codify skills [flags]
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--category` | Skill category (`architecture`, `workflow`) | *(interactive)* |
+| `--category` | Skill category (`architecture`, `testing`, `conventions`) | *(interactive)* |
 | `--preset` | Preset within category | *(interactive)* |
 | `--mode` | Generation mode: `static` or `personalized` | *(interactive)* |
 | `--install` | Install scope: `global` (agent path) or `project` (current dir) | *(interactive)* |
@@ -518,8 +518,8 @@ Knowledge tools inject behavioral context into the calling agent — the agent r
 "Analyze my project at /path/to/my-app and generate specs"
 → Agent calls analyze_project with with_specs=true
 
-"Generate workflow skills for my project"
-→ Agent calls generate_skills with mode=static, category=workflow, preset=all
+"Generate convention skills for my project"
+→ Agent calls generate_skills with mode=static, category=conventions, preset=all
 
 "Create DDD skills adapted to my Go project with Clean Architecture"
 → Agent calls generate_skills with mode=personalized, project_context="Go with DDD..."
@@ -649,7 +649,7 @@ templates/
 │   │   ├── default/             Architecture: Clean (DDD, BDD, CQRS, Hexagonal)
 │   │   ├── neutral/             Architecture: Neutral (review, testing, API)
 │   │   ├── testing/             Testing: Foundational, TDD, BDD
-│   │   └── workflow/            Workflow (conventional commits, semver)
+│   │   └── conventions/         Conventions (conventional commits, semver)
 │   ├── workflows/              Antigravity workflow templates
 │   │   ├── feature_development.template
 │   │   ├── bug_fix.template
@@ -685,7 +685,7 @@ go test ./tests/...
 - **SDD spec generation** from existing context (`spec`, `--with-specs`)
 - **Agent Skills** with dual mode (static/personalized), interactive guided selection, and declarative catalog
 - **Skills install** — `--install global` or `--install project` for direct agent path installation
-- Skill categories (architecture, testing, workflow) with ecosystem-aware frontmatter (Claude, Codex, Antigravity)
+- Skill categories (architecture, testing, conventions) with ecosystem-aware frontmatter (Claude, Codex, Antigravity)
 - **Antigravity Workflows** — multi-step recipes with execution annotations (`// turbo`, `// parallel`, `// capture`, `// if`)
 - **Workflow presets** — feature-development, bug-fix, release-cycle (static + personalized modes)
 - **Unified interactive UX** — all commands prompt for missing parameters when run in a terminal

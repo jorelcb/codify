@@ -11,7 +11,7 @@ func TestFindCategory(t *testing.T) {
 	}{
 		{"architecture", false},
 		{"testing", false},
-		{"workflow", false},
+		{"conventions", false},
 		{"unknown", true},
 	}
 	for _, tt := range tests {
@@ -56,7 +56,7 @@ func TestCategoryResolve_Exclusive(t *testing.T) {
 }
 
 func TestCategoryResolve_NonExclusive(t *testing.T) {
-	cat, _ := FindCategory("workflow")
+	cat, _ := FindCategory("conventions")
 
 	// Sub-opción individual
 	sel, err := cat.Resolve("conventional-commit")
@@ -114,7 +114,7 @@ func TestCategoryNames(t *testing.T) {
 	if len(names) != 3 {
 		t.Fatalf("got %d categories, want 3", len(names))
 	}
-	if names[0] != "architecture" || names[1] != "testing" || names[2] != "workflow" {
+	if names[0] != "architecture" || names[1] != "testing" || names[2] != "conventions" {
 		t.Errorf("unexpected names: %v", names)
 	}
 }
@@ -128,7 +128,8 @@ func TestLegacyPresetMapping(t *testing.T) {
 	}{
 		{"default", "architecture", "clean", true},
 		{"neutral", "architecture", "neutral", true},
-		{"workflow", "workflow", "all", true},
+		{"workflow", "conventions", "all", true},
+		{"conventions", "conventions", "all", true},
 		{"unknown", "", "", false},
 	}
 	for _, tt := range tests {
@@ -148,7 +149,7 @@ func TestLegacyPresetMapping(t *testing.T) {
 }
 
 func TestOptionNamesAndLabels(t *testing.T) {
-	cat, _ := FindCategory("workflow")
+	cat, _ := FindCategory("conventions")
 
 	names := cat.OptionNames()
 	if len(names) != 2 {
