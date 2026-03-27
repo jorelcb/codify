@@ -4,19 +4,19 @@
 
 [![Version](https://img.shields.io/badge/version-1.13.1-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
-[![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.21)
+[![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
 [![Claude](https://img.shields.io/badge/Claude-cc785c?style=for-the-badge)](https://www.anthropic.com)
 [![Gemini](https://img.shields.io/badge/Gemini-4285F4?style=for-the-badge&logo=google)](https://ai.google.dev)
 [![AGENTS.md](https://img.shields.io/badge/Standard-AGENTS.md-purple?style=for-the-badge)](https://github.com/anthropics/AGENTS.md)
 
-**Contexto. Specs. Skills. Todo lo que tu agente de IA necesita antes de escribir la primera linea de codigo.** 🏗️
+**Contexto. Specs. Skills. Workflows. Todo lo que tu agente de IA necesita antes de escribir la primera linea de codigo.** 🏗️
 
 *Porque un agente sin contexto es un pasante con acceso root.*
 
 [English](README.md) | **[Español]**
 
-[Quick Start](#-quick-start) · [Contexto](#-generacion-de-contexto) · [Specs](#-desarrollo-guiado-por-specs) · [Skills](#-agent-skills) · [MCP Server](#-mcp-server) · [Guias por Lenguaje](#-guias-por-lenguaje) · [Arquitectura](#%EF%B8%8F-arquitectura)
+[Quick Start](#-quick-start) · [Contexto](#-generacion-de-contexto) · [Specs](#-desarrollo-guiado-por-specs) · [Skills](#-agent-skills) · [Workflows](#-workflows) · [MCP Server](#-mcp-server) · [Guias por Lenguaje](#-guias-por-lenguaje) · [Arquitectura](#%EF%B8%8F-arquitectura)
 
 </div>
 
@@ -36,24 +36,25 @@ Y el agente, con toda su capacidad, improvisa:
 
 ## 💡 La Solucion
 
-**Codify** equipa a tu agente de IA con tres cosas que necesita para dejar de improvisar:
+**Codify** equipa a tu agente de IA con cuatro cosas que necesita para dejar de improvisar:
 
 ```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Contexto   │     │    Specs     │     │   Skills     │
-│              │     │              │     │              │
-│  Que es el   │     │  Que         │     │  Como hacer  │
-│  proyecto    │────▶│  construir   │     │  las cosas   │
-│              │     │              │     │  bien        │
-│  generate    │     │  spec        │     │  skills      │
-│  analyze     │     │  --with-specs│     │              │
-└──────────────┘     └──────────────┘     └──────────────┘
-     Memoria            Plan              Habilidades
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│   Contexto   │     │    Specs     │     │   Skills     │     │  Workflows   │
+│              │     │              │     │              │     │              │
+│  Que es el   │     │  Que         │     │  Como hacer  │     │  Recetas     │
+│  proyecto    │────▶│  construir   │     │  las cosas   │     │  multi-paso  │
+│              │     │              │     │  bien        │     │  bajo demanda│
+│  generate    │     │  spec        │     │  skills      │     │  workflows   │
+│  analyze     │     │  --with-specs│     │              │     │              │
+└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
+     Memoria            Plan              Habilidades        Orquestacion
 ```
 
 - **Contexto** le da al agente memoria arquitectonica — stack, patrones, convenciones, conocimiento de dominio
 - **Specs** le dan al agente un plan de implementacion — features, criterios de aceptacion, desglose de tareas
 - **Skills** le dan al agente habilidades reutilizables — como hacer commits, versionar, disenar entidades, hacer code review
+- **Workflows** le dan al agente recetas de orquestacion — procesos multi-paso como desarrollo de features, correccion de bugs, releases
 
 Sigue el [estandar AGENTS.md](https://github.com/anthropics/AGENTS.md) — una especificacion abierta respaldada por la Linux Foundation para proveer contexto de proyecto a agentes de IA. Los archivos funcionan directamente con Claude Code, Cursor, Codex y cualquier agente que lea el estandar.
 
@@ -111,7 +112,7 @@ go install github.com/jorelcb/codify/cmd/codify@latest
 # https://github.com/jorelcb/codify/releases
 ```
 
-### Tres formas de equipar a tu agente
+### Cuatro formas de equipar a tu agente
 
 Todos los comandos soportan **modo interactivo** — ejecuta sin flags y los menus te guian por cada opcion. O pasa los flags explicitamente para CI/scripting.
 
@@ -138,6 +139,11 @@ codify spec payment-service \
 codify skills
 # Menus interactivos para: categoria, preset, modo, target, ubicacion de instalacion
 # No necesitas API key para el modo static.
+
+# ── Workflows: dale a tu agente recetas de orquestacion ──
+codify workflows
+# Menus interactivos para: preset, target, modo, locale, ubicacion de instalacion
+# Soporta Claude Code (SKILL.md) y Antigravity (.md nativo).
 ```
 
 ### Lo que vas a ver
@@ -355,17 +361,22 @@ codify skills [flags]
 
 ---
 
-## 🔄 Antigravity Workflows
+## 🔄 Workflows
 
-Los workflows son recetas multi-paso que los agentes de IA ejecutan bajo demanda via `/command`. Usan el primitivo nativo de workflows de Antigravity con anotaciones de ejecucion (`// turbo`, `// parallel`, `// capture`, `// if`, etc.) para orquestar tareas de desarrollo complejas.
+Los workflows son recetas de orquestacion multi-paso que los agentes de IA ejecutan bajo demanda. A diferencia de las skills (que ensenan *como* hacer una tarea especifica), los workflows orquestan *secuencias de tareas* — desde la creacion del branch hasta el merge del PR, desde el reporte del bug hasta el deploy del fix.
 
-> **Target:** Antigravity IDE (Google) exclusivamente. Soporte para Claude Code planificado via plugin compuesto.
+Codify genera workflows para dos ecosistemas:
+
+| Target | Formato de salida | Ruta de salida | Invocacion |
+|--------|-------------------|----------------|------------|
+| **Claude Code** | SKILL.md con instrucciones en prosa | `.claude/skills/{workflow}/SKILL.md` | `/workflow-name` |
+| **Antigravity** | `.md` nativo con anotaciones de ejecucion (`// turbo`, `// capture`, etc.) | `.agent/workflows/{workflow}.md` | `/workflow-name` |
 
 ### Dos modos
 
 | Modo | Que hace | API key | Costo | Velocidad |
 |------|----------|---------|-------|-----------|
-| **Static** | Entrega workflows pre-construidos del catalogo embebido. Frontmatter Antigravity listo para produccion. | No necesaria | Gratis | Instantaneo |
+| **Static** | Entrega workflows pre-construidos del catalogo embebido. Frontmatter por ecosistema. | No necesaria | Gratis | Instantaneo |
 | **Personalized** | LLM adapta workflows a tu proyecto — los pasos referencian tus herramientas, CI/CD y targets de despliegue. | Requerida | ~centavos | ~10s |
 
 ### Modo interactivo
@@ -373,6 +384,7 @@ Los workflows son recetas multi-paso que los agentes de IA ejecutan bajo demanda
 ```bash
 codify workflows
 # → Selecciona preset (feature-development, bug-fix, release-cycle, all)
+# → Selecciona ecosistema target (claude, antigravity)
 # → Selecciona modo (static o personalized)
 # → Selecciona locale
 # → Selecciona ubicacion de instalacion (global, project, o custom)
@@ -382,26 +394,39 @@ codify workflows
 ### Modo CLI
 
 ```bash
-# Static: entrega instantanea, sin API key
-codify workflows --preset all --mode static
+# Claude Code: generar workflow skills
+codify workflows --preset all --target claude --mode static
 
-# Instalar globalmente
-codify workflows --preset all --mode static --install global
+# Claude Code: instalar globalmente
+codify workflows --preset all --target claude --mode static --install global
 
-# Instalar en el proyecto actual
-codify workflows --preset feature-development --mode static --install project
+# Claude Code: instalar en el proyecto actual
+codify workflows --preset feature-development --target claude --mode static --install project
+
+# Antigravity: generar archivos de workflow nativos
+codify workflows --preset all --target antigravity --mode static
+
+# Antigravity: instalar globalmente
+codify workflows --preset all --target antigravity --mode static --install global
 
 # Personalized: adaptado a tu proyecto via LLM
-codify workflows --preset all --mode personalized \
+codify workflows --preset all --target claude --mode personalized \
   --context "Microservicio Go con CI/CD via GitHub Actions"
 ```
 
+### Ecosistemas target
+
+| Target | Frontmatter | Estructura de archivos | Diferencia clave |
+|--------|-------------|------------------------|------------------|
+| `claude` | `name`, `description`, `user-invocable: true` | `{workflow}/SKILL.md` (subdirectorio) | Instrucciones en prosa — sin anotaciones de ejecucion |
+| `antigravity` *(default)* | `description` (max 250 chars) | `{workflow}.md` (archivo plano) | Anotaciones nativas: `// turbo`, `// capture`, `// if`, `// parallel` |
+
 ### Scopes de instalacion
 
-| Scope | Path | Caso de uso |
-|-------|------|-------------|
-| `global` | `~/.gemini/antigravity/global_workflows/` | Accesible desde cualquier proyecto |
-| `project` | `.agent/workflows/` | Commiteado a git, compartido con el equipo |
+| Scope | Path Claude | Path Antigravity |
+|-------|-------------|------------------|
+| `global` | `~/.claude/skills/` | `~/.gemini/antigravity/global_workflows/` |
+| `project` | `.claude/skills/` | `.agent/workflows/` |
 
 ### Catalogo de workflows
 
@@ -412,6 +437,15 @@ codify workflows --preset all --mode personalized \
 | `release-cycle` | Release Cycle | Bump de version → changelog → tag → deploy |
 | `all` | Todos los workflows | Todos los presets de workflow combinados |
 
+### Skills vs Workflows
+
+| | Skills | Workflows |
+|-|--------|-----------|
+| **Proposito** | Ensenan *como* hacer una tarea especifica | Orquestan una *secuencia* de tareas |
+| **Alcance** | Responsabilidad unica (ej. "escribir un commit") | Proceso end-to-end (ej. "desarrollar una feature") |
+| **Invocacion** | El agente lee cuando es relevante | El usuario invoca via `/command` |
+| **Ejemplos** | Conventional Commits, DDD entity, code review | Feature development, bug fix, release cycle |
+
 ### Opciones
 
 ```bash
@@ -421,12 +455,13 @@ codify workflows [flags]
 | Flag | Descripcion | Default |
 |------|-------------|---------|
 | `--preset` `-p` | Preset de workflow | *(interactivo)* |
+| `--target` | Ecosistema target: `claude` o `antigravity` | `antigravity` |
 | `--mode` | Modo de generacion: `static` o `personalized` | *(interactivo)* |
 | `--install` | Scope de instalacion: `global` o `project` | *(interactivo)* |
 | `--context` | Descripcion del proyecto para modo personalized | — |
 | `--model` `-m` | Modelo LLM (solo modo personalized) | auto-detectado |
 | `--locale` | Idioma de salida (`en`, `es`) | `en` |
-| `--output` `-o` | Directorio de salida (sobreescribe `--install`) | `.agent/workflows/` |
+| `--output` `-o` | Directorio de salida (sobreescribe `--install`) | especifico del target |
 
 ---
 
@@ -496,9 +531,9 @@ Agrega a `~/.gemini/settings.json`:
 | `generate_specs` | Genera specs SDD a partir de contexto existente |
 | `analyze_project` | Escanea un proyecto existente y genera contexto desde su estructura |
 | `generate_skills` | Genera Agent Skills — soporta modos `static` (instantaneo) y `personalized` (adaptado via LLM) |
-| `generate_workflows` | Genera workflows Antigravity — soporta modos `static` (instantaneo) y `personalized` (adaptado via LLM) |
+| `generate_workflows` | Genera workflows para Claude Code (SKILL.md) o Antigravity (.md nativo) — soporta modos `static` y `personalized` |
 
-Todas las herramientas generativas soportan `locale` (`en`/`es`) y `model`. `generate_context` y `analyze_project` tambien aceptan `with_specs`. `generate_skills` acepta `mode`, `category`, `preset` y `project_context`. `generate_workflows` acepta `mode`, `preset` y `project_context`.
+Todas las herramientas generativas soportan `locale` (`en`/`es`) y `model`. `generate_context` y `analyze_project` tambien aceptan `with_specs`. `generate_skills` acepta `mode`, `category`, `preset`, `target` y `project_context`. `generate_workflows` acepta `mode`, `preset`, `target` (`claude`/`antigravity`) y `project_context`.
 
 #### Herramientas de conocimiento (sin API key)
 
@@ -524,8 +559,11 @@ Las herramientas de conocimiento inyectan contexto comportamental en el agente q
 "Crea skills de DDD adaptadas a mi proyecto Go con Clean Architecture"
 → El agente invoca generate_skills con mode=personalized, project_context="Go con DDD..."
 
-"Genera workflow de feature-development para mi proyecto Go con GitHub Actions"
-→ El agente invoca generate_workflows con mode=personalized, preset=feature-development
+"Genera workflow de feature-development para Claude Code"
+→ El agente invoca generate_workflows con target=claude, preset=feature-development, mode=static
+
+"Genera todos los workflows adaptados a mi proyecto Go con GitHub Actions"
+→ El agente invoca generate_workflows con target=claude, mode=personalized, preset=all, project_context="Go con GitHub Actions"
 
 "Ayudame a hacer commit de estos cambios siguiendo conventional commits"
 → El agente invoca commit_guidance, recibe la spec, construye el mensaje
@@ -686,8 +724,8 @@ go test ./tests/...
 - **Agent Skills** con modo dual (static/personalized), seleccion guiada interactiva y catalogo declarativo
 - **Instalacion de skills** — `--install global` o `--install project` para instalacion directa en el path del agente
 - Categorias de skills (architecture, testing, conventions) con frontmatter por ecosistema (Claude, Codex, Antigravity)
-- **Workflows Antigravity** — recetas multi-paso con anotaciones de ejecucion (`// turbo`, `// parallel`, `// capture`, `// if`)
-- **Presets de workflows** — feature-development, bug-fix, release-cycle (modos static + personalized)
+- **Workflows** — recetas de orquestacion multi-paso para Claude Code (SKILL.md) y Antigravity (anotaciones nativas)
+- **Presets de workflows** — feature-development, bug-fix, release-cycle (modos static + personalized, multi-target)
 - **UX interactiva unificada** — todos los comandos preguntan por parametros faltantes en terminal
 - Servidor MCP (transporte stdio + HTTP) con 7 herramientas
 - Herramientas de conocimiento MCP (commit_guidance, version_guidance) — sin API key
@@ -699,7 +737,7 @@ go test ./tests/...
 - Distribucion via Homebrew formula (macOS/Linux)
 
 🚧 **Proximo:**
-- Workflows compuestos para Claude Code (Skills + Hooks + Subagents)
+- Evolucion compuesta para Claude Code — hooks.json para validacion deterministica + agents/*.md para subagentes
 - Tests de integracion end-to-end
 - Retries y manejo de rate limits
 - Autenticacion MCP server remoto (OAuth/BYOK)
@@ -727,6 +765,15 @@ Puedes crear tus propios presets en `templates/<locale>/`. Cada preset necesita 
 **¿Que agentes soportan los archivos generados?**
 Cualquier agente compatible con el estandar [AGENTS.md](https://github.com/anthropics/AGENTS.md): Claude Code, Cursor, GitHub Copilot Workspace, Codex, y mas.
 
+**¿Cual es la diferencia entre Skills y Workflows?**
+Las skills le ensenan a tu agente *como* hacer una tarea individual (ej. escribir un mensaje de commit, disenar una entidad DDD). Los workflows orquestan una *secuencia* de tareas en un proceso end-to-end (ej. el ciclo completo de desarrollo de una feature, desde el branch hasta el merge del PR). Las skills son pasivas (se leen cuando son relevantes), los workflows son activos (se invocan via `/command`).
+
+**¿Necesito API key para workflows?**
+Solo para el modo personalized. El modo static entrega workflows pre-construidos al instante — sin LLM, sin API key, sin costo.
+
+**¿Para que ecosistemas funcionan los workflows?**
+Claude Code (`--target claude`) y Antigravity (`--target antigravity`). Los workflows de Claude producen archivos SKILL.md con instrucciones en prosa. Los workflows de Antigravity producen archivos `.md` nativos con anotaciones de ejecucion (`// turbo`, `// capture`, etc.).
+
 **¿Que es AI Spec-Driven Development?**
 Una metodologia donde generas contexto y especificaciones *antes* de escribir codigo. Tu agente implementa una spec, no improvisa. `generate` crea el plano, `spec` crea el plan de implementacion.
 
@@ -745,7 +792,7 @@ Apache License 2.0 — ver [LICENSE](LICENSE).
 
 <div align="center">
 
-**Contexto. Specs. Skills. Tu agente, completamente equipado.** 🧠
+**Contexto. Specs. Skills. Workflows. Tu agente, completamente equipado.** 🧠
 
 *"Un agente sin contexto es un pasante con acceso root"*
 
