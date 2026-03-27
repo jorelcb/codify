@@ -73,7 +73,7 @@ import (
 
 ## Version and Tooling Constraints
 
--   **Go Version:** 1.21 or higher.
+-   **Go Version:** 1.23 or higher (uses `iter.Seq2` for Gemini streaming).
 -   **Dependencies:** Use `go mod tidy` to keep `go.mod` and `go.sum` clean.
 -   **Linting:** Use `golangci-lint` with a project-level configuration file (`.golangci.yml`). This should be part of the CI pipeline.
 -   **Build System:** Use the existing `Taskfile.yml` for all common tasks like building, testing, and linting.
@@ -83,7 +83,7 @@ import (
 
 ## Testing in Go
 
--   **BDD Tests:** Use `godog` for Behavior-Driven Development tests that cover user-facing features (CLI commands). Feature files are in `tests/features/`.
+-   **BDD Tests:** Use `godog` for Behavior-Driven Development tests that cover domain behavior. Each suite in `tests/bdd/{suite}/` with: `.feature` (Gherkin), `context.go` (FeatureContext), `steps_definitions.go`, `*_test.go` (runner).
 -   **Unit Tests:** Use the standard library `testing` package with table-driven tests for focused testing of individual functions and methods.
 -   **Assertions:** Use `github.com/stretchr/testify/assert` and `github.com/stretchr/testify/require` for readable and expressive test assertions.
 -   **Mocks/Stubs:** For infrastructure dependencies (like `LLMProvider` or `FileWriter`), use interfaces and create test doubles (mocks or stubs) to isolate the code under test.

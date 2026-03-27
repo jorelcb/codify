@@ -5,6 +5,101 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.1] - 2026-03-27 - Rename skill category "workflow" to "conventions"
+
+### Changed
+- Renamed skill category `workflow` to `conventions` to eliminate naming ambiguity with the `workflows` command (Antigravity orchestration)
+- Template directories renamed: `templates/{locale}/skills/workflow/` → `conventions/`
+- Legacy mapping preserved: `--category workflow` still resolves to `conventions`
+
+### Fixed
+- Version references in READMEs and MCP server updated to 1.13.1
+
+## [1.13.0] - 2026-03-25 - Antigravity Workflows command
+
+### Added
+- `workflows` command: generates multi-step Antigravity workflow files with execution annotations
+- Workflow catalog (`internal/domain/catalog/workflow_catalog.go`) as separate bounded context from skills
+- Three workflow presets: `feature-development`, `bug-fix`, `release-cycle`
+- Workflow templates for both locales (en/es) with Antigravity annotations (`// turbo`, `// parallel`, `// capture`, `// if`)
+- `WorkflowConfig` DTO with validation
+- `DeliverStaticWorkflowsCommand` and `GenerateWorkflowsCommand` in application layer
+- `BuildPersonalizedWorkflowsSystemPrompt()` and `BuildWorkflowsUserMessage()` in PromptBuilder
+- `generate_workflows` MCP tool
+- BDD test suite: `tests/bdd/workflow_catalog/` with 11 scenarios, 43 steps
+- Interactive UX for workflows (preset, mode, locale, install scope)
+- Install scopes: `global` (`~/.gemini/antigravity/global_workflows/`) and `project` (`.agent/workflows/`)
+
+## [1.12.0] - 2026-03-25 - Testing skill category
+
+### Added
+- Testing skill category with 3 exclusive presets: `foundational`, `tdd`, `bdd`
+- `foundational.template`: Kent Beck's Test Desiderata — 12 properties of good tests as trade-offs
+- `tdd.template`: Part 1 (Desiderata) + Part 2 (Red-Green-Refactor, Three Laws, strategies)
+- `bdd.template`: Part 1 (Desiderata) + Part 2 (Discovery/Formulation/Automation, Given/When/Then, Gherkin)
+- TDD and BDD presets include foundational content as Part 1 (UX labels show "includes foundational")
+- Templates for both locales (en/es)
+
+## [1.11.0] - 2026-03-20 - Unified interactive UX and skills --install
+
+### Added
+- Unified interactive prompts: all commands (`generate`, `analyze`, `spec`, `skills`) prompt for missing flags when run in a terminal
+- `--install` flag on `skills` command: `global` (agent home path) or `project` (current directory)
+- Shared interactive helpers in `internal/interfaces/cli/commands/interactive.go` (charmbracelet/huh)
+- `cmd.Flags().Visit()` pattern with explicit flag map to distinguish user-provided from defaults
+
+### Fixed
+- `DefaultModel()` bug: always returned Claude default even when another model was explicitly provided
+- Translated all Spanish comments in CLI/DTO files to English
+
+## [1.10.0] - 2026-03-18 - Dual-mode skills (static + personalized)
+
+### Added
+- Personalized skills mode: LLM adapts skill content to user's specific project context
+- Static skills mode: delivers pre-built templates with ecosystem frontmatter (no API key needed)
+- `GenerateSkillsCommand` for personalized mode, `DeliverStaticSkillsCommand` for static mode
+- `BuildSkillsSystemPrompt()` and `BuildSkillsUserMessage()` in PromptBuilder
+- `Mode` and `ProjectContext` fields in `SkillsConfig` DTO
+- Skills generation mode (`"skills"`) in both AnthropicProvider and GeminiProvider
+
+## [1.9.0] - 2026-03-16 - Extended interactive skill prompts
+
+### Added
+- All skills configuration options accessible via interactive menus (category, preset, mode, target, install, locale, model, project context)
+
+## [1.8.0] - 2026-03-16 - Interactive skill categorization with catalog registry
+
+### Added
+- Declarative skill catalog (`internal/domain/catalog/skills_catalog.go`) with `SkillCategory`, `SkillOption`, `ResolvedSelection`, `SkillMetadata`
+- Two categories: `architecture` (exclusive) and `workflow` (non-exclusive, renamed to `conventions` in v1.13.1)
+- Interactive category → preset selection using charmbracelet/huh
+- `SkillMetadata` registry for ecosystem-specific frontmatter (name, description, triggers)
+
+## [1.7.1] - 2026-03-15 - Homebrew formula fix
+
+### Fixed
+- Switch from Homebrew cask to formula for proper macOS quarantine handling
+
+## [1.7.0] - 2026-03-15 - Workflow skills preset and MCP knowledge tools
+
+### Added
+- Workflow skill preset: `conventional_commit.template` and `semantic_versioning.template` (both locales)
+- MCP knowledge tools: `commit_guidance` and `version_guidance` — load embedded templates, no API key needed
+- `loadKnowledgeTemplate()` helper for direct template content delivery
+
+## [1.6.0] - 2026-03-15 - Output defaults and ecosystem paths
+
+### Changed
+- `generate` command now outputs to current directory by default (instead of `output/` subdirectory)
+- Skills output paths: `.claude/skills/` for claude, `.agents/skills/` for codex/antigravity
+
+## [1.5.0] - 2026-03-14 - Rebrand to Codify
+
+### Changed
+- Module renamed from `ai-context-generator` to `github.com/jorelcb/codify`
+- Binary entry point: `cmd/codify/`
+- All CLI references updated to `codify`
+
 ## [1.4.0] - 2026-03-14 - Embedded templates, auto-detect provider, Homebrew distribution
 
 ### Added
@@ -24,54 +119,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `skills` command: generates reusable Agent Skills (SKILL.md) based on architectural presets
 - Multi-ecosystem support: `--target claude|codex|antigravity` with ecosystem-specific YAML frontmatter
-- Default preset skills: DDD entity, Clean Architecture layer, BDD scenario, CQRS command, Hexagonal port/adapter
+- Default preset skills: DDD entity, Clean Architecture layer, BDD scenario, CQRS command, Hexagonal port
 - Neutral preset skills: code review, test strategy, safe refactoring, API design
-- Skill templates for both locales (en/es) in `templates/{locale}/skills/{preset}/`
-- `GenerateSkillsCommand` in application layer
-- `SkillsConfig` DTO with target ecosystem validation
-- `BuildSkillsSystemPrompt()` and `BuildSkillsUserMessage()` in PromptBuilder
+- Skill templates for both locales (en/es)
+- `GenerateSkillsCommand`, `SkillsConfig` DTO, `BuildSkillsSystemPrompt()`
 - `generate_skills` MCP tool
-- `Target` field in `GenerationRequest` for skills mode
-- Skills mode (`"skills"`) in both AnthropicProvider and GeminiProvider
 
 ## [1.2.0] - 2026-03-11 - Multi-provider LLM, MCP server, analyze command, HTTP transport
 
 ### Added
-- **Gemini LLM provider** (`gemini_provider.go`): Google Gemini API with streaming via `google.golang.org/genai` SDK
-- **Provider factory** (`provider_factory.go`): resolves provider by model prefix (`gemini-*` → Gemini, else → Anthropic)
-- Independent API key resolution: `ANTHROPIC_API_KEY` for Claude, `GEMINI_API_KEY`/`GOOGLE_API_KEY` for Gemini
-- Default Gemini model: `gemini-3.1-pro-preview`
-- MCP Server mode (`serve` command): exposes tools via Model Context Protocol
+- **Gemini LLM provider**: Google Gemini API with streaming via `google.golang.org/genai` SDK v1.49.0
+- **Provider factory**: `llm.NewProvider()` resolves by model prefix (`gemini-*` → Gemini, else → Anthropic)
+- **MCP Server mode**: `serve` command with stdio + HTTP transport strategy
 - MCP tools: `generate_context`, `generate_specs`, `analyze_project`
-- Transport strategy pattern: `StdioTransport` (local) and `HTTPTransport` (remote)
-- `--transport` flag (stdio, http) and `--addr` flag for HTTP transport
-- `analyze` command: scans existing projects and generates context from structure
-- `ProjectScanner` infrastructure: detects language, framework, dependencies, directory tree, README, config signals
-- Framework detection for 20+ frameworks (Go, JS, Python, Rust, etc.)
-- Config signal detection (GitHub Actions, Docker, Makefile, Terraform, K8s, Helm)
-- `--with-specs` flag on `generate` and `analyze`: chains context + spec generation in one command
-- `google.golang.org/genai` v1.49.0 dependency
+- `analyze` command: scans existing projects (language, framework, 20+ framework detection, config signals)
+- `--with-specs` flag on `generate` and `analyze`
 - `mcp-go` v0.45.0 dependency
-
-### Changed
-- `generate.go`, `spec.go`, `server.go` refactored to use `llm.NewProvider()` factory instead of direct `NewAnthropicProvider()`
-- `serve.go` refactored from switch/case to transport strategy pattern
-- `--model` flag now accepts both `claude-*` and `gemini-*` models
 
 ## [1.1.0] - 2026-03-06 - Locale support, anti-hallucination, legacy cleanup
 
 ### Added
-- Multi-locale support: `--locale en|es` flag for both `generate` and `spec` commands
-- Templates reorganized into `templates/{locale}/{preset}/` hierarchy
-- `development_guide.template`: methodology, testing, security, delivery expectations
-- Language-specific `idioms.template` files for Go, JavaScript, Python
-- `<grounding_rules>` in system prompts: distinguishes TECHNICAL FRAMEWORK vs DOMAIN LOGIC
-- `[DEFINE]` markers for domain details not covered by user input
-- `--from-file` / `-f` flag on generate command: read description from file
+- Multi-locale support: `--locale en|es` flag
+- Templates reorganized into `templates/{locale}/{preset}/`
+- Language-specific `idioms.template` files (Go, JavaScript, Python)
+- `<grounding_rules>` in system prompts with `[DEFINE]` markers
+- `--from-file` / `-f` flag on generate command
 
 ### Changed
-- System prompts rewritten in English (LLM's native language) with locale-controlled output
-- Template loader now locale-aware and language-aware
+- System prompts rewritten in English with locale-controlled output
 
 ### Removed
 - Legacy template directories, bash tests, unused domain/template layer
@@ -79,14 +154,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2026-02-19 - First stable release (AGENTS.md standard + spec command)
 
 ### Added
-- `spec` command: generates SDD specifications (CONSTITUTION.md, SPEC.md, PLAN.md, TASKS.md) from existing context
+- `spec` command: generates SDD specifications from existing context
 - `agents.template`: root file following AGENTS.md standard
-- XML tags in system prompts (`<role>`, `<task>`, `<workflow>`, `<output_quality>`)
-- `GenerateSpecCommand`, `SpecConfig`, `ContextReader`
-- `BuildSpecSystemPrompt()` with `<existing_context>`
+- XML tags in system prompts
 
 ### Changed
-- Output restructured: AGENTS.md at root, CONTEXT.md and INTERACTIONS_LOG.md in context/
+- Output restructured: AGENTS.md at root, details in context/
 
 ## [0.2.0] - 2026-02-19 - DDD architecture with CLI
 
@@ -100,8 +173,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Context file generation using Anthropic Claude API with streaming
 - Per-file generation (independent API calls per output file)
-- CLI: `codify generate <name> --description "..." [--language] [--type] [--architecture] [--model]`
-- PromptBuilder, FileSystemTemplateLoader, GenerateContextCommand
-- AnthropicProvider with official SDK (`anthropic-sdk-go v1.25.0`)
+- AnthropicProvider with official SDK
 - Value objects with validation
 - Unit tests for all components

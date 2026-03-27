@@ -2,70 +2,110 @@
 
 ## High-Level Architecture
 
-The system uses a **Clean Architecture with Domain-Driven Design (DDD)** pattern. It is divided into four distinct layers with a strict inward-pointing dependency rule.
+The system uses **Clean Architecture with Domain-Driven Design (DDD)** divided into four layers with a strict inward-pointing dependency rule:
 
-- **Interfaces (`interfaces/`):** Entry points like the Cobra CLI and a future MCP server. Adapts external requests into application-layer commands/DTOs.
-- **Application (`application/`):** Contains use cases (commands/queries) that orchestrate domain logic. It depends only on the Domain layer.
-- **Infrastructure (`infrastructure/`):** Implements external concerns like LLM API clients (Anthropic, Gemini), filesystem writers, and template loaders. It implements interfaces defined in the Domain layer.
-- **Domain (`domain/`):** The core of the application, containing pure, technology-agnostic business logic, entities (`Project`), and service interfaces (`LLMProvider`, `FileWriter`).
+- **Interfaces (`interfaces/`):** Entry points — Cobra CLI (with charmbracelet/huh interactive menus) and MCP server (stdio + HTTP transport). Adapts external requests into application-layer DTOs.
+- **Application (`application/`):** Use cases following CQRS — commands (generate, spec, skills, workflows) and queries (list). Depends only on Domain.
+- **Infrastructure (`infrastructure/`):** Concrete implementations — LLM providers (Anthropic, Gemini), filesystem (writer, reader, directory manager), template loader (locale/preset/language-aware), project scanner, persistence.
+- **Domain (`domain/`):** Pure business logic — Project entity, value objects, service interfaces, declarative catalogs (skills + workflows with separate bounded contexts).
 
 ## Technical Decisions
 
-| Decision | Chosen Option | Discarded Alternatives | Justification |
-|---|---|---|---|
-| Generation Granularity | Per-file LLM generation | Single LLM call returning a large JSON object | Avoids token limits, prevents JSON parsing failures, and allows granular progress feedback. |
-| Context Root File | `AGENTS.md` | Custom root files (`CLAUDE.md`, `.projectrc`) | Adheres to the Linux Foundation standard for AI agents, maximizing tool compatibility. |
-| Prompting Strategy | XML tags in system prompts | Markdown-only prompts | Improves the LLM's semantic understanding and output structure, especially for Claude models. |
-| LLM Integration | Multi-provider LLM factory (Claude/Gemini) | A single, hardcoded LLM provider | Allows user flexibility without changing core application logic by abstracting provider selection. |
-| Specification Generation | `spec` command is context-dependent | Standalone `spec` command | Ensures generated specifications are consistent with the established architectural context. |
+| Decision | Chosen Option | Justification |
+|---|---|---|
+| Generation granularity | Per-file LLM calls | Avoids token limits, prevents JSON parsing failures, granular progress. |
+| Root file standard | AGENTS.md | Linux Foundation standard, maximum AI tool compatibility. |
+| Prompting strategy | XML tags in system prompts | Improves Claude's semantic understanding and output consistency. |
+| LLM integration | Multi-provider factory | User flexibility (Claude/Gemini) without changing core logic. |
+| Spec generation | Context-dependent | Ensures specs are derived from established architectural context. |
+| Catalog pattern | Declarative in-code catalogs | Compile-time safety, no config file parsing, easy to extend. |
+| Workflow strategy | Antigravity-first | Only ecosystem with native workflow primitive. Validates concept first. |
+| Template embedding | `embed.FS` | Binary works from any directory. No external file dependencies. |
+| Interactive UX | charmbracelet/huh forms | Guides users through configuration; TTY detection for non-interactive safety. |
+| Distribution | GoReleaser + Homebrew | Cross-platform binary distribution with simple install path. |
 
 ## Data Model
 
-### Main Entities
+### Core Types
 
-- **`Project` Entity:**
-  - **Description:** Represents the software project being generated or analyzed.
-  - **Key Attributes:**
-    - Name (e.g., `my-api`)
-    - Description (e.g., "A new API")
-    - `[DEFINE: Other attributes like Language, Framework, etc.]`
-  - **Invariants:** `[DEFINE: Business rules, e.g., project name must be a valid directory name]`
+- **`Project` entity** (`domain/project/entity.go`): Aggregate root. Name, description, language, type, architecture, model.
+- **`SkillCategory`** (`domain/catalog/skills_catalog.go`): Category name, label, exclusive flag, options list.
+- **`SkillOption`**: Preset name, label, template directory, template mapping (file → output name).
+- **`ResolvedSelection`**: Result of catalog resolution — template dir + merged template mappings.
+- **`WorkflowMeta`** (`domain/catalog/workflow_catalog.go`): Description (max 250 chars).
+- **DTOs**: `ProjectConfig`, `SkillsConfig`, `WorkflowConfig`, `SpecConfig`, `GenerationResult`.
 
-### API Contracts
+### Domain Service Interfaces (`domain/service/interfaces.go`)
 
-The primary interface is the CLI, not a traditional web API.
+```go
+type LLMProvider interface {
+    GenerateContext(ctx, request) (*GenerationResponse, error)
+}
 
-- **`generate` command:**
-  - **Usage:** `codify generate <project-name> --description "<text>"`
-  - **Inputs:** Project name (argument), Description (flag).
-  - **Output:** Writes generated files to `output/<project-name>/` and returns a `GenerationResult` (file paths, tokens used) to stdout.
-- **MCP Server API:** `[DEFINE: Specification for MCP endpoints, requests, and responses]`
+type TemplateLoader interface {
+    LoadAll() ([]TemplateGuide, error)
+}
 
-## Data Flow
+type FileWriter interface {
+    WriteFile(path, content string) error
+}
 
-The flow for the main `generate` command is as follows:
+type DirectoryManager interface {
+    EnsureDir(path string) error
+}
+```
 
-1.  **Interfaces:** The Cobra CLI command receives the project name and description from the user.
-2.  **Application:** The CLI handler creates a `GenerateContextCommand` DTO and passes it to the corresponding application service handler.
-3.  **Infrastructure:** The `TemplateLoader` is invoked to fetch the required structural guides from the `/templates` directory.
-4.  **Domain:** A core `ProjectGenerator` service orchestrates the generation, using domain logic.
-5.  **Infrastructure:** The `LLMProvider` factory selects the appropriate client (Claude/Gemini) and makes API calls for each file, guided by the templates.
-6.  **Infrastructure:** The `FileWriter` adapter writes the streamed LLM response for each file to the disk.
-7.  **Application:** The handler compiles a `GenerationResult` and returns it to the CLI for display to the user.
+## Data Flows
+
+### Context Generation (`generate`)
+CLI → `ProjectConfig` DTO → `GenerateContextCommand` → `TemplateLoader` (guides) → `ProviderFactory` → `LLMProvider` (per-file streaming) → `FileWriter` → `GenerationResult`
+
+### Skills Generation (`skills`)
+CLI → `SkillsConfig` DTO → `FindCategory()` + `Resolve()` → `TemplateLoader` → Static: `DeliverStaticSkillsCommand` / Personalized: `GenerateSkillsCommand` → `FileWriter` → `GenerationResult`
+
+### Workflow Generation (`workflows`)
+CLI → `WorkflowConfig` DTO → `FindWorkflowCategory()` + `Resolve()` → `TemplateLoader` → Static: `DeliverStaticWorkflowsCommand` / Personalized: `GenerateWorkflowsCommand` → `FileWriter` → `GenerationResult`
 
 ## Testing Strategy
 
-| Level | Scope | Framework | Target Coverage |
+| Level | Scope | Framework | Coverage |
 |---|---|---|---|
-| Unit | Domain entities, value objects, application services | `testify/assert` | Domain: 90%, Application: 80% |
-| Integration | Infrastructure adapters (LLM clients, file writers) | `[DEFINE]` | `[DEFINE]` |
-| BDD/E2E | High-level features (`generate`, `spec` commands) | `godog` | Critical use cases |
+| BDD | Domain behavior (catalogs, entities, value objects) | Godog | 25 scenarios, 115 steps |
+| Unit | Components (commands, DTOs, prompt builder, scanner, loader) | testify/assert | Domain 90%+, App 70%+ |
+| Integration | End-to-end flows | Planned | Not yet implemented |
 
 ## Risks and Mitigations
 
 | Risk | Probability | Impact | Mitigation |
 |---|---|---|---|
-| External LLM API Unavailability | Medium | High | Implement retry with exponential backoff for transient errors. Implement a Circuit Breaker pattern for sustained outages. |
-| Inconsistent LLM Output | Medium | Medium | Use structured XML tags in prompts to guide the model. Version prompts and track performance. |
-| API Key Leakage | Low | Critical | Never commit secrets. Strictly use environment variables (`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`) for credentials. |
-| LLM Token Limits | Low | High | Use a per-file generation strategy instead of a single large request to stay within context window limits. |
+| LLM API unavailability | Medium | High | Retry with backoff (planned). Static mode as fallback for skills/workflows. |
+| Inconsistent LLM output | Medium | Medium | XML-tagged prompts, grounding rules, per-file generation. |
+| API key leakage | Low | Critical | Environment variables only. Never in logs or commits. |
+| Token limits | Low | High | Per-file generation strategy stays within context windows. |
+| Ecosystem API changes | Medium | Medium | Provider abstraction via factory pattern isolates changes. |
+
+## Next Phase: Claude Code Composite Workflows
+
+### Strategy
+Replicate Antigravity workflow behavior in Claude Code using its compositional model:
+
+| Option | Output | Complexity | Value |
+|---|---|---|---|
+| **A (MVP)** | SKILL.md with procedural multi-step instructions | Low | Immediate — `/workflow-name` command in Claude Code |
+| **B** | SKILL.md + hooks.json + agents/*.md | Medium | Higher — deterministic validation via hooks |
+| **C** | Full plugin directory | High | Highest — complete distributable package |
+
+**Recommended path:** Start with Option A, evolve to B based on user feedback.
+
+### What exists for reuse
+- Workflow catalog (domain) — presets, metadata, resolution logic
+- Template content — same workflow steps, different output format
+- LLM pipeline — personalized mode infrastructure
+- CLI/MCP patterns — command structure, tool registration
+
+### What needs building
+- Frontmatter adapter (Antigravity → Claude skill format)
+- Annotation transformer (`// turbo` → prose instructions)
+- Output path resolver (`.claude/skills/{workflow}/SKILL.md`)
+- Prompt variant for Claude Code format
+- `--target` flag on `workflows` command (currently hardcoded to antigravity)
