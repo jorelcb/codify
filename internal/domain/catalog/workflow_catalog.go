@@ -18,14 +18,20 @@ var WorkflowMetadata = map[string]WorkflowMeta{
 	"release_cycle":       {Description: "Release process: version bump, changelog, tag, and deploy"},
 }
 
-// GenerateWorkflowFrontmatter generates YAML frontmatter for an Antigravity workflow.
-func GenerateWorkflowFrontmatter(guideName string) string {
+// GenerateWorkflowFrontmatter generates YAML frontmatter for a workflow based on the target ecosystem.
+func GenerateWorkflowFrontmatter(guideName, target string) string {
+	name := strings.ReplaceAll(guideName, "_", "-")
 	meta, ok := WorkflowMetadata[guideName]
 	if !ok {
-		name := strings.ReplaceAll(guideName, "_", "-")
 		meta = WorkflowMeta{Description: fmt.Sprintf("Workflow for %s", name)}
 	}
-	return fmt.Sprintf("---\ndescription: %s\n---\n", meta.Description)
+
+	switch target {
+	case "antigravity":
+		return fmt.Sprintf("---\ndescription: %s\n---\n", meta.Description)
+	default: // claude
+		return fmt.Sprintf("---\nname: %s\ndescription: %s\nuser-invocable: true\n---\n", name, meta.Description)
+	}
 }
 
 // WorkflowCategories is the global registry of workflow categories.

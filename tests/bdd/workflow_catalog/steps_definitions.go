@@ -34,6 +34,7 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	// ========== When Steps ==========
 	ctx.Step(`^I look up workflow category "([^"]*)"$`, featureContext.iLookUpWorkflowCategory)
 	ctx.Step(`^I resolve workflow preset "([^"]*)"$`, featureContext.iResolveWorkflowPreset)
+	ctx.Step(`^I generate workflow frontmatter for "([^"]*)" targeting "([^"]*)"$`, featureContext.iGenerateWorkflowFrontmatterForTarget)
 	ctx.Step(`^I generate workflow frontmatter for "([^"]*)"$`, featureContext.iGenerateWorkflowFrontmatterFor)
 	ctx.Step(`^I retrieve workflow category names$`, featureContext.iRetrieveWorkflowCategoryNames)
 
@@ -45,6 +46,7 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Step(`^the resolved mapping should have (\d+) entr(?:y|ies)$`, featureContext.theResolvedMappingShouldHaveNEntries)
 	ctx.Step(`^the frontmatter should start with "([^"]*)"$`, featureContext.theFrontmatterShouldStartWith)
 	ctx.Step(`^the frontmatter should contain "([^"]*)"$`, featureContext.theFrontmatterShouldContain)
+	ctx.Step(`^the frontmatter should not contain "([^"]*)"$`, featureContext.theFrontmatterShouldNotContain)
 	ctx.Step(`^the frontmatter should end with "([^"]*)"$`, featureContext.theFrontmatterShouldEndWith)
 	ctx.Step(`^all workflow descriptions should be at most (\d+) characters$`, featureContext.allWorkflowDescriptionsShouldBeAtMostNChars)
 	ctx.Step(`^the workflow category names should contain "([^"]*)"$`, featureContext.theWorkflowCategoryNamesShouldContain)
@@ -81,7 +83,17 @@ func (f *FeatureContext) iResolveWorkflowPreset(preset string) error {
 }
 
 func (f *FeatureContext) iGenerateWorkflowFrontmatterFor(guideName string) error {
-	f.frontmatter = catalog.GenerateWorkflowFrontmatter(guideName)
+	target := f.target
+	if target == "" {
+		target = "antigravity"
+	}
+	f.frontmatter = catalog.GenerateWorkflowFrontmatter(guideName, target)
+	return nil
+}
+
+func (f *FeatureContext) iGenerateWorkflowFrontmatterForTarget(guideName, target string) error {
+	f.target = target
+	f.frontmatter = catalog.GenerateWorkflowFrontmatter(guideName, target)
 	return nil
 }
 
@@ -143,6 +155,13 @@ func (f *FeatureContext) theFrontmatterShouldStartWith(prefix string) error {
 func (f *FeatureContext) theFrontmatterShouldContain(substring string) error {
 	if !strings.Contains(f.frontmatter, substring) {
 		return fmt.Errorf("expected frontmatter to contain %q, got %q", substring, f.frontmatter)
+	}
+	return nil
+}
+
+func (f *FeatureContext) theFrontmatterShouldNotContain(substring string) error {
+	if strings.Contains(f.frontmatter, substring) {
+		return fmt.Errorf("expected frontmatter NOT to contain %q, but it does: %q", substring, f.frontmatter)
 	}
 	return nil
 }

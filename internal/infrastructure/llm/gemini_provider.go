@@ -104,8 +104,12 @@ func (p *GeminiProvider) generateSingleFile(
 		systemPrompt = p.promptBuilder.BuildPersonalizedSkillsSystemPrompt(guide.Name, req.Target, req.Locale, req.ProjectContext)
 		userMessage = p.promptBuilder.BuildSkillsUserMessage(guide, req.Target)
 	case "workflows":
-		systemPrompt = p.promptBuilder.BuildPersonalizedWorkflowsSystemPrompt(guide.Name, req.Locale, req.ProjectContext)
-		userMessage = p.promptBuilder.BuildWorkflowsUserMessage(guide)
+		if req.Target == "claude" {
+			systemPrompt = p.promptBuilder.BuildClaudeWorkflowSystemPrompt(guide.Name, req.Locale, req.ProjectContext)
+		} else {
+			systemPrompt = p.promptBuilder.BuildPersonalizedWorkflowsSystemPrompt(guide.Name, req.Locale, req.ProjectContext)
+		}
+		userMessage = p.promptBuilder.BuildWorkflowsUserMessage(guide, req.Target)
 	default:
 		systemPrompt = p.promptBuilder.BuildSystemPromptForFile(guide.Name, req.Locale)
 		userMessage = p.promptBuilder.BuildUserMessageForFile(req, guide)

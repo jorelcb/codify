@@ -47,12 +47,34 @@ Feature: Workflow catalog management
     When I resolve workflow preset "nonexistent"
     Then I should get a workflow catalog error containing "unknown preset"
 
-  Scenario: Generate workflow frontmatter for known workflow
+  Scenario: Generate Antigravity workflow frontmatter for known workflow
     Given the workflow catalog is loaded
     When I generate workflow frontmatter for "feature_development"
     Then the frontmatter should start with "---"
     And the frontmatter should contain "description:"
     And the frontmatter should end with "---"
+
+  Scenario: Generate Claude workflow frontmatter with user-invocable
+    Given the workflow catalog is loaded
+    When I generate workflow frontmatter for "feature_development" targeting "claude"
+    Then the frontmatter should start with "---"
+    And the frontmatter should contain "name: feature-development"
+    And the frontmatter should contain "description:"
+    And the frontmatter should contain "user-invocable: true"
+    And the frontmatter should end with "---"
+
+  Scenario: Generate Claude workflow frontmatter for bug-fix
+    Given the workflow catalog is loaded
+    When I generate workflow frontmatter for "bug_fix" targeting "claude"
+    Then the frontmatter should contain "name: bug-fix"
+    And the frontmatter should contain "user-invocable: true"
+
+  Scenario: Antigravity frontmatter does not contain user-invocable
+    Given the workflow catalog is loaded
+    When I generate workflow frontmatter for "feature_development" targeting "antigravity"
+    Then the frontmatter should contain "description:"
+    And the frontmatter should not contain "user-invocable"
+    And the frontmatter should not contain "name:"
 
   Scenario: Generate workflow frontmatter for unknown workflow uses fallback
     Given the workflow catalog is loaded

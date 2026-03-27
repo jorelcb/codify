@@ -9,6 +9,7 @@ type FeatureContext struct {
 	category      *catalog.SkillCategory
 	selection     *catalog.ResolvedSelection
 	frontmatter   string
+	target        string
 	categoryNames []string
 	err           error
 }
@@ -21,6 +22,7 @@ func (f *FeatureContext) reset() {
 	f.category = nil
 	f.selection = nil
 	f.frontmatter = ""
+	f.target = ""
 	f.categoryNames = nil
 	f.err = nil
 }

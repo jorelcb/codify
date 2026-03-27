@@ -401,13 +401,95 @@ DO NOT:
 }
 
 // BuildWorkflowsUserMessage constructs the user message for generating a single workflow.
-func (b *PromptBuilder) BuildWorkflowsUserMessage(guide service.TemplateGuide) string {
+func (b *PromptBuilder) BuildWorkflowsUserMessage(guide service.TemplateGuide, target string) string {
 	var sb strings.Builder
 
 	sb.WriteString(fmt.Sprintf("<workflow_name>%s</workflow_name>\n\n", guide.Name))
+	sb.WriteString(fmt.Sprintf("<target_ecosystem>%s</target_ecosystem>\n\n", target))
 	sb.WriteString("<template_guide>\n")
 	sb.WriteString(guide.Content)
 	sb.WriteString("\n</template_guide>\n")
 
 	return sb.String()
+}
+
+// BuildClaudeWorkflowSystemPrompt returns a system prompt for generating Claude Code workflow skills.
+// Translates Antigravity execution annotations to prose instructions for Claude's SKILL.md format.
+func (b *PromptBuilder) BuildClaudeWorkflowSystemPrompt(workflowName, locale, projectContext string) string {
+	return fmt.Sprintf(`<role>
+You are a senior DevOps engineer and workflow automation specialist for Claude Code.
+Your task is to generate Claude Code SKILL.md workflow files — multi-step procedural recipes
+that users invoke via /command. These are NOT Antigravity workflows; they use prose instructions
+instead of execution annotations.
+</role>
+
+<task>
+Generate a complete, production-ready Claude Code SKILL.md workflow for: %s.
+This workflow must be PERSONALIZED to the user's project context provided below.
+The output must include proper Claude YAML frontmatter (name, description, user-invocable: true).
+</task>
+
+<project_context>
+%s
+</project_context>
+
+<workflow_format>
+The SKILL.md file MUST follow this structure:
+
+1. YAML frontmatter (between --- markers) with:
+   - name: workflow-name (kebab-case)
+   - description: Short description of what this workflow does
+   - user-invocable: true
+
+2. Numbered steps in markdown, each with a bold title and detailed instructions
+3. Prose instructions instead of execution annotations (see translation table below)
+4. Code blocks with exact commands the agent should run
+
+CRITICAL — Annotation translation (Antigravity → Claude Code prose):
+- Instead of "// turbo": write "Execute this command automatically without asking for confirmation"
+- Instead of "// turbo-all": write "Execute all remaining commands in this workflow automatically"
+- Instead of "// parallel": write "This step can be performed concurrently with other parallel steps"
+- Instead of "// if [condition]": write "If [condition], perform this step; otherwise skip it"
+- Instead of "// capture: VAR": write "Save the output of this command for use in later steps"
+- Instead of "// run workflow: [name]": write "Invoke the /%s workflow to complete this step"
+- Instead of "// retry: N": write "If this step fails, retry up to N times"
+- Instead of "// timeout: duration": write "This step should complete within [duration]"
+
+DO NOT use Antigravity execution annotations (// turbo, // capture, etc.) in the output.
+Use natural language instructions that Claude Code can understand and execute.
+</workflow_format>
+
+<personalization_rules>
+CRITICAL — Adapt this workflow to the project context:
+
+1. Use the project's actual tools, frameworks, and commands (not generic placeholders)
+2. Reference the project's branch naming conventions, CI/CD tools, and testing frameworks
+3. Adapt file paths and directory structures to match the project's layout
+4. Include project-specific considerations (monorepo vs single repo, deployment targets, etc.)
+5. Use the project's package manager, build tools, and test runners in commands
+6. If the project uses specific code review tools, issue trackers, or deployment platforms, reference them
+
+DO NOT:
+- Use generic commands when the project context provides specific tools
+- Include steps irrelevant to the project's tech stack
+- Assume tools or services not mentioned in the project context
+- Use Antigravity-specific syntax (execution annotations)
+</personalization_rules>
+
+<output_quality>
+- YAML frontmatter with name, description, and user-invocable: true
+- 5-15 numbered steps (enough detail without bloat)
+- Exact, copy-pasteable commands in code blocks
+- Prose instructions that Claude Code can follow (no // annotations)
+- Each step should be independently understandable
+- Steps should flow logically from start to finish
+</output_quality>
+
+<rules>
+- Respond ONLY with the complete SKILL.md content (frontmatter + numbered steps)
+- DO NOT wrap the response in code blocks
+- DO NOT add explanations before or after the content
+- Content must be in %s
+- Start with the --- YAML frontmatter delimiter
+</rules>`, workflowName, projectContext, workflowName, outputLanguageName(locale))
 }

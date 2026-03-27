@@ -38,13 +38,28 @@ func (c *DeliverStaticWorkflowsCommand) Execute(
 
 	var generatedFiles []string
 
-	for _, guide := range templateGuides {
-		// Workflow files are flat (not subdirectories like skills)
-		fileName := strings.ReplaceAll(guide.Name, "_", "-") + ".md"
-		filePath := fmt.Sprintf("%s/%s", config.OutputPath, fileName)
+	target := config.Target
+	if target == "" {
+		target = "antigravity"
+	}
 
-		frontmatter := catalog.GenerateWorkflowFrontmatter(guide.Name)
+	for _, guide := range templateGuides {
+		workflowDirName := strings.ReplaceAll(guide.Name, "_", "-")
+		frontmatter := catalog.GenerateWorkflowFrontmatter(guide.Name, target)
 		content := frontmatter + "\n" + guide.Content
+
+		var filePath string
+		if target == "claude" {
+			// Claude: subdirectory per workflow with SKILL.md (mirrors skills pattern)
+			workflowDir := fmt.Sprintf("%s/%s", config.OutputPath, workflowDirName)
+			if err := c.directoryManager.CreateDir(workflowDir, 0755); err != nil {
+				return nil, fmt.Errorf("failed to create workflow directory %s: %w", workflowDir, err)
+			}
+			filePath = fmt.Sprintf("%s/SKILL.md", workflowDir)
+		} else {
+			// Antigravity: flat .md files
+			filePath = fmt.Sprintf("%s/%s.md", config.OutputPath, workflowDirName)
+		}
 
 		if err := c.fileWriter.WriteFile(filePath, []byte(content), os.FileMode(0644)); err != nil {
 			return nil, fmt.Errorf("failed to write %s: %w", filePath, err)

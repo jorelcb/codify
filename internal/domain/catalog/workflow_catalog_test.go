@@ -90,8 +90,8 @@ func TestWorkflowResolve_UnknownPreset(t *testing.T) {
 	}
 }
 
-func TestGenerateWorkflowFrontmatter(t *testing.T) {
-	fm := GenerateWorkflowFrontmatter("feature_development")
+func TestGenerateWorkflowFrontmatter_Antigravity(t *testing.T) {
+	fm := GenerateWorkflowFrontmatter("feature_development", "antigravity")
 	if !strings.HasPrefix(fm, "---\n") {
 		t.Error("frontmatter should start with ---")
 	}
@@ -101,12 +101,47 @@ func TestGenerateWorkflowFrontmatter(t *testing.T) {
 	if !strings.HasSuffix(fm, "---\n") {
 		t.Error("frontmatter should end with ---")
 	}
+	if strings.Contains(fm, "user-invocable") {
+		t.Error("antigravity frontmatter should not contain user-invocable")
+	}
+	if strings.Contains(fm, "name:") {
+		t.Error("antigravity frontmatter should not contain name field")
+	}
+}
+
+func TestGenerateWorkflowFrontmatter_Claude(t *testing.T) {
+	fm := GenerateWorkflowFrontmatter("feature_development", "claude")
+	if !strings.HasPrefix(fm, "---\n") {
+		t.Error("frontmatter should start with ---")
+	}
+	if !strings.Contains(fm, "name: feature-development") {
+		t.Errorf("claude frontmatter should contain name field, got: %s", fm)
+	}
+	if !strings.Contains(fm, "description:") {
+		t.Error("claude frontmatter should contain description field")
+	}
+	if !strings.Contains(fm, "user-invocable: true") {
+		t.Error("claude frontmatter should contain user-invocable: true")
+	}
+	if !strings.HasSuffix(fm, "---\n") {
+		t.Error("frontmatter should end with ---")
+	}
 }
 
 func TestGenerateWorkflowFrontmatter_Unknown(t *testing.T) {
-	fm := GenerateWorkflowFrontmatter("unknown_workflow")
+	fm := GenerateWorkflowFrontmatter("unknown_workflow", "antigravity")
 	if !strings.Contains(fm, "Workflow for unknown-workflow") {
 		t.Errorf("expected fallback description, got: %s", fm)
+	}
+}
+
+func TestGenerateWorkflowFrontmatter_UnknownClaude(t *testing.T) {
+	fm := GenerateWorkflowFrontmatter("unknown_workflow", "claude")
+	if !strings.Contains(fm, "Workflow for unknown-workflow") {
+		t.Errorf("expected fallback description, got: %s", fm)
+	}
+	if !strings.Contains(fm, "user-invocable: true") {
+		t.Error("claude frontmatter should contain user-invocable: true")
 	}
 }
 

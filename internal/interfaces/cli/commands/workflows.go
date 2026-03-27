@@ -23,6 +23,7 @@ import (
 type workflowsParams struct {
 	preset         string
 	mode           string
+	target         string
 	locale         string
 	model          string
 	output         string
@@ -36,15 +37,12 @@ func NewWorkflowsCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "workflows",
-		Short: "Generate Antigravity workflow files (.md)",
-		Long: `Generate Antigravity workflow files — multi-step recipes that AI agents
-execute on demand via /command.
+		Short: "Generate workflow files for AI agents",
+		Long: `Generate workflow files — multi-step recipes that AI agents execute on demand.
 
-Workflows are markdown files with numbered steps and execution annotations
-(// turbo, // parallel, // capture, etc.) that teach agents how to perform
-complex, repeatable development tasks.
-
-Target: Antigravity IDE (Google) exclusively.
+Supports two target ecosystems:
+  claude       - Claude Code SKILL.md files with procedural prose instructions
+  antigravity  - Antigravity .md files with execution annotations (// turbo, etc.)
 
 Modes:
   static        - Instant delivery from built-in catalog (no API key needed)
@@ -57,8 +55,12 @@ Presets:
   all                  - All workflow presets
 
 Install:
-  global   - Install to ~/.gemini/antigravity/global_workflows/
-  project  - Install to .agent/workflows/
+  claude:
+    global   - Install to ~/.claude/skills/
+    project  - Install to .claude/skills/
+  antigravity:
+    global   - Install to ~/.gemini/antigravity/global_workflows/
+    project  - Install to .agent/workflows/
 
 When run without flags, an interactive menu is displayed.
 
@@ -66,17 +68,20 @@ Examples:
   # Interactive mode (guided selection)
   codify workflows
 
-  # Static: instant delivery, no API key
-  codify workflows --preset all --mode static
+  # Claude Code: generate workflow skills
+  codify workflows --preset all --target claude --mode static
 
-  # Install globally
-  codify workflows --preset all --mode static --install global
+  # Claude Code: install globally
+  codify workflows --preset all --target claude --mode static --install global
 
-  # Install to current project
-  codify workflows --preset feature-development --mode static --install project
+  # Antigravity: generate workflow files
+  codify workflows --preset all --target antigravity --mode static
+
+  # Install to current project (Antigravity)
+  codify workflows --preset feature-development --target antigravity --mode static --install project
 
   # Personalized: LLM-adapted to your project
-  codify workflows --preset all --mode personalized --context "Go microservice with CI/CD via GitHub Actions"`,
+  codify workflows --preset all --target claude --mode personalized --context "Go microservice with CI/CD via GitHub Actions"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			explicit := make(map[string]bool)
 			cmd.Flags().Visit(func(f *pflag.Flag) {
@@ -88,6 +93,7 @@ Examples:
 
 	cmd.Flags().StringVarP(&p.preset, "preset", "p", "", "Workflow preset: feature-development, bug-fix, release-cycle, or all")
 	cmd.Flags().StringVar(&p.mode, "mode", "", "Generation mode: static (instant) or personalized (LLM)")
+	cmd.Flags().StringVar(&p.target, "target", "antigravity", "Target ecosystem: claude or antigravity")
 	cmd.Flags().StringVar(&p.locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
 	cmd.Flags().StringVarP(&p.model, "model", "m", "", "LLM model (only for personalized mode)")
 	cmd.Flags().StringVarP(&p.output, "output", "o", "", "Output directory")
@@ -124,7 +130,22 @@ func runWorkflows(p workflowsParams, explicit map[string]bool) error {
 		return fmt.Errorf("workflow preset is required; use --preset flag")
 	}
 
-	// 2. Resolve mode
+	// 2. Resolve target
+	target := p.target
+	if !explicit["target"] && interactive {
+		target, err = promptSelect("Select target ecosystem", []selectOption{
+			{"Claude Code (SKILL.md workflows)", "claude"},
+			{"Antigravity (native workflow files)", "antigravity"},
+		}, "antigravity")
+		if err != nil {
+			return err
+		}
+	}
+	if !dto.ValidWorkflowTargets[target] {
+		return fmt.Errorf("invalid target: %s (available: claude, antigravity)", target)
+	}
+
+	// 3. Resolve mode
 	mode := p.mode
 	if !explicit["mode"] && interactive {
 		mode, err = promptSelect("Select mode", []selectOption{
@@ -139,7 +160,7 @@ func runWorkflows(p workflowsParams, explicit map[string]bool) error {
 		mode = dto.SkillModeStatic
 	}
 
-	// 3. Resolve locale
+	// 4. Resolve locale
 	locale := p.locale
 	if !explicit["locale"] && interactive {
 		locale, err = promptLocale()
@@ -148,13 +169,13 @@ func runWorkflows(p workflowsParams, explicit map[string]bool) error {
 		}
 	}
 
-	// 4. Resolve install scope and output
+	// 5. Resolve install scope and output
 	install := p.install
 	output := p.output
 
 	if !explicit["install"] && !explicit["output"] && interactive {
-		globalPath := globalWorkflowsPath()
-		projectPath := defaultWorkflowsPath()
+		globalPath := globalWorkflowsPath(target)
+		projectPath := defaultWorkflowsPath(target)
 
 		var location string
 		location, err = promptSelect("Install location", []selectOption{
@@ -174,18 +195,18 @@ func runWorkflows(p workflowsParams, explicit map[string]bool) error {
 			install = dto.InstallScopeProject
 			output = projectPath
 		default:
-			output, err = promptInput("Output directory", defaultWorkflowsPath())
+			output, err = promptInput("Output directory", defaultWorkflowsPath(target))
 			if err != nil {
 				return err
 			}
 		}
 	} else if explicit["install"] {
-		output = resolveWorkflowInstallPath(install)
+		output = resolveWorkflowInstallPath(install, target)
 	} else if output == "" {
-		output = defaultWorkflowsPath()
+		output = defaultWorkflowsPath(target)
 	}
 
-	// 5. Resolve templates from catalog
+	// 6. Resolve templates from catalog
 	cat, err := catalog.FindWorkflowCategory("workflows")
 	if err != nil {
 		return err
@@ -203,17 +224,18 @@ func runWorkflows(p workflowsParams, explicit map[string]bool) error {
 		return fmt.Errorf("failed to load workflow templates: %w", err)
 	}
 
-	// 6. Build config
+	// 7. Build config
 	config := &dto.WorkflowConfig{
 		Category:   "workflows",
 		Preset:     preset,
 		Mode:       mode,
+		Target:     target,
 		Locale:     locale,
 		OutputPath: output,
 		Install:    install,
 	}
 
-	// 7. Execute based on mode
+	// 8. Execute based on mode
 	if mode == dto.SkillModeStatic {
 		return executeStaticWorkflows(config, guides)
 	}
@@ -226,8 +248,10 @@ func executeStaticWorkflows(config *dto.WorkflowConfig, guides []service.Templat
 
 	cmd := command.NewDeliverStaticWorkflowsCommand(fileWriter, dirManager)
 
+	targetLabel := workflowTargetLabel(config.Target)
 	fmt.Println()
-	fmt.Printf("Delivering Antigravity workflows (static)\n")
+	fmt.Printf("Delivering %s workflows (static)\n", targetLabel)
+	fmt.Printf("  Target: %s\n", config.Target)
 	fmt.Printf("  Preset: %s\n", config.Preset)
 	fmt.Printf("  Locale: %s\n", config.Locale)
 	fmt.Printf("  Output: %s\n", config.OutputPath)
@@ -242,7 +266,7 @@ func executeStaticWorkflows(config *dto.WorkflowConfig, guides []service.Templat
 		return fmt.Errorf("static workflow delivery failed: %w", err)
 	}
 
-	fmt.Println("Antigravity workflows delivered successfully!")
+	fmt.Printf("%s workflows delivered successfully!\n", targetLabel)
 	fmt.Printf("  Output: %s\n", result.OutputPath)
 	if config.Install != "" {
 		fmt.Printf("  Installed: %s scope\n", config.Install)
@@ -298,8 +322,10 @@ func executePersonalizedWorkflows(ctx context.Context, p workflowsParams, config
 	dirManager := filesystem.NewDirectoryManager()
 	workflowsCmd := command.NewGenerateWorkflowsCommand(provider, fileWriter, dirManager)
 
+	targetLabel := workflowTargetLabel(config.Target)
 	fmt.Println()
-	fmt.Printf("Generating Antigravity workflows (personalized)\n")
+	fmt.Printf("Generating %s workflows (personalized)\n", targetLabel)
+	fmt.Printf("  Target: %s\n", config.Target)
 	fmt.Printf("  Preset: %s\n", config.Preset)
 	fmt.Printf("  Model: %s\n", llm.DefaultModel(model))
 	fmt.Printf("  Locale: %s\n", config.Locale)
@@ -317,7 +343,7 @@ func executePersonalizedWorkflows(ctx context.Context, p workflowsParams, config
 	}
 
 	fmt.Println()
-	fmt.Println("Antigravity workflows generated successfully!")
+	fmt.Printf("%s workflows generated successfully!\n", targetLabel)
 	fmt.Printf("  Output: %s\n", result.OutputPath)
 	fmt.Printf("  Model: %s\n", result.Model)
 	fmt.Printf("  Tokens: %d in / %d out\n", result.TokensIn, result.TokensOut)
@@ -335,28 +361,42 @@ func executePersonalizedWorkflows(ctx context.Context, p workflowsParams, config
 
 // --- Workflow path resolution ---
 
-// defaultWorkflowsPath returns the default project-local path for Antigravity workflows.
-func defaultWorkflowsPath() string {
+// defaultWorkflowsPath returns the default project-local path based on target.
+func defaultWorkflowsPath(target string) string {
+	if target == "claude" {
+		return filepath.Join(".claude", "skills")
+	}
 	return filepath.Join(".agent", "workflows")
 }
 
-// globalWorkflowsPath returns the global Antigravity workflows path.
-func globalWorkflowsPath() string {
+// globalWorkflowsPath returns the global workflows path based on target.
+func globalWorkflowsPath(target string) string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		home = "~"
 	}
+	if target == "claude" {
+		return filepath.Join(home, ".claude", "skills")
+	}
 	return filepath.Join(home, ".gemini", "antigravity", "global_workflows")
 }
 
-// resolveWorkflowInstallPath resolves the output path based on the install scope.
-func resolveWorkflowInstallPath(install string) string {
+// resolveWorkflowInstallPath resolves the output path based on the install scope and target.
+func resolveWorkflowInstallPath(install, target string) string {
 	switch install {
 	case dto.InstallScopeGlobal:
-		return globalWorkflowsPath()
+		return globalWorkflowsPath(target)
 	case dto.InstallScopeProject:
-		return defaultWorkflowsPath()
+		return defaultWorkflowsPath(target)
 	default:
-		return defaultWorkflowsPath()
+		return defaultWorkflowsPath(target)
 	}
+}
+
+// workflowTargetLabel returns a display label for the target ecosystem.
+func workflowTargetLabel(target string) string {
+	if target == "claude" {
+		return "Claude Code"
+	}
+	return "Antigravity"
 }

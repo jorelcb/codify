@@ -116,13 +116,14 @@ func generateSkillsTool() server.ServerTool {
 // generateWorkflowsTool defines the generate_workflows MCP tool.
 func generateWorkflowsTool() server.ServerTool {
 	tool := mcp.NewTool("generate_workflows",
-		mcp.WithDescription("Generate Antigravity workflow files (.md) — multi-step recipes with execution annotations. Static mode delivers instant workflows. Personalized mode uses LLM to adapt workflows to a specific project context."),
+		mcp.WithDescription("Generate workflow files for AI agents. Claude target produces SKILL.md with prose instructions. Antigravity target produces .md files with execution annotations. Static mode is instant. Personalized mode uses LLM."),
 		mcp.WithString("preset", mcp.Required(), mcp.Description("Workflow preset: feature-development, bug-fix, release-cycle, or all")),
+		mcp.WithString("target", mcp.Description("Target ecosystem: claude (SKILL.md) or antigravity (native .md)"), mcp.DefaultString("antigravity")),
 		mcp.WithString("mode", mcp.Description("Generation mode: static (instant, no API key) or personalized (LLM-adapted)"), mcp.DefaultString("static")),
 		mcp.WithString("project_context", mcp.Description("Project description for personalized mode (language, tools, CI/CD, deployment)")),
 		mcp.WithString("locale", mcp.Description("Output language: en or es"), mcp.DefaultString("en")),
 		mcp.WithString("model", mcp.Description("LLM model (only for personalized mode)"), mcp.DefaultString("claude-sonnet-4-6")),
-		mcp.WithString("output", mcp.Description("Output directory (default: .agent/workflows/)")),
+		mcp.WithString("output", mcp.Description("Output directory (default depends on target)")),
 	)
 
 	return server.ServerTool{Tool: tool, Handler: handleGenerateWorkflows}
@@ -358,16 +359,24 @@ func handleGenerateSkills(ctx context.Context, request mcp.CallToolRequest) (*mc
 
 func handleGenerateWorkflows(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	preset := stringArg(request, "preset")
+	target := stringArgDefault(request, "target", "antigravity")
 	mode := stringArgDefault(request, "mode", dto.SkillModeStatic)
 	projectContext := stringArg(request, "project_context")
 	locale := stringArgDefault(request, "locale", "en")
 	model := stringArgDefault(request, "model", "")
 	output := stringArg(request, "output")
 	if output == "" {
-		output = filepath.Join(".agent", "workflows")
+		if target == "claude" {
+			output = filepath.Join(".claude", "skills")
+		} else {
+			output = filepath.Join(".agent", "workflows")
+		}
 	}
 
-	// Resolver categoría y preset desde el catálogo de workflows
+	if !dto.ValidWorkflowTargets[target] {
+		return mcp.NewToolResultError(fmt.Sprintf("Invalid target: %s (available: claude, antigravity)", target)), nil
+	}
+
 	cat, err := catalog.FindWorkflowCategory("workflows")
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Invalid workflow category: %v", err)), nil
@@ -378,7 +387,6 @@ func handleGenerateWorkflows(ctx context.Context, request mcp.CallToolRequest) (
 		return mcp.NewToolResultError(fmt.Sprintf("Invalid preset: %v", err)), nil
 	}
 
-	// Cargar templates
 	templatePath := filepath.Join("templates", locale, selection.TemplateDir)
 	templateLoader := infratemplate.NewFileSystemTemplateLoaderWithMapping(
 		root.TemplatesFS, templatePath, selection.TemplateMapping,
@@ -392,6 +400,7 @@ func handleGenerateWorkflows(ctx context.Context, request mcp.CallToolRequest) (
 		Category:       "workflows",
 		Preset:         preset,
 		Mode:           mode,
+		Target:         target,
 		Locale:         locale,
 		Model:          model,
 		OutputPath:     output,
@@ -412,8 +421,13 @@ func handleGenerateWorkflows(ctx context.Context, request mcp.CallToolRequest) (
 		return mcp.NewToolResultError(fmt.Sprintf("Workflow generation failed: %v", err)), nil
 	}
 
+	targetLabel := "Antigravity"
+	if target == "claude" {
+		targetLabel = "Claude Code"
+	}
+
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Antigravity workflows delivered (preset: %s, mode: %s)\n", preset, mode))
+	sb.WriteString(fmt.Sprintf("%s workflows delivered (preset: %s, mode: %s)\n", targetLabel, preset, mode))
 	sb.WriteString(fmt.Sprintf("Output: %s\n", result.OutputPath))
 	if result.Model != "" && result.Model != "static" {
 		sb.WriteString(fmt.Sprintf("Model: %s\n", result.Model))

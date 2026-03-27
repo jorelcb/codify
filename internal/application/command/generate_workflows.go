@@ -43,10 +43,15 @@ func (c *GenerateWorkflowsCommand) Execute(
 		return nil, fmt.Errorf("failed to create output directory %s: %w", config.OutputPath, err)
 	}
 
+	target := config.Target
+	if target == "" {
+		target = "antigravity"
+	}
+
 	req := service.GenerationRequest{
 		TemplateGuides: templateGuides,
 		Mode:           "workflows",
-		Target:         "antigravity",
+		Target:         target,
 		Locale:         config.Locale,
 		ProjectContext: config.ProjectContext,
 	}
@@ -59,8 +64,20 @@ func (c *GenerateWorkflowsCommand) Execute(
 	var generatedFiles []string
 	for i, file := range response.Files {
 		guideName := templateGuides[i].Name
-		fileName := strings.ReplaceAll(guideName, "_", "-") + ".md"
-		filePath := fmt.Sprintf("%s/%s", config.OutputPath, fileName)
+		workflowDirName := strings.ReplaceAll(guideName, "_", "-")
+
+		var filePath string
+		if target == "claude" {
+			// Claude: subdirectory per workflow with SKILL.md
+			workflowDir := fmt.Sprintf("%s/%s", config.OutputPath, workflowDirName)
+			if err := c.directoryManager.CreateDir(workflowDir, 0755); err != nil {
+				return nil, fmt.Errorf("failed to create workflow directory %s: %w", workflowDir, err)
+			}
+			filePath = fmt.Sprintf("%s/SKILL.md", workflowDir)
+		} else {
+			// Antigravity: flat .md files
+			filePath = fmt.Sprintf("%s/%s.md", config.OutputPath, workflowDirName)
+		}
 
 		if err := c.fileWriter.WriteFile(filePath, []byte(file.Content), os.FileMode(0644)); err != nil {
 			return nil, fmt.Errorf("failed to write %s: %w", filePath, err)

@@ -2,11 +2,18 @@ package dto
 
 import "github.com/jorelcb/codify/internal/domain/shared"
 
-// WorkflowConfig holds configuration for generating Antigravity workflows.
+// ValidWorkflowTargets maps valid workflow target ecosystem names.
+var ValidWorkflowTargets = map[string]bool{
+	"claude":      true,
+	"antigravity": true,
+}
+
+// WorkflowConfig holds configuration for generating workflows.
 type WorkflowConfig struct {
 	Category       string // "workflows"
 	Preset         string // "feature-development", "bug-fix", "release-cycle", "all"
 	Mode           string // "static" or "personalized"
+	Target         string // target ecosystem: "claude" or "antigravity"
 	Locale         string // "en" or "es"
 	Model          string // LLM model (personalized mode only)
 	OutputPath     string
@@ -27,6 +34,9 @@ func (wc *WorkflowConfig) Validate() error {
 	}
 	if wc.Mode != SkillModeStatic && wc.Mode != SkillModePersonalized {
 		return shared.ErrInvalidInput("workflow mode must be 'static' or 'personalized'")
+	}
+	if wc.Target != "" && !ValidWorkflowTargets[wc.Target] {
+		return shared.ErrInvalidInput("invalid workflow target: must be claude or antigravity")
 	}
 	if wc.OutputPath == "" {
 		return shared.ErrInvalidInput("output path is required")
