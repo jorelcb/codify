@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2026-03-27 - Multi-target workflows (Claude Code + Antigravity)
+
+### Added
+- `--target` flag on `workflows` command: `claude` (SKILL.md with prose instructions) or `antigravity` (native .md with execution annotations)
+- `GenerateWorkflowFrontmatter(name, target)` — target-aware YAML frontmatter generation
+- `BuildClaudeWorkflowSystemPrompt()` — LLM prompt with annotation-to-prose translation table
+- Claude target output: `{workflow}/SKILL.md` in subdirectories with `user-invocable: true` frontmatter
+- `Target` field in `WorkflowConfig` DTO with `ValidWorkflowTargets` validation
+- `target` parameter on `generate_workflows` MCP tool
+- Interactive target ecosystem prompt in workflows CLI
+- Target-aware install paths: Claude → `.claude/skills/`, Antigravity → `.agent/workflows/`
+- BDD: 3 new scenarios for Claude frontmatter (14 scenarios, 59 steps total)
+- Unit tests: `TestGenerateWorkflowFrontmatter_Claude`, `TestGenerateWorkflowFrontmatter_UnknownClaude`
+
+### Changed
+- Workflows section in READMEs rewritten for multi-target support
+- Hero/tagline updated to 4 pillars: Context, Specs, Skills, Workflows
+- Go badge corrected from 1.21+ to 1.23+
+- FAQ expanded with Skills vs Workflows, workflow API key, ecosystem questions
+
 ## [1.13.1] - 2026-03-27 - Rename skill category "workflow" to "conventions"
 
 ### Changed
