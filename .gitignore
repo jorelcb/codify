@@ -19,3 +19,6 @@ coverage.*
 
 # AI agent local config
 .claude/
+
+# Private docs (not versionable)
+ROADMAP_PRIVATE.md

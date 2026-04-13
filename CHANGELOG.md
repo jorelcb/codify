@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] - 2026-04-13 - Claude workflow plugin generation
+
+### Added
+- Claude Code plugin generation: `--target claude` now produces complete plugin packages instead of SKILL.md files
+- Plugin structure per workflow: `.claude-plugin/plugin.json`, `skills/`, `hooks/`, `agents/`, `scripts/`
+- `AnnotationParser` — parses Antigravity execution annotations (`// turbo`, `// capture:`, `// if`) from workflow templates
+- `PluginGenerator` — generates plugin manifest, hooks, skills, and agents from parsed annotations
+- Annotation-to-hook mapping: `turbo` → `PreToolUse` auto-approve, `capture` → `PostToolUse` script, `if` → `PreToolUse` prompt
+- `DeliverPluginCommand` — static mode plugin delivery (no API key needed)
+- `GeneratePluginCommand` — personalized mode with LLM-generated SKILL.md (hooks/agents remain static)
+- `BuildPluginSkillSystemPrompt()` — LLM prompt for plugin-aware skill generation
+- `templates/scripts/capture-output.sh` — embedded hook script for PostToolUse output capture
+- `workflow-runner.md` agent per plugin with locale-aware content (en/es)
+- Plugin mode routing in both LLM providers (Anthropic + Gemini)
+- MCP server routes Claude target to plugin commands
+- BDD: 9 new scenarios for plugin generation (23 total workflow scenarios, 103 steps)
+- Unit tests: 8 annotation parser tests + 13 plugin generator tests
+
+### Changed
+- Claude target output: plugin packages (`codify-wf-{preset}/`) replace `{workflow}/SKILL.md` subdirectories
+- Claude install paths: `~/.claude/plugins/` (global), `.` (project) — previously `~/.claude/skills/`
+- Interactive target prompt: "Claude Code (via plugin: skills + hooks + agents)" replaces "Claude Code (SKILL.md workflows)"
+- `BuildClaudeWorkflowSystemPrompt` replaced by `BuildPluginSkillSystemPrompt`
+- Workflows CLI help text updated for plugin structure
+- READMEs rewritten: workflows section reflects plugin packages for Claude target
+
 ## [1.14.0] - 2026-03-27 - Multi-target workflows (Claude Code + Antigravity)
 
 ### Added
