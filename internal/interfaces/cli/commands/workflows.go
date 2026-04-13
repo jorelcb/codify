@@ -41,7 +41,7 @@ func NewWorkflowsCmd() *cobra.Command {
 		Long: `Generate workflow files — multi-step recipes that AI agents execute on demand.
 
 Supports two target ecosystems:
-  claude       - Claude Code SKILL.md files with procedural prose instructions
+  claude       - Claude Code plugins (skills + hooks + agents + scripts)
   antigravity  - Antigravity .md files with execution annotations (// turbo, etc.)
 
 Modes:
@@ -56,11 +56,18 @@ Presets:
 
 Install:
   claude:
-    global   - Install to ~/.claude/skills/
-    project  - Install to .claude/skills/
+    global   - Install to ~/.claude/plugins/
+    project  - Install to current directory (one plugin dir per workflow)
   antigravity:
     global   - Install to ~/.gemini/antigravity/global_workflows/
     project  - Install to .agent/workflows/
+
+Each Claude plugin includes:
+  .claude-plugin/plugin.json  - Plugin manifest
+  skills/{preset}/SKILL.md    - Workflow skill (annotations stripped)
+  hooks/hooks.json            - Auto-approve, capture, conditional hooks
+  agents/workflow-runner.md   - Execution subagent
+  scripts/capture-output.sh   - Output capture script (if needed)
 
 When run without flags, an interactive menu is displayed.
 
@@ -68,7 +75,7 @@ Examples:
   # Interactive mode (guided selection)
   codify workflows
 
-  # Claude Code: generate workflow skills
+  # Claude Code: generate workflow plugins
   codify workflows --preset all --target claude --mode static
 
   # Claude Code: install globally
@@ -133,9 +140,9 @@ func runWorkflows(p workflowsParams, explicit map[string]bool) error {
 	// 2. Resolve target
 	target := p.target
 	if !explicit["target"] && interactive {
-		target, err = promptSelect("Select target ecosystem", []selectOption{
-			{"Claude Code (SKILL.md workflows)", "claude"},
-			{"Antigravity (native workflow files)", "antigravity"},
+		target, err = promptSelect("Select target", []selectOption{
+			{"Claude Code (via plugin: skills + hooks + agents)", "claude"},
+			{"Antigravity (via native workflow file)", "antigravity"},
 		}, "antigravity")
 		if err != nil {
 			return err
@@ -243,14 +250,65 @@ func runWorkflows(p workflowsParams, explicit map[string]bool) error {
 }
 
 func executeStaticWorkflows(config *dto.WorkflowConfig, guides []service.TemplateGuide) error {
+	if config.Target == "claude" {
+		return executeStaticPlugin(config, guides)
+	}
+	return executeStaticAntigravity(config, guides)
+}
+
+func executeStaticPlugin(config *dto.WorkflowConfig, guides []service.TemplateGuide) error {
+	fileWriter := filesystem.NewFileWriter()
+	dirManager := filesystem.NewDirectoryManager()
+
+	cmd := command.NewDeliverPluginCommand(fileWriter, dirManager, root.TemplatesFS)
+
+	fmt.Println()
+	fmt.Printf("Delivering Claude Code workflow plugins (static)\n")
+	fmt.Printf("  Target: %s\n", config.Target)
+	fmt.Printf("  Preset: %s\n", config.Preset)
+	fmt.Printf("  Locale: %s\n", config.Locale)
+	fmt.Printf("  Output: %s\n", config.OutputPath)
+	if config.Install != "" {
+		fmt.Printf("  Install: %s\n", config.Install)
+	}
+	fmt.Printf("  Plugins: %d\n", len(guides))
+	fmt.Println()
+
+	result, err := cmd.Execute(config, guides)
+	if err != nil {
+		return fmt.Errorf("static plugin delivery failed: %w", err)
+	}
+
+	fmt.Printf("Claude Code plugins delivered successfully!\n")
+	fmt.Printf("  Output: %s\n", result.OutputPath)
+	if config.Install != "" {
+		fmt.Printf("  Installed: %s scope\n", config.Install)
+	}
+	fmt.Println()
+	fmt.Println("Generated plugin files:")
+	for _, f := range result.GeneratedFiles {
+		fmt.Printf("  - %s\n", f)
+	}
+	fmt.Println()
+	fmt.Println("To use a plugin:")
+	for _, guide := range guides {
+		pluginName := catalog.PluginName(guide.Name)
+		presetDir := catalog.PresetDirName(guide.Name)
+		fmt.Printf("  claude --plugin-dir ./%s\n", pluginName)
+		fmt.Printf("  Then invoke: /%s:%s\n\n", pluginName, presetDir)
+	}
+
+	return nil
+}
+
+func executeStaticAntigravity(config *dto.WorkflowConfig, guides []service.TemplateGuide) error {
 	fileWriter := filesystem.NewFileWriter()
 	dirManager := filesystem.NewDirectoryManager()
 
 	cmd := command.NewDeliverStaticWorkflowsCommand(fileWriter, dirManager)
 
-	targetLabel := workflowTargetLabel(config.Target)
 	fmt.Println()
-	fmt.Printf("Delivering %s workflows (static)\n", targetLabel)
+	fmt.Printf("Delivering Antigravity workflows (static)\n")
 	fmt.Printf("  Target: %s\n", config.Target)
 	fmt.Printf("  Preset: %s\n", config.Preset)
 	fmt.Printf("  Locale: %s\n", config.Locale)
@@ -266,7 +324,7 @@ func executeStaticWorkflows(config *dto.WorkflowConfig, guides []service.Templat
 		return fmt.Errorf("static workflow delivery failed: %w", err)
 	}
 
-	fmt.Printf("%s workflows delivered successfully!\n", targetLabel)
+	fmt.Printf("Antigravity workflows delivered successfully!\n")
 	fmt.Printf("  Output: %s\n", result.OutputPath)
 	if config.Install != "" {
 		fmt.Printf("  Installed: %s scope\n", config.Install)
@@ -320,11 +378,65 @@ func executePersonalizedWorkflows(ctx context.Context, p workflowsParams, config
 
 	fileWriter := filesystem.NewFileWriter()
 	dirManager := filesystem.NewDirectoryManager()
+
+	if config.Target == "claude" {
+		return executePersonalizedPlugin(ctx, config, guides, provider, fileWriter, dirManager, model)
+	}
+	return executePersonalizedAntigravity(ctx, config, guides, provider, fileWriter, dirManager, model)
+}
+
+func executePersonalizedPlugin(ctx context.Context, config *dto.WorkflowConfig, guides []service.TemplateGuide, provider service.LLMProvider, fileWriter service.FileWriter, dirManager service.DirectoryManager, model string) error {
+	pluginCmd := command.NewGeneratePluginCommand(provider, fileWriter, dirManager, root.TemplatesFS)
+
+	fmt.Println()
+	fmt.Printf("Generating Claude Code workflow plugins (personalized)\n")
+	fmt.Printf("  Target: %s\n", config.Target)
+	fmt.Printf("  Preset: %s\n", config.Preset)
+	fmt.Printf("  Model: %s\n", llm.DefaultModel(model))
+	fmt.Printf("  Locale: %s\n", config.Locale)
+	fmt.Printf("  Output: %s\n", config.OutputPath)
+	if config.Install != "" {
+		fmt.Printf("  Install: %s\n", config.Install)
+	}
+	fmt.Printf("  Plugins: %d\n", len(guides))
+	fmt.Println()
+	fmt.Println("Generating personalized plugin skills via LLM API...")
+
+	result, err := pluginCmd.Execute(ctx, config, guides)
+	if err != nil {
+		return fmt.Errorf("personalized plugin generation failed: %w", err)
+	}
+
+	fmt.Println()
+	fmt.Printf("Claude Code plugins generated successfully!\n")
+	fmt.Printf("  Output: %s\n", result.OutputPath)
+	fmt.Printf("  Model: %s\n", result.Model)
+	fmt.Printf("  Tokens: %d in / %d out\n", result.TokensIn, result.TokensOut)
+	if config.Install != "" {
+		fmt.Printf("  Installed: %s scope\n", config.Install)
+	}
+	fmt.Println()
+	fmt.Println("Generated plugin files:")
+	for _, f := range result.GeneratedFiles {
+		fmt.Printf("  - %s\n", f)
+	}
+	fmt.Println()
+	fmt.Println("To use a plugin:")
+	for _, guide := range guides {
+		pluginName := catalog.PluginName(guide.Name)
+		presetDir := catalog.PresetDirName(guide.Name)
+		fmt.Printf("  claude --plugin-dir ./%s\n", pluginName)
+		fmt.Printf("  Then invoke: /%s:%s\n\n", pluginName, presetDir)
+	}
+
+	return nil
+}
+
+func executePersonalizedAntigravity(ctx context.Context, config *dto.WorkflowConfig, guides []service.TemplateGuide, provider service.LLMProvider, fileWriter service.FileWriter, dirManager service.DirectoryManager, model string) error {
 	workflowsCmd := command.NewGenerateWorkflowsCommand(provider, fileWriter, dirManager)
 
-	targetLabel := workflowTargetLabel(config.Target)
 	fmt.Println()
-	fmt.Printf("Generating %s workflows (personalized)\n", targetLabel)
+	fmt.Printf("Generating Antigravity workflows (personalized)\n")
 	fmt.Printf("  Target: %s\n", config.Target)
 	fmt.Printf("  Preset: %s\n", config.Preset)
 	fmt.Printf("  Model: %s\n", llm.DefaultModel(model))
@@ -343,7 +455,7 @@ func executePersonalizedWorkflows(ctx context.Context, p workflowsParams, config
 	}
 
 	fmt.Println()
-	fmt.Printf("%s workflows generated successfully!\n", targetLabel)
+	fmt.Printf("Antigravity workflows generated successfully!\n")
 	fmt.Printf("  Output: %s\n", result.OutputPath)
 	fmt.Printf("  Model: %s\n", result.Model)
 	fmt.Printf("  Tokens: %d in / %d out\n", result.TokensIn, result.TokensOut)
@@ -364,7 +476,7 @@ func executePersonalizedWorkflows(ctx context.Context, p workflowsParams, config
 // defaultWorkflowsPath returns the default project-local path based on target.
 func defaultWorkflowsPath(target string) string {
 	if target == "claude" {
-		return filepath.Join(".claude", "skills")
+		return "." // plugins go in project root as self-contained directories
 	}
 	return filepath.Join(".agent", "workflows")
 }
@@ -376,7 +488,7 @@ func globalWorkflowsPath(target string) string {
 		home = "~"
 	}
 	if target == "claude" {
-		return filepath.Join(home, ".claude", "skills")
+		return filepath.Join(home, ".claude", "plugins")
 	}
 	return filepath.Join(home, ".gemini", "antigravity", "global_workflows")
 }

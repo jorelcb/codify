@@ -89,3 +89,67 @@ Feature: Workflow catalog management
     Given the workflow catalog is loaded
     When I retrieve workflow category names
     Then the workflow category names should contain "workflows"
+
+  # --- Plugin generation scenarios ---
+
+  Scenario: Plugin manifest has correct metadata for release-cycle
+    Given the workflow catalog is loaded
+    When I generate a plugin manifest for "release_cycle"
+    Then the plugin manifest should be valid JSON
+    And the plugin manifest name should be "codify-wf-release-cycle"
+    And the plugin manifest should have version "1.0.0"
+
+  Scenario: Plugin hooks maps turbo annotations to PreToolUse
+    Given the workflow catalog is loaded
+    And I parse annotations from the release-cycle template
+    When I generate plugin hooks from the annotations
+    Then the plugin hooks should be valid JSON
+    And the plugin hooks should contain "PreToolUse"
+    And the plugin hooks should contain "permissionDecision"
+
+  Scenario: Plugin hooks maps capture annotations to PostToolUse
+    Given the workflow catalog is loaded
+    And I parse annotations from the release-cycle template
+    When I generate plugin hooks from the annotations
+    Then the plugin hooks should contain "PostToolUse"
+    And the plugin hooks should contain "capture-output.sh"
+
+  Scenario: Plugin hooks maps if annotations to prompt hooks
+    Given the workflow catalog is loaded
+    And I parse annotations from the release-cycle template
+    When I generate plugin hooks from the annotations
+    Then the plugin hooks should contain "prompt"
+    And the plugin hooks should contain "CI/CD deployment"
+
+  Scenario: Plugin SKILL.md has no Antigravity annotations
+    Given the workflow catalog is loaded
+    When I generate a plugin skill for "feature_development"
+    Then the plugin skill should not contain "// turbo"
+    And the plugin skill should not contain "// capture:"
+    And the plugin skill should not contain "// if "
+
+  Scenario: Plugin SKILL.md preserves workflow content
+    Given the workflow catalog is loaded
+    When I generate a plugin skill for "feature_development"
+    Then the plugin skill should contain "Feature Development"
+    And the plugin skill should contain "name: feature-development"
+
+  Scenario: Plugin agent has correct frontmatter in English
+    Given the workflow catalog is loaded
+    When I generate a plugin agent for "release_cycle" in "en"
+    Then the plugin agent should contain "name: workflow-runner"
+    And the plugin agent should contain "model: sonnet"
+    And the plugin agent should contain "tools: Bash, Read, Edit, Write, Grep, Glob"
+    And the plugin agent should contain "workflow execution agent"
+
+  Scenario: Plugin agent has correct frontmatter in Spanish
+    Given the workflow catalog is loaded
+    When I generate a plugin agent for "feature_development" in "es"
+    Then the plugin agent should contain "agente de ejecucion de workflow"
+    And the plugin agent should contain "feature-development"
+
+  Scenario: Antigravity target still generates flat frontmatter
+    Given the workflow catalog is loaded
+    When I generate workflow frontmatter for "feature_development" targeting "antigravity"
+    Then the frontmatter should not contain "user-invocable"
+    And the frontmatter should not contain "name:"

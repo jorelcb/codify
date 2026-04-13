@@ -21,7 +21,7 @@ import (
 	infratemplate "github.com/jorelcb/codify/internal/infrastructure/template"
 )
 
-const serverVersion = "1.14.0"
+const serverVersion = "1.15.0"
 
 // validPresets maps preset names for validation.
 var validPresets = map[string]bool{
@@ -116,7 +116,7 @@ func generateSkillsTool() server.ServerTool {
 // generateWorkflowsTool defines the generate_workflows MCP tool.
 func generateWorkflowsTool() server.ServerTool {
 	tool := mcp.NewTool("generate_workflows",
-		mcp.WithDescription("Generate workflow files for AI agents. Claude target produces SKILL.md with prose instructions. Antigravity target produces .md files with execution annotations. Static mode is instant. Personalized mode uses LLM."),
+		mcp.WithDescription("Generate workflow files for AI agents. Claude target produces complete plugins (skills + hooks + agents + scripts). Antigravity target produces .md files with execution annotations. Static mode is instant. Personalized mode uses LLM."),
 		mcp.WithString("preset", mcp.Required(), mcp.Description("Workflow preset: feature-development, bug-fix, release-cycle, or all")),
 		mcp.WithString("target", mcp.Description("Target ecosystem: claude (SKILL.md) or antigravity (native .md)"), mcp.DefaultString("antigravity")),
 		mcp.WithString("mode", mcp.Description("Generation mode: static (instant, no API key) or personalized (LLM-adapted)"), mcp.DefaultString("static")),
@@ -367,7 +367,7 @@ func handleGenerateWorkflows(ctx context.Context, request mcp.CallToolRequest) (
 	output := stringArg(request, "output")
 	if output == "" {
 		if target == "claude" {
-			output = filepath.Join(".claude", "skills")
+			output = "." // plugins go in project root as self-contained directories
 		} else {
 			output = filepath.Join(".agent", "workflows")
 		}
@@ -619,6 +619,11 @@ func executePersonalizedSkillsMCP(ctx context.Context, config *dto.SkillsConfig,
 func executeStaticWorkflowsMCP(config *dto.WorkflowConfig, guides []service.TemplateGuide) (*dto.GenerationResult, error) {
 	fileWriter := filesystem.NewFileWriter()
 	dirManager := filesystem.NewDirectoryManager()
+
+	if config.Target == "claude" {
+		cmd := command.NewDeliverPluginCommand(fileWriter, dirManager, root.TemplatesFS)
+		return cmd.Execute(config, guides)
+	}
 	cmd := command.NewDeliverStaticWorkflowsCommand(fileWriter, dirManager)
 	return cmd.Execute(config, guides)
 }
@@ -636,8 +641,12 @@ func executePersonalizedWorkflowsMCP(ctx context.Context, config *dto.WorkflowCo
 
 	fileWriter := filesystem.NewFileWriter()
 	dirManager := filesystem.NewDirectoryManager()
-	workflowsCmd := command.NewGenerateWorkflowsCommand(provider, fileWriter, dirManager)
 
+	if config.Target == "claude" {
+		pluginCmd := command.NewGeneratePluginCommand(provider, fileWriter, dirManager, root.TemplatesFS)
+		return pluginCmd.Execute(ctx, config, guides)
+	}
+	workflowsCmd := command.NewGenerateWorkflowsCommand(provider, fileWriter, dirManager)
 	return workflowsCmd.Execute(ctx, config, guides)
 }
 
