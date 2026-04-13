@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.14.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.15.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -143,7 +143,7 @@ codify skills
 # ── Workflows: dale a tu agente recetas de orquestacion ──
 codify workflows
 # Menus interactivos para: preset, target, modo, locale, ubicacion de instalacion
-# Soporta Claude Code (SKILL.md) y Antigravity (.md nativo).
+# Soporta Claude Code (paquetes plugin) y Antigravity (.md nativo).
 ```
 
 ### Lo que vas a ver
@@ -369,8 +369,15 @@ Codify genera workflows para dos ecosistemas:
 
 | Target | Formato de salida | Ruta de salida | Invocacion |
 |--------|-------------------|----------------|------------|
-| **Claude Code** | SKILL.md con instrucciones en prosa | `.claude/skills/{workflow}/SKILL.md` | `/workflow-name` |
+| **Claude Code** | Paquete plugin (skills + hooks + agents + scripts) | `./codify-wf-{preset}/` | `claude --plugin-dir ./codify-wf-{preset}` → `/{plugin}:{skill}` |
 | **Antigravity** | `.md` nativo con anotaciones de ejecucion (`// turbo`, `// capture`, etc.) | `.agent/workflows/{workflow}.md` | `/workflow-name` |
+
+Cada plugin de Claude incluye:
+- `.claude-plugin/plugin.json` — Manifiesto del plugin
+- `skills/{preset}/SKILL.md` — Skill del workflow (anotaciones Antigravity eliminadas)
+- `hooks/hooks.json` — Hooks de auto-aprobacion, captura de output y evaluacion condicional
+- `agents/workflow-runner.md` — Subagente de ejecucion con acceso a herramientas
+- `scripts/capture-output.sh` — Script de captura de output (cuando es necesario)
 
 ### Dos modos
 
@@ -394,14 +401,14 @@ codify workflows
 ### Modo CLI
 
 ```bash
-# Claude Code: generar workflow skills
+# Claude Code: generar plugins de workflow
 codify workflows --preset all --target claude --mode static
 
-# Claude Code: instalar globalmente
+# Claude Code: instalar plugins globalmente
 codify workflows --preset all --target claude --mode static --install global
 
-# Claude Code: instalar en el proyecto actual
-codify workflows --preset feature-development --target claude --mode static --install project
+# Claude Code: generar un solo plugin
+codify workflows --preset feature-development --target claude --mode static
 
 # Antigravity: generar archivos de workflow nativos
 codify workflows --preset all --target antigravity --mode static
@@ -409,24 +416,24 @@ codify workflows --preset all --target antigravity --mode static
 # Antigravity: instalar globalmente
 codify workflows --preset all --target antigravity --mode static --install global
 
-# Personalized: adaptado a tu proyecto via LLM
+# Personalized: plugins adaptados a tu proyecto via LLM
 codify workflows --preset all --target claude --mode personalized \
   --context "Microservicio Go con CI/CD via GitHub Actions"
 ```
 
 ### Ecosistemas target
 
-| Target | Frontmatter | Estructura de archivos | Diferencia clave |
-|--------|-------------|------------------------|------------------|
-| `claude` | `name`, `description`, `user-invocable: true` | `{workflow}/SKILL.md` (subdirectorio) | Instrucciones en prosa — sin anotaciones de ejecucion |
-| `antigravity` *(default)* | `description` (max 250 chars) | `{workflow}.md` (archivo plano) | Anotaciones nativas: `// turbo`, `// capture`, `// if`, `// parallel` |
+| Target | Salida | Estructura | Diferencia clave |
+|--------|--------|------------|------------------|
+| `claude` | Paquete plugin | `codify-wf-{preset}/` con `.claude-plugin/`, `skills/`, `hooks/`, `agents/`, `scripts/` | Anotaciones mapeadas a hooks y subagentes |
+| `antigravity` *(default)* | Archivo `.md` plano | `{workflow}.md` con frontmatter YAML | Anotaciones nativas: `// turbo`, `// capture`, `// if`, `// parallel` |
 
 ### Scopes de instalacion
 
 | Scope | Path Claude | Path Antigravity |
 |-------|-------------|------------------|
-| `global` | `~/.claude/skills/` | `~/.gemini/antigravity/global_workflows/` |
-| `project` | `.claude/skills/` | `.agent/workflows/` |
+| `global` | `~/.claude/plugins/` | `~/.gemini/antigravity/global_workflows/` |
+| `project` | `.` (directorio actual) | `.agent/workflows/` |
 
 ### Catalogo de workflows
 
@@ -531,7 +538,7 @@ Agrega a `~/.gemini/settings.json`:
 | `generate_specs` | Genera specs SDD a partir de contexto existente |
 | `analyze_project` | Escanea un proyecto existente y genera contexto desde su estructura |
 | `generate_skills` | Genera Agent Skills — soporta modos `static` (instantaneo) y `personalized` (adaptado via LLM) |
-| `generate_workflows` | Genera workflows para Claude Code (SKILL.md) o Antigravity (.md nativo) — soporta modos `static` y `personalized` |
+| `generate_workflows` | Genera workflows para Claude Code (paquetes plugin) o Antigravity (.md nativo) — soporta modos `static` y `personalized` |
 
 Todas las herramientas generativas soportan `locale` (`en`/`es`) y `model`. `generate_context` y `analyze_project` tambien aceptan `with_specs`. `generate_skills` acepta `mode`, `category`, `preset`, `target` y `project_context`. `generate_workflows` acepta `mode`, `preset`, `target` (`claude`/`antigravity`) y `project_context`.
 
@@ -724,7 +731,7 @@ go test ./tests/...
 - **Agent Skills** con modo dual (static/personalized), seleccion guiada interactiva y catalogo declarativo
 - **Instalacion de skills** — `--install global` o `--install project` para instalacion directa en el path del agente
 - Categorias de skills (architecture, testing, conventions) con frontmatter por ecosistema (Claude, Codex, Antigravity)
-- **Workflows** — recetas de orquestacion multi-paso para Claude Code (SKILL.md) y Antigravity (anotaciones nativas)
+- **Workflows** — recetas de orquestacion multi-paso para Claude Code (plugins) y Antigravity (anotaciones nativas)
 - **Presets de workflows** — feature-development, bug-fix, release-cycle (modos static + personalized, multi-target)
 - **UX interactiva unificada** — todos los comandos preguntan por parametros faltantes en terminal
 - Servidor MCP (transporte stdio + HTTP) con 7 herramientas
@@ -772,7 +779,7 @@ Las skills le ensenan a tu agente *como* hacer una tarea individual (ej. escribi
 Solo para el modo personalized. El modo static entrega workflows pre-construidos al instante — sin LLM, sin API key, sin costo.
 
 **¿Para que ecosistemas funcionan los workflows?**
-Claude Code (`--target claude`) y Antigravity (`--target antigravity`). Los workflows de Claude producen archivos SKILL.md con instrucciones en prosa. Los workflows de Antigravity producen archivos `.md` nativos con anotaciones de ejecucion (`// turbo`, `// capture`, etc.).
+Claude Code (`--target claude`) y Antigravity (`--target antigravity`). Los workflows de Claude generan paquetes plugin completos (skills + hooks + agents + scripts) siguiendo la metodologia oficial de plugins de Claude Code. Los workflows de Antigravity producen archivos `.md` nativos con anotaciones de ejecucion (`// turbo`, `// capture`, etc.).
 
 **¿Que es AI Spec-Driven Development?**
 Una metodologia donde generas contexto y especificaciones *antes* de escribir codigo. Tu agente implementa una spec, no improvisa. `generate` crea el plano, `spec` crea el plan de implementacion.
