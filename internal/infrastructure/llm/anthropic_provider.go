@@ -99,12 +99,12 @@ func (p *AnthropicProvider) generateSingleFile(
 	case "skills":
 		systemPrompt = p.promptBuilder.BuildPersonalizedSkillsSystemPrompt(guide.Name, req.Target, req.Locale, req.ProjectContext)
 		userMessage = p.promptBuilder.BuildSkillsUserMessage(guide, req.Target)
+	case "plugin":
+		pluginName := "codify-wf-" + strings.ReplaceAll(guide.Name, "_", "-")
+		systemPrompt = p.promptBuilder.BuildPluginSkillSystemPrompt(guide.Name, req.Locale, req.ProjectContext, pluginName)
+		userMessage = p.promptBuilder.BuildPluginSkillUserMessage(guide, pluginName)
 	case "workflows":
-		if req.Target == "claude" {
-			systemPrompt = p.promptBuilder.BuildClaudeWorkflowSystemPrompt(guide.Name, req.Locale, req.ProjectContext)
-		} else {
-			systemPrompt = p.promptBuilder.BuildPersonalizedWorkflowsSystemPrompt(guide.Name, req.Locale, req.ProjectContext)
-		}
+		systemPrompt = p.promptBuilder.BuildPersonalizedWorkflowsSystemPrompt(guide.Name, req.Locale, req.ProjectContext)
 		userMessage = p.promptBuilder.BuildWorkflowsUserMessage(guide, req.Target)
 	default:
 		systemPrompt = p.promptBuilder.BuildSystemPromptForFile(guide.Name, req.Locale)
