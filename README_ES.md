@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.15.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.16.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -188,7 +188,17 @@ codify generate payment-service \
 
 ### Comando `analyze` — Contexto desde un proyecto existente
 
-Escanea un codebase existente — auto-detecta lenguaje, framework, dependencias, estructura de directorios, README, senales de infraestructura (Docker, CI/CD, Makefile) — y genera archivos de contexto a partir de lo que encuentra.
+Escanea un codebase existente y genera archivos de contexto a partir de lo que encuentra. Usa un **prompt diferenciado** que trata los datos del scan como ground truth factual, produciendo output mas preciso que una descripcion manual.
+
+**Lo que detecta el scanner:**
+- Lenguaje, framework y dependencias (Go, JS/TS, Python, Rust, Java, Ruby)
+- Estructura de directorios (3 niveles de profundidad)
+- Contenido del README (filtrado: badges, comentarios HTML, ToC eliminados)
+- Archivos de contexto existentes (18+ patrones: AGENTS.md, .claude/CLAUDE.md, ADRs, specs OpenAPI, etc.)
+- Targets de build de Makefile/Taskfile (comandos exactos para AGENTS.md)
+- Patrones de testing (frameworks, escenarios BDD, config de cobertura)
+- Pipelines CI/CD (triggers y jobs de GitHub Actions, GitLab CI)
+- Senales de infraestructura (Docker, Terraform, Kubernetes, Helm)
 
 ```bash
 codify analyze /path/to/my-project
@@ -665,7 +675,7 @@ internal/
 ├── infrastructure/      🔧 Implementaciones
 │   ├── llm/             Proveedores LLM (Claude, Gemini) + prompt builder
 │   ├── template/        Template loader (locale + preset + language-aware)
-│   ├── scanner/         Project scanner (deteccion de lenguaje, deps, framework)
+│   ├── scanner/         Project scanner (lenguaje, deps, framework, build targets, testing, CI/CD)
 │   └── filesystem/      File writer, directory manager, context reader
 │
 └── interfaces/          🎯 Puntos de entrada
@@ -722,11 +732,12 @@ go test ./tests/...
 
 ## 📊 Estado del proyecto
 
-**v1.14.0** 🎉
+**v1.16.0** 🎉
 
 ✅ **Funcionando:**
 - Soporte multi-proveedor LLM (Anthropic Claude + Google Gemini)
 - **Generacion de contextos** con streaming (`generate`, `analyze`)
+- **Analyze mejorado** — prompt diferenciado (factual vs aspiracional), scanner enriquecido con 18+ archivos de contexto, parseo de build targets, deteccion de patrones de testing, resumen de pipelines CI/CD, filtrado inteligente de README
 - **Generacion de specs SDD** a partir de contexto existente (`spec`, `--with-specs`)
 - **Agent Skills** con modo dual (static/personalized), seleccion guiada interactiva y catalogo declarativo
 - **Instalacion de skills** — `--install global` o `--install project` para instalacion directa en el path del agente
@@ -739,12 +750,12 @@ go test ./tests/...
 - Sistema de presets (default: DDD/Clean, neutral: generico)
 - Estandar AGENTS.md como root file
 - Guias idiomaticas por lenguaje (Go, JavaScript, Python)
+- Parseo de dependencias para 8 lenguajes (Go, JS/TS, Python, Rust, Java, Ruby, PHP, C#)
 - Reglas de grounding anti-alucinacion en prompts
 - CLI con Cobra + menus interactivos (charmbracelet/huh)
 - Distribucion via Homebrew formula (macOS/Linux)
 
 🚧 **Proximo:**
-- Evolucion compuesta para Claude Code — hooks.json para validacion deterministica + agents/*.md para subagentes
 - Tests de integracion end-to-end
 - Retries y manejo de rate limits
 - Autenticacion MCP server remoto (OAuth/BYOK)

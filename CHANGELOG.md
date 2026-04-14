@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0] - 2026-04-14 - Enhanced analyze with enriched scanner and differentiated prompt
+
+### Added
+- Differentiated system prompt for `analyze` command: scan data treated as factual ground truth (`<scan_trust>` section), reducing unnecessary `[DEFINE]` markers on detected signals
+- Mode propagation: `ProjectConfig.Mode` flows through `GenerationRequest` to provider switch (`"analyze"` mode)
+- Expanded context file detection from 7 to 18+ files: CONTRIBUTING.md, ARCHITECTURE.md, .claude/CLAUDE.md, .editorconfig, .github/CODEOWNERS, openapi.yaml/json, swagger.yaml/json, schema.graphql, CHANGELOG.md (truncated to 50 lines)
+- Glob-based context file discovery: `.cursor/rules/*.md`, `docs/adr/*.md`, `proto/*.proto`
+- Large context file truncation: 200-line limit with `[... truncated ...]` marker
+- Makefile target parsing: extracts real target names (excludes `.PHONY`, comments)
+- Taskfile task parsing: extracts task names from `tasks:` section (supports Taskfile.yml/yaml)
+- `BuildTargets` field in `ScanResult` — formatted as `**Build Targets:**` section for LLM
+- Testing pattern detection: test files (`*_test.go`, `*.spec.ts`, `*.test.js`, `*.feature`), frameworks from deps (godog, Jest, Vitest, Mocha, RSpec), coverage config (codecov, jest.config, pytest.ini, .nycrc)
+- CI/CD workflow summarization: parses GitHub Actions (.yml) and GitLab CI files, extracts triggers and job names
+- `CIWorkflowSummary` struct with File, Triggers, Jobs — formatted as `**CI/CD Pipelines:**` section
+- Dependency parsing for Rust (`Cargo.toml` [dependencies]), Java (`pom.xml` artifactId), Ruby (`Gemfile` gems)
+- Framework detection for Java (Spring Boot, Quarkus, Micronaut), Ruby (Rails, Sinatra, Hanami), Rust (Rocket)
+- Smart README filtering: removes badges, HTML comments, Table of Contents sections, collapses excessive blank lines — applied before truncation for 100 lines of meaningful content
+- 23 new unit tests across scanner and prompt builder
+
+### Changed
+- `analyze` command now uses `runGenerateWithMode("analyze")` instead of `runGenerate()` — MCP handler updated accordingly
+- `FormatAsDescription()` output enriched with Build Targets, Testing Patterns, and CI/CD Pipelines sections
+- README filtering applied before line-count truncation (100 useful lines instead of 100 raw lines)
+
 ## [1.15.0] - 2026-04-13 - Claude workflow plugin generation
 
 ### Added

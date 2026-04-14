@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.15.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.16.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -188,7 +188,17 @@ codify generate payment-service \
 
 ### `analyze` command — Context from an existing project
 
-Scans an existing codebase — auto-detects language, framework, dependencies, directory structure, README, infrastructure signals (Docker, CI/CD, Makefile) — and generates context files from what it finds.
+Scans an existing codebase and generates context files from what it finds. Uses a **differentiated prompt** that treats scan data as factual ground truth, producing more accurate output than a manual description.
+
+**What the scanner detects:**
+- Language, framework, and dependencies (Go, JS/TS, Python, Rust, Java, Ruby)
+- Directory structure (3 levels deep)
+- README content (filtered: badges, HTML comments, ToC removed)
+- Existing context files (18+ patterns: AGENTS.md, .claude/CLAUDE.md, ADRs, OpenAPI specs, etc.)
+- Build targets from Makefile/Taskfile (exact commands for AGENTS.md)
+- Testing patterns (frameworks, BDD scenarios, coverage config)
+- CI/CD pipelines (GitHub Actions triggers and jobs, GitLab CI)
+- Infrastructure signals (Docker, Terraform, Kubernetes, Helm)
 
 ```bash
 codify analyze /path/to/my-project
@@ -665,7 +675,7 @@ internal/
 ├── infrastructure/      🔧 Implementations
 │   ├── llm/             LLM providers (Claude, Gemini) + prompt builder
 │   ├── template/        Template loader (locale + preset + language-aware)
-│   ├── scanner/         Project scanner (language, deps, framework detection)
+│   ├── scanner/         Project scanner (language, deps, framework, build targets, testing, CI/CD)
 │   └── filesystem/      File writer, directory manager, context reader
 │
 └── interfaces/          🎯 Entry points
@@ -722,11 +732,12 @@ go test ./tests/...
 
 ## 📊 Project status
 
-**v1.14.0** 🎉
+**v1.16.0** 🎉
 
 ✅ **Working:**
 - Multi-provider LLM support (Anthropic Claude + Google Gemini)
 - **Context generation** with streaming (`generate`, `analyze`)
+- **Enhanced analyze** — differentiated prompt (factual vs aspirational), enriched scanner with 18+ context files, build target parsing, testing pattern detection, CI/CD pipeline summarization, smart README filtering
 - **SDD spec generation** from existing context (`spec`, `--with-specs`)
 - **Agent Skills** with dual mode (static/personalized), interactive guided selection, and declarative catalog
 - **Skills install** — `--install global` or `--install project` for direct agent path installation
@@ -739,12 +750,12 @@ go test ./tests/...
 - Preset system (default: DDD/Clean, neutral: generic)
 - AGENTS.md standard as root file
 - Language-specific idiomatic guides (Go, JavaScript, Python)
+- Dependency parsing for 8 languages (Go, JS/TS, Python, Rust, Java, Ruby, PHP, C#)
 - Anti-hallucination grounding rules in prompts
 - CLI with Cobra + interactive menus (charmbracelet/huh)
 - Homebrew formula distribution (macOS/Linux)
 
 🚧 **Coming next:**
-- Claude Code composite evolution — hooks.json for deterministic validation + agents/*.md for subagent definitions
 - End-to-end integration tests
 - Retries and rate limit handling
 - MCP server authentication (OAuth/BYOK for remote deployments)
