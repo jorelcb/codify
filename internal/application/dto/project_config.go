@@ -12,6 +12,7 @@ type ProjectConfig struct {
 	OutputPath   string
 	Model        string
 	Locale       string
+	Mode         string // "analyze" for scanned projects, empty for generate
 	Capabilities []string
 	Metadata     map[string]string
 }

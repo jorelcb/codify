@@ -247,9 +247,9 @@ func handleAnalyzeProject(ctx context.Context, request mcp.CallToolRequest) (*mc
 		language = normalizeLanguageFlag(scanResult.Language)
 	}
 
-	// Format scan as description and generate
+	// Format scan as description and generate with analyze mode
 	description := scanResult.FormatAsDescription()
-	result, err := executeGenerate(ctx, name, description, language, preset, locale, model)
+	result, err := executeGenerateWithMode(ctx, name, description, language, preset, locale, model, "analyze")
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Generation failed: %v", err)), nil
 	}
@@ -472,6 +472,10 @@ func loadKnowledgeTemplate(locale, preset, filename string) (string, error) {
 // --- Execution helpers (shared by all handlers) ---
 
 func executeGenerate(ctx context.Context, name, description, language, preset, locale, model string) (*dto.GenerationResult, error) {
+	return executeGenerateWithMode(ctx, name, description, language, preset, locale, model, "")
+}
+
+func executeGenerateWithMode(ctx context.Context, name, description, language, preset, locale, model, mode string) (*dto.GenerationResult, error) {
 	apiKey, err := llm.ResolveAPIKey(model)
 	if err != nil {
 		return nil, err
@@ -512,6 +516,7 @@ func executeGenerate(ctx context.Context, name, description, language, preset, l
 		Model:       model,
 		OutputPath:  ".",
 		Locale:      locale,
+		Mode:        mode,
 	}
 
 	return generateCmd.Execute(ctx, config, guides)

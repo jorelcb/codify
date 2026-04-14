@@ -193,10 +193,10 @@ func runAnalyzeInteractive(projectPath string, p analyzeParams, explicit map[str
 		}
 	}
 
-	// 10. Generate — use scan description and delegate to generate pipeline
+	// 10. Generate — use scan description and delegate to generate pipeline with analyze mode
 	description := result.FormatAsDescription()
 
-	if err := runGenerate(p.name, description, p.language, "", "", p.model, p.preset, p.locale, p.output); err != nil {
+	if err := runGenerateWithMode(p.name, description, p.language, "", "", p.model, p.preset, p.locale, p.output, "analyze"); err != nil {
 		return err
 	}
 

@@ -106,6 +106,9 @@ func (p *AnthropicProvider) generateSingleFile(
 	case "workflows":
 		systemPrompt = p.promptBuilder.BuildPersonalizedWorkflowsSystemPrompt(guide.Name, req.Locale, req.ProjectContext)
 		userMessage = p.promptBuilder.BuildWorkflowsUserMessage(guide, req.Target)
+	case "analyze":
+		systemPrompt = p.promptBuilder.BuildAnalyzeSystemPromptForFile(guide.Name, req.Locale)
+		userMessage = p.promptBuilder.BuildUserMessageForFile(req, guide)
 	default:
 		systemPrompt = p.promptBuilder.BuildSystemPromptForFile(guide.Name, req.Locale)
 		userMessage = p.promptBuilder.BuildUserMessageForFile(req, guide)

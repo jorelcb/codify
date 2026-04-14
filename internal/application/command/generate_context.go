@@ -53,6 +53,7 @@ func (c *GenerateContextCommand) Execute(
 		ProjectType:        config.Type,
 		Architecture:       config.Architecture,
 		Locale:             config.Locale,
+		Mode:               config.Mode,
 	}
 
 	// 2. Call LLM provider

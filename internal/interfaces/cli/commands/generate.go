@@ -241,6 +241,10 @@ func resolveLocaleBase(locale string) string {
 }
 
 func runGenerate(projectName, description, language, projectType, architecture, model, preset, locale, output string) error {
+	return runGenerateWithMode(projectName, description, language, projectType, architecture, model, preset, locale, output, "")
+}
+
+func runGenerateWithMode(projectName, description, language, projectType, architecture, model, preset, locale, output, mode string) error {
 	ctx := context.Background()
 
 	// 1. Resolve API key for the selected provider
@@ -285,6 +289,7 @@ func runGenerate(projectName, description, language, projectType, architecture, 
 		Model:        model,
 		OutputPath:   output,
 		Locale:       locale,
+		Mode:         mode,
 	}
 
 	// 7. Show progress

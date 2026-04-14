@@ -217,6 +217,73 @@ func TestPromptBuilder_BuildSkillsUserMessage(t *testing.T) {
 	}
 }
 
+func TestPromptBuilder_BuildAnalyzeSystemPromptForFile(t *testing.T) {
+	builder := NewPromptBuilder()
+
+	tests := []struct {
+		guideName    string
+		wantFileName string
+	}{
+		{"agents", "AGENTS.md"},
+		{"context", "CONTEXT.md"},
+		{"interactions", "INTERACTIONS_LOG.md"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.guideName, func(t *testing.T) {
+			prompt := builder.BuildAnalyzeSystemPromptForFile(tt.guideName, "en")
+
+			if prompt == "" {
+				t.Error("BuildAnalyzeSystemPromptForFile() returned empty string")
+			}
+			if !strings.Contains(prompt, tt.wantFileName) {
+				t.Errorf("BuildAnalyzeSystemPromptForFile() should mention %s", tt.wantFileName)
+			}
+
+			// Verify analyze-specific XML tags
+			if !strings.Contains(prompt, "<scan_trust>") {
+				t.Error("BuildAnalyzeSystemPromptForFile() should contain <scan_trust> XML tag")
+			}
+			if !strings.Contains(prompt, "AUTO-SCANNED") {
+				t.Error("BuildAnalyzeSystemPromptForFile() should mention AUTO-SCANNED")
+			}
+			if !strings.Contains(prompt, "FACTUAL") {
+				t.Error("BuildAnalyzeSystemPromptForFile() should mention FACTUAL")
+			}
+
+			// Verify shared structure tags
+			if !strings.Contains(prompt, "<role>") {
+				t.Error("BuildAnalyzeSystemPromptForFile() should contain <role> XML tag")
+			}
+			if !strings.Contains(prompt, "<workflow>") {
+				t.Error("BuildAnalyzeSystemPromptForFile() should contain <workflow> XML tag")
+			}
+			if !strings.Contains(prompt, "<output_quality>") {
+				t.Error("BuildAnalyzeSystemPromptForFile() should contain <output_quality> XML tag")
+			}
+
+			// Verify it does NOT contain the aspirational grounding rules
+			if strings.Contains(prompt, "only what the user stated") {
+				t.Error("BuildAnalyzeSystemPromptForFile() should NOT contain aspirational grounding language")
+			}
+		})
+	}
+}
+
+func TestPromptBuilder_BuildAnalyzeSystemPromptForFile_Locale(t *testing.T) {
+	builder := NewPromptBuilder()
+
+	promptEN := builder.BuildAnalyzeSystemPromptForFile("agents", "en")
+	promptES := builder.BuildAnalyzeSystemPromptForFile("agents", "es")
+
+	if !strings.Contains(promptEN, "English") {
+		t.Error("English locale prompt should contain 'English'")
+	}
+	if !strings.Contains(promptES, "Spanish") {
+		t.Error("Spanish locale prompt should contain 'Spanish'")
+	}
+}
+
 func TestPromptBuilder_BuildSpecSystemPrompt(t *testing.T) {
 	builder := NewPromptBuilder()
 
