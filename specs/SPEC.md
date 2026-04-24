@@ -124,11 +124,8 @@ Generates multi-step workflow files for Antigravity IDE with execution annotatio
 | `bug-fix` | Reproduce → diagnose → fix → test → PR |
 | `release-cycle` | Version bump → changelog → tag → deploy |
 
-### Planned: Claude Code Composite Workflows
-Future phase: Generate composite plugin packages (SKILL.md + hooks.json + agents/*.md) that replicate workflow orchestration in Claude Code's compositional model. Three implementation options identified:
-- **Option A (MVP):** Single SKILL.md with procedural multi-step instructions
-- **Option B:** SKILL.md + hooks.json + agents/*.md package
-- **Option C:** Full plugin directory structure
+### Claude Code Native Workflow Skills
+Claude Code workflows are generated as native skills (SKILL.md with frontmatter). The `--target claude` flag produces SKILL.md files with `name`, `description`, `disable-model-invocation: true`, and `allowed-tools` frontmatter. Antigravity execution annotations are stripped and translated to prose instructions. Install paths: `~/.claude/skills/` (global), `.claude/skills/` (project).
 
 ---
 
@@ -165,4 +162,4 @@ Exposes all Codify capabilities as MCP tools for AI coding agents to call direct
 | Agent Skills (`skills`) | High | Complete | v1.3.0-v1.12.0 |
 | Antigravity Workflows (`workflows`) | Medium | Complete | v1.13.0 |
 | MCP Server (`serve`) | High | Complete (7 tools) | v1.2.0-v1.13.0 |
-| Claude Code Composite Workflows | Medium | Planned | Next |
+| Claude Code Native Skills | Medium | Complete | v1.15.0 |

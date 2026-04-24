@@ -2,7 +2,6 @@ package workflow_catalog
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -40,6 +39,7 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I generate workflow frontmatter for "([^"]*)" targeting "([^"]*)"$`, featureContext.iGenerateWorkflowFrontmatterForTarget)
 	ctx.Step(`^I generate workflow frontmatter for "([^"]*)"$`, featureContext.iGenerateWorkflowFrontmatterFor)
 	ctx.Step(`^I retrieve workflow category names$`, featureContext.iRetrieveWorkflowCategoryNames)
+	ctx.Step(`^I strip annotations from the feature-development template$`, featureContext.iStripAnnotationsFromFeatureDevelopmentTemplate)
 
 	// ========== Then Steps ==========
 	ctx.Step(`^I should find a workflow category with name "([^"]*)"$`, featureContext.iShouldFindAWorkflowCategoryWithName)
@@ -53,33 +53,11 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Step(`^the frontmatter should end with "([^"]*)"$`, featureContext.theFrontmatterShouldEndWith)
 	ctx.Step(`^all workflow descriptions should be at most (\d+) characters$`, featureContext.allWorkflowDescriptionsShouldBeAtMostNChars)
 	ctx.Step(`^the workflow category names should contain "([^"]*)"$`, featureContext.theWorkflowCategoryNamesShouldContain)
-
-	// ========== Plugin Given Steps ==========
-	ctx.Step(`^I parse annotations from the release-cycle template$`, featureContext.iParseAnnotationsFromReleaseCycleTemplate)
-
-	// ========== Plugin When Steps ==========
-	ctx.Step(`^I generate a plugin manifest for "([^"]*)"$`, featureContext.iGenerateAPluginManifestFor)
-	ctx.Step(`^I generate plugin hooks from the annotations$`, featureContext.iGeneratePluginHooksFromAnnotations)
-	ctx.Step(`^I generate a plugin skill for "([^"]*)"$`, featureContext.iGenerateAPluginSkillFor)
-	ctx.Step(`^I generate a plugin agent for "([^"]*)" in "([^"]*)"$`, featureContext.iGenerateAPluginAgentForIn)
-
-	// ========== Plugin Then Steps ==========
-	ctx.Step(`^the plugin manifest should be valid JSON$`, featureContext.thePluginManifestShouldBeValidJSON)
-	ctx.Step(`^the plugin manifest name should be "([^"]*)"$`, featureContext.thePluginManifestNameShouldBe)
-	ctx.Step(`^the plugin manifest should have version "([^"]*)"$`, featureContext.thePluginManifestShouldHaveVersion)
-	ctx.Step(`^the plugin hooks should be valid JSON$`, featureContext.thePluginHooksShouldBeValidJSON)
-	ctx.Step(`^the plugin hooks should contain "([^"]*)"$`, featureContext.thePluginHooksShouldContain)
-	ctx.Step(`^the plugin skill should not contain "([^"]*)"$`, featureContext.thePluginSkillShouldNotContain)
-	ctx.Step(`^the plugin skill should contain "([^"]*)"$`, featureContext.thePluginSkillShouldContain)
-	ctx.Step(`^the plugin agent should contain "([^"]*)"$`, featureContext.thePluginAgentShouldContain)
+	ctx.Step(`^the stripped content should not contain "([^"]*)"$`, featureContext.theStrippedContentShouldNotContain)
+	ctx.Step(`^the stripped content should contain "([^"]*)"$`, featureContext.theStrippedContentShouldContain)
 }
 
-// ========== Given Steps ==========
-
-func (f *FeatureContext) theWorkflowCatalogIsLoaded() error {
-	// Catalog is loaded at package init time, nothing to do
-	return nil
-}
+func (f *FeatureContext) theWorkflowCatalogIsLoaded() error { return nil }
 
 func (f *FeatureContext) iHaveWorkflowCategory(name string) error {
 	f.category, f.err = catalog.FindWorkflowCategory(name)
@@ -88,8 +66,6 @@ func (f *FeatureContext) iHaveWorkflowCategory(name string) error {
 	}
 	return nil
 }
-
-// ========== When Steps ==========
 
 func (f *FeatureContext) iLookUpWorkflowCategory(name string) error {
 	f.category, f.err = catalog.FindWorkflowCategory(name)
@@ -124,7 +100,14 @@ func (f *FeatureContext) iRetrieveWorkflowCategoryNames() error {
 	return nil
 }
 
-// ========== Then Steps ==========
+func (f *FeatureContext) iStripAnnotationsFromFeatureDevelopmentTemplate() error {
+	data, err := root.TemplatesFS.ReadFile(filepath.Join("templates", "en", "workflows", "feature_development.template"))
+	if err != nil {
+		return fmt.Errorf("failed to read feature_development template: %w", err)
+	}
+	f.strippedContent = catalog.StripAnnotationLines(string(data))
+	return nil
+}
 
 func (f *FeatureContext) iShouldFindAWorkflowCategoryWithName(name string) error {
 	if err := assertions.AssertActual(assert.Nil, f.err, "expected no error"); err != nil {
@@ -214,108 +197,16 @@ func (f *FeatureContext) theWorkflowCategoryNamesShouldContain(name string) erro
 	return fmt.Errorf("expected category names to contain %q, got %v", name, f.categoryNames)
 }
 
-// ========== Plugin Given Steps ==========
-
-func (f *FeatureContext) iParseAnnotationsFromReleaseCycleTemplate() error {
-	data, err := root.TemplatesFS.ReadFile(filepath.Join("templates", "en", "workflows", "release_cycle.template"))
-	if err != nil {
-		return fmt.Errorf("failed to read release_cycle template: %w", err)
-	}
-	f.annotations = catalog.ParseAnnotations(string(data))
-	return nil
-}
-
-// ========== Plugin When Steps ==========
-
-func (f *FeatureContext) iGenerateAPluginManifestFor(presetName string) error {
-	meta, ok := catalog.WorkflowMetadata[presetName]
-	if !ok {
-		meta = catalog.WorkflowMeta{Description: "Test workflow"}
-	}
-	f.pluginManifest = catalog.GeneratePluginManifest(presetName, meta.Description)
-	return nil
-}
-
-func (f *FeatureContext) iGeneratePluginHooksFromAnnotations() error {
-	if f.annotations == nil {
-		return fmt.Errorf("no annotations parsed")
-	}
-	f.pluginHooks = catalog.GeneratePluginHooks(f.annotations)
-	return nil
-}
-
-func (f *FeatureContext) iGenerateAPluginSkillFor(presetName string) error {
-	data, err := root.TemplatesFS.ReadFile(filepath.Join("templates", "en", "workflows", presetName+".template"))
-	if err != nil {
-		return fmt.Errorf("failed to read template for %s: %w", presetName, err)
-	}
-	f.pluginSkill = catalog.TransformToPluginSkill(presetName, string(data))
-	return nil
-}
-
-func (f *FeatureContext) iGenerateAPluginAgentForIn(presetName, locale string) error {
-	f.pluginAgent = catalog.GenerateWorkflowAgent(presetName, locale)
-	return nil
-}
-
-// ========== Plugin Then Steps ==========
-
-func (f *FeatureContext) thePluginManifestShouldBeValidJSON() error {
-	var m map[string]interface{}
-	if err := json.Unmarshal([]byte(f.pluginManifest), &m); err != nil {
-		return fmt.Errorf("plugin manifest is not valid JSON: %w", err)
+func (f *FeatureContext) theStrippedContentShouldNotContain(substring string) error {
+	if strings.Contains(f.strippedContent, substring) {
+		return fmt.Errorf("expected stripped content NOT to contain %q", substring)
 	}
 	return nil
 }
 
-func (f *FeatureContext) thePluginManifestNameShouldBe(expected string) error {
-	var m map[string]interface{}
-	if err := json.Unmarshal([]byte(f.pluginManifest), &m); err != nil {
-		return err
-	}
-	return assertions.AssertExpectedAndActual(assert.Equal, expected, m["name"], "manifest name mismatch")
-}
-
-func (f *FeatureContext) thePluginManifestShouldHaveVersion(expected string) error {
-	var m map[string]interface{}
-	if err := json.Unmarshal([]byte(f.pluginManifest), &m); err != nil {
-		return err
-	}
-	return assertions.AssertExpectedAndActual(assert.Equal, expected, m["version"], "manifest version mismatch")
-}
-
-func (f *FeatureContext) thePluginHooksShouldBeValidJSON() error {
-	var m map[string]interface{}
-	if err := json.Unmarshal([]byte(f.pluginHooks), &m); err != nil {
-		return fmt.Errorf("plugin hooks is not valid JSON: %w", err)
-	}
-	return nil
-}
-
-func (f *FeatureContext) thePluginHooksShouldContain(substring string) error {
-	if !strings.Contains(f.pluginHooks, substring) {
-		return fmt.Errorf("expected plugin hooks to contain %q, got:\n%s", substring, f.pluginHooks)
-	}
-	return nil
-}
-
-func (f *FeatureContext) thePluginSkillShouldNotContain(substring string) error {
-	if strings.Contains(f.pluginSkill, substring) {
-		return fmt.Errorf("expected plugin skill NOT to contain %q", substring)
-	}
-	return nil
-}
-
-func (f *FeatureContext) thePluginSkillShouldContain(substring string) error {
-	if !strings.Contains(f.pluginSkill, substring) {
-		return fmt.Errorf("expected plugin skill to contain %q", substring)
-	}
-	return nil
-}
-
-func (f *FeatureContext) thePluginAgentShouldContain(substring string) error {
-	if !strings.Contains(f.pluginAgent, substring) {
-		return fmt.Errorf("expected plugin agent to contain %q, got:\n%s", substring, f.pluginAgent)
+func (f *FeatureContext) theStrippedContentShouldContain(substring string) error {
+	if !strings.Contains(f.strippedContent, substring) {
+		return fmt.Errorf("expected stripped content to contain %q", substring)
 	}
 	return nil
 }

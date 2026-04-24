@@ -493,55 +493,44 @@ func (b *PromptBuilder) BuildWorkflowsUserMessage(guide service.TemplateGuide, t
 	return sb.String()
 }
 
-// BuildPluginSkillSystemPrompt returns a system prompt for generating a Claude Code plugin SKILL.md.
-// The LLM generates the skill content; hooks, agents, and scripts are generated statically.
-func (b *PromptBuilder) BuildPluginSkillSystemPrompt(workflowName, locale, projectContext, pluginName string) string {
+// BuildWorkflowSkillSystemPrompt returns a system prompt for generating a Claude Code native SKILL.md.
+// The LLM generates a complete skill file with frontmatter and personalized workflow instructions.
+func (b *PromptBuilder) BuildWorkflowSkillSystemPrompt(workflowName, locale, projectContext string) string {
 	return fmt.Sprintf(`<role>
-You are a senior DevOps engineer and workflow automation specialist for Claude Code plugins.
-Your task is to generate the SKILL.md component of a Claude Code plugin that orchestrates
-a multi-step workflow using the plugin's hooks, agents, and scripts.
+You are a senior DevOps engineer and workflow automation specialist for Claude Code.
+Your task is to generate a native Claude Code skill (SKILL.md) that guides an AI agent
+through a multi-step workflow using natural instructions.
 </role>
 
 <task>
-Generate a complete, production-ready SKILL.md for the plugin: %s.
-Workflow: %s.
+Generate a complete, production-ready SKILL.md for the workflow: %s.
 This skill must be PERSONALIZED to the user's project context provided below.
-The output must include proper YAML frontmatter (name, description).
+The output must include proper YAML frontmatter.
 </task>
 
 <project_context>
 %s
 </project_context>
 
-<plugin_context>
-This SKILL.md is part of a Claude Code plugin that includes:
-- hooks/hooks.json: Auto-approval hooks for safe commands (PreToolUse), output capture (PostToolUse),
-  and conditional step evaluation — these are already configured, do NOT duplicate their logic in prose
-- agents/workflow-runner.md: A subagent with tool access (Bash, Read, Edit, Write, Grep, Glob) that
-  executes workflow steps — reference it when delegation is appropriate
-- scripts/capture-output.sh: Captures command output for use in later steps (already wired via hooks)
-
-The plugin root is available as ${CLAUDE_PLUGIN_ROOT} in hook commands.
-Persistent state can be stored in ${CLAUDE_PLUGIN_DATA}.
-</plugin_context>
-
 <skill_format>
 The SKILL.md file MUST follow this structure:
 
 1. YAML frontmatter (between --- markers) with:
    - name: workflow-name (kebab-case)
-   - description: Short description of what this workflow does
+   - description: Short description of what this workflow does (max 250 chars)
+   - disable-model-invocation: true
+   - allowed-tools: space-separated list of tools Claude can use without permission prompts
+     (e.g., "Bash(git *) Bash(npm *) Bash(go test *)")
 
 2. Numbered steps in markdown with clear, actionable instructions
 3. Code blocks with exact commands the agent should run
-4. References to plugin components where appropriate
+4. Conditional logic as natural prose ("If X, then Y; otherwise skip this step")
 
 CRITICAL:
-- DO NOT include Antigravity execution annotations (// turbo, // capture, // if, etc.)
-- DO NOT write prose equivalents of hooks that are already configured (e.g., "auto-approve this")
-- DO reference the workflow-runner agent for tool-heavy steps
-- DO include conditional logic as natural prose ("If X, then Y; otherwise skip")
-- Annotations are handled by the plugin's hooks — the skill focuses on WHAT to do, not HOW to approve
+- DO NOT include Antigravity execution annotations (// turbo, // capture:, // if, // parallel, etc.)
+- The allowed-tools frontmatter field handles tool auto-approval — do not reference it in step prose
+- Write all instructions as natural language that Claude can follow directly
+- Each step should be self-contained and actionable
 </skill_format>
 
 <personalization_rules>
@@ -552,6 +541,7 @@ CRITICAL — Adapt this workflow to the project context:
 3. Adapt file paths and directory structures to match the project's layout
 4. Include project-specific considerations (monorepo vs single repo, deployment targets, etc.)
 5. Use the project's package manager, build tools, and test runners in commands
+6. Set allowed-tools to match the project's actual toolchain (e.g., Bash(go *) for Go projects)
 
 DO NOT:
 - Use generic commands when the project context provides specific tools
@@ -560,7 +550,7 @@ DO NOT:
 </personalization_rules>
 
 <output_quality>
-- YAML frontmatter with name and description
+- YAML frontmatter with name, description, disable-model-invocation, allowed-tools
 - 5-15 numbered steps (enough detail without bloat)
 - Exact, copy-pasteable commands in code blocks
 - Each step independently understandable
@@ -573,14 +563,13 @@ DO NOT:
 - DO NOT add explanations before or after the content
 - Content must be in %s
 - Start with the --- YAML frontmatter delimiter
-</rules>`, pluginName, workflowName, projectContext, outputLanguageName(locale))
+</rules>`, workflowName, projectContext, outputLanguageName(locale))
 }
 
-// BuildPluginSkillUserMessage constructs the user message for generating a plugin SKILL.md.
-func (b *PromptBuilder) BuildPluginSkillUserMessage(guide service.TemplateGuide, pluginName string) string {
+// BuildWorkflowSkillUserMessage constructs the user message for generating a native Claude Code SKILL.md.
+func (b *PromptBuilder) BuildWorkflowSkillUserMessage(guide service.TemplateGuide) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("<plugin_name>%s</plugin_name>\n\n", pluginName))
 	sb.WriteString(fmt.Sprintf("<workflow_name>%s</workflow_name>\n\n", guide.Name))
 	sb.WriteString("<template_guide>\n")
 	sb.WriteString(guide.Content)

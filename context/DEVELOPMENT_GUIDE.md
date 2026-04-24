@@ -119,11 +119,11 @@ Before marking a component as complete:
 - **Install scopes**: `global` (agent's home path) or `project` (current directory).
 
 ### Workflows System
-- **Target**: Antigravity IDE exclusively (only ecosystem with native workflow primitive).
+- **Targets**: Claude Code (native skills) and Antigravity IDE (native workflow primitive).
 - **Catalog**: `internal/domain/catalog/workflow_catalog.go` — separate bounded context from skills, reuses same structural types.
 - **Three presets**: `feature-development`, `bug-fix`, `release-cycle`.
 - **Output**: Flat `.md` files in `.agent/workflows/` with Antigravity-specific YAML frontmatter and execution annotations (`// turbo`, `// parallel`, `// capture: VAR`, `// if [condition]`).
-- **Planned**: Claude Code support via composite plugin (SKILL.md + hooks + agents) — not yet implemented.
+- **Claude target**: Native skill generation (SKILL.md with frontmatter: `name`, `description`, `disable-model-invocation`, `allowed-tools`). Antigravity annotations stripped and translated to prose.
 
 ### Template System
 - **Embedded via `embed.FS`** — templates ship inside the binary.

@@ -13,12 +13,8 @@ type FeatureContext struct {
 	categoryNames []string
 	err           error
 
-	// Plugin generation fields
-	pluginManifest string
-	pluginHooks    string
-	pluginSkill    string
-	pluginAgent    string
-	annotations    []catalog.AnnotationMeta
+	// Annotation stripping fields
+	strippedContent string
 }
 
 // SetupTest initializes test data (called once before all scenarios)
@@ -32,9 +28,5 @@ func (f *FeatureContext) reset() {
 	f.target = ""
 	f.categoryNames = nil
 	f.err = nil
-	f.pluginManifest = ""
-	f.pluginHooks = ""
-	f.pluginSkill = ""
-	f.pluginAgent = ""
-	f.annotations = nil
+	f.strippedContent = ""
 }

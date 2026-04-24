@@ -63,9 +63,9 @@ This log documents the evolution of the project, serving as its institutional me
 - **Decision:** The workflow catalog (`WorkflowCategories`) is a separate bounded context from the skills catalog, even though both share the same structural types (`SkillCategory`, `SkillOption`, `ResolvedSelection`).
 - **Reason:** Skills = expertise (how to do X), Workflows = orchestration (do A then B then C). Different domain concepts, different metadata registries, different output formats (SKILL.md vs flat .md).
 
-#### ADR-024: Antigravity-First Strategy for Workflows
-- **Decision:** Implement workflows exclusively for Antigravity first. Claude Code support planned as a later phase via composite plugin.
-- **Reason:** Antigravity is the only ecosystem with a native workflow primitive (`.agent/workflows/*.md` with execution annotations). Validates the concept with zero friction before investing in the more complex Claude Code composite model.
+#### ADR-024: Multi-Target Workflow Strategy
+- **Decision:** Workflows support both Claude Code (native skills with SKILL.md frontmatter) and Antigravity (native .md with execution annotations).
+- **Reason:** Claude Code workflows are generated as native skills with frontmatter (`name`, `description`, `disable-model-invocation`, `allowed-tools`). Antigravity annotations are stripped and translated to prose instructions. Both targets share the same workflow catalog and template content.
 
 ---
 

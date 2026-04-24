@@ -101,8 +101,11 @@ func TestGenerateWorkflowFrontmatter_Antigravity(t *testing.T) {
 	if !strings.HasSuffix(fm, "---\n") {
 		t.Error("frontmatter should end with ---")
 	}
-	if strings.Contains(fm, "user-invocable") {
-		t.Error("antigravity frontmatter should not contain user-invocable")
+	if strings.Contains(fm, "disable-model-invocation") {
+		t.Error("antigravity frontmatter should not contain disable-model-invocation")
+	}
+	if strings.Contains(fm, "allowed-tools") {
+		t.Error("antigravity frontmatter should not contain allowed-tools")
 	}
 	if strings.Contains(fm, "name:") {
 		t.Error("antigravity frontmatter should not contain name field")
@@ -120,8 +123,11 @@ func TestGenerateWorkflowFrontmatter_Claude(t *testing.T) {
 	if !strings.Contains(fm, "description:") {
 		t.Error("claude frontmatter should contain description field")
 	}
-	if !strings.Contains(fm, "user-invocable: true") {
-		t.Error("claude frontmatter should contain user-invocable: true")
+	if !strings.Contains(fm, "disable-model-invocation: true") {
+		t.Error("claude frontmatter should contain disable-model-invocation: true")
+	}
+	if !strings.Contains(fm, "allowed-tools: Bash(*)") {
+		t.Error("claude frontmatter should contain allowed-tools: Bash(*)")
 	}
 	if !strings.HasSuffix(fm, "---\n") {
 		t.Error("frontmatter should end with ---")
@@ -140,8 +146,43 @@ func TestGenerateWorkflowFrontmatter_UnknownClaude(t *testing.T) {
 	if !strings.Contains(fm, "Workflow for unknown-workflow") {
 		t.Errorf("expected fallback description, got: %s", fm)
 	}
-	if !strings.Contains(fm, "user-invocable: true") {
-		t.Error("claude frontmatter should contain user-invocable: true")
+	if !strings.Contains(fm, "disable-model-invocation: true") {
+		t.Error("claude frontmatter should contain disable-model-invocation: true")
+	}
+}
+
+func TestStripAnnotationLines(t *testing.T) {
+	content := `### 1. Create Branch
+// capture: BRANCH_NAME
+Create a new branch.
+
+### 2. Run Tests
+// turbo
+Run test suite.
+
+### 3. Plan
+// if the change is large
+Break it down.
+`
+	result := StripAnnotationLines(content)
+
+	if strings.Contains(result, "// capture:") {
+		t.Error("should strip capture annotations")
+	}
+	if strings.Contains(result, "// turbo") {
+		t.Error("should strip turbo annotations")
+	}
+	if strings.Contains(result, "// if ") {
+		t.Error("should strip if annotations")
+	}
+	if !strings.Contains(result, "Create a new branch.") {
+		t.Error("should preserve non-annotation content")
+	}
+	if !strings.Contains(result, "Run test suite.") {
+		t.Error("should preserve non-annotation content")
+	}
+	if !strings.Contains(result, "### 1. Create Branch") {
+		t.Error("should preserve step headers")
 	}
 }
 

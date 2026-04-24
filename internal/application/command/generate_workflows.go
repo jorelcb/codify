@@ -48,9 +48,14 @@ func (c *GenerateWorkflowsCommand) Execute(
 		target = "antigravity"
 	}
 
+	mode := "workflows"
+	if target == "claude" {
+		mode = "workflow-skills"
+	}
+
 	req := service.GenerationRequest{
 		TemplateGuides: templateGuides,
-		Mode:           "workflows",
+		Mode:           mode,
 		Target:         target,
 		Locale:         config.Locale,
 		ProjectContext: config.ProjectContext,

@@ -45,8 +45,14 @@ func (c *DeliverStaticWorkflowsCommand) Execute(
 
 	for _, guide := range templateGuides {
 		workflowDirName := strings.ReplaceAll(guide.Name, "_", "-")
+
+		templateContent := guide.Content
+		if target == "claude" {
+			templateContent = catalog.StripAnnotationLines(templateContent)
+		}
+
 		frontmatter := catalog.GenerateWorkflowFrontmatter(guide.Name, target)
-		content := frontmatter + "\n" + guide.Content
+		content := frontmatter + "\n" + templateContent
 
 		var filePath string
 		if target == "claude" {

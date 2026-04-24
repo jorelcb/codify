@@ -3,6 +3,7 @@ package catalog
 import (
 	"fmt"
 	"maps"
+	"regexp"
 	"strings"
 )
 
@@ -30,7 +31,7 @@ func GenerateWorkflowFrontmatter(guideName, target string) string {
 	case "antigravity":
 		return fmt.Sprintf("---\ndescription: %s\n---\n", meta.Description)
 	default: // claude
-		return fmt.Sprintf("---\nname: %s\ndescription: %s\nuser-invocable: true\n---\n", name, meta.Description)
+		return fmt.Sprintf("---\nname: %s\ndescription: %s\ndisable-model-invocation: true\nallowed-tools: Bash(*)\n---\n", name, meta.Description)
 	}
 }
 
@@ -86,6 +87,23 @@ func FindWorkflowCategory(name string) (*SkillCategory, error) {
 		}
 	}
 	return nil, fmt.Errorf("unknown workflow category: %s", name)
+}
+
+// annotationLineRegex matches Antigravity execution annotation lines.
+var annotationLineRegex = regexp.MustCompile(`^\s*//\s*(turbo|capture:|if |parallel|retry:|timeout:)`)
+
+// StripAnnotationLines removes Antigravity execution annotation lines from workflow content.
+// Non-annotation lines are preserved as-is.
+func StripAnnotationLines(content string) string {
+	lines := strings.Split(content, "\n")
+	var result []string
+	for _, line := range lines {
+		if annotationLineRegex.MatchString(strings.TrimSpace(line)) {
+			continue
+		}
+		result = append(result, line)
+	}
+	return strings.Join(result, "\n")
 }
 
 // ResolveAllWorkflows combines all workflow options into a single selection.

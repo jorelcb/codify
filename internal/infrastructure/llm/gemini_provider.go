@@ -103,10 +103,9 @@ func (p *GeminiProvider) generateSingleFile(
 	case "skills":
 		systemPrompt = p.promptBuilder.BuildPersonalizedSkillsSystemPrompt(guide.Name, req.Target, req.Locale, req.ProjectContext)
 		userMessage = p.promptBuilder.BuildSkillsUserMessage(guide, req.Target)
-	case "plugin":
-		pluginName := "codify-wf-" + strings.ReplaceAll(guide.Name, "_", "-")
-		systemPrompt = p.promptBuilder.BuildPluginSkillSystemPrompt(guide.Name, req.Locale, req.ProjectContext, pluginName)
-		userMessage = p.promptBuilder.BuildPluginSkillUserMessage(guide, pluginName)
+	case "workflow-skills":
+		systemPrompt = p.promptBuilder.BuildWorkflowSkillSystemPrompt(guide.Name, req.Locale, req.ProjectContext)
+		userMessage = p.promptBuilder.BuildWorkflowSkillUserMessage(guide)
 	case "workflows":
 		systemPrompt = p.promptBuilder.BuildPersonalizedWorkflowsSystemPrompt(guide.Name, req.Locale, req.ProjectContext)
 		userMessage = p.promptBuilder.BuildWorkflowsUserMessage(guide, req.Target)

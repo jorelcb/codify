@@ -84,28 +84,21 @@ CLI → `WorkflowConfig` DTO → `FindWorkflowCategory()` + `Resolve()` → `Tem
 | Token limits | Low | High | Per-file generation strategy stays within context windows. |
 | Ecosystem API changes | Medium | Medium | Provider abstraction via factory pattern isolates changes. |
 
-## Next Phase: Claude Code Composite Workflows
+## Completed Phase: Claude Code Native Workflow Skills
 
 ### Strategy
-Replicate Antigravity workflow behavior in Claude Code using its compositional model:
+Claude Code workflows are generated as native skills (SKILL.md with frontmatter). Antigravity annotations are stripped and translated to prose instructions.
 
-| Option | Output | Complexity | Value |
-|---|---|---|---|
-| **A (MVP)** | SKILL.md with procedural multi-step instructions | Low | Immediate — `/workflow-name` command in Claude Code |
-| **B** | SKILL.md + hooks.json + agents/*.md | Medium | Higher — deterministic validation via hooks |
-| **C** | Full plugin directory | High | Highest — complete distributable package |
+### Implementation
+- `--target claude` on `workflows` command produces SKILL.md files in `.claude/skills/`
+- Frontmatter: `name`, `description`, `disable-model-invocation: true`, `allowed-tools`
+- `StripAnnotationLines()` removes Antigravity execution annotations
+- `BuildWorkflowSkillSystemPrompt()` guides LLM for annotation-to-prose translation
+- `workflow-skills` mode in both providers (Anthropic + Gemini)
+- Install paths: `~/.claude/skills/` (global), `.claude/skills/` (project)
 
-**Recommended path:** Start with Option A, evolve to B based on user feedback.
-
-### What exists for reuse
+### What was reused
 - Workflow catalog (domain) — presets, metadata, resolution logic
 - Template content — same workflow steps, different output format
 - LLM pipeline — personalized mode infrastructure
 - CLI/MCP patterns — command structure, tool registration
-
-### What needs building
-- Frontmatter adapter (Antigravity → Claude skill format)
-- Annotation transformer (`// turbo` → prose instructions)
-- Output path resolver (`.claude/skills/{workflow}/SKILL.md`)
-- Prompt variant for Claude Code format
-- `--target` flag on `workflows` command (currently hardcoded to antigravity)
