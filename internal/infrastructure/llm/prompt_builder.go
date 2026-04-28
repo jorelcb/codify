@@ -44,9 +44,11 @@ var fileOutputNames = map[string]string{
 	"test_tdd":          "SKILL.md",
 	"test_bdd":          "SKILL.md",
 	// Workflow command output files (flat .md files, not subdirectories)
-	"feature_development": "feature-development.md",
-	"bug_fix":             "bug-fix.md",
-	"release_cycle":       "release-cycle.md",
+	"bug_fix":       "bug-fix.md",
+	"release_cycle": "release-cycle.md",
+	"spec_propose":  "spec-propose.md",
+	"spec_apply":    "spec-apply.md",
+	"spec_archive":  "spec-archive.md",
 }
 
 // localeLanguageNames maps locale codes to their language name for the LLM directive.

@@ -46,12 +46,13 @@ func TestWorkflowResolve_Presets(t *testing.T) {
 	cat, _ := FindWorkflowCategory("workflows")
 
 	presets := []struct {
-		name string
-		dir  string
+		name             string
+		dir              string
+		expectedMappings int
 	}{
-		{"feature-development", "workflows"},
-		{"bug-fix", "workflows"},
-		{"release-cycle", "workflows"},
+		{"bug-fix", "workflows", 1},
+		{"release-cycle", "workflows", 1},
+		{"spec-driven-change", "workflows", 3},
 	}
 
 	for _, tt := range presets {
@@ -63,8 +64,8 @@ func TestWorkflowResolve_Presets(t *testing.T) {
 			if sel.TemplateDir != tt.dir {
 				t.Errorf("got dir %q, want %q", sel.TemplateDir, tt.dir)
 			}
-			if len(sel.TemplateMapping) != 1 {
-				t.Errorf("got %d mappings, want 1", len(sel.TemplateMapping))
+			if len(sel.TemplateMapping) != tt.expectedMappings {
+				t.Errorf("got %d mappings, want %d", len(sel.TemplateMapping), tt.expectedMappings)
 			}
 		})
 	}
@@ -77,8 +78,10 @@ func TestWorkflowResolve_All(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(sel.TemplateMapping) != 3 {
-		t.Errorf("got %d mappings, want 3", len(sel.TemplateMapping))
+	// 2 single-file presets (bug-fix, release-cycle) +
+	// 3 mappings from spec-driven-change (propose, apply, archive) = 5
+	if len(sel.TemplateMapping) != 5 {
+		t.Errorf("got %d mappings, want 5", len(sel.TemplateMapping))
 	}
 }
 
@@ -91,7 +94,7 @@ func TestWorkflowResolve_UnknownPreset(t *testing.T) {
 }
 
 func TestGenerateWorkflowFrontmatter_Antigravity(t *testing.T) {
-	fm := GenerateWorkflowFrontmatter("feature_development", "antigravity")
+	fm := GenerateWorkflowFrontmatter("bug_fix", "antigravity")
 	if !strings.HasPrefix(fm, "---\n") {
 		t.Error("frontmatter should start with ---")
 	}
@@ -113,11 +116,11 @@ func TestGenerateWorkflowFrontmatter_Antigravity(t *testing.T) {
 }
 
 func TestGenerateWorkflowFrontmatter_Claude(t *testing.T) {
-	fm := GenerateWorkflowFrontmatter("feature_development", "claude")
+	fm := GenerateWorkflowFrontmatter("spec_propose", "claude")
 	if !strings.HasPrefix(fm, "---\n") {
 		t.Error("frontmatter should start with ---")
 	}
-	if !strings.Contains(fm, "name: feature-development") {
+	if !strings.Contains(fm, "name: spec-propose") {
 		t.Errorf("claude frontmatter should contain name field, got: %s", fm)
 	}
 	if !strings.Contains(fm, "description:") {

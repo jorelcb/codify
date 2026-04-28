@@ -1,0 +1,93 @@
+# Workflow de Aplicacion de Spec
+
+## Proposito
+Implementar un cambio spec-driven aprobado. Ejecutar tareas de tasks.md en orden, escribir tests, hacer commits atomicos, y producir un pull request reviewable. Esta es la fase 2 de 3 en el ciclo SDD: proponer → aplicar → archivar. Requiere una propuesta aprobada en `openspec/changes/<change-id>/`.
+
+## Pasos a Generar
+
+### 1. Verificar Aprobacion de la Propuesta
+// if no existe propuesta aprobada
+Detente y refiere al usuario al workflow de proponer:
+- Confirma que `openspec/changes/<change-id>/proposal.md` existe
+- Confirma que tasks.md esta presente y las tareas no estan todas marcadas
+- Confirma que los deltas de spec describen los cambios pretendidos
+- Si algo falta, regresa a la fase de proponer antes de continuar
+
+### 2. Cambiar al Branch de Feature
+// turbo
+Asegura que el trabajo ocurra en el branch correcto:
+- Verifica que el branch actual coincide con el branch del cambio
+- Pull el ultimo del base branch y rebase si es necesario
+- Confirma que el working tree esta limpio antes de comenzar
+
+### 3. Cargar Contexto del Cambio
+// turbo
+Lee todo lo necesario para implementar correctamente:
+- Lee `proposal.md` (motivacion, alcance)
+- Lee `design.md` (decisiones tecnicas)
+- Lee todos los deltas de spec en `openspec/changes/<change-id>/specs/`
+- Lee `tasks.md` para identificar la primera tarea no completada
+
+### 4. Implementar Tareas Secuencialmente
+Para cada tarea no marcada en tasks.md:
+- Lee la descripcion de la tarea cuidadosamente
+- Implementa el cambio minimo de codigo para satisfacer la tarea
+- Escribe o actualiza tests cubriendo el nuevo comportamiento
+- Ejecuta tests del modulo afectado
+- Marca la tarea como completa: cambia `- [ ]` a `- [x]` en tasks.md
+- Commit atomico: `feat: <descripcion-tarea>` o `fix: <descripcion-tarea>`
+- Referencia el change-id en el cuerpo del commit
+
+### 5. Ejecutar Test Suite Completo
+// turbo
+Despues de marcar todas las tareas:
+- Ejecuta tests unitarios en todo el codebase
+- Ejecuta tests de integracion
+- Ejecuta linters y analisis estatico
+- Todo debe pasar antes de proceder
+
+### 6. Verificar Cumplimiento de Spec
+// turbo
+Verifica que la implementacion coincide con los deltas:
+- Por cada requirement ADDED: confirma que al menos un test cubre cada scenario
+- Por cada requirement MODIFIED: confirma que el comportamiento viejo es reemplazado limpiamente
+- Por cada requirement REMOVED: confirma que el code path se fue, sin referencias muertas
+- Si existen discrepancias, actualiza los deltas (no el codigo) para reflejar realidad, o regresa a proponer
+
+### 7. Self-Review del Diff
+Lee el diff completo como si revisaras un PR de alguien mas:
+- Sin codigo de debug residual, TODOs, o bloques comentados
+- Sin credenciales hardcodeadas o valores sensibles
+- Mensajes de commit siguen formato conventional commits
+- Los tests son significativos, no solo padding de coverage
+- El codigo coincide con las decisiones de design.md
+
+### 8. Actualizar Estado Final de tasks.md
+Si la implementacion divergio del plan original:
+- Marca tareas agregadas como completadas: `- [x] 4.5 Descubrierto: manejar input vacio`
+- Anota tareas saltadas con razon: `- [-] 3.2 Saltada: cubierta por 3.1`
+- Manten tasks.md como fuente de verdad de lo que realmente se construyo
+
+### 9. Crear Pull Request
+Abre el PR para review:
+- Titulo: `<change-id>: <resumen-una-linea>`
+- Descripcion: link a `proposal.md`, resume deltas de spec, lista pasos de verificacion
+- Solicita review de los reviewers apropiados
+- Marca como ready (no draft) una vez que los tests pasen
+
+### 10. Atender Feedback de Review
+// if existen comentarios de review
+Itera sobre el feedback:
+- Implementa los cambios solicitados en NUEVOS commits (no amend durante review)
+- Actualiza deltas de spec si el alcance cambio durante review
+- Actualiza tasks.md si emergieron nuevas tareas
+- Re-solicita review despues de atender todos los comentarios
+
+## Anti-patrones
+- Implementar tareas fuera de orden sin justificacion
+- Saltar tests para "ahorrar tiempo" — los tests son parte del spec
+- Force-push durante review activo
+- Modificar specs en `openspec/specs/` directamente (deltas solo hasta archive)
+- Mezclar fixes no relacionados en el mismo PR
+- Marcar tareas como hechas sin implementacion real
+- Ignorar tests fallidos agregando skip annotations

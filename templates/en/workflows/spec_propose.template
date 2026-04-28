@@ -1,0 +1,93 @@
+# Spec Propose Workflow
+
+## Purpose
+Plan a feature change using spec-driven development methodology. Generate formal proposal artifacts (proposal.md, design.md, tasks.md, spec deltas) and set up an isolated change workspace before any code is written. This is phase 1 of 3 in the SDD lifecycle: propose → apply → archive.
+
+## Steps to Generate
+
+### 1. Analyze the Request
+Before any artifact, understand the change deeply:
+- What is the feature/fix being proposed?
+- Which capabilities of the system does it affect?
+- What is the user-visible behavior change?
+- What is the motivation (compliance, performance, UX, bug)?
+
+### 2. Read Existing Specs
+// turbo
+Search the source-of-truth specs to find affected capabilities:
+- List directories under `openspec/specs/`
+- Read `spec.md` for each candidate capability
+- Identify requirements that ADDED, MODIFIED, or REMOVED in this change
+
+### 3. Determine Change Identifier
+// capture: CHANGE_ID
+Choose a kebab-case identifier that summarizes the change:
+- Format: `<verb>-<short-description>` (e.g., `add-2fa`, `fix-session-expiry`, `remove-legacy-auth`)
+- Avoid version numbers or dates in the ID
+- The identifier becomes the directory name under `openspec/changes/`
+
+### 4. Create Change Workspace
+// turbo
+Initialize the change workspace:
+- Create directory `openspec/changes/<change-id>/`
+- Create subdirectory `openspec/changes/<change-id>/specs/` for deltas
+- One subdirectory per affected capability inside specs/
+
+### 5. Write proposal.md
+Document the change rationale:
+- **Title**: One-line summary
+- **Motivation**: Why this change matters (link to issues/tickets)
+- **Scope**: What is and is NOT included
+- **Impact**: Affected capabilities, breaking changes, migrations needed
+- Keep concise (under 100 lines)
+
+### 6. Write design.md
+Document the technical approach:
+- **Architecture decisions**: Patterns, libraries, data structures chosen
+- **Trade-offs**: What was considered and rejected, with reasoning
+- **Integration points**: APIs, schemas, contracts touched
+- **Testing strategy**: Unit, integration, acceptance approach
+
+### 7. Write tasks.md
+Decompose the work into atomic, sequential tasks organized by phase:
+- Group tasks into logical phases (data, business logic, interfaces, UI)
+- Each task = one indivisible unit of work (one file, one function, one schema change)
+- Use checkbox format: `- [ ] 1.1 Description of task`
+- Aim for 5-20 tasks; if more, the change is too large — split it
+
+### 8. Write Spec Deltas
+For each affected capability, write `openspec/changes/<change-id>/specs/<capability>/spec.md`:
+- Use `## ADDED Requirements` / `## MODIFIED Requirements` / `## REMOVED Requirements` sections
+- Each requirement uses SHALL language: "The system SHALL ..."
+- Each requirement includes at least one Scenario in GIVEN/WHEN/THEN format
+- MODIFIED requirements include the complete revised text
+- REMOVED requirements include reason for deprecation
+
+### 9. Create Feature Branch
+// capture: BRANCH_NAME
+Create a branch from the latest main/develop:
+- Format: `feature/<change-id>` or follow project convention
+- Pull latest base branch first
+- Push branch to origin to establish tracking
+
+### 10. Commit Proposal Artifacts
+// turbo
+Stage and commit the proposal:
+- `git add openspec/changes/<change-id>/`
+- Commit message: `propose: <change-id> - one-line summary`
+- Push to remote
+
+### 11. Request Intent Review
+Before implementation begins:
+- Open a draft PR or share the proposal directory
+- Reviewers focus on `proposal.md` and spec deltas (intent), not code
+- Iterate on the proposal until intent is approved
+- Implementation only starts after intent approval
+
+## Anti-patterns
+- Writing code before the proposal is approved
+- Vague tasks ("implement feature") instead of atomic steps
+- Spec deltas without Given/When/Then scenarios
+- Skipping design.md when trade-offs exist
+- Bundling multiple unrelated changes in one proposal
+- Modifying existing specs directly instead of creating deltas

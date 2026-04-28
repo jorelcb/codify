@@ -128,11 +128,11 @@ Single non-exclusive category with 3 presets:
 
 | Preset | Description (max 250 chars, Antigravity constraint) |
 |---|---|
-| `feature-development` | Full feature lifecycle: branch, implement, test, PR, and review |
+| `spec-driven-change` | Spec-driven feature lifecycle (propose → apply → archive) — generates three skills (`/spec-propose`, `/spec-apply`, `/spec-archive`) implementing the OpenSpec-compatible SDD methodology |
 | `bug-fix` | Structured bug fix: reproduce, diagnose, fix, test, and PR |
 | `release-cycle` | Release process: version bump, changelog, tag, and deploy |
 
-Workflows generate flat `.md` files (not subdirectories like skills). `GenerateWorkflowFrontmatter()` produces Antigravity-compatible YAML frontmatter.
+For Antigravity, workflows generate flat `.md` files. For Claude Code, workflows generate native skill directories (`{preset}/SKILL.md`). `GenerateWorkflowFrontmatter()` produces target-specific YAML frontmatter (Antigravity uses `description` only; Claude uses `name`, `description`, `disable-model-invocation`, `allowed-tools`).
 
 ## External Integrations
 

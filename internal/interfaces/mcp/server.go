@@ -21,7 +21,7 @@ import (
 	infratemplate "github.com/jorelcb/codify/internal/infrastructure/template"
 )
 
-const serverVersion = "1.17.0"
+const serverVersion = "1.18.0"
 
 // validPresets maps preset names for validation.
 var validPresets = map[string]bool{
@@ -117,7 +117,7 @@ func generateSkillsTool() server.ServerTool {
 func generateWorkflowsTool() server.ServerTool {
 	tool := mcp.NewTool("generate_workflows",
 		mcp.WithDescription("Generate workflow files for AI agents. Claude target produces native SKILL.md files with frontmatter. Antigravity target produces .md files with execution annotations. Static mode is instant. Personalized mode uses LLM."),
-		mcp.WithString("preset", mcp.Required(), mcp.Description("Workflow preset: feature-development, bug-fix, release-cycle, or all")),
+		mcp.WithString("preset", mcp.Required(), mcp.Description("Workflow preset: spec-driven-change, bug-fix, release-cycle, or all")),
 		mcp.WithString("target", mcp.Description("Target ecosystem: claude (SKILL.md) or antigravity (native .md)"), mcp.DefaultString("antigravity")),
 		mcp.WithString("mode", mcp.Description("Generation mode: static (instant, no API key) or personalized (LLM-adapted)"), mcp.DefaultString("static")),
 		mcp.WithString("project_context", mcp.Description("Project description for personalized mode (language, tools, CI/CD, deployment)")),

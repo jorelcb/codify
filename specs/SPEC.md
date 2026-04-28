@@ -120,7 +120,7 @@ Generates multi-step workflow files for Antigravity IDE with execution annotatio
 
 | Preset | Description |
 |---|---|
-| `feature-development` | Branch → implement → test → PR → review lifecycle |
+| `spec-driven-change` | Propose → apply → archive — full SDD lifecycle (3 skills) |
 | `bug-fix` | Reproduce → diagnose → fix → test → PR |
 | `release-cycle` | Version bump → changelog → tag → deploy |
 

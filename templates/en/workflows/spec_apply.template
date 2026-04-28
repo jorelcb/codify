@@ -1,0 +1,93 @@
+# Spec Apply Workflow
+
+## Purpose
+Implement an approved spec-driven change. Execute tasks from tasks.md in order, write tests, commit atomically, and produce a reviewable pull request. This is phase 2 of 3 in the SDD lifecycle: propose → apply → archive. Requires an approved proposal in `openspec/changes/<change-id>/`.
+
+## Steps to Generate
+
+### 1. Verify Proposal Approval
+// if no approved proposal exists
+Stop and refer the user to the propose workflow:
+- Confirm `openspec/changes/<change-id>/proposal.md` exists
+- Confirm tasks.md is present and tasks are not all checked
+- Confirm spec deltas describe the intended changes
+- If anything is missing, return to propose phase before continuing
+
+### 2. Switch to Feature Branch
+// turbo
+Ensure work happens on the right branch:
+- Check current branch matches the change's feature branch
+- Pull latest from base branch and rebase if needed
+- Confirm working tree is clean before starting
+
+### 3. Load Change Context
+// turbo
+Read everything needed to implement correctly:
+- Read `proposal.md` (motivation, scope)
+- Read `design.md` (technical decisions)
+- Read all spec deltas in `openspec/changes/<change-id>/specs/`
+- Read `tasks.md` to identify the first uncompleted task
+
+### 4. Implement Tasks Sequentially
+For each unchecked task in tasks.md:
+- Read the task description carefully
+- Implement the minimal code change to satisfy the task
+- Write or update tests covering the new behavior
+- Run tests for the affected module
+- Mark the task complete: change `- [ ]` to `- [x]` in tasks.md
+- Commit atomically: `feat: <task-description>` or `fix: <task-description>`
+- Reference the change-id in commit body
+
+### 5. Run Full Test Suite
+// turbo
+After all tasks are checked:
+- Run unit tests across the entire codebase
+- Run integration tests
+- Run linters and static analysis
+- All must pass before proceeding
+
+### 6. Verify Spec Compliance
+// turbo
+Verify implementation matches the spec deltas:
+- For each ADDED requirement: confirm at least one test covers each scenario
+- For each MODIFIED requirement: confirm old behavior is replaced cleanly
+- For each REMOVED requirement: confirm code path is gone, no dead references
+- If discrepancies exist, update the deltas (not the code) to reflect reality, or return to propose
+
+### 7. Self-Review the Diff
+Read the complete diff as if reviewing someone else's PR:
+- No leftover debug code, TODOs, or commented-out blocks
+- No hardcoded credentials or sensitive values
+- Commit messages follow conventional commits format
+- Tests are meaningful, not just coverage padding
+- Code matches design.md decisions
+
+### 8. Update tasks.md Final State
+If implementation diverged from the original plan:
+- Mark added tasks as completed: `- [x] 4.5 Discovered: handle empty input`
+- Note skipped tasks with reason: `- [-] 3.2 Skipped: covered by 3.1`
+- Keep tasks.md as the source of truth for what was actually built
+
+### 9. Create Pull Request
+Open the PR for review:
+- Title: `<change-id>: <one-line summary>`
+- Description: link `proposal.md`, summarize spec deltas, list verification steps
+- Request review from appropriate reviewers
+- Mark as ready (not draft) once tests pass
+
+### 10. Address Review Feedback
+// if review comments exist
+Iterate on feedback:
+- Implement requested changes in NEW commits (do not amend during review)
+- Update spec deltas if scope changed during review
+- Update tasks.md if new tasks emerged
+- Re-request review after addressing all comments
+
+## Anti-patterns
+- Implementing tasks out of order without justification
+- Skipping tests to "save time" — tests are part of the spec
+- Force-pushing during active review
+- Modifying specs in `openspec/specs/` directly (deltas only until archive)
+- Bundling unrelated fixes in the same PR
+- Marking tasks as done without actual implementation
+- Ignoring failing tests by adding skip annotations

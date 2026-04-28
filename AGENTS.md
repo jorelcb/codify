@@ -128,10 +128,12 @@ Dependencies point inwards: `Interfaces` → `Infrastructure` → `Application` 
 │   │   │   ├── neutral/               # Architecture: Neutral (review, testing, API)
 │   │   │   ├── testing/               # Testing: Foundational, TDD, BDD
 │   │   │   └── conventions/           # Conventions: Conventional Commits, Semantic Versioning
-│   │   ├── workflows/                  # Antigravity workflow templates
-│   │   │   ├── feature_development.template
+│   │   ├── workflows/                  # Workflow templates
 │   │   │   ├── bug_fix.template
-│   │   │   └── release_cycle.template
+│   │   │   ├── release_cycle.template
+│   │   │   ├── spec_propose.template
+│   │   │   ├── spec_apply.template
+│   │   │   └── spec_archive.template
 │   │   └── languages/                  # Language-specific idiomatic guides
 │   │       ├── go/, javascript/, python/
 │

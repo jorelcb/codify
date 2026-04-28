@@ -50,7 +50,7 @@ Modes:
   personalized  - LLM-adapted workflows tailored to your project (requires API key)
 
 Presets:
-  feature-development  - Full feature lifecycle (branch → implement → test → PR)
+  spec-driven-change   - Spec-driven feature lifecycle (propose → apply → archive)
   bug-fix              - Structured bug fix (reproduce → diagnose → fix → test)
   release-cycle        - Release process (version → changelog → tag → deploy)
   all                  - All workflow presets
@@ -83,7 +83,10 @@ Examples:
   codify workflows --preset all --target antigravity --mode static
 
   # Install to current project (Antigravity)
-  codify workflows --preset feature-development --target antigravity --mode static --install project
+  codify workflows --preset spec-driven-change --target antigravity --mode static --install project
+
+  # Spec-driven change lifecycle (recommended for feature work)
+  codify workflows --preset spec-driven-change --target claude --mode static
 
   # Personalized: LLM-adapted to your project
   codify workflows --preset all --target claude --mode personalized --context "Go microservice with CI/CD via GitHub Actions"`,
@@ -96,7 +99,7 @@ Examples:
 		},
 	}
 
-	cmd.Flags().StringVarP(&p.preset, "preset", "p", "", "Workflow preset: feature-development, bug-fix, release-cycle, or all")
+	cmd.Flags().StringVarP(&p.preset, "preset", "p", "", "Workflow preset: spec-driven-change, bug-fix, release-cycle, or all")
 	cmd.Flags().StringVar(&p.mode, "mode", "", "Generation mode: static (instant) or personalized (LLM)")
 	cmd.Flags().StringVar(&p.target, "target", "antigravity", "Target ecosystem: claude or antigravity")
 	cmd.Flags().StringVar(&p.locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")

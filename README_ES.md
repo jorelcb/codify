@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.17.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.18.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -399,7 +399,7 @@ Cada skill de Claude incluye frontmatter YAML:
 
 ```bash
 codify workflows
-# → Selecciona preset (feature-development, bug-fix, release-cycle, all)
+# → Selecciona preset (spec-driven-change, bug-fix, release-cycle, all)
 # → Selecciona ecosistema target (claude, antigravity)
 # → Selecciona modo (static o personalized)
 # → Selecciona locale
@@ -416,8 +416,8 @@ codify workflows --preset all --target claude --mode static
 # Claude Code: instalar skills globalmente
 codify workflows --preset all --target claude --mode static --install global
 
-# Claude Code: generar un solo workflow skill
-codify workflows --preset feature-development --target claude --mode static
+# Claude Code: ciclo SDD spec-driven (propose → apply → archive)
+codify workflows --preset spec-driven-change --target claude --mode static
 
 # Antigravity: generar archivos de workflow nativos
 codify workflows --preset all --target antigravity --mode static
@@ -448,10 +448,12 @@ codify workflows --preset all --target claude --mode personalized \
 
 | Preset | Workflow | Descripcion |
 |--------|----------|-------------|
-| `feature-development` | Feature Development | Branch → implementar → testear → PR → review |
+| `spec-driven-change` | Cambio Spec-driven | Proponer → aplicar → archivar — ciclo SDD completo con deltas formales, branch creation y cleanup de merge |
 | `bug-fix` | Bug Fix | Reproducir → diagnosticar → corregir → testear → PR |
 | `release-cycle` | Release Cycle | Bump de version → changelog → tag → deploy |
 | `all` | Todos los workflows | Todos los presets de workflow combinados |
+
+El preset `spec-driven-change` genera tres skills (`/spec-propose`, `/spec-apply`, `/spec-archive`) que implementan el ciclo OpenSpec-compatible: artefactos de propuesta (proposal.md, design.md, tasks.md, deltas) bajo `openspec/changes/<change-id>/`, ejecucion secuencial de tareas con commits atomicos, y consolidacion final en `openspec/specs/<capability>/spec.md`.
 
 ### Skills vs Workflows
 
@@ -575,8 +577,8 @@ Las herramientas de conocimiento inyectan contexto comportamental en el agente q
 "Crea skills de DDD adaptadas a mi proyecto Go con Clean Architecture"
 → El agente invoca generate_skills con mode=personalized, project_context="Go con DDD..."
 
-"Genera workflow de feature-development para Claude Code"
-→ El agente invoca generate_workflows con target=claude, preset=feature-development, mode=static
+"Genera workflow de spec-driven-change para Claude Code"
+→ El agente invoca generate_workflows con target=claude, preset=spec-driven-change, mode=static
 
 "Genera todos los workflows adaptados a mi proyecto Go con GitHub Actions"
 → El agente invoca generate_workflows con target=claude, mode=personalized, preset=all, project_context="Go con GitHub Actions"
@@ -704,10 +706,12 @@ templates/
 │   │   ├── neutral/             Architecture: Neutral (review, testing, API)
 │   │   ├── testing/             Testing: Foundational, TDD, BDD
 │   │   └── conventions/         Conventions (conventional commits, semver)
-│   ├── workflows/              Templates de workflows Antigravity
-│   │   ├── feature_development.template
+│   ├── workflows/              Templates de workflows
 │   │   ├── bug_fix.template
-│   │   └── release_cycle.template
+│   │   ├── release_cycle.template
+│   │   ├── spec_propose.template
+│   │   ├── spec_apply.template
+│   │   └── spec_archive.template
 │   └── languages/               Guias idiomaticas por lenguaje
 │       ├── go/idioms.template
 │       ├── javascript/idioms.template
@@ -731,7 +735,7 @@ go test ./tests/...
 
 ## 📊 Estado del proyecto
 
-**v1.17.0** 🎉
+**v1.18.0** 🎉
 
 ✅ **Funcionando:**
 - Soporte multi-proveedor LLM (Anthropic Claude + Google Gemini)
@@ -742,7 +746,7 @@ go test ./tests/...
 - **Instalacion de skills** — `--install global` o `--install project` para instalacion directa en el path del agente
 - Categorias de skills (architecture, testing, conventions) con frontmatter por ecosistema (Claude, Codex, Antigravity)
 - **Workflows** — recetas de orquestacion multi-paso para Claude Code (native skills) y Antigravity (anotaciones nativas)
-- **Presets de workflows** — feature-development, bug-fix, release-cycle (modos static + personalized, multi-target)
+- **Presets de workflows** — spec-driven-change (propose/apply/archive), bug-fix, release-cycle (modos static + personalized, multi-target)
 - **UX interactiva unificada** — todos los comandos preguntan por parametros faltantes en terminal
 - Servidor MCP (transporte stdio + HTTP) con 7 herramientas
 - Herramientas de conocimiento MCP (commit_guidance, version_guidance) — sin API key

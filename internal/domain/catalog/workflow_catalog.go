@@ -14,9 +14,11 @@ type WorkflowMeta struct {
 
 // WorkflowMetadata maps guide names to their metadata for frontmatter.
 var WorkflowMetadata = map[string]WorkflowMeta{
-	"feature_development": {Description: "Full feature lifecycle: branch, implement, test, PR, and review"},
-	"bug_fix":             {Description: "Structured bug fix: reproduce, diagnose, fix, test, and PR"},
-	"release_cycle":       {Description: "Release process: version bump, changelog, tag, and deploy"},
+	"bug_fix":       {Description: "Structured bug fix: reproduce, diagnose, fix, test, and PR"},
+	"release_cycle": {Description: "Release process: version bump, changelog, tag, and deploy"},
+	"spec_propose":  {Description: "Propose a feature change with spec deltas, design, tasks, and feature branch"},
+	"spec_apply":    {Description: "Apply a spec-driven change: implement tasks, test, and create PR"},
+	"spec_archive":  {Description: "Archive a completed change: merge spec deltas, finalize, and clean up"},
 }
 
 // GenerateWorkflowFrontmatter generates YAML frontmatter for a workflow based on the target ecosystem.
@@ -43,14 +45,6 @@ var WorkflowCategories = []SkillCategory{
 		Exclusive: false,
 		Options: []SkillOption{
 			{
-				Name:        "feature-development",
-				Label:       "Feature Development (branch → implement → test → PR → review)",
-				TemplateDir: "workflows",
-				TemplateMapping: map[string]string{
-					"feature_development.template": "feature_development",
-				},
-			},
-			{
 				Name:        "bug-fix",
 				Label:       "Bug Fix (reproduce → diagnose → fix → test → PR)",
 				TemplateDir: "workflows",
@@ -64,6 +58,16 @@ var WorkflowCategories = []SkillCategory{
 				TemplateDir: "workflows",
 				TemplateMapping: map[string]string{
 					"release_cycle.template": "release_cycle",
+				},
+			},
+			{
+				Name:        "spec-driven-change",
+				Label:       "Spec-driven Change (propose → apply → archive)",
+				TemplateDir: "workflows",
+				TemplateMapping: map[string]string{
+					"spec_propose.template": "spec_propose",
+					"spec_apply.template":   "spec_apply",
+					"spec_archive.template": "spec_archive",
 				},
 			},
 		},

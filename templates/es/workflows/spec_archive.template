@@ -1,0 +1,83 @@
+# Workflow de Archivado de Spec
+
+## Proposito
+Finalizar un cambio spec-driven aplicado: mergear deltas de spec a los specs fuente-de-verdad, mergear el branch de feature, archivar el workspace del cambio, y limpiar. Esta es la fase 3 de 3 en el ciclo SDD: proponer → aplicar → archivar. Requiere que el PR del cambio este aprobado y listo para mergear.
+
+## Pasos a Generar
+
+### 1. Verificar que la Fase Apply Esta Completa
+// if alguna tarea en tasks.md esta sin marcar
+Detente y regresa al workflow de aplicar:
+- Todas las tareas en `tasks.md` deben estar marcadas o explicitamente saltadas
+- Todos los tests deben pasar en el feature branch
+- El PR debe estar aprobado y listo para mergear
+- Si alguna condicion falla, no archives
+
+### 2. Aplicar Deltas de Spec a Fuente-de-Verdad
+Para cada archivo delta en `openspec/changes/<change-id>/specs/<capability>/spec.md`:
+- Lee el `openspec/specs/<capability>/spec.md` correspondiente (o creala si es capability nueva)
+- Por cada seccion `## ADDED Requirements`: agrega los nuevos requirements
+- Por cada seccion `## MODIFIED Requirements`: reemplaza el requirement existente con la version revisada
+- Por cada seccion `## REMOVED Requirements`: elimina esos requirements del spec
+- Preserva intactos los demas requirements existentes
+
+### 3. Validar Specs Mergeados
+// turbo
+Confirma que los specs mergeados estan bien formados:
+- Cada requirement tiene al menos un scenario Given/When/Then
+- No hay nombres de requirement duplicados dentro de una capability
+- Todos los directorios de capability tienen un archivo `spec.md`
+- El markdown es valido (sin secciones rotas, headings consistentes)
+
+### 4. Commit de Consolidacion de Specs
+// turbo
+Stage y commit de los specs consolidados:
+- `git add openspec/specs/`
+- Mensaje del commit: `archive: <change-id> - consolida deltas de spec`
+- Este commit vive en el feature branch junto con la implementacion
+
+### 5. Mover el Cambio al Archive
+// turbo
+Archiva el workspace del cambio con date stamp:
+- Captura la fecha de hoy en formato `YYYY-MM-DD`
+- Mueve `openspec/changes/<change-id>/` a `openspec/changes/archive/YYYY-MM-DD-<change-id>/`
+- Esto preserva historia y artefactos de propuesta indefinidamente
+- Commit: `archive: mover <change-id> a archive/`
+
+### 6. Mergear Feature Branch
+// turbo
+Mergea usando la estrategia preferida del proyecto:
+- Squash, merge commit, o rebase segun convencion del repo
+- Usa el change-id y resumen de una linea como titulo del merge
+- Referencia issues cerrados en el cuerpo del merge commit
+- Verifica que el merge aparezca en el base branch
+
+### 7. Eliminar Feature Branch
+// turbo
+Limpia el branch:
+- Elimina el branch local: `git branch -d feature/<change-id>`
+- Elimina el branch remoto: `git push origin --delete feature/<change-id>`
+- Confirma que el branch se fue con `git branch -a`
+
+### 8. Verificar Deployment
+// if el proyecto tiene pipeline CD
+Confirma que el cambio llega al ambiente target:
+- Observa que el pipeline CI/CD complete exitosamente
+- Ejecuta smoke tests contra el ambiente desplegado
+- Monitorea tasas de error y metricas clave para regresiones
+- Si aparecen problemas, prepara un rollback o propuesta de fix
+
+### 9. Comunicar Completacion
+Notifica a stakeholders relevantes:
+- Actualiza el ticket/issue original con link de merge
+- Anota cualquier tarea de seguimiento que emergio durante apply
+- Documenta cualquier caveat de deployment o accion requerida para usuarios
+
+## Anti-patrones
+- Archivar mientras hay tareas sin marcar
+- Mergear deltas a specs sin validacion
+- Saltar el move al archive (los specs pierden audit trail)
+- Force-push al base branch durante el merge
+- Eliminar el directorio del cambio en lugar de archivarlo (pierde historia)
+- Mergear el feature branch antes de consolidar specs
+- Saltar verificacion de deployment en cambios que afectan produccion

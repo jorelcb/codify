@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.0] - 2026-04-27 - Spec-driven change lifecycle workflow
+
+### Added
+- New workflow preset `spec-driven-change` generating three Claude Code skills (`/spec-propose`, `/spec-apply`, `/spec-archive`) for the OpenSpec-compatible SDD lifecycle
+- Templates: `spec_propose.template`, `spec_apply.template`, `spec_archive.template` in en/es locales
+- BDD scenario for `spec-driven-change` resolution (3 mappings)
+- Unit test coverage for the new preset's multi-template mapping
+
+### Changed
+- `Resolve("all")` now returns 5 mappings (2 single-file presets + 3 from `spec-driven-change`)
+- CLI `--preset` flag description updated to list `spec-driven-change`, `bug-fix`, `release-cycle`
+- README workflow catalog table updated to list current presets only
+- Workflow category interactive menu now lists 3 options
+- MCP server version bumped to 1.18.0
+
+### Removed
+- `feature-development` preset and its templates (`feature_development.template` in en/es) — replaced by `spec-driven-change` which is a strict superset that absorbs Git mechanics (branch, commits, PR, merge) and adds formal proposal artifacts (`openspec/changes/<id>/proposal.md`, `design.md`, `tasks.md`, spec deltas)
+- `feature_development` entry from `WorkflowMetadata` and `fileOutputNames` map
+
+## [1.17.0] - 2026-04-23 - Multi-target workflow skill consolidation
+
+### Changed
+- Unified workflow command routing for both Claude and Antigravity targets through `DeliverStaticWorkflowsCommand` and `GenerateWorkflowsCommand`
+- Claude target install paths: `~/.claude/skills/` (global), `.claude/skills/` (project)
+- MCP server routing simplified: both targets handled by single command pair
+- `BuildWorkflowSkillSystemPrompt()` for personalized SKILL.md generation aligned with Claude's native skill format
+
 ## [1.16.0] - 2026-04-14 - Enhanced analyze with enriched scanner and differentiated prompt
 
 ### Added

@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.17.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.18.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -379,7 +379,7 @@ Codify generates workflows for two ecosystems:
 
 | Target | Output format | Output path | Invocation |
 |--------|--------------|-------------|------------|
-| **Claude Code** | Native skill (`SKILL.md` with frontmatter) | `.claude/skills/{preset}/SKILL.md` | `/{preset}` (e.g., `/feature-development`) |
+| **Claude Code** | Native skill (`SKILL.md` with frontmatter) | `.claude/skills/{preset}/SKILL.md` | `/{preset}` (e.g., `/spec-propose`) |
 | **Antigravity** | Native `.md` with execution annotations (`// turbo`, `// capture`, etc.) | `.agent/workflows/{workflow}.md` | `/workflow-name` |
 
 Each Claude Code skill includes YAML frontmatter with:
@@ -399,7 +399,7 @@ Each Claude Code skill includes YAML frontmatter with:
 
 ```bash
 codify workflows
-# → Select preset (feature-development, bug-fix, release-cycle, all)
+# → Select preset (spec-driven-change, bug-fix, release-cycle, all)
 # → Select target ecosystem (claude, antigravity)
 # → Select mode (static or personalized)
 # → Select locale
@@ -416,8 +416,8 @@ codify workflows --preset all --target claude --mode static
 # Claude Code: install skills globally
 codify workflows --preset all --target claude --mode static --install global
 
-# Claude Code: generate a single workflow skill
-codify workflows --preset feature-development --target claude --mode static
+# Claude Code: generate spec-driven feature lifecycle (propose → apply → archive)
+codify workflows --preset spec-driven-change --target claude --mode static
 
 # Antigravity: generate native workflow files
 codify workflows --preset all --target antigravity --mode static
@@ -448,10 +448,12 @@ codify workflows --preset all --target claude --mode personalized \
 
 | Preset | Workflow | Description |
 |--------|----------|-------------|
-| `feature-development` | Feature Development | Branch → implement → test → PR → review lifecycle |
+| `spec-driven-change` | Spec-driven Change | Propose → apply → archive — full SDD lifecycle with formal spec deltas, branch creation, and merge cleanup |
 | `bug-fix` | Bug Fix | Reproduce → diagnose → fix → test → PR |
 | `release-cycle` | Release Cycle | Version bump → changelog → tag → deploy |
 | `all` | All workflows | All workflow presets combined |
+
+The `spec-driven-change` preset generates three skills (`/spec-propose`, `/spec-apply`, `/spec-archive`) that implement the OpenSpec-compatible lifecycle: proposal artifacts (proposal.md, design.md, tasks.md, spec deltas) under `openspec/changes/<change-id>/`, sequential task execution with atomic commits, and final consolidation into `openspec/specs/<capability>/spec.md`.
 
 ### Skills vs Workflows
 
@@ -575,8 +577,8 @@ Knowledge tools inject behavioral context into the calling agent — the agent r
 "Create DDD skills adapted to my Go project with Clean Architecture"
 → Agent calls generate_skills with mode=personalized, project_context="Go with DDD..."
 
-"Generate feature-development workflow for Claude Code"
-→ Agent calls generate_workflows with target=claude, preset=feature-development, mode=static
+"Generate spec-driven-change workflow for Claude Code"
+→ Agent calls generate_workflows with target=claude, preset=spec-driven-change, mode=static
 
 "Generate all workflows adapted to my Go project with GitHub Actions"
 → Agent calls generate_workflows with target=claude, mode=personalized, preset=all, project_context="Go with GitHub Actions"
@@ -704,10 +706,12 @@ templates/
 │   │   ├── neutral/             Architecture: Neutral (review, testing, API)
 │   │   ├── testing/             Testing: Foundational, TDD, BDD
 │   │   └── conventions/         Conventions (conventional commits, semver)
-│   ├── workflows/              Antigravity workflow templates
-│   │   ├── feature_development.template
+│   ├── workflows/              Workflow templates
 │   │   ├── bug_fix.template
-│   │   └── release_cycle.template
+│   │   ├── release_cycle.template
+│   │   ├── spec_propose.template
+│   │   ├── spec_apply.template
+│   │   └── spec_archive.template
 │   └── languages/               Language-specific idiomatic guides
 │       ├── go/idioms.template
 │       ├── javascript/idioms.template
@@ -731,7 +735,7 @@ go test ./tests/...
 
 ## 📊 Project status
 
-**v1.17.0** 🎉
+**v1.18.0** 🎉
 
 ✅ **Working:**
 - Multi-provider LLM support (Anthropic Claude + Google Gemini)
@@ -742,7 +746,7 @@ go test ./tests/...
 - **Skills install** — `--install global` or `--install project` for direct agent path installation
 - Skill categories (architecture, testing, conventions) with ecosystem-aware frontmatter (Claude, Codex, Antigravity)
 - **Workflows** — multi-step orchestration recipes for Claude Code (native skills) and Antigravity (native annotations)
-- **Workflow presets** — feature-development, bug-fix, release-cycle (static + personalized modes, multi-target)
+- **Workflow presets** — spec-driven-change (propose/apply/archive), bug-fix, release-cycle (static + personalized modes, multi-target)
 - **Unified interactive UX** — all commands prompt for missing parameters when run in a terminal
 - MCP Server mode (stdio + HTTP transport) with 7 tools
 - MCP knowledge tools (commit_guidance, version_guidance) — no API key needed

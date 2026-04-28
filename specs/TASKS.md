@@ -23,7 +23,7 @@
 
 ### Milestone 3: Antigravity Workflows (v1.13.0 - v1.13.1) ✅
 - Workflow catalog (separate bounded context from skills)
-- Three presets: feature-development, bug-fix, release-cycle
+- Three presets: spec-driven-change (propose/apply/archive), bug-fix, release-cycle
 - Static + personalized modes with Antigravity execution annotations
 - CLI command with interactive UX
 - MCP `generate_workflows` tool

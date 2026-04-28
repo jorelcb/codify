@@ -9,17 +9,10 @@ Feature: Workflow catalog management
     Then I should find a workflow category with name "workflows"
     And the workflow category should have 3 options
 
-  Scenario:usa Find unknown workflow category returns error
+  Scenario: Find unknown workflow category returns error
     Given the workflow catalog is loaded
     When I look up workflow category "nonexistent"
     Then I should get a workflow catalog error containing "unknown workflow category"
-
-  Scenario: Resolve feature-development preset
-    Given the workflow catalog is loaded
-    And I have workflow category "workflows"
-    When I resolve workflow preset "feature-development"
-    Then the resolved template directory should be "workflows"
-    And the resolved mapping should have 1 entry
 
   Scenario: Resolve bug-fix preset
     Given the workflow catalog is loaded
@@ -35,11 +28,18 @@ Feature: Workflow catalog management
     Then the resolved template directory should be "workflows"
     And the resolved mapping should have 1 entry
 
+  Scenario: Resolve spec-driven-change preset
+    Given the workflow catalog is loaded
+    And I have workflow category "workflows"
+    When I resolve workflow preset "spec-driven-change"
+    Then the resolved template directory should be "workflows"
+    And the resolved mapping should have 3 entries
+
   Scenario: Resolve all workflows combines all presets
     Given the workflow catalog is loaded
     And I have workflow category "workflows"
     When I resolve workflow preset "all"
-    Then the resolved mapping should have 3 entries
+    Then the resolved mapping should have 5 entries
 
   Scenario: Resolve unknown preset returns error
     Given the workflow catalog is loaded
@@ -49,16 +49,16 @@ Feature: Workflow catalog management
 
   Scenario: Generate Antigravity workflow frontmatter for known workflow
     Given the workflow catalog is loaded
-    When I generate workflow frontmatter for "feature_development"
+    When I generate workflow frontmatter for "bug_fix"
     Then the frontmatter should start with "---"
     And the frontmatter should contain "description:"
     And the frontmatter should end with "---"
 
   Scenario: Generate Claude workflow frontmatter with skill fields
     Given the workflow catalog is loaded
-    When I generate workflow frontmatter for "feature_development" targeting "claude"
+    When I generate workflow frontmatter for "spec_propose" targeting "claude"
     Then the frontmatter should start with "---"
-    And the frontmatter should contain "name: feature-development"
+    And the frontmatter should contain "name: spec-propose"
     And the frontmatter should contain "description:"
     And the frontmatter should contain "disable-model-invocation: true"
     And the frontmatter should contain "allowed-tools: Bash(*)"
@@ -72,7 +72,7 @@ Feature: Workflow catalog management
 
   Scenario: Antigravity frontmatter does not contain skill fields
     Given the workflow catalog is loaded
-    When I generate workflow frontmatter for "feature_development" targeting "antigravity"
+    When I generate workflow frontmatter for "bug_fix" targeting "antigravity"
     Then the frontmatter should contain "description:"
     And the frontmatter should not contain "disable-model-invocation"
     And the frontmatter should not contain "allowed-tools"
@@ -96,20 +96,20 @@ Feature: Workflow catalog management
 
   Scenario: Claude skill content strips annotation lines
     Given the workflow catalog is loaded
-    When I strip annotations from the feature-development template
+    When I strip annotations from the bug-fix template
     Then the stripped content should not contain "// turbo"
     And the stripped content should not contain "// capture:"
     And the stripped content should not contain "// if "
 
   Scenario: Claude skill content preserves non-annotation content
     Given the workflow catalog is loaded
-    When I strip annotations from the feature-development template
-    Then the stripped content should contain "Create a new branch"
-    And the stripped content should contain "Feature Development Workflow"
-    And the stripped content should contain "Run the complete test suite"
+    When I strip annotations from the bug-fix template
+    Then the stripped content should contain "Create a branch"
+    And the stripped content should contain "Bug Fix Workflow"
+    And the stripped content should contain "Run the full test suite"
 
   Scenario: Antigravity target still generates flat frontmatter
     Given the workflow catalog is loaded
-    When I generate workflow frontmatter for "feature_development" targeting "antigravity"
+    When I generate workflow frontmatter for "bug_fix" targeting "antigravity"
     Then the frontmatter should not contain "disable-model-invocation"
     And the frontmatter should not contain "name:"

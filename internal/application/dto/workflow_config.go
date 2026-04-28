@@ -11,7 +11,7 @@ var ValidWorkflowTargets = map[string]bool{
 // WorkflowConfig holds configuration for generating workflows.
 type WorkflowConfig struct {
 	Category       string // "workflows"
-	Preset         string // "feature-development", "bug-fix", "release-cycle", "all"
+	Preset         string // "spec-driven-change", "bug-fix", "release-cycle", "all"
 	Mode           string // "static" or "personalized"
 	Target         string // target ecosystem: "claude" or "antigravity"
 	Locale         string // "en" or "es"

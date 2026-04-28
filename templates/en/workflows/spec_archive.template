@@ -1,0 +1,83 @@
+# Spec Archive Workflow
+
+## Purpose
+Finalize an applied spec-driven change: merge spec deltas into the source-of-truth specs, merge the feature branch, archive the change workspace, and clean up. This is phase 3 of 3 in the SDD lifecycle: propose → apply → archive. Requires the change PR to be approved and ready to merge.
+
+## Steps to Generate
+
+### 1. Verify Apply Phase Complete
+// if any task in tasks.md is unchecked
+Stop and return to the apply workflow:
+- All tasks in `tasks.md` must be checked or explicitly skipped
+- All tests must pass on the feature branch
+- The PR must be approved and ready to merge
+- If any condition fails, do not archive
+
+### 2. Apply Spec Deltas to Source-of-Truth
+For each delta file in `openspec/changes/<change-id>/specs/<capability>/spec.md`:
+- Read the corresponding `openspec/specs/<capability>/spec.md` (or create it if new capability)
+- For each `## ADDED Requirements` section: append the new requirements
+- For each `## MODIFIED Requirements` section: replace the existing requirement with the revised version
+- For each `## REMOVED Requirements` section: delete those requirements from the spec
+- Preserve other existing requirements untouched
+
+### 3. Validate Merged Specs
+// turbo
+Confirm the merged specs are well-formed:
+- Each requirement has at least one Given/When/Then scenario
+- No duplicate requirement names within a capability
+- All capability directories have a `spec.md` file
+- Markdown is valid (no broken sections, headings consistent)
+
+### 4. Commit Spec Consolidation
+// turbo
+Stage and commit the consolidated specs:
+- `git add openspec/specs/`
+- Commit message: `archive: <change-id> - consolidate spec deltas`
+- This commit lives on the feature branch alongside the implementation
+
+### 5. Move Change to Archive
+// turbo
+Archive the change workspace with date stamp:
+- Capture today's date in `YYYY-MM-DD` format
+- Move `openspec/changes/<change-id>/` to `openspec/changes/archive/YYYY-MM-DD-<change-id>/`
+- This preserves history and proposal artifacts indefinitely
+- Commit: `archive: move <change-id> to archive/`
+
+### 6. Merge Feature Branch
+// turbo
+Merge using the project's preferred strategy:
+- Squash, merge commit, or rebase per repo convention
+- Use the change-id and one-line summary as the merge title
+- Reference closed issues in the merge commit body
+- Verify the merge appears on the base branch
+
+### 7. Delete Feature Branch
+// turbo
+Clean up the branch:
+- Delete the local branch: `git branch -d feature/<change-id>`
+- Delete the remote branch: `git push origin --delete feature/<change-id>`
+- Confirm branch is gone with `git branch -a`
+
+### 8. Verify Deployment
+// if the project has CD pipeline
+Confirm the change reaches the target environment:
+- Watch CI/CD pipeline complete successfully
+- Run smoke tests against the deployed environment
+- Monitor error rates and key metrics for regressions
+- If issues appear, prepare a rollback or fix proposal
+
+### 9. Communicate Completion
+Notify relevant stakeholders:
+- Update the original ticket/issue with merge link
+- Note any follow-up tasks that emerged during apply
+- Document any deployment caveats or required actions for users
+
+## Anti-patterns
+- Archiving while tasks are still unchecked
+- Merging deltas to specs without validation
+- Skipping the archive move (specs lose audit trail)
+- Force-pushing to the base branch during merge
+- Deleting the change directory instead of archiving (loses history)
+- Merging the feature branch before specs are consolidated
+- Skipping deployment verification on production-affecting changes

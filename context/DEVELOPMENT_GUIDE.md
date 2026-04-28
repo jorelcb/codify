@@ -121,9 +121,10 @@ Before marking a component as complete:
 ### Workflows System
 - **Targets**: Claude Code (native skills) and Antigravity IDE (native workflow primitive).
 - **Catalog**: `internal/domain/catalog/workflow_catalog.go` — separate bounded context from skills, reuses same structural types.
-- **Three presets**: `feature-development`, `bug-fix`, `release-cycle`.
-- **Output**: Flat `.md` files in `.agent/workflows/` with Antigravity-specific YAML frontmatter and execution annotations (`// turbo`, `// parallel`, `// capture: VAR`, `// if [condition]`).
-- **Claude target**: Native skill generation (SKILL.md with frontmatter: `name`, `description`, `disable-model-invocation`, `allowed-tools`). Antigravity annotations stripped and translated to prose.
+- **Three presets**: `spec-driven-change` (multi-template: propose/apply/archive), `bug-fix`, `release-cycle`.
+- **Antigravity output**: Flat `.md` files in `.agent/workflows/` with Antigravity-specific YAML frontmatter and execution annotations (`// turbo`, `// parallel`, `// capture: VAR`, `// if [condition]`).
+- **Claude output**: Native skill directories (`{preset}/SKILL.md`) in `.claude/skills/` with frontmatter (`name`, `description`, `disable-model-invocation`, `allowed-tools`). Antigravity annotations are stripped from the content.
+- **`spec-driven-change` preset**: Generates 3 skills (`/spec-propose`, `/spec-apply`, `/spec-archive`) implementing the OpenSpec-compatible SDD lifecycle with `openspec/changes/<id>/` workspace and `openspec/specs/<capability>/spec.md` source-of-truth.
 
 ### Template System
 - **Embedded via `embed.FS`** — templates ship inside the binary.

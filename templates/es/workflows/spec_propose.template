@@ -1,0 +1,93 @@
+# Workflow de Propuesta de Spec
+
+## Proposito
+Planear un cambio de feature usando metodologia spec-driven development. Generar artefactos formales de propuesta (proposal.md, design.md, tasks.md, deltas de spec) y configurar un workspace aislado antes de escribir cualquier codigo. Esta es la fase 1 de 3 en el ciclo SDD: proponer → aplicar → archivar.
+
+## Pasos a Generar
+
+### 1. Analizar la Solicitud
+Antes de cualquier artefacto, entiende el cambio profundamente:
+- Que feature/fix se propone?
+- Que capabilities del sistema afecta?
+- Cual es el cambio de comportamiento visible al usuario?
+- Cual es la motivacion (compliance, performance, UX, bug)?
+
+### 2. Leer Specs Existentes
+// turbo
+Busca en los specs de fuente-de-verdad las capabilities afectadas:
+- Lista los directorios bajo `openspec/specs/`
+- Lee `spec.md` de cada capability candidata
+- Identifica requirements que se ADDED, MODIFIED, o REMOVED en este cambio
+
+### 3. Determinar Identificador del Cambio
+// capture: CHANGE_ID
+Elige un identificador kebab-case que resuma el cambio:
+- Formato: `<verbo>-<descripcion-corta>` (ej., `add-2fa`, `fix-session-expiry`, `remove-legacy-auth`)
+- Evita numeros de version o fechas en el ID
+- El identificador se vuelve el nombre del directorio bajo `openspec/changes/`
+
+### 4. Crear Workspace del Cambio
+// turbo
+Inicializa el workspace del cambio:
+- Crea directorio `openspec/changes/<change-id>/`
+- Crea subdirectorio `openspec/changes/<change-id>/specs/` para deltas
+- Un subdirectorio por cada capability afectada dentro de specs/
+
+### 5. Escribir proposal.md
+Documenta la racional del cambio:
+- **Titulo**: Resumen de una linea
+- **Motivacion**: Por que este cambio importa (link a issues/tickets)
+- **Alcance**: Que esta y NO esta incluido
+- **Impacto**: Capabilities afectadas, breaking changes, migraciones necesarias
+- Manten conciso (menos de 100 lineas)
+
+### 6. Escribir design.md
+Documenta el approach tecnico:
+- **Decisiones de arquitectura**: Patrones, librerias, estructuras de datos elegidas
+- **Trade-offs**: Que se considero y rechazo, con razonamiento
+- **Puntos de integracion**: APIs, schemas, contracts tocados
+- **Estrategia de testing**: Approach unit, integration, acceptance
+
+### 7. Escribir tasks.md
+Descompon el trabajo en tareas atomicas y secuenciales organizadas por fase:
+- Agrupa tareas en fases logicas (datos, logica de negocio, interfaces, UI)
+- Cada tarea = una unidad indivisible de trabajo (un archivo, una funcion, un cambio de schema)
+- Usa formato checkbox: `- [ ] 1.1 Descripcion de la tarea`
+- Apunta a 5-20 tareas; si son mas, el cambio es demasiado grande — divídelo
+
+### 8. Escribir Deltas de Spec
+Para cada capability afectada, escribe `openspec/changes/<change-id>/specs/<capability>/spec.md`:
+- Usa secciones `## ADDED Requirements` / `## MODIFIED Requirements` / `## REMOVED Requirements`
+- Cada requirement usa lenguaje SHALL: "El sistema SHALL ..."
+- Cada requirement incluye al menos un Scenario en formato GIVEN/WHEN/THEN
+- Requirements MODIFIED incluyen el texto completo revisado
+- Requirements REMOVED incluyen razon de deprecacion
+
+### 9. Crear Branch de Feature
+// capture: BRANCH_NAME
+Crea un branch desde el ultimo main/develop:
+- Formato: `feature/<change-id>` o sigue convencion del proyecto
+- Pull primero del base branch
+- Push del branch a origin para establecer tracking
+
+### 10. Commit de Artefactos de Propuesta
+// turbo
+Stage y commit de la propuesta:
+- `git add openspec/changes/<change-id>/`
+- Mensaje del commit: `propose: <change-id> - resumen de una linea`
+- Push a remote
+
+### 11. Solicitar Review de Intencion
+Antes de comenzar implementacion:
+- Abre un PR draft o comparte el directorio de propuesta
+- Los reviewers se enfocan en `proposal.md` y deltas (intencion), no codigo
+- Itera la propuesta hasta que la intencion sea aprobada
+- La implementacion solo comienza despues de aprobacion de intencion
+
+## Anti-patrones
+- Escribir codigo antes de que la propuesta sea aprobada
+- Tareas vagas ("implementar feature") en lugar de pasos atomicos
+- Deltas de spec sin scenarios Given/When/Then
+- Saltar design.md cuando existen trade-offs
+- Mezclar multiples cambios no relacionados en una propuesta
+- Modificar specs existentes directamente en lugar de crear deltas

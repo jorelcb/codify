@@ -39,7 +39,7 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I generate workflow frontmatter for "([^"]*)" targeting "([^"]*)"$`, featureContext.iGenerateWorkflowFrontmatterForTarget)
 	ctx.Step(`^I generate workflow frontmatter for "([^"]*)"$`, featureContext.iGenerateWorkflowFrontmatterFor)
 	ctx.Step(`^I retrieve workflow category names$`, featureContext.iRetrieveWorkflowCategoryNames)
-	ctx.Step(`^I strip annotations from the feature-development template$`, featureContext.iStripAnnotationsFromFeatureDevelopmentTemplate)
+	ctx.Step(`^I strip annotations from the bug-fix template$`, featureContext.iStripAnnotationsFromBugFixTemplate)
 
 	// ========== Then Steps ==========
 	ctx.Step(`^I should find a workflow category with name "([^"]*)"$`, featureContext.iShouldFindAWorkflowCategoryWithName)
@@ -100,10 +100,10 @@ func (f *FeatureContext) iRetrieveWorkflowCategoryNames() error {
 	return nil
 }
 
-func (f *FeatureContext) iStripAnnotationsFromFeatureDevelopmentTemplate() error {
-	data, err := root.TemplatesFS.ReadFile(filepath.Join("templates", "en", "workflows", "feature_development.template"))
+func (f *FeatureContext) iStripAnnotationsFromBugFixTemplate() error {
+	data, err := root.TemplatesFS.ReadFile(filepath.Join("templates", "en", "workflows", "bug_fix.template"))
 	if err != nil {
-		return fmt.Errorf("failed to read feature_development template: %w", err)
+		return fmt.Errorf("failed to read bug_fix template: %w", err)
 	}
 	f.strippedContent = catalog.StripAnnotationLines(string(data))
 	return nil
