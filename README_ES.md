@@ -453,16 +453,107 @@ codify workflows --preset all --target claude --mode personalized \
 | `release-cycle` | Release Cycle | Bump de version → changelog → tag → deploy |
 | `all` | Todos los workflows | Todos los presets de workflow combinados |
 
-El preset `spec-driven-change` genera tres skills (`/spec-propose`, `/spec-apply`, `/spec-archive`) que implementan el ciclo OpenSpec-compatible: artefactos de propuesta (proposal.md, design.md, tasks.md, deltas) bajo `openspec/changes/<change-id>/`, ejecucion secuencial de tareas con commits atomicos, y consolidacion final en `openspec/specs/<capability>/spec.md`.
+### Spec-driven Change: la filosofia
+
+`spec-driven-change` es el workflow recomendado para agregar features y hacer cambios no triviales. Implementa **Spec-Driven Development (SDD)**: una metodologia donde los artefactos formales de planeacion preceden al codigo, y donde cada cambio al sistema es una evolucion trackeable y revisable de las specifications — no solo un diff de codigo.
+
+**El problema con desarrollo IA basado en chat:**
+- Los planes desaparecen cuando termina la sesion de chat
+- Los code reviews ven *que* cambio pero no *por que* cambio
+- Los agentes IA pierden contexto entre sesiones y re-litigan decisiones
+- Los specs (cuando existen) se desincronizan del codigo
+
+**La respuesta SDD:**
+- **Los specs viven en el repositorio**, organizados por capability bajo `openspec/specs/<capability>/spec.md`
+- **Cada cambio es un workspace auto-contenido** bajo `openspec/changes/<change-id>/`
+- **Los deltas (ADDED / MODIFIED / REMOVED requirements)** describen como evolucionan los specs, no solo el estado final
+- **Los reviewers aprueban intencion primero** (proposal + deltas) antes de aprobar codigo
+- **Los cambios archivados preservan audit trail** indefinidamente
+
+#### Las tres fases
+
+Cada fase es un modo cognitivo separado con un hand-off claro:
+
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  /spec-      │     │  /spec-      │     │  /spec-      │
+│  propose     │ ──▶ │  apply       │ ──▶ │  archive     │
+│              │     │              │     │              │
+│  Planear el  │     │  Ejecutar el │     │  Consolidar  │
+│  cambio      │     │  plan        │     │  & cleanup   │
+└──────────────┘     └──────────────┘     └──────────────┘
+   Intencion          Implementacion         Verdad
+```
+
+| Fase | Que produce | Modo cognitivo |
+|------|-------------|----------------|
+| **Propose** | `proposal.md` (motivacion), `design.md` (decisiones tecnicas), `tasks.md` (checklist atomico), `specs/<capability>/spec.md` (deltas con ADDED/MODIFIED/REMOVED) — ademas un branch de feature con la propuesta committeada | "Que debe cambiar y por que" — sin codigo todavia |
+| **Apply** | Ejecucion secuencial de tareas, commits atomicos por tarea, tests, self-review, pull request | "Como hacerlo realidad" — enfocado en implementacion, deltas ya aprobados |
+| **Archive** | Deltas mergeados a `openspec/specs/<capability>/spec.md`, cambio movido a `openspec/changes/archive/YYYY-MM-DD-<id>/`, branch mergeado y eliminado | "Hacer durable la verdad" — cerrar el ciclo |
+
+#### Ejemplo concreto
+
+```
+$ /spec-propose Agregar autenticacion de dos factores via TOTP
+
+  ✓ Lei openspec/specs/auth-login/spec.md
+  ✓ Cree change-id: add-2fa
+  ✓ Cree openspec/changes/add-2fa/
+      ├── proposal.md       (motivacion, alcance, impacto)
+      ├── design.md         (eleccion de libreria TOTP, cambios de schema)
+      ├── tasks.md          (8 tareas atomicas en 3 fases)
+      └── specs/auth-login/spec.md  (ADDED: requirements 2FA con scenarios G/W/T)
+  ✓ Cree branch feature/add-2fa
+  ✓ Committee artefactos de propuesta
+  → Solicitar review de intencion antes de implementacion
+
+$ /spec-apply add-2fa
+
+  ✓ Implementando tarea 1.1: agregar columnas 2FA a tabla users
+  ✓ Test: migracion up/down
+  ✓ Commit: "feat: add 2FA schema columns"
+  ... (8 tareas, commits atomicos)
+  ✓ Test suite completo pasa
+  ✓ PR abierto: "add-2fa: Agregar autenticacion 2FA via TOTP"
+
+$ /spec-archive add-2fa
+
+  ✓ Mergee deltas en openspec/specs/auth-login/spec.md
+  ✓ Movi a openspec/changes/archive/2026-04-27-add-2fa/
+  ✓ Squash-merge del branch feature
+  ✓ Elimine local + remoto feature/add-2fa
+```
+
+#### Como encaja con el resto de Codify
+
+```
+codify generate ─────▶ AGENTS.md, CONTEXT.md       (memoria del proyecto)
+codify spec ─────────▶ CONSTITUTION.md, SPEC.md... (specs iniciales)
+codify workflows ────▶ /spec-propose, /spec-apply, /spec-archive
+  --preset spec-                                   (skills de ciclo SDD)
+  driven-change
+```
+
+`generate` y `spec` crean el **estado inicial**. El workflow `spec-driven-change` luego gobierna **cada cambio subsecuente**, manteniendo los specs del sistema en sincronia con su codigo.
+
+#### Compatibilidad con OpenSpec
+
+La estructura de salida (`openspec/specs/`, `openspec/changes/`, formato delta con ADDED/MODIFIED/REMOVED, scenarios GIVEN/WHEN/THEN) sigue la convencion de [OpenSpec](https://openspec.dev/). Los skills generados por Codify estan disenados para operar sin friccion sobre workspaces OpenSpec.
+
+**Valor que agrega Codify sobre instalar OpenSpec directo:**
+- **Personalizacion via LLM**: `--mode personalized --context "..."` adapta los skills a tu stack, herramientas y convenciones
+- **Multi-target**: misma metodologia SDD entregada para Claude Code o Antigravity
+- **Soporte de locale**: skills en ingles y espanol out of the box
+- **Pipeline integrado**: combinado con `codify generate` + `codify spec`, obtienes bootstrap SDD end-to-end
 
 ### Skills vs Workflows
 
 | | Skills | Workflows |
 |-|--------|-----------|
 | **Proposito** | Ensenan *como* hacer una tarea especifica | Orquestan una *secuencia* de tareas |
-| **Alcance** | Responsabilidad unica (ej. "escribir un commit") | Proceso end-to-end (ej. "desarrollar una feature") |
+| **Alcance** | Responsabilidad unica (ej. "escribir un commit") | Proceso end-to-end (ej. "evolucionar un spec desde propuesta hasta cambio mergeado") |
 | **Invocacion** | El agente lee cuando es relevante | El usuario invoca via `/command` |
-| **Ejemplos** | Conventional Commits, DDD entity, code review | Feature development, bug fix, release cycle |
+| **Ejemplos** | Conventional Commits, DDD entity, code review | Ciclo de cambio spec-driven, bug fix, release cycle |
 
 ### Opciones
 
@@ -796,7 +887,13 @@ Solo para el modo personalized. El modo static entrega workflows pre-construidos
 Claude Code (`--target claude`) y Antigravity (`--target antigravity`). Los workflows de Claude generan native skills (SKILL.md con frontmatter) que el agente ejecuta via `/skill-name`. Los workflows de Antigravity producen archivos `.md` nativos con anotaciones de ejecucion (`// turbo`, `// capture`, etc.).
 
 **¿Que es AI Spec-Driven Development?**
-Una metodologia donde generas contexto y especificaciones *antes* de escribir codigo. Tu agente implementa una spec, no improvisa. `generate` crea el plano, `spec` crea el plan de implementacion.
+Una metodologia donde generas contexto y especificaciones *antes* de escribir codigo. Tu agente implementa una spec, no improvisa. `generate` crea el plano, `spec` crea el plan de implementacion, y el workflow `spec-driven-change` gobierna cada cambio subsecuente como una evolucion trackeada del spec (propose → apply → archive) con deltas formales, workspaces de cambio aislados, y audit trails.
+
+**¿Por que tres fases (propose / apply / archive) en lugar de un solo workflow?**
+Cada fase es un modo cognitivo distinto. *Propose* responde "¿que debe cambiar y por que?" sin escribir codigo — el LLM se mantiene enfocado en intencion. *Apply* responde "¿como hacerlo realidad?" con los deltas ya aprobados, eliminando ambiguedad de spec del contexto de implementacion. *Archive* cierra el ciclo deterministicamente: mergea deltas a specs fuente-de-verdad, archiva el cambio para auditoria, mergea el branch. Mezclar estas fases diluye atencion y produce planes vagos + codigo descuidado.
+
+**¿Codify reemplaza a OpenSpec?**
+No — lo complementa. El preset `spec-driven-change` genera skills que operan sobre workspaces formato OpenSpec (`openspec/specs/`, `openspec/changes/`, deltas ADDED/MODIFIED/REMOVED con scenarios G/W/T). Si ya usas OpenSpec, Codify te da skills de ciclo personalizadas via LLM adaptadas a tu stack. Si no, Codify es tu punto de entrada zero-config a la metodologia — combinado con `codify generate` y `codify spec`, obtienes el pipeline completo desde repo en blanco hasta iteracion gobernada.
 
 ## 📚 Documentacion
 

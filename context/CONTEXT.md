@@ -134,6 +134,20 @@ Single non-exclusive category with 3 presets:
 
 For Antigravity, workflows generate flat `.md` files. For Claude Code, workflows generate native skill directories (`{preset}/SKILL.md`). `GenerateWorkflowFrontmatter()` produces target-specific YAML frontmatter (Antigravity uses `description` only; Claude uses `name`, `description`, `disable-model-invocation`, `allowed-tools`).
 
+#### Spec-driven Change: design rationale
+
+`spec-driven-change` is the canonical workflow for feature work and non-trivial changes. It is the only preset that maps to **multiple templates** (3 skills from one preset selection) — exercising `TemplateMapping`'s built-in multi-mapping capability. This design choice reflects the cognitive separation between SDD phases:
+
+- **Propose** (`/spec-propose`) — planning mode: read existing specs, identify capabilities, produce `proposal.md`, `design.md`, `tasks.md`, and capability-organized spec deltas (`ADDED` / `MODIFIED` / `REMOVED` requirements with G/W/T scenarios). No code is written. A feature branch is created and the proposal is committed.
+
+- **Apply** (`/spec-apply`) — implementation mode: read approved proposal artifacts, execute `tasks.md` sequentially with atomic commits, run tests, open PR. Spec ambiguity is already resolved at this point.
+
+- **Archive** (`/spec-archive`) — consolidation mode: merge spec deltas into source-of-truth (`openspec/specs/<capability>/spec.md`), move change to `openspec/changes/archive/YYYY-MM-DD-<id>/` for audit, merge feature branch, clean up.
+
+The output structure follows the [OpenSpec](https://openspec.dev/) convention. Codify generates the skills; OpenSpec workspaces can consume them directly. Codify adds LLM personalization, multi-target support (Claude/Antigravity), and locale support on top of the OpenSpec-compatible format.
+
+**Why this isn't a single workflow**: keeping the three phases separate is intentional. Each phase has a distinct cognitive mode — mixing planning, implementation, and consolidation in one prompt produces vague plans and sloppy code. The split also enables phase-specific review (intent review vs code review vs spec review) and parallel work (one developer drafting a propose while another applies a different change).
+
 ## External Integrations
 
 | Service | Purpose | Protocol | SDK |

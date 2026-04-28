@@ -23,6 +23,35 @@ This log documents the evolution of the project, serving as its institutional me
 
 ---
 
+## Session: 2026-04-27 - v1.18.0: Spec-driven Change Lifecycle Workflow
+
+### Context
+- **Version:** 1.18.0
+- **Goal:** Replace the generic `feature-development` workflow preset with `spec-driven-change`, an OpenSpec-compatible SDD lifecycle that absorbs Git mechanics and adds formal proposal/design/tasks/deltas artifacts.
+
+### Tasks Completed
+1. **New workflow preset** — `spec-driven-change` registered in `WorkflowCategories` with multi-template mapping (3 templates per preset: propose/apply/archive). First preset to generate multiple skills from a single selection.
+2. **SDD templates** — 6 templates added (`spec_propose`, `spec_apply`, `spec_archive` × en/es). Each phase has its own skill with explicit purpose, anti-patterns, and Antigravity execution annotations (stripped automatically for Claude target).
+3. **Removal of `feature-development`** — Preset, templates, metadata entries, fileOutputNames mapping, and CLI deprecation warning all removed in the same release. No deprecation period: clean break.
+4. **BDD adaptation** — Annotation-stripping scenarios moved from `feature-development` to `bug-fix` template (also has all 3 annotation types). Frontmatter scenarios use `bug_fix` and `spec_propose`. Added scenario for `spec-driven-change` resolution.
+5. **Documentation philosophy** — README and README_ES expanded with SDD philosophy section explaining the problem (chat-driven amnesia), the solution (durable artifacts + delta-based evolution), the three-phase rationale, a concrete example, and OpenSpec compatibility positioning.
+
+### Architectural Decisions
+
+#### ADR-026: Replace `feature-development` with `spec-driven-change` (clean break)
+- **Decision:** Eliminate `feature-development` preset entirely in v1.18.0 with no deprecation period. Replace with `spec-driven-change` which is a strict superset (absorbs Git mechanics + adds SDD lifecycle).
+- **Reason:** The `feature-development` preset was a generic Git workflow recipe — commodity functionality that any agent provides. Maintaining it alongside `spec-driven-change` creates user confusion ("which one do I use?") and dilutes Codify's positioning. Codify's value proposition is **SDD-native AI tooling with LLM personalization**, not generic Git workflows. A clean break in pre-2.0 is preferable to long-term dual maintenance and split documentation.
+
+#### ADR-027: Multi-template Workflow Preset
+- **Decision:** A single workflow preset can map to multiple templates (`spec-driven-change` → 3 templates: propose/apply/archive). This is a departure from the prior 1:1 preset:template mapping.
+- **Reason:** SDD lifecycle requires three distinct skills (each with its own cognitive mode and frontmatter). Forcing them into one skill would dilute focus and produce vague behavior. The `TemplateMapping map[string]string` already supported multi-mapping; this just exercises that capability.
+
+#### ADR-028: OpenSpec Compatibility as Output Format, Not Tooling Replacement
+- **Decision:** Generate skills that produce OpenSpec-format workspaces (`openspec/specs/`, `openspec/changes/`, ADDED/MODIFIED/REMOVED deltas, GIVEN/WHEN/THEN scenarios) but do NOT replicate OpenSpec's CLI. Codify generates skills; OpenSpec users can install Codify-generated skills into their workspace. Non-OpenSpec users get the methodology zero-config.
+- **Reason:** Replicating OpenSpec's CLI would compete with their tool and duplicate effort. Generating compatible-format skills lets Codify add value (LLM personalization, multi-target, locale support) where OpenSpec doesn't — without forcing users to choose one over the other.
+
+---
+
 ## Session: 2026-03-27 - v1.13.1: Rename Skill Category "workflow" to "conventions"
 
 ### Context

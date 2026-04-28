@@ -453,16 +453,107 @@ codify workflows --preset all --target claude --mode personalized \
 | `release-cycle` | Release Cycle | Version bump → changelog → tag → deploy |
 | `all` | All workflows | All workflow presets combined |
 
-The `spec-driven-change` preset generates three skills (`/spec-propose`, `/spec-apply`, `/spec-archive`) that implement the OpenSpec-compatible lifecycle: proposal artifacts (proposal.md, design.md, tasks.md, spec deltas) under `openspec/changes/<change-id>/`, sequential task execution with atomic commits, and final consolidation into `openspec/specs/<capability>/spec.md`.
+### Spec-driven Change: the philosophy
+
+`spec-driven-change` is the recommended workflow for adding features and making non-trivial changes. It implements **Spec-Driven Development (SDD)**: a methodology where formal planning artifacts precede code, and where every change to the system is a tracked, reviewable evolution of specifications — not just a code diff.
+
+**The problem with chat-driven AI development:**
+- Plans disappear when the chat session ends
+- Code reviews see *what* changed but not *why* it changed
+- AI agents lose context between sessions and re-litigate decisions
+- Specs (when they exist) get out of sync with the code
+
+**The SDD answer:**
+- **Specs live in the repository**, organized by capability under `openspec/specs/<capability>/spec.md`
+- **Each change is a self-contained workspace** under `openspec/changes/<change-id>/`
+- **Deltas (ADDED / MODIFIED / REMOVED requirements)** describe how specs evolve, not just final state
+- **Reviewers approve intent first** (proposal + deltas) before approving code
+- **Archived changes preserve audit trail** indefinitely
+
+#### The three phases
+
+Each phase is a separate cognitive mode with a clear hand-off:
+
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  /spec-      │     │  /spec-      │     │  /spec-      │
+│  propose     │ ──▶ │  apply       │ ──▶ │  archive     │
+│              │     │              │     │              │
+│  Plan the    │     │  Execute the │     │  Consolidate │
+│  change      │     │  plan        │     │  & cleanup   │
+└──────────────┘     └──────────────┘     └──────────────┘
+   Intent              Implementation        Truth
+```
+
+| Phase | What it produces | Cognitive mode |
+|-------|------------------|----------------|
+| **Propose** | `proposal.md` (motivation), `design.md` (technical decisions), `tasks.md` (atomic checklist), `specs/<capability>/spec.md` (deltas with ADDED/MODIFIED/REMOVED) — plus a feature branch with the proposal committed | "What should change and why" — no code yet |
+| **Apply** | Sequential task execution, atomic commits per task, tests, self-review, pull request | "How to make it real" — focused on implementation, deltas already approved |
+| **Archive** | Spec deltas merged into `openspec/specs/<capability>/spec.md`, change moved to `openspec/changes/archive/YYYY-MM-DD-<id>/`, feature branch merged and deleted | "Make the truth durable" — close the loop |
+
+#### Concrete example
+
+```
+$ /spec-propose Add two-factor authentication via TOTP
+
+  ✓ Read openspec/specs/auth-login/spec.md
+  ✓ Created change-id: add-2fa
+  ✓ Created openspec/changes/add-2fa/
+      ├── proposal.md       (motivation, scope, impact)
+      ├── design.md         (TOTP library choice, schema changes)
+      ├── tasks.md          (8 atomic tasks across 3 phases)
+      └── specs/auth-login/spec.md  (ADDED: 2FA requirements with G/W/T scenarios)
+  ✓ Created branch feature/add-2fa
+  ✓ Committed proposal artifacts
+  → Request intent review before implementation
+
+$ /spec-apply add-2fa
+
+  ✓ Implementing task 1.1: add 2FA columns to user table
+  ✓ Test: migration up/down
+  ✓ Commit: "feat: add 2FA schema columns"
+  ... (8 tasks, atomic commits)
+  ✓ Full test suite passes
+  ✓ PR opened: "add-2fa: Add two-factor authentication via TOTP"
+
+$ /spec-archive add-2fa
+
+  ✓ Merged deltas into openspec/specs/auth-login/spec.md
+  ✓ Moved to openspec/changes/archive/2026-04-27-add-2fa/
+  ✓ Squash-merged feature branch
+  ✓ Deleted local + remote feature/add-2fa
+```
+
+#### How it fits with the rest of Codify
+
+```
+codify generate ─────▶ AGENTS.md, CONTEXT.md       (project memory)
+codify spec ─────────▶ CONSTITUTION.md, SPEC.md... (initial specs)
+codify workflows ────▶ /spec-propose, /spec-apply, /spec-archive
+  --preset spec-                                   (SDD lifecycle skills)
+  driven-change
+```
+
+`generate` and `spec` create the **initial state**. `spec-driven-change` workflow then governs **every subsequent change**, keeping the system's specs in lockstep with its code.
+
+#### OpenSpec compatibility
+
+The output structure (`openspec/specs/`, `openspec/changes/`, delta format with ADDED/MODIFIED/REMOVED, GIVEN/WHEN/THEN scenarios) follows the [OpenSpec](https://openspec.dev/) convention. Skills generated by Codify are designed to operate on OpenSpec workspaces seamlessly.
+
+**Codify's value-add over installing OpenSpec directly:**
+- **LLM personalization**: `--mode personalized --context "..."` adapts the skills to your stack, tools, and conventions
+- **Multi-target**: same SDD methodology delivered for Claude Code or Antigravity
+- **Locale support**: English and Spanish skills out of the box
+- **Integrated pipeline**: combined with `codify generate` + `codify spec`, you get end-to-end SDD bootstrap
 
 ### Skills vs Workflows
 
 | | Skills | Workflows |
 |-|--------|-----------|
 | **Purpose** | Teach *how* to do a specific task | Orchestrate a *sequence* of tasks |
-| **Scope** | Single concern (e.g., "write a commit") | End-to-end process (e.g., "develop a feature") |
+| **Scope** | Single concern (e.g., "write a commit") | End-to-end process (e.g., "evolve a spec from proposal to merged change") |
 | **Invocation** | Agent reads when relevant | User invokes via `/command` |
-| **Examples** | Conventional Commits, DDD entity, code review | Feature development, bug fix, release cycle |
+| **Examples** | Conventional Commits, DDD entity, code review | Spec-driven change lifecycle, bug fix, release cycle |
 
 ### Options
 
@@ -796,7 +887,13 @@ Only for personalized mode. Static mode delivers pre-built workflows instantly �
 Claude Code (`--target claude`) and Antigravity (`--target antigravity`). Claude workflows generate native skills (`SKILL.md` with frontmatter) following the official Claude Code skills methodology. Antigravity workflows produce native `.md` files with execution annotations (`// turbo`, `// capture`, etc.).
 
 **What's AI Spec-Driven Development?**
-A methodology where you generate context and specifications *before* writing code. Your agent implements a spec, not an improvisation. `generate` creates the blueprint, `spec` creates the implementation plan.
+A methodology where you generate context and specifications *before* writing code. Your agent implements a spec, not an improvisation. `generate` creates the blueprint, `spec` creates the implementation plan, and the `spec-driven-change` workflow governs every subsequent change as a tracked spec evolution (propose → apply → archive) with formal deltas, isolated change workspaces, and audit trails.
+
+**Why three phases (propose / apply / archive) instead of one workflow?**
+Each phase is a different cognitive mode. *Propose* answers "what should change and why?" without writing code — the LLM stays focused on intent. *Apply* answers "how to make it real?" with the deltas already approved, eliminating spec ambiguity from the implementation context. *Archive* closes the loop deterministically: merge deltas into source-of-truth specs, archive the change for audit, merge the branch. Mixing these phases dilutes attention and produces vague plans + sloppy code.
+
+**Does Codify replace OpenSpec?**
+No — it complements it. The `spec-driven-change` preset generates skills that operate on OpenSpec-format workspaces (`openspec/specs/`, `openspec/changes/`, ADDED/MODIFIED/REMOVED deltas with G/W/T scenarios). If you already use OpenSpec, Codify gives you LLM-personalized lifecycle skills tailored to your stack. If you don't, Codify is your zero-config entry point to the methodology — combined with `codify generate` and `codify spec`, you get the full pipeline from blank repo to governed iteration.
 
 ## 📚 Documentation
 
