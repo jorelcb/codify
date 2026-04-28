@@ -536,6 +536,27 @@ codify workflows ────▶ /spec-propose, /spec-apply, /spec-archive
 
 `generate` y `spec` crean el **estado inicial**. El workflow `spec-driven-change` luego gobierna **cada cambio subsecuente**, manteniendo los specs del sistema en sincronia con su codigo.
 
+#### Adopcion de SDD en un codebase existente
+
+Para proyectos brownfield (codebases maduros sin specs formales), el path de adopcion es diferente — los specs deben emerger del comportamiento **real** del codigo, no de aspiraciones. Sigue esta secuencia:
+
+```
+1. codify analyze ./mi-proyecto          → AGENTS.md, CONTEXT.md, ... (contexto factual del scan)
+2. openspec init                         → workspace openspec/ vacio
+3. codify workflows                      → /spec-propose, /spec-apply, /spec-archive
+     --preset spec-driven-change
+     --target claude --install project
+4. Desde tu agente, prompt:
+   "Lee AGENTS.md y CONTEXT.md, despues haz ingenieria reversa de specs
+    OpenSpec desde el codigo fuente bajo un change llamado 'baseline'.
+    Identifica fronteras de capability desde la estructura del codebase.
+    Usa requirements ADDED con scenarios GIVEN/WHEN/THEN derivados del
+    comportamiento real, no del diseno aspiracional."
+5. /spec-archive baseline                → consolida specs baseline en openspec/specs/
+```
+
+Este patron (el [retrofitting mode de OpenSpec](https://openspec.dev/)) produce specs **factuales** validados contra codigo existente en lugar de proyecciones desde una descripcion. Despues de archivar el baseline, cada cambio nuevo pasa por el ciclo estandar `/spec-propose → /spec-apply → /spec-archive`. El rol de Codify aqui es proveer el contexto (`analyze`) y los skills de ciclo (`workflows --preset spec-driven-change`); el retrofit del baseline en si es un prompt one-shot contra tu agente, no un comando separado de Codify — manteniendo responsabilidades limpias y evitando solapamiento con el tooling de OpenSpec.
+
 #### Compatibilidad con OpenSpec
 
 La estructura de salida (`openspec/specs/`, `openspec/changes/`, formato delta con ADDED/MODIFIED/REMOVED, scenarios GIVEN/WHEN/THEN) sigue la convencion de [OpenSpec](https://openspec.dev/). Los skills generados por Codify estan disenados para operar sin friccion sobre workspaces OpenSpec.
