@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.18.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.19.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -595,6 +595,106 @@ codify workflows [flags]
 
 ---
 
+## 🪝 Hooks
+
+Los hooks son **guardrails deterministicos** para Claude Code. Donde los skills (prompts) y los workflows (orquestacion) dependen de que el LLM haga lo correcto, los hooks son scripts shell que **siempre** se ejecutan en eventos del lifecycle (`PreToolUse`, `PostToolUse`, etc.) — hacen cumplir reglas en cada llamada, por exit code.
+
+Las tres capas de artefactos se complementan:
+
+| Capa | Mecanismo | Cuando corre? | Determinismo |
+|---|---|---|---|
+| **Skills** | Prompt cargado en contexto | Cuando agente o usuario lo invoca | Depende del LLM |
+| **Workflows** | Lifecycle multi-skill | Usuario lo invoca via slash command | Depende del LLM |
+| **Hooks** | Scripts shell en eventos | Cada llamada a tool que coincida | 100% (exit codes) |
+
+### Catalogo de presets
+
+| Preset | Evento | Proposito |
+|---|---|---|
+| `linting` | `PostToolUse` (Edit\|Write) | Auto-formatea y lintea archivos usando la herramienta correcta por lenguaje (Prettier/ESLint, ruff/black, gofmt/gofumpt, rustfmt, rubocop, shfmt). Detecta tools instalados via `command -v` — silencioso si falta uno. |
+| `security-guardrails` | `PreToolUse` (Bash, Edit\|Write) | Bloquea comandos Bash peligrosos (`rm -rf /`, `git push --force` a main, `curl \| bash`, fork bombs, formateo de fs) y protege archivos sensibles (`.env*`, `secrets/`, `.git/`, lockfiles, claves privadas, configs CI). |
+| `convention-enforcement` | `PreToolUse` (Bash con `if`) | Valida mensajes de commit contra Conventional Commits 1.0.0 (titulo ≤72 chars, tipo valido, sin placeholders triviales) y bloquea push directo/force-push a branches protegidos (`main`, `master`, `develop`, `production`, `release/*`). Requiere Claude Code v2.1.85+. |
+| `all` | (combinado) | Los tres presets mergeados en un solo `hooks.json` |
+
+### Estructura de salida
+
+```
+{output}/
+├── hooks.json         ← bloque para mergear en tu settings.json
+└── hooks/
+    ├── lint.sh                          (preset linting)
+    ├── block-dangerous-commands.sh      (security-guardrails)
+    ├── protect-sensitive-files.sh       (security-guardrails)
+    ├── validate-commit-message.sh       (convention-enforcement)
+    └── check-protected-branches.sh      (convention-enforcement)
+```
+
+### Activar el bundle (merge manual)
+
+Codify nunca modifica automaticamente tu `settings.json` — tu decides que mergear. Despues de correr el comando:
+
+```bash
+# 1. Mueve los scripts a tu directorio de Claude
+cp -r ./codify-hooks/hooks/ ~/.claude/hooks/        # global (todos los proyectos)
+# o
+cp -r ./codify-hooks/hooks/ .claude/hooks/          # proyecto (commit al repo)
+
+# 2. Abre ./codify-hooks/hooks.json y copia el objeto "hooks" dentro de:
+#    ~/.claude/settings.json   (global)  o
+#    .claude/settings.json     (proyecto)
+# Mergealo como sibling de tus keys existentes (theme, model, mcpServers, etc).
+
+# 3. Verifica activacion
+claude
+> /hooks
+```
+
+### Modo interactivo
+
+```bash
+codify hooks
+# → Selecciona preset (linting, security-guardrails, convention-enforcement, all)
+# → Selecciona locale (en, es)
+# → Selecciona ubicacion de salida (proyecto / global / custom)
+```
+
+### Modo CLI
+
+```bash
+# Bundle de linting en ./codify-hooks/
+codify hooks --preset linting
+
+# Todos los hooks combinados, stderr en espanol
+codify hooks --preset all --locale es
+
+# Security guardrails en path custom
+codify hooks --preset security-guardrails --output ./tmp/sec-hooks
+```
+
+### Requisitos
+
+- **Bash** + **jq** (Linux/macOS nativo; Windows requiere Git Bash o WSL)
+- **Claude Code v2.1.85+** (solo para el preset `convention-enforcement`, que usa el campo `if` en handlers)
+
+### Limitaciones honestas
+
+Los scripts bash usan patrones regex, no AST parsing. Detienen comandos **descuidados** del agente, no adversarios motivados — ofuscacion sofisticada (e.g. `eval $(echo b3JtIC1yZiAv | base64 -d)`) puede burlar la deteccion. Para garantias mas fuertes usa una herramienta dedicada como [bash-guardian](https://github.com/RoaringFerrum/claude-code-bash-guardian). Los scripts son cortos y deliberadamente editables: extiende los arrays de patrones para tu modelo de riesgo especifico.
+
+### Opciones
+
+```bash
+codify hooks [flags]
+```
+
+| Flag | Descripcion | Default |
+|---|---|---|
+| `--preset` `-p` | `linting`, `security-guardrails`, `convention-enforcement`, o `all` | *(interactivo)* |
+| `--locale` | Idioma de salida para stderr (`en` o `es`) | `en` |
+| `--install` | Scope de instalacion: `global` o `project` | *(interactivo)* |
+| `--output` `-o` | Directorio de salida | `./codify-hooks` |
+
+---
+
 ## 🔌 MCP Server
 
 Usa Codify como **servidor MCP** — tu agente de IA invoca las herramientas directamente, sin necesidad de CLI manual.
@@ -662,8 +762,9 @@ Agrega a `~/.gemini/settings.json`:
 | `analyze_project` | Escanea un proyecto existente y genera contexto desde su estructura |
 | `generate_skills` | Genera Agent Skills — soporta modos `static` (instantaneo) y `personalized` (adaptado via LLM) |
 | `generate_workflows` | Genera workflows para Claude Code (native skills) o Antigravity (.md nativo) — soporta modos `static` y `personalized` |
+| `generate_hooks` | Genera bundles de hooks para Claude Code (guardrails deterministicos). Static-only, Claude-only. Produce `hooks.json` + scripts `.sh` para merge manual al `settings.json` |
 
-Todas las herramientas generativas soportan `locale` (`en`/`es`) y `model`. `generate_context` y `analyze_project` tambien aceptan `with_specs`. `generate_skills` acepta `mode`, `category`, `preset`, `target` y `project_context`. `generate_workflows` acepta `mode`, `preset`, `target` (`claude`/`antigravity`) y `project_context`.
+Todas las herramientas generativas soportan `locale` (`en`/`es`) y `model`. `generate_context` y `analyze_project` tambien aceptan `with_specs`. `generate_skills` acepta `mode`, `category`, `preset`, `target` y `project_context`. `generate_workflows` acepta `mode`, `preset`, `target` (`claude`/`antigravity`) y `project_context`. `generate_hooks` acepta `preset` (`linting`/`security-guardrails`/`convention-enforcement`/`all`), `locale` y `output` — sin model ni context (static-only).
 
 #### Herramientas de conocimiento (sin API key)
 
@@ -694,6 +795,9 @@ Las herramientas de conocimiento inyectan contexto comportamental en el agente q
 
 "Genera todos los workflows adaptados a mi proyecto Go con GitHub Actions"
 → El agente invoca generate_workflows con target=claude, mode=personalized, preset=all, project_context="Go con GitHub Actions"
+
+"Genera hooks para Claude Code que bloqueen comandos peligrosos y validen conventional commits"
+→ El agente invoca generate_hooks con preset=all (o security-guardrails + convention-enforcement)
 
 "Ayudame a hacer commit de estos cambios siguiendo conventional commits"
 → El agente invoca commit_guidance, recibe la spec, construye el mensaje
@@ -793,7 +897,7 @@ internal/
 │
 └── interfaces/          🎯 Puntos de entrada
     ├── cli/commands/    generate, analyze, spec, skills, workflows, serve, list
-    └── mcp/             Servidor MCP (transporte stdio + HTTP, 7 herramientas)
+    └── mcp/             Servidor MCP (transporte stdio + HTTP, 8 herramientas)
 ```
 
 ### Sistema de templates
@@ -847,7 +951,7 @@ go test ./tests/...
 
 ## 📊 Estado del proyecto
 
-**v1.18.0** 🎉
+**v1.19.0** 🎉
 
 ✅ **Funcionando:**
 - Soporte multi-proveedor LLM (Anthropic Claude + Google Gemini)
@@ -860,7 +964,7 @@ go test ./tests/...
 - **Workflows** — recetas de orquestacion multi-paso para Claude Code (native skills) y Antigravity (anotaciones nativas)
 - **Presets de workflows** — spec-driven-change (propose/apply/archive), bug-fix, release-cycle (modos static + personalized, multi-target)
 - **UX interactiva unificada** — todos los comandos preguntan por parametros faltantes en terminal
-- Servidor MCP (transporte stdio + HTTP) con 7 herramientas
+- Servidor MCP (transporte stdio + HTTP) con 8 herramientas
 - Herramientas de conocimiento MCP (commit_guidance, version_guidance) — sin API key
 - Sistema de presets (default: DDD/Clean, neutral: generico)
 - Estandar AGENTS.md como root file

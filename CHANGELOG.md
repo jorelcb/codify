@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0] - 2026-05-04 - Claude Code hook bundles (deterministic guardrails)
+
+### Added
+- New `codify hooks` command that generates Claude Code hook bundles — `hooks.json` (block to merge into `settings.json`) plus auxiliary `.sh` scripts referenced by it
+- Three preset categories: `linting` (auto-format on Edit/Write), `security-guardrails` (block dangerous commands and protect sensitive files), `convention-enforcement` (Conventional Commits + protected branches via the `if` field)
+- `all` preset that merges the three bundles into a single `hooks.json` (per-event arrays unioned; Claude Code dedupes identical commands automatically)
+- Templates in `templates/{en,es}/hooks/{preset}/` with localized stderr messages (English / Spanish)
+- New MCP tool `generate_hooks` exposing the same functionality to AI agents (parameters: `preset`, `locale`, `output`)
+- New domain bounded context: `internal/domain/catalog/hook_catalog.go` (`HookCategories`, `HookMetadata`, `FindHookCategory`, `HookPresetNames`)
+- New DTO `internal/application/dto/hook_config.go` with `ValidHookPresets` map
+- New application command `internal/application/command/deliver_hooks.go` with merge-aware delivery (handles `all` preset by reading multiple template directories)
+- BDD test suite `tests/bdd/hook_catalog/` with 9 scenarios
+- Unit tests `internal/domain/catalog/hook_catalog_test.go` covering preset resolution, metadata, and category lookup
+
+### Design decisions
+- **Static-only**: hooks are catalog-driven; no LLM personalization (universal patterns don't benefit from project-specific tuning)
+- **Claude-only target**: hooks are exclusive to Claude Code — Antigravity and Codex have no equivalent
+- **Standalone output**: codify never auto-merges into `settings.json`; the user merges manually after review (zero risk of clobbering existing config)
+- **Default output is `./codify-hooks/`** instead of `.claude/hooks/` so the user immediately sees the generated bundle as something requiring activation
+- **Bash + jq required**: scripts use `jq` to parse the hook JSON input (Linux/macOS native; Windows requires Git Bash or WSL)
+- **Regex-based detection**: simple `grep -E` rather than AST parsing — sufficient to stop careless agents, not motivated adversaries (documented honestly in script comments)
+
+### Changed
+- MCP server registers a new tool (`generate_hooks`) bringing the total to 8 tools
+- MCP server version bumped to 1.19.0
+- README/README_ES badges updated to v1.19.0
+
 ## [1.18.0] - 2026-04-27 - Spec-driven change lifecycle workflow
 
 ### Added

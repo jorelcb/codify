@@ -43,7 +43,7 @@ Main pattern: **Clean Architecture with Domain-Driven Design (DDD)**
 - **Contains:**
   - `cli/commands/` — Cobra commands: `generate`, `analyze`, `spec`, `skills`, `workflows`, `serve`, `list`. Interactive prompts via charmbracelet/huh for missing flags.
   - `cli/commands/interactive.go` — Shared interactive menu helpers (TTY detection, form builders).
-  - `mcp/server.go` — MCP server with 7 tools: `generate_context`, `generate_specs`, `analyze_project`, `generate_skills`, `generate_workflows`, `commit_guidance`, `version_guidance`.
+  - `mcp/server.go` — MCP server with 8 tools: `generate_context`, `generate_specs`, `analyze_project`, `generate_skills`, `generate_workflows`, `generate_hooks`, `commit_guidance`, `version_guidance`.
   - `mcp/transport.go` — Transport strategy pattern: `StdioTransport`, `HTTPTransport`.
 - **Rule:** Adapts user input (CLI flags, MCP requests) to application layer DTOs.
 
@@ -55,9 +55,10 @@ Dependencies always point inward: `Interfaces → Application → Domain`. The `
 | Component | Responsibility | Layer | Key Interfaces |
 |---|---|---|---|
 | **CLI Commands** | Expose functionality via Cobra with interactive menus | Interfaces | Application commands/queries |
-| **MCP Server** | Expose functionality via Model Context Protocol (7 tools) | Interfaces | Application commands/queries |
+| **MCP Server** | Expose functionality via Model Context Protocol (8 tools) | Interfaces | Application commands/queries |
 | **Skill Catalog** | Declarative registry of skill categories, presets, metadata | Domain | `SkillCategory`, `SkillOption`, `SkillMetadata` |
 | **Workflow Catalog** | Declarative registry of workflow presets and metadata | Domain | `WorkflowCategories`, `WorkflowMeta` |
+| **Hook Catalog** | Declarative registry of Claude Code hook presets and metadata | Domain | `HookCategories`, `HookMetadata` |
 | **LLM Provider** | Abstract communication with LLM APIs (Claude, Gemini) | Infrastructure | `domain.service.LLMProvider` |
 | **Provider Factory** | Select provider by model prefix (`claude-*` → Anthropic, `gemini-*` → Gemini) | Infrastructure | `llm.NewProvider()` |
 | **Prompt Builder** | Build XML-structured system prompts for each generation mode | Infrastructure | Context/Spec/Skills/Workflows prompt builders |
@@ -147,6 +148,31 @@ For Antigravity, workflows generate flat `.md` files. For Claude Code, workflows
 The output structure follows the [OpenSpec](https://openspec.dev/) convention. Codify generates the skills; OpenSpec workspaces can consume them directly. Codify adds LLM personalization, multi-target support (Claude/Antigravity), and locale support on top of the OpenSpec-compatible format.
 
 **Why this isn't a single workflow**: keeping the three phases separate is intentional. Each phase has a distinct cognitive mode — mixing planning, implementation, and consolidation in one prompt produces vague plans and sloppy code. The split also enables phase-specific review (intent review vs code review vs spec review) and parallel work (one developer drafting a propose while another applies a different change).
+
+### Hook Catalog (`internal/domain/catalog/hook_catalog.go`)
+
+Single non-exclusive category with 3 presets, each delivering a deterministic guardrail bundle for Claude Code (`hooks.json` + `.sh` scripts):
+
+| Preset | Event | Description (max 250 chars) |
+|---|---|---|
+| `linting` | `PostToolUse` (Edit\|Write) | Auto-format and lint files on every edit using the right tool per language (Prettier/ESLint, ruff/black, gofmt/gofumpt, rustfmt, rubocop, shfmt) — non-blocking |
+| `security-guardrails` | `PreToolUse` (Bash, Edit\|Write) | Block dangerous Bash commands and protect sensitive files (env files, secrets, lockfiles, private keys, CI configs) |
+| `convention-enforcement` | `PreToolUse` (Bash with `if`) | Validate Conventional Commits headers and protect main/master/develop/production branches from direct or force pushes |
+
+The catalog uses the same `SkillCategory` / `SkillOption` / `ResolvedSelection` types as skills and workflows (shared across bounded contexts via `internal/domain/catalog/skills_catalog.go`), but every option has `TemplateMapping: nil` — hooks are not rendered, they are copied. The delivery command (`internal/application/command/deliver_hooks.go`) reads the entire `templates/{locale}/hooks/{preset}/` directory and copies its files verbatim, including `chmod 0755` on `.sh` scripts.
+
+The `all` preset is special: it's not a directory but a runtime merge. The deliver command reads `hooks.json` from each of the three preset directories and unions per-event arrays (`PreToolUse`, `PostToolUse`) into a single output. Claude Code automatically dedupes identical command strings, so concatenation without deduplication is safe.
+
+#### Why hooks are static-only and Claude-only
+
+Two design decisions distinguish the hook catalog from skills/workflows:
+
+- **No personalized mode**: hooks are universal patterns (block `rm -rf /`, format on save, validate Conventional Commits). LLM personalization adds complexity without clear value — there is no project-specific knowledge that improves a regex-based command blocker.
+- **No multi-target**: hooks are exclusive to Claude Code. Antigravity has no equivalent lifecycle-event mechanism, and Codex doesn't expose hooks at all. Forcing a `Target` field on `HookConfig` would be ceremonial. The `dto.HookConfig` is intentionally narrower than `WorkflowConfig`.
+
+#### Why the default output isn't `.claude/hooks/`
+
+Default output path is `./codify-hooks/` rather than `.claude/hooks/`. This deliberate friction signals to the user that the bundle is **not auto-active** — it requires manual merge of `hooks.json` into `settings.json` and copying scripts to the chosen Claude config directory. Codify never modifies user settings files; the user reviews and merges.
 
 ## External Integrations
 

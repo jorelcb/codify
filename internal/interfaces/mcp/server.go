@@ -21,7 +21,7 @@ import (
 	infratemplate "github.com/jorelcb/codify/internal/infrastructure/template"
 )
 
-const serverVersion = "1.18.0"
+const serverVersion = "1.19.0"
 
 // validPresets maps preset names for validation.
 var validPresets = map[string]bool{
@@ -44,6 +44,7 @@ func NewServer() *server.MCPServer {
 		analyzeProjectTool(),
 		generateSkillsTool(),
 		generateWorkflowsTool(),
+		generateHooksTool(),
 		commitGuidanceTool(),
 		versionGuidanceTool(),
 	)
@@ -127,6 +128,18 @@ func generateWorkflowsTool() server.ServerTool {
 	)
 
 	return server.ServerTool{Tool: tool, Handler: handleGenerateWorkflows}
+}
+
+// generateHooksTool defines the generate_hooks MCP tool.
+func generateHooksTool() server.ServerTool {
+	tool := mcp.NewTool("generate_hooks",
+		mcp.WithDescription("Generate Claude Code hook bundles (deterministic guardrails). Outputs a hooks.json block (for merge into settings.json) and auxiliary .sh scripts. Static-only, Claude Code-only — no LLM personalization, no other ecosystems."),
+		mcp.WithString("preset", mcp.Required(), mcp.Description("Hook preset: linting, security-guardrails, convention-enforcement, or all")),
+		mcp.WithString("locale", mcp.Description("Output language for stderr messages: en or es"), mcp.DefaultString("en")),
+		mcp.WithString("output", mcp.Description("Output directory (default: ./codify-hooks)")),
+	)
+
+	return server.ServerTool{Tool: tool, Handler: handleGenerateHooks}
 }
 
 // commitGuidanceTool defines the commit_guidance MCP knowledge tool.
@@ -441,6 +454,49 @@ func handleGenerateWorkflows(ctx context.Context, request mcp.CallToolRequest) (
 	return mcp.NewToolResultText(sb.String()), nil
 }
 
+func handleGenerateHooks(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	preset := stringArg(request, "preset")
+	locale := stringArgDefault(request, "locale", "en")
+	output := stringArg(request, "output")
+	if output == "" {
+		output = filepath.Join(".", "codify-hooks")
+	}
+
+	if !dto.ValidHookPresets[preset] {
+		return mcp.NewToolResultError(fmt.Sprintf("Invalid hook preset: %s (valid: linting, security-guardrails, convention-enforcement, all)", preset)), nil
+	}
+
+	if locale != "en" && locale != "es" {
+		return mcp.NewToolResultError(fmt.Sprintf("Invalid locale: %s (must be 'en' or 'es')", locale)), nil
+	}
+
+	config := &dto.HookConfig{
+		Category:   "hooks",
+		Preset:     preset,
+		Locale:     locale,
+		OutputPath: output,
+	}
+
+	result, err := executeHooksMCP(config)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Hook bundle generation failed: %v", err)), nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Claude Code hook bundle delivered (preset: %s)\n", preset))
+	sb.WriteString(fmt.Sprintf("Output: %s\n", result.OutputPath))
+	sb.WriteString("\nGenerated files:\n")
+	for _, f := range result.GeneratedFiles {
+		sb.WriteString(fmt.Sprintf("  - %s\n", f))
+	}
+	sb.WriteString("\nTo activate:\n")
+	sb.WriteString(fmt.Sprintf("  1. Copy scripts: cp -r %s/hooks/ <YOUR_CLAUDE_DIR>/hooks/\n", result.OutputPath))
+	sb.WriteString(fmt.Sprintf("  2. Merge %s/hooks.json into <YOUR_CLAUDE_DIR>/settings.json\n", result.OutputPath))
+	sb.WriteString("Where <YOUR_CLAUDE_DIR> is ~/.claude (global) or .claude (project).\n")
+
+	return mcp.NewToolResultText(sb.String()), nil
+}
+
 func handleCommitGuidance(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	locale := stringArgDefault(request, "locale", "en")
 	content, err := loadKnowledgeTemplate(locale, "conventions", "conventional_commit.template")
@@ -644,6 +700,13 @@ func executePersonalizedWorkflowsMCP(ctx context.Context, config *dto.WorkflowCo
 
 	workflowsCmd := command.NewGenerateWorkflowsCommand(provider, fileWriter, dirManager)
 	return workflowsCmd.Execute(ctx, config, guides)
+}
+
+func executeHooksMCP(config *dto.HookConfig) (*dto.GenerationResult, error) {
+	fileWriter := filesystem.NewFileWriter()
+	dirManager := filesystem.NewDirectoryManager()
+	cmd := command.NewDeliverHooksCommand(fileWriter, dirManager, root.TemplatesFS)
+	return cmd.Execute(config)
 }
 
 // --- Argument helpers ---

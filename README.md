@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.18.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.19.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -595,6 +595,106 @@ codify workflows [flags]
 
 ---
 
+## 🪝 Hooks
+
+Hooks are **deterministic guardrails** for Claude Code. Where skills (prompts) and workflows (orchestration) rely on the LLM doing the right thing, hooks are shell scripts that **always** run on lifecycle events (`PreToolUse`, `PostToolUse`, etc.) — they enforce rules every single time, by exit code.
+
+The three artifact layers complement each other:
+
+| Layer | Mechanism | When does it run? | Determinism |
+|---|---|---|---|
+| **Skills** | Prompt loaded into context | When agent or user invokes | Depends on LLM |
+| **Workflows** | Multi-skill lifecycle | User invokes via slash command | Depends on LLM |
+| **Hooks** | Shell scripts on events | Every matching tool call | 100% (exit codes) |
+
+### Preset catalog
+
+| Preset | Event | Purpose |
+|---|---|---|
+| `linting` | `PostToolUse` (Edit\|Write) | Auto-format and lint files using the right tool per language (Prettier/ESLint, ruff/black, gofmt/gofumpt, rustfmt, rubocop, shfmt). Tools detected via `command -v` — skipped silently if not installed. |
+| `security-guardrails` | `PreToolUse` (Bash, Edit\|Write) | Block dangerous Bash commands (`rm -rf /`, `git push --force` to main, `curl \| bash`, fork bombs, fs-formatting) and protect sensitive files (`.env*`, `secrets/`, `.git/`, lockfiles, private keys, CI configs). |
+| `convention-enforcement` | `PreToolUse` (Bash with `if`) | Validate commit messages against Conventional Commits 1.0.0 (header ≤72 chars, valid type, no trivial placeholders) and block direct/force pushes to protected branches (`main`, `master`, `develop`, `production`, `release/*`). Requires Claude Code v2.1.85+. |
+| `all` | (combined) | All three preset bundles merged into a single `hooks.json` |
+
+### Output layout
+
+```
+{output}/
+├── hooks.json         ← block to merge into your settings.json
+└── hooks/
+    ├── lint.sh                          (linting preset)
+    ├── block-dangerous-commands.sh      (security-guardrails)
+    ├── protect-sensitive-files.sh       (security-guardrails)
+    ├── validate-commit-message.sh       (convention-enforcement)
+    └── check-protected-branches.sh      (convention-enforcement)
+```
+
+### Activate the bundle (manual merge)
+
+Codify never auto-modifies your `settings.json` — you decide what to merge. After running the command:
+
+```bash
+# 1. Move scripts to your Claude config dir
+cp -r ./codify-hooks/hooks/ ~/.claude/hooks/        # global (all projects)
+# or
+cp -r ./codify-hooks/hooks/ .claude/hooks/          # project (commit to repo)
+
+# 2. Open ./codify-hooks/hooks.json and copy the "hooks" object into:
+#    ~/.claude/settings.json   (global)  or
+#    .claude/settings.json     (project)
+# Merge it as a sibling of your existing keys (theme, model, mcpServers, etc).
+
+# 3. Verify activation
+claude
+> /hooks
+```
+
+### Interactive mode
+
+```bash
+codify hooks
+# → Select preset (linting, security-guardrails, convention-enforcement, all)
+# → Select locale (en, es)
+# → Select output location (project / global / custom)
+```
+
+### CLI mode
+
+```bash
+# Linting bundle into ./codify-hooks/
+codify hooks --preset linting
+
+# All hooks combined, Spanish stderr
+codify hooks --preset all --locale es
+
+# Security guardrails into custom path
+codify hooks --preset security-guardrails --output ./tmp/sec-hooks
+```
+
+### Requirements
+
+- **Bash** + **jq** (Linux/macOS native; Windows requires Git Bash or WSL)
+- **Claude Code v2.1.85+** (only for the `convention-enforcement` preset, which uses the `if` field on hook handlers)
+
+### Honest limitations
+
+The bash scripts use regex patterns, not AST parsing. They stop **careless** agent commands, not motivated adversaries — sophisticated obfuscation (e.g. `eval $(echo b3JtIC1yZiAv | base64 -d)`) can bypass detection. For stronger guarantees use a dedicated tool like [bash-guardian](https://github.com/RoaringFerrum/claude-code-bash-guardian). The scripts are short and deliberately editable: extend the pattern arrays to match your project's specific risk model.
+
+### Options
+
+```bash
+codify hooks [flags]
+```
+
+| Flag | Description | Default |
+|---|---|---|
+| `--preset` `-p` | `linting`, `security-guardrails`, `convention-enforcement`, or `all` | *(interactive)* |
+| `--locale` | Output language for stderr (`en` or `es`) | `en` |
+| `--install` | Install scope: `global` or `project` | *(interactive)* |
+| `--output` `-o` | Output directory | `./codify-hooks` |
+
+---
+
 ## 🔌 MCP Server
 
 Use Codify as an **MCP server** — your AI coding agent calls the tools directly, no manual CLI needed.
@@ -662,8 +762,9 @@ Add to `~/.gemini/settings.json`:
 | `analyze_project` | Scan an existing project and generate context from its structure |
 | `generate_skills` | Generate Agent Skills — supports `static` (instant) and `personalized` (LLM-adapted) modes |
 | `generate_workflows` | Generate workflow files for Claude Code (native skills) or Antigravity (native .md) — supports `static` and `personalized` modes |
+| `generate_hooks` | Generate Claude Code hook bundles (deterministic guardrails). Static-only, Claude-only. Outputs `hooks.json` + `.sh` scripts for manual merge into `settings.json` |
 
-All generative tools support `locale` (`en`/`es`) and `model` parameters. `generate_context` and `analyze_project` also accept `with_specs`. `generate_skills` accepts `mode`, `category`, `preset`, `target`, and `project_context`. `generate_workflows` accepts `mode`, `preset`, `target` (`claude`/`antigravity`), and `project_context`.
+All generative tools support `locale` (`en`/`es`) and `model` parameters. `generate_context` and `analyze_project` also accept `with_specs`. `generate_skills` accepts `mode`, `category`, `preset`, `target`, and `project_context`. `generate_workflows` accepts `mode`, `preset`, `target` (`claude`/`antigravity`), and `project_context`. `generate_hooks` accepts `preset` (`linting`/`security-guardrails`/`convention-enforcement`/`all`), `locale`, and `output` — no model or context (static-only).
 
 #### Knowledge tools (no API key needed)
 
@@ -694,6 +795,9 @@ Knowledge tools inject behavioral context into the calling agent — the agent r
 
 "Generate all workflows adapted to my Go project with GitHub Actions"
 → Agent calls generate_workflows with target=claude, mode=personalized, preset=all, project_context="Go with GitHub Actions"
+
+"Generate Claude Code hooks to block dangerous commands and enforce conventional commits"
+→ Agent calls generate_hooks with preset=all (or security-guardrails + convention-enforcement)
 
 "Help me commit these changes following conventional commits"
 → Agent calls commit_guidance, receives the spec, crafts the message
@@ -793,7 +897,7 @@ internal/
 │
 └── interfaces/          🎯 Entry points
     ├── cli/commands/    generate, analyze, spec, skills, workflows, serve, list
-    └── mcp/             MCP server (stdio + HTTP transport, 7 tools)
+    └── mcp/             MCP server (stdio + HTTP transport, 8 tools)
 ```
 
 ### Template system
@@ -847,7 +951,7 @@ go test ./tests/...
 
 ## 📊 Project status
 
-**v1.18.0** 🎉
+**v1.19.0** 🎉
 
 ✅ **Working:**
 - Multi-provider LLM support (Anthropic Claude + Google Gemini)
@@ -860,7 +964,7 @@ go test ./tests/...
 - **Workflows** — multi-step orchestration recipes for Claude Code (native skills) and Antigravity (native annotations)
 - **Workflow presets** — spec-driven-change (propose/apply/archive), bug-fix, release-cycle (static + personalized modes, multi-target)
 - **Unified interactive UX** — all commands prompt for missing parameters when run in a terminal
-- MCP Server mode (stdio + HTTP transport) with 7 tools
+- MCP Server mode (stdio + HTTP transport) with 8 tools
 - MCP knowledge tools (commit_guidance, version_guidance) — no API key needed
 - Preset system (default: DDD/Clean, neutral: generic)
 - AGENTS.md standard as root file
