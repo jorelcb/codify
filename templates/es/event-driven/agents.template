@@ -1,0 +1,100 @@
+# {{PROJECT_NAME}}
+
+{{DESCRIPTION}}
+
+## Stack Tecnológico
+
+- **Lenguaje:** {{LANGUAGE}} {{LANGUAGE_VERSION}}
+- **Arquitectura:** {{ARCHITECTURE}} (Event-Driven: CQRS + Event Sourcing + Sagas)
+- **Event store / message bus:** {{EVENT_INFRASTRUCTURE}}
+- **Testing:** {{TESTING_FRAMEWORK}}
+- **Dependencias clave:** {{KEY_DEPENDENCIES}}
+- **Observabilidad:** {{OBSERVABILITY_STACK}}
+
+## Comandos
+
+```bash
+# Build
+{{BUILD_COMMAND}}
+
+# Test
+{{TEST_COMMAND}}
+
+# Run
+{{RUN_COMMAND}}
+
+# Lint
+{{LINT_COMMAND}}
+```
+
+## Principios Arquitectónicos — Event-Driven
+
+### CQRS (Command-Query Responsibility Segregation)
+- Los **commands** mutan estado. Revelan intención (`PlaceOrder`, `CancelReservation`, nunca `UpdateOrder`).
+- Las **queries** leen estado. Nunca mutan, nunca tienen efectos secundarios.
+- Commands y queries tienen **modelos separados** — modelo de escritura optimizado para invariantes, modelo de lectura optimizado para patrones de consulta.
+
+### Event Sourcing (cuando aplica: {{EVENT_SOURCING_SCOPE}})
+- El estado se deriva de un stream cronológico de **eventos de dominio inmutables**.
+- Los aggregates reconstruyen su estado replayeando eventos.
+- Los eventos son la única fuente de verdad; el estado actual es una proyección derivada.
+
+### Sagas / Process Managers
+- Los flujos de larga duración que abarcan aggregates o servicios se coordinan como **sagas**.
+- Las sagas reaccionan a eventos y disparan commands; manejan compensación cuando los pasos fallan.
+- La idempotencia es obligatoria para cada paso de la saga (los eventos pueden re-entregarse).
+
+### Idempotencia
+- Cada handler de command y handler de evento DEBE manejar re-entrega sin producir efectos duplicados.
+- Usar IDs determinísticos derivados de inputs o claves explícitas de dedup.
+
+## Convenciones Clave
+
+- **Naming de eventos:** tiempo pasado, con significado de dominio (`OrderPlaced`, no `OrderCreated`)
+- **Naming de commands:** imperativo, revelador de intención (`PlaceOrder`, no `OrderCommand`)
+- **Evolución de schema:** los eventos son inmutables una vez producidos; nuevas versiones = nuevos tipos de evento o upcasters explícitos
+- **Naming:** {{NAMING_CONVENTIONS}}
+- **Manejo de errores:** {{ERROR_HANDLING_CONVENTIONS}} — distinguir violaciones de reglas de negocio (commands rechazados) de fallas de infraestructura (commands reintentados)
+- **Commits:** Conventional Commits
+- **Branching:** {{BRANCHING_STRATEGY}}
+
+## Estructura del Proyecto
+
+```
+{{PROJECT_STRUCTURE}}
+```
+
+Layout típico:
+- `commands/` — tipos de command + handlers
+- `events/` — tipos de evento (versionados)
+- `aggregates/` — modelos de escritura con invariantes
+- `projections/` — modelos de lectura construidos desde streams de eventos
+- `sagas/` — coordinadores de larga duración
+- `infrastructure/` — adaptadores de event store, message bus
+
+Descripción de directorios principales:
+- {{DIRECTORY_DESCRIPTIONS}}
+
+## Restricciones
+
+### MUST:
+- Expresar cada cambio de estado como un evento con significado semántico
+- Hacer cada handler de command y de evento idempotente
+- Mantener modelos de escritura y lectura separados — nunca consultar desde un command handler contra la projection
+- Versionar eventos explícitamente cuando su schema evoluciona
+- Persistir eventos antes de publicarlos (transactional outbox o equivalente)
+- {{MUST_RULES}}
+
+### MUST NOT:
+- Mutar eventos persistidos (los eventos son inmutables)
+- Mezclar command y query en el mismo handler
+- Hacer que las sagas sean wait-points sincrónicos — son coordinadores reactivos, no cadenas RPC
+- Acoplar projections al modelo de escritura — consumen eventos, no aggregates
+- Saltarse la idempotencia para entrega "garantizada una vez" — esa garantía no existe
+- {{MUST_NOT_RULES}}
+
+## Contexto Adicional
+
+- Arquitectura y diseño técnico: `context/CONTEXT.md`
+- Historial de decisiones y sesiones: `context/INTERACTIONS_LOG.md`
+- Metodología de desarrollo: `context/DEVELOPMENT_GUIDE.md`

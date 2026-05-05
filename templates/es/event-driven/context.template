@@ -1,0 +1,80 @@
+# Contexto Arquitectónico — {{PROJECT_NAME}}
+
+## Estilo Arquitectónico
+
+{{PROJECT_NAME}} es un **sistema event-driven** que combina CQRS, opcionalmente Event Sourcing, y sagas para coordinación de larga duración. Los cambios de estado se expresan como eventos de dominio inmutables; commands y queries siguen caminos separados.
+
+## Lado de Escritura
+
+### Commands
+{{COMMANDS_DESCRIPTION}}
+
+Un command captura intención — qué quiere que pase el usuario u otro sistema. Ejemplos:
+- `PlaceOrder { customerID, items }`
+- `CancelReservation { reservationID, reason }`
+
+Un command handler:
+1. Carga el aggregate (rehidratado desde eventos si es event-sourced)
+2. Valida invariantes de negocio
+3. Emite uno o más eventos en caso de éxito
+4. Persiste eventos transaccionalmente
+
+### Aggregates
+{{AGGREGATES_DESCRIPTION}}
+
+Un aggregate es la frontera de consistencia: sus invariantes se enforced atómicamente. Los cambios de estado dentro de un aggregate producen eventos; los eventos son la única forma en que los cambios de estado salen del aggregate.
+
+### Event Store
+{{EVENT_STORE_DESCRIPTION}}
+
+El event store es append-only. Cada stream identifica un aggregate; los eventos dentro de un stream están estrictamente ordenados. Concurrencia optimista vía versión del stream.
+
+## Lado de Lectura
+
+### Projections
+{{PROJECTIONS_DESCRIPTION}}
+
+Las projections se suscriben a streams de eventos y construyen modelos de lectura optimizados para queries. Cada projection es dueña de sus datos — no hay schema compartido entre projections.
+
+### Modelos de Lectura
+Cada query tiene un modelo de lectura adaptado a ella. Se acepta consistencia eventual entre escrituras y lecturas; la UX la acomoda (UI optimista, polling, o notificaciones push).
+
+## Coordinación de Larga Duración
+
+### Sagas (Process Managers)
+{{SAGAS_DESCRIPTION}}
+
+Las sagas coordinan flujos que abarcan múltiples aggregates o servicios. Ellas:
+- Se suscriben a eventos
+- Disparan commands en respuesta
+- Trackean su propio estado (en qué paso están)
+- Manejan compensación cuando los pasos downstream fallan
+
+Las sagas NO son transacciones distribuidas — aceptan fallas parciales y compensan explícitamente.
+
+## Infraestructura de Mensajería
+
+{{MESSAGING_DESCRIPTION}}
+
+- **Event bus:** entrega eventos de productores a consumidores. Ejemplos: Kafka, NATS, RabbitMQ, SQS.
+- **Patrón outbox:** los eventos se escriben a una tabla local dentro de la misma transacción que el estado del aggregate, luego un proceso separado los publica al bus. Garantiza entrega at-least-once.
+- **Consumidores idempotentes:** los consumidores trackean los IDs de eventos procesados para manejar re-entrega.
+
+## Evolución de Schema
+
+Los eventos son inmutables una vez producidos. Los cambios de schema se manejan:
+- Agregando campos opcionales (compatible)
+- Introduciendo nuevos tipos de evento y migrando productores (preferido para cambios breaking)
+- Upcasters: funciones puras que traducen versiones viejas de evento a nuevas en tiempo de lectura
+
+NUNCA editar un evento persistido.
+
+## Decisiones Específicas para {{PROJECT_NAME}}
+
+{{ARCHITECTURAL_DECISIONS}}
+
+## Tradeoffs
+
+{{TRADEOFFS}}
+
+Se acepta consistencia eventual; debugging entre servicios requiere correlation IDs y tracing; el storage crece append-only — la planeación de capacidad y políticas de retención de streams deben ser explícitas.

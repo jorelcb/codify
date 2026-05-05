@@ -1,0 +1,100 @@
+# {{PROJECT_NAME}}
+
+{{DESCRIPTION}}
+
+## Tech Stack
+
+- **Language:** {{LANGUAGE}} {{LANGUAGE_VERSION}}
+- **Architecture:** {{ARCHITECTURE}} (Event-Driven: CQRS + Event Sourcing + Sagas)
+- **Event store / message bus:** {{EVENT_INFRASTRUCTURE}}
+- **Testing:** {{TESTING_FRAMEWORK}}
+- **Key dependencies:** {{KEY_DEPENDENCIES}}
+- **Observability:** {{OBSERVABILITY_STACK}}
+
+## Commands
+
+```bash
+# Build
+{{BUILD_COMMAND}}
+
+# Test
+{{TEST_COMMAND}}
+
+# Run
+{{RUN_COMMAND}}
+
+# Lint
+{{LINT_COMMAND}}
+```
+
+## Architectural Principles — Event-Driven
+
+### CQRS (Command-Query Responsibility Segregation)
+- **Commands** mutate state. They are intent-revealing (`PlaceOrder`, `CancelReservation`, never `UpdateOrder`).
+- **Queries** read state. They never mutate, never have side effects.
+- Commands and queries have **separate models** — write model optimized for invariants, read model optimized for query patterns.
+
+### Event Sourcing (when applicable: {{EVENT_SOURCING_SCOPE}})
+- State is derived from a chronological stream of **immutable domain events**.
+- Aggregates rebuild their state by replaying events.
+- Events are the single source of truth; current state is a derived projection.
+
+### Sagas / Process Managers
+- Long-running flows that span aggregates or services are coordinated as **sagas**.
+- Sagas react to events and dispatch commands; they handle compensation when steps fail.
+- Idempotency is mandatory for every saga step (events may be redelivered).
+
+### Idempotency
+- Every command handler and event handler MUST handle redelivery without producing duplicate effects.
+- Use deterministic IDs derived from inputs or explicit dedup keys.
+
+## Key Conventions
+
+- **Event naming:** past tense, domain-meaningful (`OrderPlaced`, not `OrderCreated`)
+- **Command naming:** imperative, intent-revealing (`PlaceOrder`, not `OrderCommand`)
+- **Schema evolution:** events are immutable once produced; new versions = new event types or explicit upcasters
+- **Naming:** {{NAMING_CONVENTIONS}}
+- **Error handling:** {{ERROR_HANDLING_CONVENTIONS}} — distinguish business rule violations (commands rejected) from infrastructure failures (commands retried)
+- **Commits:** Conventional Commits
+- **Branching:** {{BRANCHING_STRATEGY}}
+
+## Project Structure
+
+```
+{{PROJECT_STRUCTURE}}
+```
+
+Typical layout:
+- `commands/` — command types + handlers
+- `events/` — event types (versioned)
+- `aggregates/` — write models with invariants
+- `projections/` — read models built from event streams
+- `sagas/` — long-running coordinators
+- `infrastructure/` — event store, message bus adapters
+
+Main directory descriptions:
+- {{DIRECTORY_DESCRIPTIONS}}
+
+## Constraints
+
+### MUST:
+- Express every state change as an event with semantic meaning
+- Make every command and event handler idempotent
+- Keep write and read models separate — never query from a command handler against the projection
+- Version events explicitly when their schema evolves
+- Persist events before publishing them (transactional outbox or equivalent)
+- {{MUST_RULES}}
+
+### MUST NOT:
+- Mutate persisted events (events are immutable)
+- Mix command and query in the same handler
+- Make sagas synchronous wait-points — they are reactive coordinators, not RPC chains
+- Couple projections to the write model — they consume events, not aggregates
+- Skip idempotency for "guaranteed once" delivery — there is no such guarantee
+- {{MUST_NOT_RULES}}
+
+## Additional Context
+
+- Architecture and technical design: `context/CONTEXT.md`
+- Decision history and sessions: `context/INTERACTIONS_LOG.md`
+- Development methodology: `context/DEVELOPMENT_GUIDE.md`

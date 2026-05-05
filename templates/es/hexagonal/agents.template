@@ -1,0 +1,95 @@
+# {{PROJECT_NAME}}
+
+{{DESCRIPTION}}
+
+## Stack Tecnológico
+
+- **Lenguaje:** {{LANGUAGE}} {{LANGUAGE_VERSION}}
+- **Arquitectura:** {{ARCHITECTURE}} (Ports & Adapters / Hexagonal)
+- **Testing:** {{TESTING_FRAMEWORK}}
+- **Dependencias clave:** {{KEY_DEPENDENCIES}}
+- **Observabilidad:** {{OBSERVABILITY_STACK}}
+
+## Comandos
+
+```bash
+# Build
+{{BUILD_COMMAND}}
+
+# Test
+{{TEST_COMMAND}}
+
+# Run
+{{RUN_COMMAND}}
+
+# Lint
+{{LINT_COMMAND}}
+```
+
+## Principios Arquitectónicos — Hexagonal (Ports & Adapters)
+
+### Núcleo (el hexágono)
+- El núcleo de la aplicación contiene la **lógica de negocio** y expone/consume comportamiento exclusivamente a través de **ports** (interfaces).
+- El núcleo **desconoce completamente** cómo es invocado o cómo persiste sus datos — eso es responsabilidad de los adaptadores.
+
+### Ports
+- **Inbound ports (driving):** la API que el núcleo ofrece al exterior (commands, queries, casos de uso).
+- **Outbound ports (driven):** los contratos que el núcleo necesita del exterior (repositorios, gateways, buses de mensajes).
+- Los ports son **interfaces propiedad del núcleo**. Los adaptadores los implementan.
+
+### Adaptadores
+- **Driving adapters:** traducen disparadores externos (HTTP, CLI, jobs programados, consumidores de mensajes) en llamadas a inbound ports.
+- **Driven adapters:** implementan outbound ports contra sistemas externos (bases de datos, APIs de terceros, colas).
+- Los adaptadores son **intercambiables**: el núcleo no cambia cuando un adaptador cambia.
+
+### Regla de Dependencias
+Las dependencias siempre apuntan **hacia el núcleo**. Los adaptadores dependen del núcleo; el núcleo no depende de nada externo.
+
+### Inyección de Dependencias
+Inyección por constructor para TODAS las dependencias — los adaptadores se cablean en el composition root, nunca son instanciados por el núcleo.
+
+## Convenciones Clave
+
+- **Naming:** {{NAMING_CONVENTIONS}}
+- **Imports:** el código del núcleo nunca importa desde `adapters/` ni paquetes de framework
+- **Manejo de errores:** {{ERROR_HANDLING_CONVENTIONS}} — los errores de dominio se definen en el núcleo; los adaptadores traducen fallas técnicas a errores de dominio
+- **Commits:** Conventional Commits (feat, fix, refactor, docs, test, chore)
+- **Branching:** {{BRANCHING_STRATEGY}}
+- **Testing:** núcleo testeado en aislamiento con fakes/stubs que implementan outbound ports; adaptadores testeados con contract tests contra implementaciones reales o in-memory de su port
+
+## Estructura del Proyecto
+
+```
+{{PROJECT_STRUCTURE}}
+```
+
+Genera la estructura siguiendo la convención Hexagonal para el lenguaje detectado. Layout típico:
+- `core/` (o `domain/` + `app/`) — lógica de negocio, ports definidos aquí
+- `adapters/inbound/` (o `adapters/driving/`) — handlers HTTP, comandos CLI, consumidores de mensajes
+- `adapters/outbound/` (o `adapters/driven/`) — repositorios, clientes de gateway, publishers
+- `cmd/` — composition root que cablea adaptadores a ports
+
+Descripción de directorios principales:
+- {{DIRECTORY_DESCRIPTIONS}}
+
+## Restricciones
+
+### MUST:
+- Definir cada dependencia externa como un outbound port propiedad del núcleo
+- Cablear adaptadores a ports en el composition root
+- Mantener el núcleo compilable y testeable sin ningún adaptador presente
+- Aplicar contract tests a cada adaptador que implementa un outbound port
+- {{MUST_RULES}}
+
+### MUST NOT:
+- Importar paquetes de adaptadores desde código del núcleo
+- Filtrar tipos específicos de adaptador (e.g. `*sql.Rows`, `*http.Request`) cruzando port boundaries
+- Acoplar el núcleo a un framework, driver de DB, o broker de mensajes específico
+- Saltearse el port y llamar adaptadores directamente desde el núcleo
+- {{MUST_NOT_RULES}}
+
+## Contexto Adicional
+
+- Arquitectura y diseño técnico: `context/CONTEXT.md`
+- Historial de decisiones y sesiones: `context/INTERACTIONS_LOG.md`
+- Metodología de desarrollo: `context/DEVELOPMENT_GUIDE.md`

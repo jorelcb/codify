@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.0] - 2026-05-05 - Bootstrap UX (`config` + `init`)
+
+### Added
+- **`codify config`** — user-level configuration command (`~/.codify/config.yml`). Without args: launches interactive wizard if config doesn't exist, prints current config if it does. Subcommands: `get <key>`, `set <key> <value>`, `unset <key>`, `edit` (opens `$EDITOR`), `list`. Valid keys: `preset`, `locale`, `language`, `model`, `target`, `provider`, `project_name`.
+- **`codify init`** — project-level bootstrap command. Asks "new vs existing" and routes internally to `generate` (with description inline or from file) or `analyze` (scanner + LLM). Persists `.codify/config.yml` and `.codify/state.json`. Prints recommended next steps for skills/workflows/hooks instead of bundling them (composition over mega-command, per ADR-007).
+- **Auto-launch SOFT** of the config wizard on first run (per [ADR-007](docs/adr/0007-bootstrap-commands-naming.md)). Trigger: TTY interactive + interactive-suitable command + no `~/.codify/config.yml` + no opt-out. Three opt-out mechanisms: flag `--no-auto-config` (per-invocation), env `CODIFY_NO_AUTO_CONFIG=1`, marker file `~/.codify/.no-auto-config` (created by selecting "skip permanently").
+- New `internal/domain/config` package: `Config` struct with YAML schema, `Merge` for precedence chain, `Get`/`Set`/`Unset` helpers, `BuiltinDefaults`, schema versioning.
+- New `internal/infrastructure/config` package: `Repository` for atomic save/load, automatic `.bak` backup before overwriting, `LoadEffective()` resolves the chain (builtin < user < project), path discovery helpers (`UserConfigPath`, `ProjectConfigPath`, `UserNoAutoConfigMarker`).
+- New `internal/domain/state` and `internal/infrastructure/state` packages: `state.json` schema (per [ADR-004](docs/adr/0004-state-json-schema.md)) and atomic JSON repository. v1.22 only WRITES; lifecycle commands (v1.23+) consume.
+- BDD test package `tests/bdd/config_merge` with 8 scenarios covering precedence chain, roundtrip persistence, backup creation, and key validation.
+- Unit tests for both new domain (`config_test.go`) and infrastructure (`repository_test.go`) packages with edge cases for missing files, precedence ordering, and key handling.
+
+### Changed
+- `runGenerateInteractive` and `runAnalyzeInteractive` now call `loadEffectiveConfig()` at startup and apply config defaults to unset flag values via `applyConfigDefaults()`. Flags retain priority; the interactive prompt still kicks in if both flag and config leave a field empty in TTY mode. Files: `config_merge.go` (new helper) and the existing CLI commands.
+- Root command now has `PersistentPreRunE` that invokes `MaybeAutoLaunchConfig` before each subcommand. Side-effect-free if the config already exists or the command is not interactive-suitable.
+- MCP server version bumped to 1.22.0.
+
+### Decisions documented
+- Bootstrap commands coexist with the existing standalone commands (`generate`, `analyze`, `skills`, `workflows`, `hooks`) — they are NOT a replacement. CLI flag-driven flow remains the automation surface for CI/MCP per ADR-007.
+- `config` is the user-level command and supports CRUD subcommands (idiomatic to `git config`/`npm config`/`gh config`); `init` is the project-level command and is composed (not duplicated) on top of `generate`/`analyze`.
+
+## [1.21.0] - 2026-05-05 - Architectural diversity (4 presets)
+
+### Added
+- New context preset `hexagonal` — Ports & Adapters architecture, lighter than clean-ddd. Templates in `templates/{en,es}/hexagonal/` (agents, context, development_guide, interactions)
+- New context preset `event-driven` — CQRS + Event Sourcing + Sagas. Templates in `templates/{en,es}/event-driven/`
+- New skills under `architecture/hexagonal`: `port_definition`, `adapter_pattern`, `dependency_inversion`, `hex_integration_test` (en + es)
+- New skills under `architecture/event-driven`: `command_handler`, `domain_event`, `event_projection`, `saga_orchestrator`, `event_idempotency` (en + es)
+- Architecture skills catalog now maps 1:1 with context presets (4 architecture preset names: `neutral`, `clean-ddd`, `hexagonal`, `event-driven`)
+- 7 ADRs documenting the strategic shift in `docs/adr/`: default preset transition, antigravity deprecation, no public Go library, state.json schema, LLM usage tracking, incremental release model, bootstrap commands naming
+- Updated unit tests in `skills_catalog_test.go` covering all 4 architecture presets and the legacy alias mapping
+
+### Changed
+- Renamed preset `default` → `clean-ddd` (templates moved via `git mv` to preserve history; covers both `templates/{en,es}/default/` and `templates/{en,es}/skills/default/`)
+- Skill option `clean` renamed to `clean-ddd` — mappings updated across catalog, MCP enums, and CLI
+- Default value of `--preset` flag is now `clean-ddd` (was `default`); behavior unchanged this release (DDD/Clean templates)
+- Interactive preset menu reordered: `neutral` listed first as the recommended choice; lists all 4 presets
+- MCP tool `generate_context` and `analyze_project` now expose `preset` as an enum: `neutral`, `clean-ddd`, `hexagonal`, `event-driven`, `workflow`, `default` (last one deprecated)
+- README and README_ES rewrote the Presets section: new comparative table of 4 presets, deprecation notice for `default`, examples for each preset
+
+### Deprecated
+- `--preset default` is deprecated. It still works in v1.x and resolves to `clean-ddd` with a stderr warning. Removed in v2.0 per [ADR-001](docs/adr/0001-default-preset-transition.md). The default value of `--preset` will then change to `neutral`.
+- The `clean` skill option name is also deprecated as a backward-compat alias; prefer `clean-ddd`. Both resolve to the same templates during v1.x.
+
+### Migration notes
+- CI scripts that pass `--preset default` continue to work; consider updating to `--preset clean-ddd` to silence the warning. Before v2.0, decide whether you want `clean-ddd` (current behavior) or `neutral` (the new default) and pass it explicitly.
+- No template content changed for clean-ddd; only the directory was renamed. Existing generated AGENTS.md outputs are unaffected.
+
 ## [1.20.0] - 2026-05-04 - Codebase audit cleanup + auto-activated hooks
 
 ### Added

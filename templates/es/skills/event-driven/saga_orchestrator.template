@@ -1,0 +1,50 @@
+# Skill de Saga Orchestrator
+
+## Propósito
+Guiar a un agente IA a través de la coordinación de flujos de larga duración que abarcan aggregates o servicios usando sagas con lógica de compensación.
+
+## Secciones a Generar
+
+### Cuándo Usar Este Skill
+Un flujo requiere que múltiples aggregates se actualicen en coordinación, un servicio externo debe ser llamado como parte del flujo, o pasos necesitan compensación cuando operaciones downstream fallan.
+
+### Concepto de Saga
+Una saga es un **coordinador stateful, reactivo**:
+- Se suscribe a eventos
+- Dispara commands en respuesta
+- Trackea su propio estado (en qué paso está)
+- Tiene **lógica de compensación** explícita para cada paso que pueda fallar
+
+Una saga NO es una transacción distribuida. Acepta que estados intermedios pueden existir y compensa explícitamente.
+
+### Dos Estilos
+- **Orquestación (preferido para flujos complejos):** un coordinador saga central decide el siguiente paso
+- **Coreografía:** cada servicio reacciona a eventos sin coordinador central (apropiado para flujos simples)
+
+### Estado de la Saga
+- Persistido con cada transición de paso
+- Incluye: started-at, paso actual, pasos completados, historial de compensación
+- Saga ID típicamente derivado del evento originante
+
+### Compensación
+- Cada paso que tiene efectos secundarios necesita una acción compensadora
+- Las compensaciones pueden no ser siempre inversos perfectos (e.g. podés hacer refund de un pago pero no podés "des-enviar" un email — diseñar acordemente)
+- Las compensaciones corren en orden inverso de los pasos que se completaron
+
+### Idempotencia
+- Los handlers de saga deben ser idempotentes — los eventos pueden re-entregarse
+- Usar el estado de la saga para dedup: "este paso ya se completó, skip"
+
+### Manejo de Fallas
+- Falla transitoria: reintentar con backoff
+- Falla persistente: disparar cadena de compensación
+- Falla de compensación: alertar a operations, puede necesitar intervención humana — documentar este path
+
+### Anti-patrones a Evitar
+- Pasos sincrónicos de saga (derrota el propósito — usar una transacción única si podés)
+- Saga mutando otros aggregates directamente (debe disparar un command)
+- "Olvidar y perdonar" — asumir que un paso fallido eventualmente tendrá éxito sin manejo explícito
+- Compensaciones ocultas (cada acción compensadora es un paso de primera clase)
+
+### Verificación
+Una saga correcta: maneja re-entrega de eventos disparadores sin efecto duplicado; testeada con paths de compensación explícitos; produce un estado final consistente independientemente de fallas intermedias (éxito o totalmente compensada).

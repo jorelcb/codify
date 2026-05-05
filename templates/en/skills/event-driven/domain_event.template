@@ -1,0 +1,45 @@
+# Domain Event Skill
+
+## Purpose
+Guide an AI agent through modeling and publishing domain events that capture meaningful state changes.
+
+## Sections to Generate
+
+### When to Use This Skill
+Designing the event a new use case will emit, adding a new event for a feature, or refactoring a status flag into proper events.
+
+### Event Naming
+- **Past tense, domain-meaningful:** `OrderPlaced`, `ReservationCancelled`, `PaymentApproved`
+- NEVER `OrderCreated` (too generic) or `OrderUpdated` (no semantic meaning)
+- An event represents something that **already happened** — it cannot be rejected by consumers
+
+### Event Schema
+- Include only what subscribers need to react — avoid stuffing the entire aggregate state
+- Include identifiers (aggregate ID, occurred-at timestamp)
+- Include correlation ID and causation ID for traceability
+- Versioning: `event_version` field; default 1
+
+### Schema Evolution
+- Add optional fields: compatible
+- Remove fields: NEVER (events are immutable once produced; readers can ignore unknown fields)
+- Rename a field: introduce new event type and migrate producers
+- Restructure: introduce new event type and migrate producers; use upcasters for read-time translation if needed
+
+### Publishing
+- Persist events transactionally with aggregate state (transactional outbox)
+- A separate process publishes from the outbox to the message bus
+- Guarantees at-least-once delivery; consumers handle redelivery
+
+### What NOT to Put in an Event
+- Sensitive data (PII) without encryption — events are typically retained long-term
+- References to internal services — events should be self-contained
+- Imperative verbs ("RemoveItem" — that's a command, not an event)
+
+### Anti-patterns to Avoid
+- Anemic events that only contain an ID (forces consumers to query back, defeating async benefits)
+- Events that restate the entire state ("OrderState") instead of expressing the change ("OrderShipped")
+- Mutable events (editing fields after publish)
+- Coupling event schema to internal aggregate structure
+
+### Verification
+A well-designed event: a subscriber can react to it without querying back to the producer; reading an event ten years later still makes domain sense.

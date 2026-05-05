@@ -21,7 +21,35 @@ import (
 	infratemplate "github.com/jorelcb/codify/internal/infrastructure/template"
 )
 
-const serverVersion = "1.20.0"
+const serverVersion = "1.22.0"
+
+// validContextPresets enumerates accepted preset names for context generation
+// (generate_context + analyze_project tools). "default" is a deprecated alias
+// resolved to "clean-ddd" via normalizeContextPreset; removed in v2.0 per
+// docs/adr/0001-default-preset-transition.md.
+var validContextPresets = map[string]bool{
+	"default":      true, // deprecated alias → clean-ddd
+	"clean-ddd":    true,
+	"neutral":      true,
+	"hexagonal":    true,
+	"event-driven": true,
+	"workflow":     true,
+}
+
+// normalizeContextPreset resolves the preset name. Unknown presets fall back
+// to "clean-ddd" to preserve previous behavior; "default" is rewritten to
+// "clean-ddd" with a stderr warning. MCP responses do not surface the
+// warning; CLI surfaces it (see resolvePreset in cli/commands/generate.go).
+func normalizeContextPreset(preset string) string {
+	if preset == "default" {
+		fmt.Fprintln(os.Stderr, "WARNING: preset 'default' is deprecated and will be removed in v2.0.0. Resolves to 'clean-ddd'.")
+		return "clean-ddd"
+	}
+	if !validContextPresets[preset] {
+		return "clean-ddd"
+	}
+	return preset
+}
 
 // NewServer creates and configures the MCP server with all tools registered.
 func NewServer() *server.MCPServer {
@@ -52,7 +80,7 @@ func generateContextTool() server.ServerTool {
 		mcp.WithString("name", mcp.Required(), mcp.Description("Project name")),
 		mcp.WithString("description", mcp.Required(), mcp.Description("Project description")),
 		mcp.WithString("language", mcp.Description("Programming language (go, python, javascript, etc.)")),
-		mcp.WithString("preset", mcp.Description("Template preset: default, neutral, or workflow"), mcp.DefaultString("default")),
+		mcp.WithString("preset", mcp.Description("Template preset for context. Options: neutral (recommended, no architectural opinion), clean-ddd (DDD + Clean Architecture), hexagonal (Ports & Adapters), event-driven (CQRS + Event Sourcing + Sagas), workflow. Alias 'default' resolves to clean-ddd (deprecated, removed in v2.0)."), mcp.Enum("neutral", "clean-ddd", "hexagonal", "event-driven", "workflow", "default"), mcp.DefaultString("clean-ddd")),
 		mcp.WithString("locale", mcp.Description("Output language: en (English) or es (Spanish)"), mcp.DefaultString("en")),
 		mcp.WithString("model", mcp.Description("Claude model to use"), mcp.DefaultString("claude-sonnet-4-6")),
 		mcp.WithBoolean("with_specs", mcp.Description("Also generate SDD spec files after context generation")),
@@ -81,7 +109,7 @@ func analyzeProjectTool() server.ServerTool {
 		mcp.WithString("project_path", mcp.Required(), mcp.Description("Path to the project directory to analyze")),
 		mcp.WithString("name", mcp.Description("Project name (defaults to directory name)")),
 		mcp.WithString("language", mcp.Description("Override detected language")),
-		mcp.WithString("preset", mcp.Description("Template preset: default or neutral"), mcp.DefaultString("default")),
+		mcp.WithString("preset", mcp.Description("Template preset for context. Options: neutral (recommended), clean-ddd (DDD + Clean Architecture), hexagonal (Ports & Adapters), event-driven (CQRS + Event Sourcing + Sagas). Alias 'default' resolves to clean-ddd (deprecated, removed in v2.0)."), mcp.Enum("neutral", "clean-ddd", "hexagonal", "event-driven", "default"), mcp.DefaultString("clean-ddd")),
 		mcp.WithString("locale", mcp.Description("Output language: en or es"), mcp.DefaultString("en")),
 		mcp.WithString("model", mcp.Description("Claude model to use"), mcp.DefaultString("claude-sonnet-4-6")),
 		mcp.WithBoolean("with_specs", mcp.Description("Also generate SDD spec files after context generation")),
@@ -162,7 +190,7 @@ func handleGenerateContext(ctx context.Context, request mcp.CallToolRequest) (*m
 	name := stringArg(request, "name")
 	description := stringArg(request, "description")
 	language := stringArg(request, "language")
-	preset := stringArgDefault(request, "preset", "default")
+	preset := stringArgDefault(request, "preset", "clean-ddd")
 	locale := stringArgDefault(request, "locale", "en")
 	model := stringArgDefault(request, "model", "")
 	withSpecs := boolArg(request, "with_specs")
@@ -227,7 +255,7 @@ func handleAnalyzeProject(ctx context.Context, request mcp.CallToolRequest) (*mc
 	projectPath := stringArg(request, "project_path")
 	name := stringArg(request, "name")
 	language := stringArg(request, "language")
-	preset := stringArgDefault(request, "preset", "default")
+	preset := stringArgDefault(request, "preset", "clean-ddd")
 	locale := stringArgDefault(request, "locale", "en")
 	model := stringArgDefault(request, "model", "")
 	withSpecs := boolArg(request, "with_specs")
@@ -572,12 +600,7 @@ func executeGenerateWithMode(ctx context.Context, name, description, language, p
 		return nil, err
 	}
 
-	switch preset {
-	case "default", "neutral", "workflow":
-		// accepted
-	default:
-		preset = "default"
-	}
+	preset = normalizeContextPreset(preset)
 
 	templatePath := filepath.Join("templates", locale, preset)
 	localeBase := filepath.Join("templates", locale)

@@ -78,6 +78,14 @@ func runAnalyzeInteractive(projectPath string, p analyzeParams, explicit map[str
 	interactive := isInteractive()
 	var err error
 
+	// 0. Effective config fills in missing values that weren't explicit.
+	//    See config_merge.go for the precedence rule.
+	cfg := loadEffectiveConfig()
+	applyConfigDefaults(&p.preset, cfg.Preset, explicit["preset"])
+	applyConfigDefaults(&p.locale, cfg.Locale, explicit["locale"])
+	applyConfigDefaults(&p.language, cfg.Language, explicit["language"])
+	applyConfigDefaults(&p.model, cfg.Model, explicit["model"])
+
 	// Resolve to absolute path
 	absPath, err := filepath.Abs(projectPath)
 	if err != nil {

@@ -1,0 +1,36 @@
+# Adapter Pattern Skill
+
+## Purpose
+Guide an AI agent through implementing adapters that translate between ports and external systems in Hexagonal Architecture.
+
+## Sections to Generate
+
+### When to Use This Skill
+Implementing a repository against a specific database, integrating with an external HTTP API, building an HTTP/gRPC handler that calls an inbound port, or wiring a message consumer to a use case.
+
+### Driving Adapters (Inbound)
+- Translate external triggers (HTTP, CLI, message) into calls to inbound ports
+- Validate input format, serialize/deserialize, map errors back to external response format
+- Keep them thin: NO business logic; if you find logic creeping in, it belongs in a use case
+
+### Driven Adapters (Outbound)
+- Implement an outbound port against a specific technology
+- Translate adapter-specific errors into domain errors before returning
+- Handle technical concerns: retries, circuit breakers, connection pooling — never the use case's concern
+
+### Composition Root Wiring
+- Adapters are instantiated and injected at the composition root (e.g. `cmd/main.go`)
+- The use case never instantiates adapters directly
+
+### Testing Adapters
+- **Driven adapters:** contract test against the port — same expected behaviors any implementation must satisfy
+- **Driving adapters:** integration test against the wired-up core with stubbed outbound ports
+
+### Anti-patterns to Avoid
+- Embedding business logic in adapters
+- Skipping the port and depending on the concrete adapter from the core
+- Letting adapter-specific exceptions leak past the port boundary
+- Implementing multiple ports in a single adapter (one adapter = one port, generally)
+
+### Verification
+A correct adapter: implements the port interface fully; can be replaced with a different adapter (e.g. Postgres → MongoDB) without changing the use case; passes the same contract test suite as alternative implementations.

@@ -110,7 +110,7 @@ Examples:
 	cmd.Flags().StringVarP(&p.projectType, "type", "t", "", "Project type hint (api, cli, lib...)")
 	cmd.Flags().StringVarP(&p.architecture, "architecture", "a", "", "Architecture pattern hint")
 	cmd.Flags().StringVarP(&p.model, "model", "m", "", "LLM model (default: claude-sonnet-4-6, or gemini-3.1-pro-preview)")
-	cmd.Flags().StringVarP(&p.preset, "preset", "p", "default", "Template preset: default (DDD/Clean Architecture) or neutral")
+	cmd.Flags().StringVarP(&p.preset, "preset", "p", "clean-ddd", "Template preset: neutral (recommended), clean-ddd, hexagonal, event-driven (alias 'default' resolves to clean-ddd, deprecated — removed in v2.0)")
 	cmd.Flags().StringVar(&p.locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
 	cmd.Flags().StringVarP(&p.output, "output", "o", "", "Output directory (default: current directory)")
 	cmd.Flags().BoolVar(&p.withSpecs, "with-specs", false, "Also generate SDD spec files after context generation")
@@ -121,6 +121,16 @@ Examples:
 func runGenerateInteractive(p generateParams, explicit map[string]bool) error {
 	interactive := isInteractive()
 	var err error
+
+	// 0. Resolve effective config (builtin < user < project) and let it fill
+	//    in any flag that wasn't explicitly set. Flags retain priority; the
+	//    interactive prompt still kicks in if both flag AND config leave a
+	//    field empty in TTY mode.
+	cfg := loadEffectiveConfig()
+	applyConfigDefaults(&p.preset, cfg.Preset, explicit["preset"])
+	applyConfigDefaults(&p.locale, cfg.Locale, explicit["locale"])
+	applyConfigDefaults(&p.language, cfg.Language, explicit["language"])
+	applyConfigDefaults(&p.model, cfg.Model, explicit["model"])
 
 	// 1. Resolve project name
 	if p.projectName == "" && interactive {
@@ -220,18 +230,36 @@ func runGenerateInteractive(p generateParams, explicit map[string]bool) error {
 	return nil
 }
 
-// validPresets maps preset names to their directory name.
+// validPresets maps preset names to their directory name. "default" is a
+// deprecated alias for "clean-ddd" kept during v1.x — emits a warning and
+// resolves to "clean-ddd" via resolvePreset(). Removed in v2.0 per ADR-001.
 var validPresets = map[string]bool{
-	"default":  true,
-	"neutral":  true,
-	"workflow": true,
+	"default":      true, // alias deprecated, resolves to clean-ddd
+	"clean-ddd":    true,
+	"neutral":      true,
+	"hexagonal":    true,
+	"event-driven": true,
+	"workflow":     true,
+}
+
+// resolvePreset normalizes preset names. Emits a deprecation warning for
+// "default" (will be removed in v2.0). Falls back to "clean-ddd" for unknown
+// presets to preserve previous behavior of defaulting to the opinionated
+// preset rather than failing hard.
+func resolvePreset(preset string) string {
+	if preset == "default" {
+		fmt.Fprintln(os.Stderr, "WARNING: --preset 'default' is deprecated and will be removed in v2.0.0. It now resolves to 'clean-ddd'. In v2.0 the default changes to 'neutral'. Set --preset explicitly or run 'codify config' to set your global default. See: docs/adr/0001-default-preset-transition.md")
+		return "clean-ddd"
+	}
+	if !validPresets[preset] {
+		return "clean-ddd"
+	}
+	return preset
 }
 
 // resolveTemplatePath builds the full template path: templates/{locale}/{preset}
 func resolveTemplatePath(locale, preset string) string {
-	if !validPresets[preset] {
-		preset = "default"
-	}
+	preset = resolvePreset(preset)
 	return filepath.Join("templates", locale, preset)
 }
 

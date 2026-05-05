@@ -1,0 +1,37 @@
+# Interactions Log — {{PROJECT_NAME}}
+
+This log captures Architecture Decision Records (ADRs) and significant interactions affecting the design of {{PROJECT_NAME}}. Append-only chronologically.
+
+## ADR Format
+
+Each entry follows:
+- **ADR-N:** title
+- **Date:** ISO date
+- **Context:** why the decision was needed
+- **Decision:** what was chosen
+- **Alternatives considered:** what was rejected and why
+- **Consequences:** tradeoffs accepted
+
+## Initial Decisions
+
+### ADR-001: Adopt Hexagonal Architecture
+- **Date:** {{TODAY}}
+- **Context:** {{HEXAGONAL_ADOPTION_CONTEXT}}
+- **Decision:** Organize the codebase around ports and adapters. Core is pure; everything external crosses a port.
+- **Alternatives considered:**
+  - Layered (controller → service → repository): rejected because dependency direction is inverted compared to hexagonal — cleaner reasoning with ports
+  - Full Clean Architecture / DDD: rejected as heavier than current needs — would impose layering inside the core that the team doesn't yet need
+- **Consequences:** every external dependency must be expressed as a port; team must learn to define ports before writing adapter code
+
+### ADR-002: Composition root location
+- **Date:** {{TODAY}}
+- **Decision:** {{COMPOSITION_ROOT_DECISION}}
+- **Consequences:** changes to wiring concentrated in a single, reviewable file
+
+## Evolution Log
+
+{{EVOLUTION_ENTRIES}}
+
+## Open Questions
+
+{{OPEN_QUESTIONS}}

@@ -1,0 +1,37 @@
+# Skill de Inversión de Dependencias
+
+## Propósito
+Guiar a un agente IA a través de la aplicación del Principio de Inversión de Dependencias (DIP) para mantener el núcleo de aplicación independiente de elecciones de infraestructura.
+
+## Secciones a Generar
+
+### Cuándo Usar Este Skill
+Refactorizando una dependencia directa en una inyectada, introduciendo una nueva dependencia externa, dividiendo un módulo para romper imports cíclicos, o arreglando setup de tests que requiere infraestructura real.
+
+### El Principio
+- Los módulos de alto nivel (casos de uso, dominio) NO DEBEN depender de módulos de bajo nivel (DB, frameworks)
+- Ambos deben depender de **abstracciones** (ports/interfaces)
+- Las abstracciones NO deben depender de detalles; los detalles dependen de abstracciones
+
+### Aplicación Práctica
+- Definir la abstracción (port) **en el núcleo**, junto al caso de uso que la necesita
+- Implementar la abstracción (adaptador) en infraestructura
+- Inyectar en el composition root vía inyección por constructor
+
+### Patrón Común de Refactor
+1. Identificar la dependencia directa ofensiva en el núcleo
+2. Extraer su uso en una interface de port propiedad del núcleo
+3. Mover la implementación a un paquete de adaptador
+4. Actualizar el caso de uso para aceptar el port vía constructor
+5. Cablear el adaptador en composition root
+
+### Ganancia en Testabilidad
+Una vez que se aplica DIP, el caso de uso puede ser unit-tested con un fake/stub que implementa el port — sin DB, sin HTTP, sin tiempo real, sin flakiness.
+
+### Anti-patrones a Evitar
+- Patrones "service locator" que ocultan dependencias
+- Factories estáticos o singletons en el núcleo que resuelven a implementaciones concretas
+- `IRepository` genérico sobre ports de dominio específicos — la abstracción tiene que ser **sobre algo**, no "todo"
+
+### Verificación
+DIP correctamente aplicado: el módulo del núcleo tiene cero imports de `database/sql`, `net/http`, o paquetes de framework; los tests para casos de uso corren sin infraestructura externa.

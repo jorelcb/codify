@@ -1,0 +1,77 @@
+# Contexto Arquitectónico — {{PROJECT_NAME}}
+
+## Estilo Arquitectónico
+
+{{PROJECT_NAME}} sigue **Arquitectura Hexagonal (Ports & Adapters)**. El núcleo de la aplicación es el hexágono en el centro; todo lo que cruza la frontera lo hace a través de un port nombrado explícitamente.
+
+## El Hexágono
+
+El núcleo contiene:
+- **Casos de uso** — las operaciones que la aplicación ofrece al mundo
+- **Modelo de dominio** — entidades, value objects, reglas de negocio
+- **Ports** — interfaces que describen lo que el núcleo ofrece (inbound) y lo que necesita (outbound)
+
+El núcleo es puro: sin HTTP, sin SQL, sin imports de framework. Puede ser testeado completamente con stubs/fakes para sus outbound ports.
+
+## Ports
+
+### Inbound ports (lado driving)
+{{INBOUND_PORTS_DESCRIPTION}}
+
+Son interfaces que el núcleo expone. Los driving adapters las llaman. Ejemplos:
+- `BookRoomUseCase` — invocado por un handler HTTP
+- `ProcessPaymentCommand` — invocado por un consumidor de mensajes
+
+### Outbound ports (lado driven)
+{{OUTBOUND_PORTS_DESCRIPTION}}
+
+Son interfaces que el núcleo depende. Los driven adapters las implementan. Ejemplos:
+- `BookingRepository` — implementado por un adaptador Postgres
+- `NotificationGateway` — implementado por un adaptador SMTP o SNS
+
+## Adaptadores
+
+### Driving adapters
+{{DRIVING_ADAPTERS_DESCRIPTION}}
+
+Traducen disparadores externos en llamadas a inbound ports. Ejemplos: controllers HTTP, servidores gRPC, comandos CLI, consumidores de mensajes, jobs programados.
+
+### Driven adapters
+{{DRIVEN_ADAPTERS_DESCRIPTION}}
+
+Traducen llamadas de outbound ports en operaciones contra sistemas externos. Ejemplos: repositorios SQL, clientes REST, publishers de mensajes.
+
+## Composition Root
+
+El composition root (típicamente en `cmd/` o `main.go`) es el **único** lugar que conoce tanto los ports como los adaptadores concretos. Los cablea al inicio.
+
+```
+{{COMPOSITION_ROOT_EXAMPLE}}
+```
+
+## Flujo de Datos
+
+Un flujo típico de request:
+1. Un evento externo llega a un **driving adapter** (e.g. request HTTP)
+2. El driving adapter lo traduce en una llamada a un **inbound port** (caso de uso)
+3. El caso de uso ejecuta lógica de negocio, llamando **outbound ports** según necesite
+4. **Driven adapters** implementan las llamadas outbound contra sistemas externos
+5. Los resultados fluyen de vuelta por el mismo camino
+
+## Estrategia de Testing
+
+- **Núcleo (casos de uso + dominio):** testeado en aislamiento. Outbound ports stubbeados/fakeados.
+- **Driven adapters:** contract-tested contra el port que implementan. Tests corren contra sistemas externos reales (containerizados) cuando sea factible.
+- **Driving adapters:** integration-tested contra el núcleo cableado con outbound ports stubbeados.
+
+## ¿Por Qué Hexagonal?
+
+Hexagonal optimiza para **swappability y testability**. El núcleo puede ser testeado sin infraestructura. Los adaptadores pueden intercambiarse (e.g., Postgres → MongoDB) sin tocar lógica de negocio. Es más liviano que Clean Architecture / DDD completos: no hay layering prescrito dentro del núcleo, no hay aggregate roots, no hay CQRS — solo ports e implementaciones que los satisfacen.
+
+## Decisiones Específicas para {{PROJECT_NAME}}
+
+{{ARCHITECTURAL_DECISIONS}}
+
+## Tradeoffs
+
+{{TRADEOFFS}}

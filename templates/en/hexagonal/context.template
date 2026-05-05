@@ -1,0 +1,77 @@
+# Architectural Context — {{PROJECT_NAME}}
+
+## Architectural Style
+
+{{PROJECT_NAME}} follows **Hexagonal Architecture (Ports & Adapters)**. The application core is the hexagon at the center; everything that crosses the boundary does so through an explicitly named port.
+
+## The Hexagon
+
+The core contains:
+- **Use cases** — the operations the application offers to the world
+- **Domain model** — entities, value objects, business rules
+- **Ports** — interfaces that describe what the core offers (inbound) and what it needs (outbound)
+
+The core is pure: no HTTP, no SQL, no framework imports. It can be tested entirely with stubs/fakes for its outbound ports.
+
+## Ports
+
+### Inbound ports (driving side)
+{{INBOUND_PORTS_DESCRIPTION}}
+
+These are interfaces the core exposes. Driving adapters call them. Examples:
+- `BookRoomUseCase` — invoked by an HTTP handler
+- `ProcessPaymentCommand` — invoked by a message consumer
+
+### Outbound ports (driven side)
+{{OUTBOUND_PORTS_DESCRIPTION}}
+
+These are interfaces the core depends on. Driven adapters implement them. Examples:
+- `BookingRepository` — implemented by a Postgres adapter
+- `NotificationGateway` — implemented by an SMTP or SNS adapter
+
+## Adapters
+
+### Driving adapters
+{{DRIVING_ADAPTERS_DESCRIPTION}}
+
+Translate external triggers into inbound port calls. Examples: HTTP controllers, gRPC servers, CLI commands, message consumers, scheduled jobs.
+
+### Driven adapters
+{{DRIVEN_ADAPTERS_DESCRIPTION}}
+
+Translate outbound port calls into operations against external systems. Examples: SQL repositories, REST clients, message publishers.
+
+## Composition Root
+
+The composition root (typically in `cmd/` or `main.go`) is the **only** place that knows about both ports and concrete adapters. It wires them together at startup.
+
+```
+{{COMPOSITION_ROOT_EXAMPLE}}
+```
+
+## Data Flow
+
+A typical request flow:
+1. External event arrives at a **driving adapter** (e.g. HTTP request)
+2. Driving adapter translates it into a call to an **inbound port** (use case)
+3. The use case executes business logic, calling **outbound ports** as needed
+4. **Driven adapters** implement the outbound calls against external systems
+5. Results flow back through the same path
+
+## Testing Strategy
+
+- **Core (use cases + domain):** unit-tested in isolation. Outbound ports are stubbed/faked.
+- **Driven adapters:** contract-tested against the port they implement. Tests run against real (containerized) external systems where feasible.
+- **Driving adapters:** integration-tested against the wired-up core with stubbed outbound ports.
+
+## Why Hexagonal?
+
+Hexagonal optimizes for **swappability and testability**. The core can be tested without any infrastructure. Adapters can be swapped (e.g., Postgres → MongoDB) without touching business logic. This is lighter than full Clean Architecture / DDD: there is no prescribed layering inside the core, no aggregate roots, no CQRS — just ports and the implementations that satisfy them.
+
+## Specific Decisions for {{PROJECT_NAME}}
+
+{{ARCHITECTURAL_DECISIONS}}
+
+## Tradeoffs
+
+{{TRADEOFFS}}

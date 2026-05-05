@@ -1,0 +1,66 @@
+# Guía de Desarrollo — {{PROJECT_NAME}}
+
+## Metodología
+
+{{PROJECT_NAME}} se desarrolla siguiendo prácticas event-driven. Cada cambio de estado empieza con un evento; cada evento es consumido por al menos una projection o saga.
+
+## Agregar una Feature
+
+1. **Identificar los eventos.** ¿Qué cosas con significado de dominio ocurren? Nómbralas en tiempo pasado.
+2. **Identificar los commands.** ¿Qué intención dispara cada evento? Nómbralos en forma imperativa.
+3. **Identificar el aggregate.** ¿Qué invariantes deben mantenerse a través del cambio? Esa es tu frontera de consistencia.
+4. **Implementar el command handler.** Cargar aggregate, validar invariantes, emitir eventos, persistir transaccionalmente.
+5. **Implementar projections.** ¿Qué vistas de query necesitan actualización? Cada projection consume los eventos relevantes.
+6. **Si el flujo abarca aggregates:** modélalo como saga. Define evento disparador, secuencia de commands disparados, lógica de compensación.
+7. **Escribir tests.**
+   - Tests de aggregate: given (eventos), when (command), then (eventos emitidos)
+   - Tests de projection: given (eventos), when (eventos aplicados), then (estado del modelo de lectura)
+   - Tests de saga: given (secuencia de eventos), when (eventos llegan), then (commands disparados)
+8. **Verificar idempotencia.** Re-entregar cada evento; asertar que no hay efecto duplicado.
+
+## Testing
+
+- **Tests de aggregate** son la capa más densa. Given/when/then puro sobre eventos y commands.
+- **Tests de projection** verifican que el modelo de lectura es consistente con el stream de eventos.
+- **Tests de saga** verifican la lógica de coordinación, incluyendo paths de compensación.
+- **Tests de integración** verifican que el outbox publica correctamente y que los consumidores manejan re-entrega.
+
+Targets de cobertura: {{COVERAGE_TARGETS}}
+
+## Checklist de Code Review
+
+- [ ] Los eventos nuevos usan tiempo pasado y tienen significado de dominio
+- [ ] Los commands nuevos usan forma imperativa y revelan intención
+- [ ] El command handler emite eventos transaccionalmente con la persistencia de estado
+- [ ] La estrategia de idempotencia es explícita (ID determinístico, tabla dedup, o versión de aggregate)
+- [ ] Los cambios de schema son aditivos o introducen un nuevo tipo de evento
+- [ ] Las projections no consultan el modelo de escritura
+- [ ] Las sagas tienen lógica explícita de compensación para cada paso que pueda fallar
+
+## Seguridad
+
+{{SECURITY_PRACTICES}}
+
+- Los eventos pueden cargar PII — encriptar en reposo y documentar política de retención
+- Commands autenticados en el punto de entrada; eventos confiables dentro del system boundary
+- Caminos de compensación revisados por implicaciones de seguridad (refunds, reversals)
+- {{ADDITIONAL_SECURITY_RULES}}
+
+## Observabilidad
+
+{{OBSERVABILITY_PRACTICES}}
+
+- **Correlation IDs:** cada command y evento carga el correlation ID original; propagarlo a través de todos los commands disparados y eventos emitidos
+- **Causation IDs:** cada evento referencia el command que lo produjo
+- **Tracing:** spans a través del bus requieren propagación explícita (W3C Trace Context en headers de evento)
+- **Métricas de lag:** monitorear lag de consumidor por projection — picos de lag indican cuellos de botella en procesamiento
+- **Monitoreo de DLQ:** dead-letter queues alarmadas en cualquier conteo no-cero
+
+## Expectativas de Entrega
+
+{{DELIVERY_EXPECTATIONS}}
+
+- Cada PR con un nuevo tipo de evento actualiza la documentación de schema
+- Cada nueva saga tiene un runbook para sus disparadores de compensación
+- Scripts de migración de outbox revisados por idempotencia
+- Consumer groups versionados cuando el schema evoluciona

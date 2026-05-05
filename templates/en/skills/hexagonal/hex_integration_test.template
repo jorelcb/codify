@@ -1,0 +1,45 @@
+# Hexagonal Integration Test Skill
+
+## Purpose
+Guide an AI agent through writing integration tests for adapters in Hexagonal Architecture, focusing on contract tests against the port.
+
+## Sections to Generate
+
+### When to Use This Skill
+Adding a new adapter, validating that an existing adapter satisfies its port, or creating a contract test suite that any future implementation must pass.
+
+### Contract Test Concept
+A **contract test** is a behavioral specification of what any implementation of a given port must do. The same test suite runs against every implementation:
+- Postgres adapter: passes the suite
+- MongoDB adapter: passes the suite
+- In-memory fake (for unit tests): passes the suite
+
+If the suite passes, the adapter is interchangeable.
+
+### Test Structure
+1. **Setup:** instantiate the adapter under test (with real or containerized infrastructure)
+2. **Exercise:** call port methods covering happy paths and known failure modes
+3. **Verify:** assert observable port behavior — not internal state of the adapter
+
+### What to Test
+- Happy path: the operation succeeds with expected output
+- Domain error paths: e.g. `ErrNotFound`, `ErrConflict` — translated correctly from infra errors
+- Edge cases: empty results, large payloads, concurrent access
+- Idempotency where the port specifies it
+
+### What NOT to Test
+- Adapter internals (which SQL it generates, which HTTP method it uses) — those are implementation details
+- The port's own logic (the port is an interface, it has no logic to test)
+
+### Test Infrastructure
+- **Driven adapters (DB, API client):** prefer real or containerized infrastructure (testcontainers)
+- **Avoid mocks of databases or HTTP servers** — you want to test that the adapter correctly speaks the protocol
+- **Driving adapters (HTTP handlers):** test against the wired-up core with stubbed outbound ports
+
+### Anti-patterns to Avoid
+- Tests that pass against a Postgres adapter but fail against a MongoDB one (test depends on storage details)
+- Mocking the entire stack — defeats the purpose of integration testing
+- Testing adapter internals via reflection or private methods
+
+### Verification
+A correct contract test suite: the same test file passes against any valid implementation of the port; failing tests indicate the adapter does not satisfy the contract.

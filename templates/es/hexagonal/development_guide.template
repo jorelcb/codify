@@ -1,0 +1,63 @@
+# Guía de Desarrollo — {{PROJECT_NAME}}
+
+## Metodología
+
+{{PROJECT_NAME}} se desarrolla siguiendo prácticas de Arquitectura Hexagonal. La estructura es dictada por los ports; los tests son dictados por los ports; el composition root es el único lugar donde vive el cableado.
+
+## Agregar una Feature
+
+1. **Identificar el caso de uso.** ¿Qué operación pide el mundo al sistema?
+2. **Definir el inbound port.** Crear la interface en el núcleo describiendo input y output del caso de uso.
+3. **Identificar dependencias externas.** ¿Qué necesita el caso de uso? Definir cada una como **outbound port** en el núcleo.
+4. **Implementar el caso de uso.** Lógica de negocio pura. Llamar outbound ports para todo lo externo.
+5. **Escribir unit tests para el caso de uso.** Usar stubs/fakes para los outbound ports.
+6. **Implementar adaptadores.**
+   - Driving adapter (e.g. HTTP handler) que llama al inbound port
+   - Driven adapter para cada outbound port (e.g. repositorio Postgres)
+7. **Escribir contract tests.** Cada driven adapter es testeado contra su outbound port — la misma suite de expectativas conductuales que toda implementación debe pasar.
+8. **Cablear en el composition root.** Registrar los adaptadores e inyectarlos en el caso de uso.
+
+## Testing
+
+- **Pirámide de tests:**
+  - Unit tests para casos de uso (los más numerosos, los más rápidos)
+  - Contract tests para adaptadores
+  - End-to-end tests solo para caminos críticos
+
+- **Stubs/fakes para outbound ports:** implementaciones in-memory que satisfacen la interface del port. Usalos en unit tests para mantener el núcleo desacoplado de la infraestructura.
+
+- **Targets de cobertura:** {{COVERAGE_TARGETS}}
+
+## Checklist de Code Review
+
+- [ ] No hay imports desde `adapters/` dentro del código del núcleo
+- [ ] No hay tipos específicos de framework cruzando port boundaries
+- [ ] El caso de uso es testeable sin ningún adaptador real
+- [ ] Las nuevas dependencias outbound se expresan como ports, no llamadas directas
+- [ ] El adaptador tiene un contract test que cubre el comportamiento esperado del port
+- [ ] El composition root está actualizado para cablear los nuevos componentes
+
+## Seguridad
+
+{{SECURITY_PRACTICES}}
+
+- Validar input en los driving adapters antes de llamar inbound ports
+- Traducir errores de nivel adaptador a errores de dominio antes de que lleguen al núcleo (e.g. `ErrConnectionRefused` → `ErrTemporaryUnavailable`)
+- Secretos accedidos solo via configuration ports — nunca leídos directamente en el núcleo
+- {{ADDITIONAL_SECURITY_RULES}}
+
+## Observabilidad
+
+{{OBSERVABILITY_PRACTICES}}
+
+- Logging estructurado: loggear en port boundaries (entry/exit) y en boundaries de casos de uso
+- Tracing: spans iniciados en driving adapters, propagados a través de casos de uso y llamadas outbound
+- Métricas: emitir en port boundaries (latencia, tasa de error por port)
+
+## Expectativas de Entrega
+
+{{DELIVERY_EXPECTATIONS}}
+
+- Cada PR incluye contract tests para cualquier adaptador nuevo
+- Ningún PR agrega una dependencia outbound sin antes definir su port
+- Cambios al composition root se revisan por acoplamiento no intencional

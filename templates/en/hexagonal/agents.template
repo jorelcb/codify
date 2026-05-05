@@ -1,0 +1,95 @@
+# {{PROJECT_NAME}}
+
+{{DESCRIPTION}}
+
+## Tech Stack
+
+- **Language:** {{LANGUAGE}} {{LANGUAGE_VERSION}}
+- **Architecture:** {{ARCHITECTURE}} (Ports & Adapters / Hexagonal)
+- **Testing:** {{TESTING_FRAMEWORK}}
+- **Key dependencies:** {{KEY_DEPENDENCIES}}
+- **Observability:** {{OBSERVABILITY_STACK}}
+
+## Commands
+
+```bash
+# Build
+{{BUILD_COMMAND}}
+
+# Test
+{{TEST_COMMAND}}
+
+# Run
+{{RUN_COMMAND}}
+
+# Lint
+{{LINT_COMMAND}}
+```
+
+## Architectural Principles — Hexagonal (Ports & Adapters)
+
+### Core (the hexagon)
+- The application core contains the **business logic** and exposes/consumes behavior exclusively through **ports** (interfaces).
+- The core has **zero awareness** of how it is invoked or how it persists data — those are concerns of adapters.
+
+### Ports
+- **Inbound ports (driving):** the API the core offers to the outside (commands, queries, use cases).
+- **Outbound ports (driven):** the contracts the core needs from the outside (repositories, gateways, message buses).
+- Ports are **interfaces owned by the core**. Adapters implement them.
+
+### Adapters
+- **Driving adapters:** translate external triggers (HTTP, CLI, scheduled jobs, message consumers) into calls to inbound ports.
+- **Driven adapters:** implement outbound ports against external systems (databases, third-party APIs, queues).
+- Adapters are **swappable**: the core does not change when an adapter changes.
+
+### Dependency Rule
+Dependencies always point **toward the core**. Adapters depend on the core; the core depends on nothing external.
+
+### Dependency Injection
+Constructor injection for ALL dependencies — adapters are wired at composition root, never instantiated by the core.
+
+## Key Conventions
+
+- **Naming:** {{NAMING_CONVENTIONS}}
+- **Imports:** core code never imports from `adapters/` or framework packages
+- **Error handling:** {{ERROR_HANDLING_CONVENTIONS}} — domain errors defined in core; adapters translate technical failures into domain errors
+- **Commits:** Conventional Commits (feat, fix, refactor, docs, test, chore)
+- **Branching:** {{BRANCHING_STRATEGY}}
+- **Testing:** core tested in isolation with fakes/stubs implementing outbound ports; adapters tested via contract tests against real or in-memory implementations of their port
+
+## Project Structure
+
+```
+{{PROJECT_STRUCTURE}}
+```
+
+Generate the structure following the Hexagonal convention for the detected language. Typical layout:
+- `core/` (or `domain/` + `app/`) — business logic, ports defined here
+- `adapters/inbound/` (or `adapters/driving/`) — HTTP handlers, CLI commands, message consumers
+- `adapters/outbound/` (or `adapters/driven/`) — repositories, gateway clients, publishers
+- `cmd/` — composition root that wires adapters to ports
+
+Main directory descriptions:
+- {{DIRECTORY_DESCRIPTIONS}}
+
+## Constraints
+
+### MUST:
+- Define every external dependency as an outbound port owned by the core
+- Wire adapters to ports at composition root
+- Keep the core compilable and testable without any adapter present
+- Apply contract tests to every adapter implementing an outbound port
+- {{MUST_RULES}}
+
+### MUST NOT:
+- Import adapter packages from core code
+- Leak adapter-specific types (e.g. `*sql.Rows`, `*http.Request`) across port boundaries
+- Couple the core to a specific framework, DB driver, or message broker
+- Skip the port and call adapters directly from core
+- {{MUST_NOT_RULES}}
+
+## Additional Context
+
+- Architecture and technical design: `context/CONTEXT.md`
+- Decision history and sessions: `context/INTERACTIONS_LOG.md`
+- Development methodology: `context/DEVELOPMENT_GUIDE.md`

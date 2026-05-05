@@ -36,16 +36,52 @@ func TestFindCategory(t *testing.T) {
 func TestCategoryResolve_Exclusive(t *testing.T) {
 	cat, _ := FindCategory("architecture")
 
-	// Sub-opciones individuales deben funcionar
-	sel, err := cat.Resolve("clean")
+	// clean-ddd (renombrado desde "clean" en v1.21)
+	sel, err := cat.Resolve("clean-ddd")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if sel.TemplateDir != "default" {
-		t.Errorf("got dir %q, want %q", sel.TemplateDir, "default")
+	if sel.TemplateDir != "clean-ddd" {
+		t.Errorf("got dir %q, want %q", sel.TemplateDir, "clean-ddd")
 	}
 	if len(sel.TemplateMapping) != 5 {
 		t.Errorf("got %d mappings, want 5", len(sel.TemplateMapping))
+	}
+
+	// neutral
+	sel, err = cat.Resolve("neutral")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if sel.TemplateDir != "neutral" {
+		t.Errorf("got dir %q, want %q", sel.TemplateDir, "neutral")
+	}
+	if len(sel.TemplateMapping) != 4 {
+		t.Errorf("got %d mappings, want 4", len(sel.TemplateMapping))
+	}
+
+	// hexagonal (nuevo en v1.21)
+	sel, err = cat.Resolve("hexagonal")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if sel.TemplateDir != "hexagonal" {
+		t.Errorf("got dir %q, want %q", sel.TemplateDir, "hexagonal")
+	}
+	if len(sel.TemplateMapping) != 4 {
+		t.Errorf("got %d hexagonal mappings, want 4", len(sel.TemplateMapping))
+	}
+
+	// event-driven (nuevo en v1.21)
+	sel, err = cat.Resolve("event-driven")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if sel.TemplateDir != "event-driven" {
+		t.Errorf("got dir %q, want %q", sel.TemplateDir, "event-driven")
+	}
+	if len(sel.TemplateMapping) != 5 {
+		t.Errorf("got %d event-driven mappings, want 5", len(sel.TemplateMapping))
 	}
 
 	// "all" debe fallar en categorías exclusivas
@@ -126,7 +162,13 @@ func TestLegacyPresetMapping(t *testing.T) {
 		wantPre  string
 		wantOk   bool
 	}{
-		{"default", "architecture", "clean", true},
+		// "default" es alias deprecado de "clean-ddd" durante v1.x (ADR-001)
+		{"default", "architecture", "clean-ddd", true},
+		// "clean" se mantiene como alias por backward-compat durante v1.x
+		{"clean", "architecture", "clean-ddd", true},
+		{"clean-ddd", "architecture", "clean-ddd", true},
+		{"hexagonal", "architecture", "hexagonal", true},
+		{"event-driven", "architecture", "event-driven", true},
 		{"neutral", "architecture", "neutral", true},
 		{"workflow", "conventions", "all", true},
 		{"conventions", "conventions", "all", true},

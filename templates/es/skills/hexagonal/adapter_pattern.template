@@ -1,0 +1,36 @@
+# Skill de Patrón Adapter
+
+## Propósito
+Guiar a un agente IA a través de la implementación de adaptadores que traducen entre ports y sistemas externos en Arquitectura Hexagonal.
+
+## Secciones a Generar
+
+### Cuándo Usar Este Skill
+Implementando un repositorio contra una base de datos específica, integrando con una API HTTP externa, construyendo un handler HTTP/gRPC que llama un inbound port, o cableando un consumidor de mensajes a un caso de uso.
+
+### Driving Adapters (Inbound)
+- Traducen disparadores externos (HTTP, CLI, mensaje) en llamadas a inbound ports
+- Validan formato de input, serializan/deserializan, mapean errores de vuelta al formato de respuesta externa
+- Mantenerlos delgados: SIN lógica de negocio; si encuentras lógica filtrándose, pertenece a un caso de uso
+
+### Driven Adapters (Outbound)
+- Implementan un outbound port contra una tecnología específica
+- Traducen errores específicos del adaptador a errores de dominio antes de retornar
+- Manejan preocupaciones técnicas: retries, circuit breakers, connection pooling — nunca preocupación del caso de uso
+
+### Cableado en Composition Root
+- Los adaptadores se instancian e inyectan en el composition root (e.g. `cmd/main.go`)
+- El caso de uso nunca instancia adaptadores directamente
+
+### Testing de Adaptadores
+- **Driven adapters:** contract test contra el port — los mismos comportamientos esperados que cualquier implementación debe satisfacer
+- **Driving adapters:** integration test contra el núcleo cableado con outbound ports stubbeados
+
+### Anti-patrones a Evitar
+- Embeber lógica de negocio en adaptadores
+- Saltarse el port y depender del adaptador concreto desde el núcleo
+- Permitir que excepciones específicas del adaptador filtren más allá del port boundary
+- Implementar múltiples ports en un único adaptador (un adaptador = un port, generalmente)
+
+### Verificación
+Un adaptador correcto: implementa la interface del port completamente; puede ser reemplazado con un adaptador diferente (e.g. Postgres → MongoDB) sin cambiar el caso de uso; pasa la misma suite de contract test que implementaciones alternativas.

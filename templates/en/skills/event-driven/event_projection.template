@@ -1,0 +1,42 @@
+# Event Projection Skill
+
+## Purpose
+Guide an AI agent through building read-side projections from event streams in CQRS.
+
+## Sections to Generate
+
+### When to Use This Skill
+Creating a new query view, optimizing an existing query that hits the write model, or migrating from a shared read/write schema to separated read models.
+
+### Projection Concept
+A projection subscribes to one or more event streams and maintains a **read model** optimized for a specific query pattern. Each projection owns its data — there is no shared schema between projections.
+
+### Projection Responsibilities
+1. Consume events from the bus (or replay them from the event store)
+2. Apply the events to update its read model
+3. Track the last event consumed (checkpoint) for resumability
+4. Be idempotent: re-consuming an event must not change the read model further
+
+### Read Model Design
+- Tailored to the query, not normalized — denormalize freely
+- Pre-compute aggregations and counts that the query needs
+- Indexed for the query patterns expected
+- Owned by the projection — never shared with other projections or with the write model
+
+### Resumability
+- Persist checkpoint (e.g. last event ID consumed) atomically with the read model update
+- On restart, replay from the checkpoint forward
+- For new projections: replay from the beginning of the stream (no shortcuts)
+
+### Eventual Consistency
+- Read models lag the write model — accept this
+- UX strategies: optimistic UI, polling, push notifications, "your change has been saved" feedback while consistency catches up
+
+### Anti-patterns to Avoid
+- Projections that query other projections (build a third one if needed)
+- Projections that issue commands (only sagas/process managers do this)
+- Sharing read models across projections (each is independent)
+- Storing the entire history in a projection (it's a derived view, not the source)
+
+### Verification
+A correct projection: starting from an empty read model and replaying all events produces the current state; consuming an event twice produces no further change; can be rebuilt at any time by truncating the read model and replaying from the beginning.

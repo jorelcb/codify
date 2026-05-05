@@ -1,0 +1,80 @@
+# Architectural Context — {{PROJECT_NAME}}
+
+## Architectural Style
+
+{{PROJECT_NAME}} is an **event-driven system** combining CQRS, optionally Event Sourcing, and sagas for long-running coordination. State changes are expressed as immutable domain events; commands and queries follow separate paths.
+
+## Write Side
+
+### Commands
+{{COMMANDS_DESCRIPTION}}
+
+A command captures intent — what the user or another system wants to happen. Examples:
+- `PlaceOrder { customerID, items }`
+- `CancelReservation { reservationID, reason }`
+
+A command handler:
+1. Loads the aggregate (rehydrated from events if event-sourced)
+2. Validates business invariants
+3. Emits one or more events on success
+4. Persists events transactionally
+
+### Aggregates
+{{AGGREGATES_DESCRIPTION}}
+
+An aggregate is the consistency boundary: its invariants are enforced atomically. State changes inside an aggregate produce events; events are the only way state changes leave the aggregate.
+
+### Event Store
+{{EVENT_STORE_DESCRIPTION}}
+
+The event store is append-only. Each stream identifies an aggregate; events within a stream are strictly ordered. Optimistic concurrency via stream version.
+
+## Read Side
+
+### Projections
+{{PROJECTIONS_DESCRIPTION}}
+
+Projections subscribe to event streams and build query-optimized read models. Each projection owns its data — there is no shared schema between projections.
+
+### Read Models
+Each query has a read model tailored to it. Eventual consistency between writes and reads is accepted; UX accommodates it (optimistic UI, polling, or push notifications).
+
+## Long-Running Coordination
+
+### Sagas (Process Managers)
+{{SAGAS_DESCRIPTION}}
+
+Sagas coordinate flows that span multiple aggregates or services. They:
+- Subscribe to events
+- Dispatch commands in response
+- Track their own state (which step they're on)
+- Handle compensation when downstream steps fail
+
+Sagas are NOT distributed transactions — they accept partial failure and explicitly compensate.
+
+## Messaging Infrastructure
+
+{{MESSAGING_DESCRIPTION}}
+
+- **Event bus:** delivers events from producers to consumers. Examples: Kafka, NATS, RabbitMQ, SQS.
+- **Outbox pattern:** events are written to a local table inside the same transaction as the aggregate state, then a separate process publishes them to the bus. Guarantees at-least-once delivery.
+- **Idempotent consumers:** consumers track processed event IDs to handle redelivery.
+
+## Schema Evolution
+
+Events are immutable once produced. Schema changes are handled by:
+- Adding optional fields (compatible)
+- Introducing new event types and migrating producers (preferred for breaking changes)
+- Upcasters: pure functions that translate old event versions to new ones at read time
+
+NEVER edit a persisted event.
+
+## Specific Decisions for {{PROJECT_NAME}}
+
+{{ARCHITECTURAL_DECISIONS}}
+
+## Tradeoffs
+
+{{TRADEOFFS}}
+
+Eventual consistency is accepted; debugging across services requires correlation IDs and tracing; storage grows append-only — capacity planning and stream retention policies must be explicit.

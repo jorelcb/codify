@@ -1,0 +1,47 @@
+# Interactions Log — {{PROJECT_NAME}}
+
+This log captures ADRs and significant interactions affecting the design of {{PROJECT_NAME}}. Append-only chronologically.
+
+## ADR Format
+
+Each entry follows:
+- **ADR-N:** title
+- **Date:** ISO date
+- **Context:** why the decision was needed
+- **Decision:** what was chosen
+- **Alternatives considered:** what was rejected and why
+- **Consequences:** tradeoffs accepted
+
+## Initial Decisions
+
+### ADR-001: Adopt Event-Driven Architecture
+- **Date:** {{TODAY}}
+- **Context:** {{EVENT_DRIVEN_ADOPTION_CONTEXT}}
+- **Decision:** Use CQRS to separate write and read paths. Use {{EVENT_SOURCING_DECISION}} for event sourcing. Coordinate cross-aggregate flows via sagas.
+- **Alternatives considered:**
+  - Single-model CRUD with relational DB: rejected because {{CRUD_REJECTION_REASON}}
+  - Microservices with synchronous REST: rejected because tight coupling and cascading failures
+- **Consequences:** eventual consistency, schema evolution complexity, operational overhead of event store and message bus
+
+### ADR-002: Event Store technology
+- **Date:** {{TODAY}}
+- **Decision:** {{EVENT_STORE_TECHNOLOGY}}
+- **Consequences:** {{EVENT_STORE_CONSEQUENCES}}
+
+### ADR-003: Message Bus / Streaming Platform
+- **Date:** {{TODAY}}
+- **Decision:** {{MESSAGE_BUS_TECHNOLOGY}}
+- **Consequences:** {{MESSAGE_BUS_CONSEQUENCES}}
+
+### ADR-004: Outbox / Reliable Publishing Strategy
+- **Date:** {{TODAY}}
+- **Decision:** {{OUTBOX_STRATEGY}}
+- **Consequences:** at-least-once delivery; consumers must be idempotent
+
+## Evolution Log
+
+{{EVOLUTION_ENTRIES}}
+
+## Open Questions
+
+{{OPEN_QUESTIONS}}

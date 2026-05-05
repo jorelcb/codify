@@ -1,0 +1,50 @@
+# Event Idempotency Skill
+
+## Purpose
+Guide an AI agent through guaranteeing idempotency for event handlers and command processing — a non-negotiable property in event-driven systems.
+
+## Sections to Generate
+
+### When to Use This Skill
+Adding a new event consumer, building a new command handler, debugging duplicate processing in production, or auditing an existing handler for idempotency gaps.
+
+### Why Idempotency Is Non-Negotiable
+- Event buses (Kafka, RabbitMQ, SQS, etc.) provide **at-least-once** delivery
+- Network retries, consumer restarts, rebalances cause re-delivery
+- Without idempotency, every redeliver = duplicate side effect (double charges, double emails, etc.)
+- "Exactly-once" is a marketing term; idempotent handlers are the engineering reality
+
+### Strategies
+
+#### A. Deterministic IDs
+Derive an action ID from the inputs that uniquely identify the operation. Persist the ID. Skip if already processed.
+- Example: `notification:order-123:placed` — only one notification fires regardless of how many times the event is delivered
+
+#### B. Dedup Tables
+Maintain a table of processed event IDs (or message IDs). Insert with unique constraint; conflict = already processed.
+- Periodic cleanup of old IDs based on retention policy
+
+#### C. Aggregate Version (Optimistic Concurrency)
+Each command targets a specific aggregate version. Stale commands are rejected.
+- Built into event-sourced aggregates naturally
+
+#### D. Natural Idempotent Operations
+Some operations are intrinsically idempotent: setting a flag to a fixed value, upserts to a known key. Use them when possible.
+
+### Where Idempotency Lives
+- **Command handlers:** apply at entry — check command ID before doing work
+- **Event handlers (consumers):** apply at entry — check event ID against dedup table
+- **External calls:** if a downstream API is not idempotent, wrap with an idempotency token (most modern APIs support this)
+
+### Testing Idempotency
+- Unit test: process the same event twice; assert state changes happen exactly once
+- Integration test: simulate redelivery (consumer restart, manual redeliver); assert no duplicate effects
+
+### Anti-patterns to Avoid
+- "It's fine because re-delivery is rare" — production will surprise you
+- Relying on the bus's "exactly-once" claim — none deliver it under realistic failure modes
+- Stateless idempotency checks (e.g., "is the row already there?" — race-prone)
+- Forgetting to apply idempotency to side effects outside your DB (emails, payments, external API calls)
+
+### Verification
+A correctly idempotent handler: processing the same event 1, 2, or N times produces identical observable state; tests demonstrate this explicitly; external side effects (emails, payments) trigger exactly once per logical event.

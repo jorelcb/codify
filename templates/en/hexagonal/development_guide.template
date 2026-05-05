@@ -1,0 +1,63 @@
+# Development Guide — {{PROJECT_NAME}}
+
+## Methodology
+
+{{PROJECT_NAME}} is developed following Hexagonal Architecture practices. The structure is dictated by ports; tests are dictated by ports; the composition root is the only place where wiring lives.
+
+## Adding a Feature
+
+1. **Identify the use case.** What operation does the world ask of the system?
+2. **Define the inbound port.** Create the interface in the core describing the input and output of the use case.
+3. **Identify external dependencies.** What does the use case need? Define each as an **outbound port** in the core.
+4. **Implement the use case.** Pure business logic. Call outbound ports for everything external.
+5. **Write unit tests for the use case.** Use stubs/fakes for outbound ports.
+6. **Implement adapters.**
+   - Driving adapter (e.g. HTTP handler) that calls the inbound port
+   - Driven adapter for each outbound port (e.g. Postgres repository)
+7. **Write contract tests.** Each driven adapter is tested against its outbound port — same suite of behavioral expectations every implementation must pass.
+8. **Wire at composition root.** Register the adapters and inject them into the use case.
+
+## Testing
+
+- **Test pyramid:**
+  - Unit tests for use cases (most numerous, fastest)
+  - Contract tests for adapters
+  - End-to-end tests for critical paths only
+
+- **Stubs/fakes for outbound ports:** in-memory implementations that satisfy the port interface. Use them in unit tests to keep the core decoupled from infrastructure.
+
+- **Coverage targets:** {{COVERAGE_TARGETS}}
+
+## Code Review Checklist
+
+- [ ] No imports from `adapters/` inside core code
+- [ ] No framework-specific types crossing port boundaries
+- [ ] Use case is testable without any real adapter
+- [ ] New outbound dependencies are expressed as ports, not direct calls
+- [ ] Adapter has a contract test covering the port's expected behavior
+- [ ] Composition root updated to wire new components
+
+## Security
+
+{{SECURITY_PRACTICES}}
+
+- Validate input at driving adapters before calling inbound ports
+- Translate adapter-level errors into domain errors before they reach the core (e.g. `ErrConnectionRefused` → `ErrTemporaryUnavailable`)
+- Secrets accessed only via configuration ports — never read directly in the core
+- {{ADDITIONAL_SECURITY_RULES}}
+
+## Observability
+
+{{OBSERVABILITY_PRACTICES}}
+
+- Structured logging: log at adapter boundaries (entry/exit) and at use-case boundaries
+- Tracing: spans started at driving adapters, propagated through use cases and outbound calls
+- Metrics: emit at adapter boundaries (latency, error rate per port)
+
+## Delivery Expectations
+
+{{DELIVERY_EXPECTATIONS}}
+
+- Each PR includes contract tests for any new adapter
+- No PR adds an outbound dependency without first defining its port
+- Composition root changes reviewed for unintended coupling

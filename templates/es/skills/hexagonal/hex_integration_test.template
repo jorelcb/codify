@@ -1,0 +1,45 @@
+# Skill de Test de Integración Hexagonal
+
+## Propósito
+Guiar a un agente IA a través de escribir tests de integración para adaptadores en Arquitectura Hexagonal, enfocándose en contract tests contra el port.
+
+## Secciones a Generar
+
+### Cuándo Usar Este Skill
+Agregando un nuevo adaptador, validando que un adaptador existente satisface su port, o creando una suite de contract test que cualquier implementación futura debe pasar.
+
+### Concepto de Contract Test
+Un **contract test** es una especificación conductual de qué debe hacer cualquier implementación de un port dado. La misma suite de tests corre contra cada implementación:
+- Adaptador Postgres: pasa la suite
+- Adaptador MongoDB: pasa la suite
+- Fake in-memory (para unit tests): pasa la suite
+
+Si la suite pasa, el adaptador es intercambiable.
+
+### Estructura del Test
+1. **Setup:** instanciar el adaptador bajo test (con infraestructura real o containerizada)
+2. **Exercise:** llamar métodos del port cubriendo happy paths y modos de falla conocidos
+3. **Verify:** asertar comportamiento observable del port — no estado interno del adaptador
+
+### Qué Testear
+- Happy path: la operación tiene éxito con el output esperado
+- Caminos de error de dominio: e.g. `ErrNotFound`, `ErrConflict` — traducidos correctamente desde errores de infra
+- Edge cases: resultados vacíos, payloads grandes, acceso concurrente
+- Idempotencia donde el port la especifica
+
+### Qué NO Testear
+- Internals del adaptador (qué SQL genera, qué método HTTP usa) — son detalles de implementación
+- La lógica del port en sí (el port es una interface, no tiene lógica que testear)
+
+### Infraestructura de Test
+- **Driven adapters (DB, API client):** preferir infraestructura real o containerizada (testcontainers)
+- **Evitar mocks de bases de datos o servidores HTTP** — querés testear que el adaptador habla correctamente el protocolo
+- **Driving adapters (HTTP handlers):** testear contra el núcleo cableado con outbound ports stubbeados
+
+### Anti-patrones a Evitar
+- Tests que pasan contra un adaptador Postgres pero fallan contra uno MongoDB (el test depende de detalles de storage)
+- Mockear todo el stack — derrota el propósito del integration testing
+- Testear internals del adaptador vía reflection o métodos privados
+
+### Verificación
+Una suite de contract test correcta: el mismo archivo de test pasa contra cualquier implementación válida del port; tests fallando indican que el adaptador no satisface el contrato.

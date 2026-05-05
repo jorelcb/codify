@@ -1,0 +1,50 @@
+# Skill de Idempotencia de Eventos
+
+## Propósito
+Guiar a un agente IA a través de garantizar idempotencia para handlers de eventos y procesamiento de commands — una propiedad no negociable en sistemas event-driven.
+
+## Secciones a Generar
+
+### Cuándo Usar Este Skill
+Agregando un nuevo consumidor de eventos, construyendo un nuevo command handler, debuggeando procesamiento duplicado en producción, o auditando un handler existente por gaps de idempotencia.
+
+### Por Qué la Idempotencia Es No-Negociable
+- Los event buses (Kafka, RabbitMQ, SQS, etc.) proveen entrega **at-least-once**
+- Reintentos de red, restarts de consumidor, rebalances causan re-entrega
+- Sin idempotencia, cada re-entrega = efecto secundario duplicado (cargos dobles, emails dobles, etc.)
+- "Exactly-once" es un término de marketing; los handlers idempotentes son la realidad de ingeniería
+
+### Estrategias
+
+#### A. IDs Determinísticos
+Derivar un action ID desde los inputs que identifican únicamente la operación. Persistir el ID. Skip si ya fue procesado.
+- Ejemplo: `notification:order-123:placed` — solo dispara una notificación sin importar cuántas veces se entregue el evento
+
+#### B. Tablas de Dedup
+Mantener una tabla de IDs de eventos procesados (o IDs de mensaje). Insert con unique constraint; conflict = ya procesado.
+- Limpieza periódica de IDs viejos basada en política de retención
+
+#### C. Versión de Aggregate (Concurrencia Optimista)
+Cada command apunta a una versión específica del aggregate. Commands stale son rechazados.
+- Built-in en aggregates event-sourced naturalmente
+
+#### D. Operaciones Naturalmente Idempotentes
+Algunas operaciones son intrínsecamente idempotentes: setear un flag a un valor fijo, upserts a una key conocida. Usalas cuando sea posible.
+
+### Dónde Vive la Idempotencia
+- **Command handlers:** aplicar en la entrada — chequear command ID antes de hacer trabajo
+- **Event handlers (consumidores):** aplicar en la entrada — chequear event ID contra tabla de dedup
+- **Llamadas externas:** si una API downstream no es idempotente, envolverla con un idempotency token (la mayoría de las APIs modernas lo soportan)
+
+### Testeando Idempotencia
+- Unit test: procesar el mismo evento dos veces; asertar que los cambios de estado ocurren exactamente una vez
+- Integration test: simular re-entrega (restart de consumidor, redeliver manual); asertar que no hay efectos duplicados
+
+### Anti-patrones a Evitar
+- "Está bien porque la re-entrega es rara" — producción te va a sorprender
+- Confiar en el claim de "exactly-once" del bus — ninguno lo entrega bajo modos de falla realistas
+- Chequeos de idempotencia sin estado (e.g., "¿ya está la fila?" — race-prone)
+- Olvidar aplicar idempotencia a efectos secundarios fuera de tu DB (emails, pagos, llamadas a APIs externas)
+
+### Verificación
+Un handler correctamente idempotente: procesar el mismo evento 1, 2, o N veces produce estado observable idéntico; los tests demuestran esto explícitamente; los efectos secundarios externos (emails, pagos) disparan exactamente una vez por evento lógico.

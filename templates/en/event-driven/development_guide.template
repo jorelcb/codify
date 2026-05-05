@@ -1,0 +1,66 @@
+# Development Guide — {{PROJECT_NAME}}
+
+## Methodology
+
+{{PROJECT_NAME}} is developed following event-driven practices. Every state change starts with an event; every event is consumed by at least one projection or saga.
+
+## Adding a Feature
+
+1. **Identify the events.** What domain-meaningful things happen? Name them in past tense.
+2. **Identify the commands.** What intent triggers each event? Name them in imperative form.
+3. **Identify the aggregate.** What invariants must hold across the change? That's your consistency boundary.
+4. **Implement the command handler.** Load aggregate, validate invariants, emit events, persist transactionally.
+5. **Implement projections.** Which query views need updating? Each projection consumes the relevant events.
+6. **If the flow spans aggregates:** model it as a saga. Define triggering event, sequence of dispatched commands, compensation logic.
+7. **Write tests.**
+   - Aggregate tests: given (events), when (command), then (events emitted)
+   - Projection tests: given (events), when (events applied), then (read model state)
+   - Saga tests: given (event sequence), when (events arrive), then (commands dispatched)
+8. **Verify idempotency.** Re-deliver every event; assert no duplicate effect.
+
+## Testing
+
+- **Aggregate tests** are the densest layer. Pure given/when/then over events and commands.
+- **Projection tests** verify the read model is consistent with the event stream.
+- **Saga tests** verify the coordination logic, including compensation paths.
+- **Integration tests** verify the outbox publishes correctly and that consumers handle redelivery.
+
+Coverage targets: {{COVERAGE_TARGETS}}
+
+## Code Review Checklist
+
+- [ ] New events use past tense and are domain-meaningful
+- [ ] New commands use imperative form and reveal intent
+- [ ] Command handler emits events transactionally with state persistence
+- [ ] Idempotency strategy is explicit (deterministic ID, dedup table, or aggregate version)
+- [ ] Schema changes are additive or introduce a new event type
+- [ ] Projections do not query the write model
+- [ ] Sagas have explicit compensation logic for each step that can fail
+
+## Security
+
+{{SECURITY_PRACTICES}}
+
+- Events may carry PII — encrypt at rest and document retention policy
+- Commands authenticated at the entry point; events trusted within the system boundary
+- Compensation paths reviewed for security implications (refunds, reversals)
+- {{ADDITIONAL_SECURITY_RULES}}
+
+## Observability
+
+{{OBSERVABILITY_PRACTICES}}
+
+- **Correlation IDs:** every command and event carries the originating correlation ID; propagate through all dispatched commands and emitted events
+- **Causation IDs:** each event references the command that produced it
+- **Tracing:** spans across the bus require explicit propagation (W3C Trace Context in event headers)
+- **Lag metrics:** monitor consumer lag per projection — lag spikes indicate processing bottlenecks
+- **DLQ monitoring:** dead-letter queues alarmed on any non-zero count
+
+## Delivery Expectations
+
+{{DELIVERY_EXPECTATIONS}}
+
+- Each PR with a new event type updates schema documentation
+- Each new saga has a runbook for compensation triggers
+- Outbox migration scripts reviewed for idempotency
+- Consumer groups versioned when schema evolves

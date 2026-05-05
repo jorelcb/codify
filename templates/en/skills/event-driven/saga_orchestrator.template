@@ -1,0 +1,50 @@
+# Saga Orchestrator Skill
+
+## Purpose
+Guide an AI agent through coordinating long-running flows that span aggregates or services using sagas with compensation logic.
+
+## Sections to Generate
+
+### When to Use This Skill
+A flow requires multiple aggregates to update in coordination, an external service must be called as part of the flow, or steps need compensation when downstream operations fail.
+
+### Saga Concept
+A saga is a **stateful, reactive coordinator**:
+- Subscribes to events
+- Dispatches commands in response
+- Tracks its own state (which step it's on)
+- Has explicit **compensation logic** for each step that can fail
+
+A saga is NOT a distributed transaction. It accepts that intermediate states may exist and explicitly compensates.
+
+### Two Styles
+- **Orchestration (preferred for complex flows):** a central saga coordinator decides the next step
+- **Choreography:** each service reacts to events without central coordinator (suitable for simple flows)
+
+### Saga State
+- Persisted with each step transition
+- Includes: started-at, current step, completed steps, compensation history
+- Saga ID typically derived from the originating event
+
+### Compensation
+- Every step that has side effects needs a compensating action
+- Compensations may not always be perfect inverses (e.g. you can refund a payment but you can't unsend an email — design accordingly)
+- Compensations run in reverse order of the steps that completed
+
+### Idempotency
+- Saga handlers must be idempotent — events may be redelivered
+- Use the saga state to dedup: "this step already completed, skip"
+
+### Failure Handling
+- Transient failure: retry with backoff
+- Persistent failure: trigger compensation chain
+- Compensation failure: alert on operations, may need human intervention — document this path
+
+### Anti-patterns to Avoid
+- Synchronous saga steps (defeats the purpose — use a single transaction if you can)
+- Saga directly mutating other aggregates (must dispatch a command)
+- "Forget and forgive" — assuming a failed step will eventually succeed without explicit handling
+- Hidden compensations (every compensation action is a first-class step)
+
+### Verification
+A correct saga: handles redelivery of triggering events without duplicate effect; tested with explicit compensation paths; produces a consistent final state regardless of intermediate failures (success or fully-compensated).

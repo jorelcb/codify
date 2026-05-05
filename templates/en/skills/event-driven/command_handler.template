@@ -1,0 +1,46 @@
+# Command Handler Skill
+
+## Purpose
+Guide an AI agent through implementing command handlers in CQRS following single-responsibility and idempotency.
+
+## Sections to Generate
+
+### When to Use This Skill
+Adding a new use case that mutates state, refactoring a CRUD endpoint into a command, or splitting a service that mixes commands and queries.
+
+### Command Naming
+- Imperative form revealing intent: `PlaceOrder`, `CancelReservation`, `ApprovePayment`
+- NEVER `UpdateOrder` or `ChangeOrder` — these hide intent
+- One command = one intent; if you need two intents, split into two commands
+
+### Command Handler Responsibilities
+A handler:
+1. Validates command structure (already validated for type at the boundary; here you check business preconditions)
+2. Loads the affected aggregate
+3. Invokes a method on the aggregate that produces events on success or returns a domain error
+4. Persists events transactionally with the aggregate state (or with the outbox)
+5. Returns acknowledgement (success/failure) — NOT data; queries return data
+
+### What a Command Handler Does NOT Do
+- It does NOT query the read model
+- It does NOT return domain entities or DTOs derived from state
+- It does NOT publish events directly to external consumers — events go through the outbox/event store
+
+### Idempotency
+- Every command handler must be idempotent. Strategies:
+  - Use a deterministic command ID and dedup at handler entry
+  - Use aggregate version (optimistic concurrency rejection on stale command)
+  - Use natural key invariants in the aggregate
+
+### Failure Handling
+- **Business rule violation:** return a domain error; do NOT retry
+- **Infrastructure failure (DB unavailable, etc.):** safe to retry; the handler must support that
+
+### Anti-patterns to Avoid
+- Mixing query logic in a command handler
+- Calling other use cases from a handler — sagas coordinate, handlers do not
+- Long-running operations inside the handler (offload to a saga)
+- Multi-aggregate transactions (consistency boundary is a single aggregate)
+
+### Verification
+A correct command handler: emits events given valid input, returns domain errors given invalid input, is replayable without producing duplicate effects.

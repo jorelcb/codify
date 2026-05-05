@@ -37,12 +37,23 @@ type SkillMeta struct {
 
 // SkillMetadata mapea guide names a su metadata para frontmatter.
 var SkillMetadata = map[string]SkillMeta{
-	// Architecture: clean
+	// Architecture: clean-ddd
 	"ddd_entity":       {Description: "Create domain entities following DDD principles", Triggers: []string{"entity", "aggregate", "value object", "domain model"}},
 	"clean_arch_layer": {Description: "Implement features respecting Clean Architecture layers", Triggers: []string{"layer", "architecture", "dependency rule"}},
 	"bdd_scenario":     {Description: "Write BDD scenarios in Gherkin with proper step definitions", Triggers: []string{"test", "scenario", "gherkin", "bdd"}},
 	"cqrs_command":     {Description: "Implement CQRS commands and queries with proper separation", Triggers: []string{"command", "query", "cqrs", "handler"}},
 	"hexagonal_port":   {Description: "Design ports and adapters following Hexagonal Architecture", Triggers: []string{"port", "adapter", "hexagonal", "dependency inversion"}},
+	// Architecture: hexagonal
+	"port_definition":      {Description: "Define ports as inbound or outbound contracts in Hexagonal Architecture", Triggers: []string{"port", "interface", "contract", "boundary"}},
+	"adapter_pattern":      {Description: "Implement adapters that translate between ports and external systems", Triggers: []string{"adapter", "implementation", "driver", "driven"}},
+	"dependency_inversion": {Description: "Apply dependency inversion to keep the domain independent of infrastructure", Triggers: []string{"dependency inversion", "dip", "decoupling"}},
+	"hex_integration_test": {Description: "Write integration tests that exercise adapters against real or fake ports", Triggers: []string{"integration test", "adapter test", "contract test"}},
+	// Architecture: event-driven
+	"command_handler":   {Description: "Implement command handlers in CQRS following single-responsibility", Triggers: []string{"command", "handler", "cqrs"}},
+	"domain_event":      {Description: "Model and publish domain events with semantic intent", Triggers: []string{"event", "domain event", "publish", "subscribe"}},
+	"event_projection":  {Description: "Build read-side projections from event streams", Triggers: []string{"projection", "read model", "denormalization", "view"}},
+	"saga_orchestrator": {Description: "Coordinate long-running flows via sagas with compensation logic", Triggers: []string{"saga", "process manager", "compensation", "orchestration"}},
+	"event_idempotency": {Description: "Guarantee idempotency for event handlers and command processing", Triggers: []string{"idempotency", "deduplication", "exactly-once", "at-least-once"}},
 	// Architecture: neutral
 	"code_review":     {Description: "Perform structured, actionable code reviews", Triggers: []string{"review", "pull request", "code quality"}},
 	"test_strategy":   {Description: "Design test strategies with proper test pyramid coverage", Triggers: []string{"test", "testing", "coverage", "test plan"}},
@@ -87,9 +98,20 @@ var Categories = []SkillCategory{
 		Exclusive: true,
 		Options: []SkillOption{
 			{
-				Name:        "clean",
-				Label:       "Clean (DDD, BDD, CQRS, Hexagonal)",
-				TemplateDir: "default",
+				Name:        "neutral",
+				Label:       "Neutral (Code review, testing, API design, refactoring) — recommended default",
+				TemplateDir: "neutral",
+				TemplateMapping: map[string]string{
+					"code_review.template":     "code_review",
+					"test_strategy.template":   "test_strategy",
+					"refactor_safely.template": "refactor_safely",
+					"api_design.template":      "api_design",
+				},
+			},
+			{
+				Name:        "clean-ddd",
+				Label:       "Clean + DDD (DDD, BDD, CQRS, Hexagonal port skill)",
+				TemplateDir: "clean-ddd",
 				TemplateMapping: map[string]string{
 					"ddd_entity.template":       "ddd_entity",
 					"clean_arch_layer.template": "clean_arch_layer",
@@ -99,14 +121,26 @@ var Categories = []SkillCategory{
 				},
 			},
 			{
-				Name:        "neutral",
-				Label:       "Neutral (Code review, testing, API design, refactoring)",
-				TemplateDir: "neutral",
+				Name:        "hexagonal",
+				Label:       "Hexagonal (Ports & Adapters — lighter than clean-ddd)",
+				TemplateDir: "hexagonal",
 				TemplateMapping: map[string]string{
-					"code_review.template":     "code_review",
-					"test_strategy.template":   "test_strategy",
-					"refactor_safely.template": "refactor_safely",
-					"api_design.template":      "api_design",
+					"port_definition.template":      "port_definition",
+					"adapter_pattern.template":      "adapter_pattern",
+					"dependency_inversion.template": "dependency_inversion",
+					"hex_integration_test.template": "hex_integration_test",
+				},
+			},
+			{
+				Name:        "event-driven",
+				Label:       "Event-Driven (CQRS + Event Sourcing + Sagas)",
+				TemplateDir: "event-driven",
+				TemplateMapping: map[string]string{
+					"command_handler.template":   "command_handler",
+					"domain_event.template":      "domain_event",
+					"event_projection.template":  "event_projection",
+					"saga_orchestrator.template": "saga_orchestrator",
+					"event_idempotency.template": "event_idempotency",
 				},
 			},
 		},
@@ -257,9 +291,15 @@ func (c *SkillCategory) OptionLabels() []string {
 }
 
 // LegacyPresetMapping mapea presets legados (--preset flag antiguo) al nuevo modelo.
+// "default" se mantiene como alias de "clean-ddd" durante v1.x — emite warning,
+// se elimina en v2.0 (ver docs/adr/0001-default-preset-transition.md).
 var LegacyPresetMapping = map[string][2]string{
-	"default":  {"architecture", "clean"},
-	"neutral":  {"architecture", "neutral"},
+	"default":     {"architecture", "clean-ddd"},
+	"clean":       {"architecture", "clean-ddd"},
+	"clean-ddd":   {"architecture", "clean-ddd"},
+	"hexagonal":   {"architecture", "hexagonal"},
+	"event-driven": {"architecture", "event-driven"},
+	"neutral":     {"architecture", "neutral"},
 	"workflow":    {"conventions", "all"},
 	"conventions": {"conventions", "all"},
 }

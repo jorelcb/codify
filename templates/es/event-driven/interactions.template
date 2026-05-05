@@ -1,0 +1,47 @@
+# Log de Interacciones — {{PROJECT_NAME}}
+
+Este log captura ADRs e interacciones significativas que afectan el diseño de {{PROJECT_NAME}}. Append-only cronológico.
+
+## Formato de ADR
+
+Cada entrada sigue:
+- **ADR-N:** título
+- **Fecha:** fecha ISO
+- **Contexto:** por qué la decisión fue necesaria
+- **Decisión:** qué se eligió
+- **Alternativas consideradas:** qué se rechazó y por qué
+- **Consecuencias:** tradeoffs aceptados
+
+## Decisiones Iniciales
+
+### ADR-001: Adoptar Arquitectura Event-Driven
+- **Fecha:** {{TODAY}}
+- **Contexto:** {{EVENT_DRIVEN_ADOPTION_CONTEXT}}
+- **Decisión:** Usar CQRS para separar caminos de escritura y lectura. Usar {{EVENT_SOURCING_DECISION}} para event sourcing. Coordinar flujos cross-aggregate vía sagas.
+- **Alternativas consideradas:**
+  - CRUD de modelo único con DB relacional: rechazado porque {{CRUD_REJECTION_REASON}}
+  - Microservicios con REST sincrónico: rechazado por acoplamiento estrecho y fallas en cascada
+- **Consecuencias:** consistencia eventual, complejidad de evolución de schema, overhead operacional de event store y message bus
+
+### ADR-002: Tecnología de Event Store
+- **Fecha:** {{TODAY}}
+- **Decisión:** {{EVENT_STORE_TECHNOLOGY}}
+- **Consecuencias:** {{EVENT_STORE_CONSEQUENCES}}
+
+### ADR-003: Message Bus / Plataforma de Streaming
+- **Fecha:** {{TODAY}}
+- **Decisión:** {{MESSAGE_BUS_TECHNOLOGY}}
+- **Consecuencias:** {{MESSAGE_BUS_CONSEQUENCES}}
+
+### ADR-004: Estrategia de Outbox / Publicación Confiable
+- **Fecha:** {{TODAY}}
+- **Decisión:** {{OUTBOX_STRATEGY}}
+- **Consecuencias:** entrega at-least-once; los consumidores deben ser idempotentes
+
+## Log de Evolución
+
+{{EVOLUTION_ENTRIES}}
+
+## Preguntas Abiertas
+
+{{OPEN_QUESTIONS}}

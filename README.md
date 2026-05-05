@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.20.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.22.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -112,15 +112,44 @@ go install github.com/jorelcb/codify/cmd/codify@latest
 # https://github.com/jorelcb/codify/releases
 ```
 
-### Four ways to equip your agent
+### One-time setup (recommended)
 
-Every command supports **interactive mode** — run without flags and menus guide you through all options. Or pass flags explicitly for CI/scripting.
+The first time you run any interactive Codify command, you'll be offered the option to launch the configuration wizard:
+
+```bash
+codify generate
+# → Codify isn't configured globally yet. Run interactive setup now? [Yes / No / Skip permanently]
+# → Yes launches: codify config (wizard for default preset, locale, model, target)
+```
+
+You can also run `codify config` at any time. Configuration persists at `~/.codify/config.yml` and applies as defaults to every subsequent command (flags still override).
+
+**Project bootstrap** with `codify init`:
+
+```bash
+cd my-project/
+codify init
+# → New or existing project?
+#   - new      → asks for description (inline or file), runs `generate` internally
+#   - existing → scans the codebase, runs `analyze` internally
+# → Persists .codify/config.yml + .codify/state.json
+```
+
+`init` is the smart entry point that picks the right flow for you. If you prefer to control each step explicitly, use `generate`/`analyze` directly.
+
+### Five ways to equip your agent
+
+Every command supports **interactive mode** — run without flags and menus guide you through all options. Or pass flags explicitly for CI/scripting. Both forms read defaults from `~/.codify/config.yml` (user) and `.codify/config.yml` (project) when present, with merge precedence: flags > project > user > built-in defaults.
 
 ```bash
 # 1. Set your API key (Claude or Gemini)
 export ANTHROPIC_API_KEY="sk-ant-..."   # for Claude (default)
 # or
 export GEMINI_API_KEY="AI..."           # for Gemini
+
+# ── Bootstrap: configure once, equip a project end-to-end ──
+codify config         # User-level wizard (auto-launches first time, opt-out via env / marker / flag)
+codify init           # Project-level: new or existing → generate or analyze + state.json
 
 # ── Context: give your agent project memory ──
 codify generate
@@ -144,6 +173,21 @@ codify skills
 codify workflows
 # Interactive menus for: preset, target, mode, locale, install location
 # Supports Claude Code (native skills) and Antigravity (native .md) targets.
+```
+
+### Disabling the auto-launch prompt
+
+The first-run prompt is **soft** — it only appears in interactive TTYs and never blocks CI or scripts. Three opt-out paths:
+
+```bash
+# Per-invocation: skip just for this run
+codify generate --no-auto-config ...
+
+# Per-shell: env variable
+export CODIFY_NO_AUTO_CONFIG=1
+
+# Permanently: marker file (created automatically when you choose "Skip permanently")
+touch ~/.codify/.no-auto-config
 ```
 
 ### What you'll see
@@ -171,6 +215,54 @@ codify workflows
 ✅ Done! 5 files generated
    Total tokens: ~18,200
 ```
+
+---
+
+## ⚙️ Configuration & Bootstrap
+
+Two complementary commands shape how Codify behaves: **`codify config`** at the user level and **`codify init`** at the project level. Both compose on top of the existing standalone commands; they are smart entry points, not replacements.
+
+### `codify config` — user-level defaults
+
+`codify config` manages your global preferences at `~/.codify/config.yml`. The first time you run any interactive Codify command in a TTY without that file existing, you'll be offered the option to launch the wizard. Three answers: Yes (run wizard), No (use defaults this run), Skip permanently (creates `~/.codify/.no-auto-config` so the prompt never appears again).
+
+| Subcommand | Action |
+|---|---|
+| `codify config` | Wizard if no config exists; print current config if it does |
+| `codify config get <key>` | Read a single value |
+| `codify config set <key> <value>` | Update a single value |
+| `codify config unset <key>` | Clear a single value |
+| `codify config edit` | Open `~/.codify/config.yml` in `$EDITOR` |
+| `codify config list` | Print the effective config (with merge applied) |
+
+Valid keys: `preset`, `locale`, `language`, `model`, `target`, `provider`, `project_name`.
+
+### `codify init` — project-level bootstrap
+
+`codify init` asks one question first: is this project new or existing? Based on the answer it routes you to the right flow:
+
+| Answer | Internal flow | What you provide |
+|---|---|---|
+| **new** | invokes `generate` | project name + description (inline or path to a file) |
+| **existing** | invokes `analyze` | project name (auto-detected from cwd, override if you want) |
+
+After that, both branches collect: architectural preset (override of global default), language, locale, output directory, model. Result:
+
+- `.codify/config.yml` — project-scoped defaults that persist for everyone with the repo
+- `.codify/state.json` — snapshot of generation state (consumed by lifecycle commands starting v1.23)
+- Generated `AGENTS.md` and `context/*.md` written to `output/`
+
+Skills, workflows, and hooks are NOT bundled — `init` prints recommended next-step commands to keep responsibilities focused. Run `codify skills`, `codify workflows`, `codify hooks` separately when you want them.
+
+### Merge precedence
+
+When any command resolves a value (preset, locale, model, etc.):
+
+```
+flags > .codify/config.yml > ~/.codify/config.yml > built-in defaults
+```
+
+Setting `--preset hexagonal` on the command line wins regardless of what's in either config file. Project-level config wins over user-level. Built-ins fill the gaps.
 
 ---
 
@@ -228,7 +320,7 @@ All flags are optional in a terminal — interactive menus prompt for missing va
 |------|-------|-------------|---------|
 | `--description` | `-d` | Project description *(required unless `--from-file`)* | *(interactive)* |
 | `--from-file` | `-f` | Read description from file *(alternative to `-d`)* | — |
-| `--preset` | `-p` | Template preset (`default`, `neutral`) | *(interactive)* |
+| `--preset` | `-p` | Template preset (`neutral`, `clean-ddd`, `hexagonal`, `event-driven`) | *(interactive)* |
 | `--model` | `-m` | LLM model (`claude-*` or `gemini-*`) | auto-detected |
 | `--language` | `-l` | Language (activates idiomatic guides) | — |
 | `--locale` | | Output language (`en`, `es`) | `en` |
@@ -845,33 +937,30 @@ Without `--language`, the tool generates 4 files. With it, you get 5 — and sig
 
 ## 🎭 Presets
 
-Choose the philosophy for your contexts:
+Choose the architectural philosophy for your context. Codify v1.21 ships **4 presets**:
 
-### `--preset default` *(default)*
-
-Recommended: **DDD + Clean Architecture + BDD**. Includes:
-- Strict layer separation (Domain → Application → Infrastructure → Interfaces)
-- BDD testing with coverage targets (80% domain, 70% application)
-- OpenTelemetry observability
-- Mandatory dependency injection
-- MUST/MUST NOT constraints
-- Development methodology and self-validation checklist
+| Preset | Focus | When to use |
+|---|---|---|
+| `neutral` *(recommended for new users)* | No architectural opinion — structure adapts to project | Greenfield exploration, scripts, tools, when you want minimal opinion baked in |
+| `clean-ddd` *(current default; will be neutral in v2.0)* | DDD + Clean Architecture + BDD + Layered domain | Long-lived business systems, domain-rich logic, teams comfortable with layered architecture |
+| `hexagonal` | Ports & Adapters — lighter than clean-ddd | Apps with strong external integration concerns, swappable infra, simpler than full DDD |
+| `event-driven` | CQRS + Event Sourcing + Sagas | Async systems, multi-service coordination, event-first domains, audit trails |
 
 ```bash
-codify generate my-api \
-  --description "Inventory management REST API in Go"
-# Uses default preset automatically
+# Recommended for new users — no architectural opinion
+codify generate my-api -d "Inventory REST API in Go" --preset neutral
+
+# Default (will change to neutral in v2.0)
+codify generate my-api -d "Inventory REST API in Go" --preset clean-ddd
+
+# Hexagonal — ports & adapters
+codify generate my-payments -d "Payment service" --preset hexagonal
+
+# Event-driven — CQRS + ES + sagas
+codify generate my-orders -d "Order processing" --preset event-driven
 ```
 
-### `--preset neutral`
-
-No architectural stance. Lets the LLM adapt the structure to the project:
-
-```bash
-codify generate my-api \
-  --description "Inventory management REST API in Go" \
-  --preset neutral
-```
+**Deprecation notice:** `--preset default` still works in v1.x but emits a warning and resolves to `clean-ddd`. It will be removed in v2.0; the default value of `--preset` will then be `neutral`. See [`docs/adr/0001-default-preset-transition.md`](docs/adr/0001-default-preset-transition.md).
 
 ### `--from-file` — Rich descriptions from files
 

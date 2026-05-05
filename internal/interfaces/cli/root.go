@@ -23,6 +23,13 @@ your AI development agent the architectural context it needs to build coherently
 
 Requires ANTHROPIC_API_KEY (for Claude) or GEMINI_API_KEY (for Gemini) environment variable.`,
 	Version: Version,
+	// PersistentPreRunE corre antes de cada subcomando, lo cual habilita el
+	// auto-launch SOFT del wizard de configuración global la primera vez.
+	// La función decide internamente si dispara o no según TTY, comando, y
+	// presencia del marker file de opt-out (ver ADR-007).
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		return commands.MaybeAutoLaunchConfig(cmd)
+	},
 }
 
 // Execute runs the root command
@@ -51,6 +58,8 @@ func init() {
 	rootCmd.AddCommand(commands.NewHooksCmd())
 	rootCmd.AddCommand(commands.NewServeCmd())
 	rootCmd.AddCommand(commands.NewListCmd())
+	rootCmd.AddCommand(commands.NewConfigCmd())
+	rootCmd.AddCommand(commands.NewInitCmd())
 
 	// Global flags can be added here
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.codify.yaml)")

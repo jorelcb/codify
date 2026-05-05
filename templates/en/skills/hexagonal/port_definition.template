@@ -1,0 +1,35 @@
+# Port Definition Skill
+
+## Purpose
+Guide an AI agent through defining ports (interfaces) at the boundary of the application core in Hexagonal Architecture.
+
+## Sections to Generate
+
+### When to Use This Skill
+Defining the contract for an external dependency (DB, external API, message bus), introducing a new use case as inbound API, or refactoring a direct dependency into an explicit port.
+
+### Inbound vs Outbound Ports
+- **Inbound (driving):** the API the core offers (use cases, command handlers, query handlers). Driving adapters call them.
+- **Outbound (driven):** the contracts the core needs (repositories, gateways, publishers). Driven adapters implement them.
+
+### Port Naming
+- Express **what** the port does, not **how**: `BookingRepository`, not `PostgresBookingDAO`
+- Inbound ports often map to a single use case: `PlaceOrderUseCase` over `OrderService`
+- Avoid generic suffixes like `Manager`, `Helper`, `Util`
+
+### Port Signatures
+- Use **domain types** in inputs and outputs — never adapter types (no `*sql.Rows`, no `*http.Request`)
+- Return domain errors, not technical errors — adapter translates technical to domain
+- Keep ports **focused**: a port that does too much is harder to swap; split when possible
+
+### Lifetime and Concurrency
+- Document expected concurrency (thread-safe? per-request?)
+- Document lifetime (singleton, scoped, transient)
+
+### Anti-patterns to Avoid
+- Leaking adapter types in port signatures
+- One giant port covering many unrelated operations
+- Returning technical error objects (e.g. database errors) instead of domain errors
+
+### Verification
+A well-defined port: compiles in the core without any adapter present; can be implemented by at least two different technologies without changing the port itself.

@@ -1,0 +1,45 @@
+# Skill de Domain Event
+
+## Propósito
+Guiar a un agente IA a través de modelar y publicar eventos de dominio que capturan cambios de estado significativos.
+
+## Secciones a Generar
+
+### Cuándo Usar Este Skill
+Diseñando el evento que un nuevo caso de uso emitirá, agregando un nuevo evento para una feature, o refactorizando un flag de status en eventos apropiados.
+
+### Naming de Eventos
+- **Tiempo pasado, con significado de dominio:** `OrderPlaced`, `ReservationCancelled`, `PaymentApproved`
+- NUNCA `OrderCreated` (demasiado genérico) o `OrderUpdated` (sin significado semántico)
+- Un evento representa algo que **ya ocurrió** — no puede ser rechazado por consumidores
+
+### Schema del Evento
+- Incluir solo lo que los suscriptores necesitan para reaccionar — evitar meter el estado completo del aggregate
+- Incluir identificadores (aggregate ID, timestamp de occurred-at)
+- Incluir correlation ID y causation ID para trazabilidad
+- Versionado: campo `event_version`; default 1
+
+### Evolución de Schema
+- Agregar campos opcionales: compatible
+- Remover campos: NUNCA (los eventos son inmutables una vez producidos; los lectores pueden ignorar campos desconocidos)
+- Renombrar un campo: introducir nuevo tipo de evento y migrar productores
+- Reestructurar: introducir nuevo tipo de evento y migrar productores; usar upcasters para traducción en tiempo de lectura si es necesario
+
+### Publicación
+- Persistir eventos transaccionalmente con el estado del aggregate (transactional outbox)
+- Un proceso separado publica desde el outbox al message bus
+- Garantiza entrega at-least-once; los consumidores manejan re-entrega
+
+### Qué NO Poner en un Evento
+- Datos sensibles (PII) sin encriptar — los eventos típicamente se retienen a largo plazo
+- Referencias a servicios internos — los eventos deben ser self-contained
+- Verbos imperativos ("RemoveItem" — eso es un command, no un evento)
+
+### Anti-patrones a Evitar
+- Eventos anémicos que solo contienen un ID (fuerza a los consumidores a consultar de vuelta, derrotando los beneficios async)
+- Eventos que reestablecen el estado completo ("OrderState") en lugar de expresar el cambio ("OrderShipped")
+- Eventos mutables (editar campos después de publicar)
+- Acoplar el schema del evento a la estructura interna del aggregate
+
+### Verificación
+Un evento bien diseñado: un suscriptor puede reaccionar a él sin consultar de vuelta al productor; leer un evento diez años después aún tiene sentido de dominio.

@@ -1,0 +1,42 @@
+# Skill de Event Projection
+
+## Propósito
+Guiar a un agente IA a través de la construcción de projections del lado de lectura desde streams de eventos en CQRS.
+
+## Secciones a Generar
+
+### Cuándo Usar Este Skill
+Creando una nueva vista de query, optimizando una query existente que pega contra el modelo de escritura, o migrando de un schema compartido lectura/escritura a modelos de lectura separados.
+
+### Concepto de Projection
+Una projection se suscribe a uno o más streams de eventos y mantiene un **modelo de lectura** optimizado para un patrón de query específico. Cada projection es dueña de sus datos — no hay schema compartido entre projections.
+
+### Responsabilidades de la Projection
+1. Consumir eventos del bus (o replayearlos del event store)
+2. Aplicar los eventos para actualizar su modelo de lectura
+3. Trackear el último evento consumido (checkpoint) para resumibilidad
+4. Ser idempotente: re-consumir un evento no debe cambiar el modelo de lectura más allá
+
+### Diseño del Modelo de Lectura
+- Adaptado a la query, no normalizado — denormalizar libremente
+- Pre-computar agregaciones y conteos que la query necesita
+- Indexado para los patrones de query esperados
+- Propiedad de la projection — nunca compartido con otras projections o con el modelo de escritura
+
+### Resumibilidad
+- Persistir checkpoint (e.g. último event ID consumido) atómicamente con la actualización del modelo de lectura
+- Al reiniciar, replayear desde el checkpoint hacia adelante
+- Para projections nuevas: replayear desde el principio del stream (sin atajos)
+
+### Consistencia Eventual
+- Los modelos de lectura van detrás del modelo de escritura — aceptarlo
+- Estrategias de UX: UI optimista, polling, push notifications, feedback "tu cambio fue guardado" mientras la consistencia se pone al día
+
+### Anti-patrones a Evitar
+- Projections que consultan otras projections (construir una tercera si es necesario)
+- Projections que disparan commands (solo sagas/process managers hacen eso)
+- Compartir modelos de lectura entre projections (cada una es independiente)
+- Almacenar la historia completa en una projection (es una vista derivada, no la fuente)
+
+### Verificación
+Una projection correcta: comenzando con un modelo de lectura vacío y replayeando todos los eventos produce el estado actual; consumir un evento dos veces no produce cambio adicional; puede ser reconstruida en cualquier momento truncando el modelo de lectura y replayeando desde el principio.

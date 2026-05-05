@@ -1,0 +1,35 @@
+# Skill de Definición de Port
+
+## Propósito
+Guiar a un agente IA a través de la definición de ports (interfaces) en la frontera del núcleo de aplicación en Arquitectura Hexagonal.
+
+## Secciones a Generar
+
+### Cuándo Usar Este Skill
+Definiendo el contrato para una dependencia externa (DB, API externa, message bus), introduciendo un nuevo caso de uso como API inbound, o refactorizando una dependencia directa en un port explícito.
+
+### Inbound vs Outbound Ports
+- **Inbound (driving):** la API que el núcleo ofrece (casos de uso, command handlers, query handlers). Los driving adapters los llaman.
+- **Outbound (driven):** los contratos que el núcleo necesita (repositorios, gateways, publishers). Los driven adapters los implementan.
+
+### Naming de Ports
+- Expresar **qué** hace el port, no **cómo**: `BookingRepository`, no `PostgresBookingDAO`
+- Los inbound ports a menudo mapean a un único caso de uso: `PlaceOrderUseCase` sobre `OrderService`
+- Evitar sufijos genéricos como `Manager`, `Helper`, `Util`
+
+### Firmas de Ports
+- Usar **tipos de dominio** en inputs y outputs — nunca tipos de adaptador (sin `*sql.Rows`, sin `*http.Request`)
+- Devolver errores de dominio, no errores técnicos — el adaptador traduce técnico a dominio
+- Mantener los ports **enfocados**: un port que hace demasiado es más difícil de intercambiar; dividir cuando sea posible
+
+### Lifetime y Concurrencia
+- Documentar concurrencia esperada (¿thread-safe? ¿per-request?)
+- Documentar lifetime (singleton, scoped, transient)
+
+### Anti-patrones a Evitar
+- Filtrar tipos de adaptador en firmas de port
+- Un port gigante que cubre muchas operaciones no relacionadas
+- Devolver objetos de error técnico (e.g. errores de base de datos) en lugar de errores de dominio
+
+### Verificación
+Un port bien definido: compila en el núcleo sin ningún adaptador presente; puede ser implementado por al menos dos tecnologías diferentes sin cambiar el port en sí.

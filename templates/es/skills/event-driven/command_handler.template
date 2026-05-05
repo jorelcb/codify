@@ -1,0 +1,46 @@
+# Skill de Command Handler
+
+## Propósito
+Guiar a un agente IA a través de la implementación de command handlers en CQRS siguiendo single-responsibility e idempotencia.
+
+## Secciones a Generar
+
+### Cuándo Usar Este Skill
+Agregando un nuevo caso de uso que muta estado, refactorizando un endpoint CRUD en un command, o dividiendo un service que mezcla commands y queries.
+
+### Naming de Commands
+- Forma imperativa revelando intención: `PlaceOrder`, `CancelReservation`, `ApprovePayment`
+- NUNCA `UpdateOrder` o `ChangeOrder` — esconden intención
+- Un command = una intención; si necesitás dos intenciones, divide en dos commands
+
+### Responsabilidades del Command Handler
+Un handler:
+1. Valida la estructura del command (ya validado por tipo en el boundary; aquí chequeás precondiciones de negocio)
+2. Carga el aggregate afectado
+3. Invoca un método en el aggregate que produce eventos en éxito o devuelve un error de dominio
+4. Persiste eventos transaccionalmente con el estado del aggregate (o con el outbox)
+5. Devuelve acknowledgement (éxito/falla) — NO datos; las queries devuelven datos
+
+### Qué un Command Handler NO Hace
+- NO consulta el modelo de lectura
+- NO devuelve entidades de dominio o DTOs derivados de estado
+- NO publica eventos directamente a consumidores externos — los eventos van por el outbox/event store
+
+### Idempotencia
+- Cada command handler debe ser idempotente. Estrategias:
+  - Usar un command ID determinístico y dedup en la entrada del handler
+  - Usar versión de aggregate (rechazo de concurrencia optimista en command stale)
+  - Usar invariantes de natural key en el aggregate
+
+### Manejo de Fallas
+- **Violación de regla de negocio:** devolver un error de dominio; NO reintentar
+- **Falla de infraestructura (DB no disponible, etc.):** seguro reintentar; el handler debe soportarlo
+
+### Anti-patrones a Evitar
+- Mezclar lógica de query en un command handler
+- Llamar otros casos de uso desde un handler — las sagas coordinan, los handlers no
+- Operaciones de larga duración dentro del handler (offload a una saga)
+- Transacciones multi-aggregate (la frontera de consistencia es un único aggregate)
+
+### Verificación
+Un command handler correcto: emite eventos dado input válido, devuelve errores de dominio dado input inválido, es replayable sin producir efectos duplicados.
