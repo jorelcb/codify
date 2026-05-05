@@ -72,8 +72,7 @@ Examples:
 		},
 	}
 
-	cmd.Flags().StringVar(&p.fromContext, "from-context", "", "Path to existing context directory (required)")
-	_ = cmd.MarkFlagRequired("from-context")
+	cmd.Flags().StringVar(&p.fromContext, "from-context", "", "Path to existing context directory (required; prompted in interactive mode)")
 	cmd.Flags().StringVarP(&p.output, "output", "o", "", "Output directory (default: same as --from-context)")
 	cmd.Flags().StringVarP(&p.model, "model", "m", "", "LLM model (default: claude-sonnet-4-6, or gemini-3.1-pro-preview)")
 	cmd.Flags().StringVar(&p.locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
@@ -85,7 +84,30 @@ func runSpecInteractive(projectName string, p specParams, explicit map[string]bo
 	interactive := isInteractive()
 	var err error
 
-	// 1. Resolve model
+	// 1. Resolve from-context (required, but prompt in interactive mode).
+	if p.fromContext == "" && interactive {
+		p.fromContext, err = promptInput("Path to existing context directory", ".")
+		if err != nil {
+			return err
+		}
+	}
+	if p.fromContext == "" {
+		return fmt.Errorf("--from-context is required (use the flag or run interactively)")
+	}
+	// Best-effort heuristic: warn if the directory does not contain AGENTS.md or
+	// CONTEXT.md, since spec generation has nothing to anchor on otherwise.
+	hasContext := false
+	for _, name := range []string{"AGENTS.md", "CONTEXT.md"} {
+		if _, statErr := os.Stat(filepath.Join(p.fromContext, name)); statErr == nil {
+			hasContext = true
+			break
+		}
+	}
+	if !hasContext {
+		fmt.Fprintf(os.Stderr, "warning: %s does not appear to contain AGENTS.md or CONTEXT.md — spec generation may produce [DEFINE] markers\n", p.fromContext)
+	}
+
+	// 2. Resolve model
 	if !explicit["model"] && interactive {
 		p.model, err = promptModel()
 		if err != nil {
@@ -93,7 +115,7 @@ func runSpecInteractive(projectName string, p specParams, explicit map[string]bo
 		}
 	}
 
-	// 2. Resolve locale
+	// 3. Resolve locale
 	if !explicit["locale"] && interactive {
 		p.locale, err = promptLocale()
 		if err != nil {
@@ -101,7 +123,7 @@ func runSpecInteractive(projectName string, p specParams, explicit map[string]bo
 		}
 	}
 
-	// 3. Resolve output
+	// 4. Resolve output
 	if !explicit["output"] && interactive {
 		defaultOutput := p.fromContext
 		if defaultOutput == "" {

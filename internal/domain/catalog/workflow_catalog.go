@@ -83,6 +83,23 @@ func WorkflowCategoryNames() []string {
 	return names
 }
 
+// WorkflowPresetNames returns the names of all workflow presets across every
+// workflow category, plus the "all" alias. Used for MCP enum validation.
+func WorkflowPresetNames() []string {
+	seen := map[string]bool{"all": true}
+	names := []string{"all"}
+	for _, c := range WorkflowCategories {
+		for _, o := range c.Options {
+			if seen[o.Name] {
+				continue
+			}
+			seen[o.Name] = true
+			names = append(names, o.Name)
+		}
+	}
+	return names
+}
+
 // FindWorkflowCategory looks up a workflow category by name.
 func FindWorkflowCategory(name string) (*SkillCategory, error) {
 	for i := range WorkflowCategories {

@@ -196,3 +196,19 @@ func TestWorkflowMetadata_DescriptionLength(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkflowPresetNames_IncludesAllAlias(t *testing.T) {
+	names := WorkflowPresetNames()
+	if len(names) == 0 {
+		t.Fatal("WorkflowPresetNames returned empty")
+	}
+	hasAll := false
+	for _, n := range names {
+		if n == "all" {
+			hasAll = true
+		}
+	}
+	if !hasAll {
+		t.Error("'all' alias missing from workflow preset names")
+	}
+}

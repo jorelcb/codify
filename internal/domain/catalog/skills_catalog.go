@@ -176,6 +176,24 @@ func CategoryNames() []string {
 	return names
 }
 
+// AllSkillPresetNames devuelve los nombres de todos los presets registrados en
+// todas las categorías de skills, mas el alias "all" para las categorías que
+// permiten selección compuesta. Util para validación con enums (MCP).
+func AllSkillPresetNames() []string {
+	seen := map[string]bool{"all": true}
+	names := []string{"all"}
+	for _, c := range Categories {
+		for _, o := range c.Options {
+			if seen[o.Name] {
+				continue
+			}
+			seen[o.Name] = true
+			names = append(names, o.Name)
+		}
+	}
+	return names
+}
+
 // FindCategory busca una categoría por nombre.
 func FindCategory(name string) (*SkillCategory, error) {
 	for i := range Categories {

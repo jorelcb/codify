@@ -164,3 +164,33 @@ func TestOptionNamesAndLabels(t *testing.T) {
 		t.Errorf("unexpected label: %s", labels[0])
 	}
 }
+
+func TestAllSkillPresetNames_IncludesAllAndDeduplicates(t *testing.T) {
+	names := AllSkillPresetNames()
+	if len(names) == 0 {
+		t.Fatal("AllSkillPresetNames returned empty")
+	}
+	hasAll := false
+	seen := map[string]int{}
+	for _, n := range names {
+		if n == "all" {
+			hasAll = true
+		}
+		seen[n]++
+	}
+	if !hasAll {
+		t.Error("expected 'all' alias in preset list")
+	}
+	for n, count := range seen {
+		if count != 1 {
+			t.Errorf("preset %q appears %d times; expected deduplication", n, count)
+		}
+	}
+}
+
+func TestCategoryNames_NotEmpty(t *testing.T) {
+	names := CategoryNames()
+	if len(names) < 3 {
+		t.Fatalf("expected at least 3 categories, got %d", len(names))
+	}
+}

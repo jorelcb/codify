@@ -68,6 +68,11 @@ func promptConfirm(title string, defaultVal bool) (bool, error) {
 }
 
 // promptModel displays LLM model selection based on available API keys.
+//
+// Only models with their corresponding API key set in the environment are
+// shown. If no key is set, returns a hard error so the user fixes their
+// environment instead of seeing a "false affordance" — picking a model
+// they cannot use and hitting an opaque API error later.
 func promptModel() (string, error) {
 	var options []selectOption
 	hasAnthropic := os.Getenv("ANTHROPIC_API_KEY") != ""
@@ -82,11 +87,7 @@ func promptModel() (string, error) {
 	}
 
 	if len(options) == 0 {
-		options = []selectOption{
-			{"Claude Sonnet 4.6 (Anthropic)", "claude-sonnet-4-6"},
-			{"Claude Opus 4.6 (Anthropic)", "claude-opus-4-6"},
-			{"Gemini 3.1 Pro Preview (Google)", "gemini-3.1-pro-preview"},
-		}
+		return "", fmt.Errorf("no LLM API key found in environment; set ANTHROPIC_API_KEY or GEMINI_API_KEY (or GOOGLE_API_KEY) and re-run")
 	}
 
 	if len(options) == 1 {

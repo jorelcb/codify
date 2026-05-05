@@ -21,14 +21,7 @@ import (
 	infratemplate "github.com/jorelcb/codify/internal/infrastructure/template"
 )
 
-const serverVersion = "1.19.0"
-
-// validPresets maps preset names for validation.
-var validPresets = map[string]bool{
-	"default":  true,
-	"neutral":  true,
-	"workflow": true,
-}
+const serverVersion = "1.20.0"
 
 // NewServer creates and configures the MCP server with all tools registered.
 func NewServer() *server.MCPServer {
@@ -101,12 +94,12 @@ func analyzeProjectTool() server.ServerTool {
 func generateSkillsTool() server.ServerTool {
 	tool := mcp.NewTool("generate_skills",
 		mcp.WithDescription("Generate AI agent skills (SKILL.md) by category, preset, and mode. Static mode delivers instant skills from the catalog. Personalized mode uses LLM to adapt skills to a specific project context."),
-		mcp.WithString("category", mcp.Required(), mcp.Description("Skill category: architecture, testing, or conventions")),
-		mcp.WithString("preset", mcp.Required(), mcp.Description("Preset within category. architecture: clean, neutral. testing: foundational, tdd, bdd. conventions: conventional-commit, semantic-versioning, all")),
-		mcp.WithString("mode", mcp.Description("Generation mode: static (instant, no API key) or personalized (LLM-adapted)"), mcp.DefaultString("static")),
+		mcp.WithString("category", mcp.Required(), mcp.Description("Skill category"), mcp.Enum(catalog.CategoryNames()...)),
+		mcp.WithString("preset", mcp.Required(), mcp.Description("Preset within category (or 'all' where supported). architecture: clean, neutral. testing: foundational, tdd, bdd. conventions: conventional-commit, semantic-versioning, all"), mcp.Enum(catalog.AllSkillPresetNames()...)),
+		mcp.WithString("mode", mcp.Description("Generation mode"), mcp.Enum("static", "personalized"), mcp.DefaultString("static")),
 		mcp.WithString("project_context", mcp.Description("Project description for personalized mode (language, architecture, domain, stack)")),
-		mcp.WithString("locale", mcp.Description("Output language: en or es"), mcp.DefaultString("en")),
-		mcp.WithString("target", mcp.Description("Target ecosystem: claude, codex, or antigravity"), mcp.DefaultString("claude")),
+		mcp.WithString("locale", mcp.Description("Output language"), mcp.Enum("en", "es"), mcp.DefaultString("en")),
+		mcp.WithString("target", mcp.Description("Target ecosystem"), mcp.Enum("claude", "codex", "antigravity"), mcp.DefaultString("claude")),
 		mcp.WithString("model", mcp.Description("LLM model (only for personalized mode)"), mcp.DefaultString("claude-sonnet-4-6")),
 		mcp.WithString("output", mcp.Description("Output directory (default: ecosystem-specific, e.g. .claude/skills/)")),
 	)
@@ -118,11 +111,11 @@ func generateSkillsTool() server.ServerTool {
 func generateWorkflowsTool() server.ServerTool {
 	tool := mcp.NewTool("generate_workflows",
 		mcp.WithDescription("Generate workflow files for AI agents. Claude target produces native SKILL.md files with frontmatter. Antigravity target produces .md files with execution annotations. Static mode is instant. Personalized mode uses LLM."),
-		mcp.WithString("preset", mcp.Required(), mcp.Description("Workflow preset: spec-driven-change, bug-fix, release-cycle, or all")),
-		mcp.WithString("target", mcp.Description("Target ecosystem: claude (SKILL.md) or antigravity (native .md)"), mcp.DefaultString("antigravity")),
-		mcp.WithString("mode", mcp.Description("Generation mode: static (instant, no API key) or personalized (LLM-adapted)"), mcp.DefaultString("static")),
+		mcp.WithString("preset", mcp.Required(), mcp.Description("Workflow preset"), mcp.Enum(catalog.WorkflowPresetNames()...)),
+		mcp.WithString("target", mcp.Description("Target ecosystem"), mcp.Enum("claude", "antigravity"), mcp.DefaultString("antigravity")),
+		mcp.WithString("mode", mcp.Description("Generation mode"), mcp.Enum("static", "personalized"), mcp.DefaultString("static")),
 		mcp.WithString("project_context", mcp.Description("Project description for personalized mode (language, tools, CI/CD, deployment)")),
-		mcp.WithString("locale", mcp.Description("Output language: en or es"), mcp.DefaultString("en")),
+		mcp.WithString("locale", mcp.Description("Output language"), mcp.Enum("en", "es"), mcp.DefaultString("en")),
 		mcp.WithString("model", mcp.Description("LLM model (only for personalized mode)"), mcp.DefaultString("claude-sonnet-4-6")),
 		mcp.WithString("output", mcp.Description("Output directory (default depends on target)")),
 	)
@@ -133,10 +126,11 @@ func generateWorkflowsTool() server.ServerTool {
 // generateHooksTool defines the generate_hooks MCP tool.
 func generateHooksTool() server.ServerTool {
 	tool := mcp.NewTool("generate_hooks",
-		mcp.WithDescription("Generate Claude Code hook bundles (deterministic guardrails). Outputs a hooks.json block (for merge into settings.json) and auxiliary .sh scripts. Static-only, Claude Code-only — no LLM personalization, no other ecosystems."),
-		mcp.WithString("preset", mcp.Required(), mcp.Description("Hook preset: linting, security-guardrails, convention-enforcement, or all")),
-		mcp.WithString("locale", mcp.Description("Output language for stderr messages: en or es"), mcp.DefaultString("en")),
-		mcp.WithString("output", mcp.Description("Output directory (default: ./codify-hooks)")),
+		mcp.WithDescription("Activate Claude Code hook bundles. Default install_scope is 'preview' (writes a standalone bundle to 'output' for the user to merge). Set install_scope to 'global' or 'project' to auto-merge into settings.json + copy scripts into the agent's hooks directory. Static-only, Claude Code-only."),
+		mcp.WithString("preset", mcp.Required(), mcp.Description("Hook preset"), mcp.Enum(catalog.HookPresetNames()...)),
+		mcp.WithString("install_scope", mcp.Description("Activation mode: global (auto-merge into ~/.claude), project (auto-merge into .claude), or preview (write bundle to output, no settings change)"), mcp.Enum("global", "project", "preview"), mcp.DefaultString("preview")),
+		mcp.WithString("locale", mcp.Description("Output language for stderr messages"), mcp.Enum("en", "es"), mcp.DefaultString("en")),
+		mcp.WithString("output", mcp.Description("Output directory (required for install_scope=preview; default: ./codify-hooks)")),
 	)
 
 	return server.ServerTool{Tool: tool, Handler: handleGenerateHooks}
@@ -458,43 +452,84 @@ func handleGenerateHooks(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 	preset := stringArg(request, "preset")
 	locale := stringArgDefault(request, "locale", "en")
 	output := stringArg(request, "output")
-	if output == "" {
-		output = filepath.Join(".", "codify-hooks")
-	}
+	scope := stringArgDefault(request, "install_scope", "preview")
 
 	if !dto.ValidHookPresets[preset] {
 		return mcp.NewToolResultError(fmt.Sprintf("Invalid hook preset: %s (valid: linting, security-guardrails, convention-enforcement, all)", preset)), nil
 	}
-
 	if locale != "en" && locale != "es" {
 		return mcp.NewToolResultError(fmt.Sprintf("Invalid locale: %s (must be 'en' or 'es')", locale)), nil
 	}
 
-	config := &dto.HookConfig{
-		Category:   "hooks",
-		Preset:     preset,
-		Locale:     locale,
-		OutputPath: output,
-	}
+	switch scope {
+	case "preview":
+		if output == "" {
+			output = filepath.Join(".", "codify-hooks")
+		}
+		config := &dto.HookConfig{
+			Category:   "hooks",
+			Preset:     preset,
+			Locale:     locale,
+			OutputPath: output,
+		}
+		result, err := executePreviewHooksMCP(config)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Hook bundle generation failed: %v", err)), nil
+		}
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("Claude Code hook bundle written (preset: %s, mode: preview)\n", preset))
+		sb.WriteString(fmt.Sprintf("Output: %s\n", result.OutputPath))
+		sb.WriteString("\nGenerated files:\n")
+		for _, f := range result.GeneratedFiles {
+			sb.WriteString(fmt.Sprintf("  - %s\n", f))
+		}
+		sb.WriteString("\nThis is preview mode — settings.json was NOT modified.\n")
+		sb.WriteString("Re-run with install_scope=global|project to auto-activate.\n")
+		return mcp.NewToolResultText(sb.String()), nil
 
-	result, err := executeHooksMCP(config)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("Hook bundle generation failed: %v", err)), nil
-	}
+	case dto.InstallScopeGlobal, dto.InstallScopeProject:
+		config := &dto.HookConfig{
+			Category: "hooks",
+			Preset:   preset,
+			Locale:   locale,
+			Install:  scope,
+		}
+		result, err := executeInstallHooksMCP(config)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Hook activation failed: %v", err)), nil
+		}
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("Claude Code hooks activated (preset: %s, scope: %s)\n", preset, scope))
+		sb.WriteString(fmt.Sprintf("Settings: %s\n", result.SettingsPath))
+		if result.BackupPath != "" {
+			sb.WriteString(fmt.Sprintf("Backup:   %s\n", result.BackupPath))
+		}
+		sb.WriteString(fmt.Sprintf("Hooks dir: %s\n", result.HooksDir))
+		if total := sumIntMap(result.HandlersAdded); total > 0 {
+			sb.WriteString(fmt.Sprintf("Added:    %d handler(s) across %d event(s)\n", total, len(result.HandlersAdded)))
+		}
+		if total := sumIntMap(result.HandlersSkipped); total > 0 {
+			sb.WriteString(fmt.Sprintf("Skipped:  %d handler(s) already present (idempotent)\n", total))
+		}
+		if len(result.ScriptsCopied) > 0 {
+			sb.WriteString(fmt.Sprintf("Scripts copied: %d\n", len(result.ScriptsCopied)))
+		}
+		if len(result.ScriptsConflict) > 0 {
+			sb.WriteString(fmt.Sprintf("Scripts in conflict: %d (existing differs — not overwritten)\n", len(result.ScriptsConflict)))
+		}
+		return mcp.NewToolResultText(sb.String()), nil
 
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Claude Code hook bundle delivered (preset: %s)\n", preset))
-	sb.WriteString(fmt.Sprintf("Output: %s\n", result.OutputPath))
-	sb.WriteString("\nGenerated files:\n")
-	for _, f := range result.GeneratedFiles {
-		sb.WriteString(fmt.Sprintf("  - %s\n", f))
+	default:
+		return mcp.NewToolResultError(fmt.Sprintf("Invalid install_scope: %s (must be 'global', 'project', or 'preview')", scope)), nil
 	}
-	sb.WriteString("\nTo activate:\n")
-	sb.WriteString(fmt.Sprintf("  1. Copy scripts: cp -r %s/hooks/ <YOUR_CLAUDE_DIR>/hooks/\n", result.OutputPath))
-	sb.WriteString(fmt.Sprintf("  2. Merge %s/hooks.json into <YOUR_CLAUDE_DIR>/settings.json\n", result.OutputPath))
-	sb.WriteString("Where <YOUR_CLAUDE_DIR> is ~/.claude (global) or .claude (project).\n")
+}
 
-	return mcp.NewToolResultText(sb.String()), nil
+func sumIntMap(m map[string]int) int {
+	t := 0
+	for _, v := range m {
+		t += v
+	}
+	return t
 }
 
 func handleCommitGuidance(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -537,7 +572,10 @@ func executeGenerateWithMode(ctx context.Context, name, description, language, p
 		return nil, err
 	}
 
-	if !validPresets[preset] {
+	switch preset {
+	case "default", "neutral", "workflow":
+		// accepted
+	default:
 		preset = "default"
 	}
 
@@ -702,11 +740,19 @@ func executePersonalizedWorkflowsMCP(ctx context.Context, config *dto.WorkflowCo
 	return workflowsCmd.Execute(ctx, config, guides)
 }
 
-func executeHooksMCP(config *dto.HookConfig) (*dto.GenerationResult, error) {
+func executePreviewHooksMCP(config *dto.HookConfig) (*dto.GenerationResult, error) {
 	fileWriter := filesystem.NewFileWriter()
 	dirManager := filesystem.NewDirectoryManager()
 	cmd := command.NewDeliverHooksCommand(fileWriter, dirManager, root.TemplatesFS)
 	return cmd.Execute(config)
+}
+
+func executeInstallHooksMCP(config *dto.HookConfig) (*command.InstallResult, error) {
+	fileWriter := filesystem.NewFileWriter()
+	dirManager := filesystem.NewDirectoryManager()
+	deliverer := command.NewDeliverHooksCommand(fileWriter, dirManager, root.TemplatesFS)
+	installer := command.NewInstallHooksCommand(deliverer, fileWriter, dirManager)
+	return installer.Execute(config)
 }
 
 // --- Argument helpers ---
