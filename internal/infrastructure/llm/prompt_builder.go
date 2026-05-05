@@ -2,6 +2,7 @@ package llm
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/jorelcb/codify/internal/domain/service"
@@ -66,11 +67,77 @@ func FileOutputName(guideName string) string {
 }
 
 // outputLanguageName returns the language name for the given locale (defaults to English).
+//
+// If the locale is non-empty but unknown, a warning is emitted to stderr so the
+// caller can detect silent fallbacks during development. The function never
+// errors — the LLM still receives a valid language directive.
 func outputLanguageName(locale string) string {
 	if name, ok := localeLanguageNames[locale]; ok {
 		return name
 	}
+	if locale != "" {
+		_, _ = fmt.Fprintf(os.Stderr, "warning: locale %q is not supported, defaulting to English\n", locale)
+	}
 	return "English"
+}
+
+// --- Shared prompt fragments (private helpers) ----------------------------------
+//
+// These helpers consolidate previously duplicated text across the six prompt
+// builders. They produce identical XML blocks regardless of which prompt invokes
+// them, so editing the rule body only requires touching one place.
+
+// groundingRulesForGeneratedContent returns the anti-hallucination block used
+// by file-generation modes (generate, analyze, spec). It distinguishes
+// technical framework choices (LLM may opine) from domain logic (LLM must
+// only echo what was stated).
+func groundingRulesForGeneratedContent() string {
+	return `<grounding_rules>
+CRITICAL — Distinguish between two types of content:
+
+1. TECHNICAL FRAMEWORK (you may opine freely): architectural patterns, project
+   structure, code conventions, testing strategy, observability, layer
+   responsibilities. This is the template's value.
+
+2. DOMAIN LOGIC (only what the user/context stated): business rules, specific
+   validations, default values, edge cases, data formats, concrete behaviors,
+   error messages.
+
+For domain logic:
+- Only include what is EXPLICITLY in the project description or scanned context
+- DO NOT invent validation rules, default values, formats, or behaviors
+- DO NOT generate speculative edge cases or error scenarios
+- If a template section asks for domain details the input does not cover,
+  mark "[DEFINE: short hint of what is needed]" instead of inventing an answer
+</grounding_rules>`
+}
+
+// personalizationGroundingRules returns the anti-hallucination block used by
+// personalized modes (skills, workflows, workflow-skills). The domain string
+// is interpolated into the rule headline (e.g. "skill", "workflow",
+// "Claude Code skill") so the rule reads naturally for the target artifact.
+func personalizationGroundingRules(domain string) string {
+	return fmt.Sprintf(`<grounding_rules>
+For domain-specific knowledge in this %s:
+- Only reference tools, patterns, frameworks, and conventions present in the project context
+- DO NOT invent stack components not mentioned (libraries, services, infra, providers)
+- DO NOT assume API endpoints, environment variables, or configuration values
+- DO NOT fabricate command names, file paths, or directory layouts
+- If required knowledge is missing, mark "[DEFINE: short hint of what is needed]"
+  rather than inserting a plausible-looking placeholder
+</grounding_rules>`, domain)
+}
+
+// commonOutputRules returns the closing rules block, always last in every
+// system prompt. It enforces the response shape (raw markdown, no wrappers,
+// no commentary) and the output language.
+func commonOutputRules(locale string) string {
+	return fmt.Sprintf(`<rules>
+- Respond ONLY with the requested content (markdown body or full file)
+- DO NOT wrap the response in code blocks
+- DO NOT add explanations before or after the content
+- Content must be in %s
+</rules>`, outputLanguageName(locale))
 }
 
 // BuildSystemPromptForFile returns a system prompt for generating a single context file.
@@ -86,22 +153,7 @@ Generate the content for the file %s.
 You will receive a project description and a structural template guide.
 </task>
 
-<grounding_rules>
-CRITICAL RULE — Distinguish between two types of content:
-
-1. TECHNICAL FRAMEWORK (you may opine freely): architectural patterns, project structure,
-   code conventions, testing strategy, observability, DDD layers. This is the template's value.
-
-2. DOMAIN LOGIC (only what the user stated): business rules, specific validations,
-   default values, edge cases, data formats, concrete behaviors, error messages.
-
-For domain logic:
-- Only include what is EXPLICITLY in the project description
-- DO NOT invent validation rules, default values, formats, or behaviors the user did not mention
-- DO NOT generate speculative edge cases or error scenarios
-- If a template section asks for domain details the description does not cover, indicate it must be defined by the team instead of inventing an answer
-- Prefer marking "[DEFINE]" over inventing a concrete business rule
-</grounding_rules>
+%s
 
 <workflow>
 1. Analyze the project description: identify language, architecture, type, key capabilities
@@ -120,15 +172,10 @@ For domain logic:
 - Every sentence must be actionable and useful for a consuming AI agent
 - Critical information at the beginning and end of the file (attention-aware ordering)
 - Commands must be exact and copy-pasteable, not generic placeholders
+- Use the template guide as structural reference, NOT as a variable replacement template
 </output_quality>
 
-<rules>
-- Respond ONLY with the markdown content of the file
-- DO NOT wrap the response in code blocks
-- DO NOT add explanations before or after the content
-- Content must be in %s
-- Use the template guide as structural reference, NOT as a variable replacement template
-</rules>`, FileOutputName(guideName), outputLanguageName(locale))
+%s`, FileOutputName(guideName), groundingRulesForGeneratedContent(), commonOutputRules(locale))
 }
 
 // BuildAnalyzeSystemPromptForFile returns a system prompt optimized for analyze mode.
@@ -200,15 +247,10 @@ For domain logic:
 - Every sentence must be actionable and useful for a consuming AI agent
 - Critical information at the beginning and end of the file (attention-aware ordering)
 - Commands must be exact and copy-pasteable, derived from actual build targets
+- Use the template guide as structural reference, NOT as a variable replacement template
 </output_quality>
 
-<rules>
-- Respond ONLY with the markdown content of the file
-- DO NOT wrap the response in code blocks
-- DO NOT add explanations before or after the content
-- Content must be in %s
-- Use the template guide as structural reference, NOT as a variable replacement template
-</rules>`, FileOutputName(guideName), outputLanguageName(locale))
+%s`, FileOutputName(guideName), commonOutputRules(locale))
 }
 
 // BuildUserMessageForFile constructs the user message for generating a single file.
@@ -318,6 +360,60 @@ DO NOT:
 - Add patterns or tools not relevant to the project's stack
 </personalization_rules>
 
+%s
+
+<output_example>
+Reference shape (do not copy verbatim — adapt every section to the user's actual stack and domain):
+
+---
+name: ddd-entity
+description: Design rich domain entities for the order module using Go and gorm
+---
+
+# DDD Entity — Order aggregate
+
+## When to use
+- Adding a new aggregate root inside ` + "`internal/domain/order/`" + `
+- Splitting an existing entity that has grown too many responsibilities
+- Encapsulating invariants currently scattered across services
+
+## Process
+1. Identify the invariants the aggregate must protect (e.g. ` + "`Total >= 0`" + `, status transitions)
+2. Model identity as a value object (` + "`OrderID`" + `) — never expose primitives
+3. Place behavior on the entity, not on a service: ` + "`o.Confirm()`" + `, ` + "`o.Cancel(reason)`" + `
+4. Validate every state transition before mutating fields
+5. Emit a domain event per state change (` + "`OrderConfirmed`" + `, ` + "`OrderCancelled`" + `)
+
+## Example
+` + "```go" + `
+type Order struct {
+    id        OrderID
+    status    OrderStatus
+    total     Money
+    events    []DomainEvent
+}
+
+func (o *Order) Confirm() error {
+    if o.status != StatusDraft {
+        return ErrInvalidTransition
+    }
+    o.status = StatusConfirmed
+    o.events = append(o.events, OrderConfirmed{ID: o.id})
+    return nil
+}
+` + "```" + `
+
+## Anti-patterns
+- Anemic models: data-only structs with all logic in services
+- Public setters that bypass invariants
+- Direct mutation of related aggregates from this entity
+
+## Verification
+- [ ] Identity is a value object, not a primitive
+- [ ] Every state transition validates and emits an event
+- [ ] Tests cover both happy path and invalid transitions
+</output_example>
+
 <output_quality>
 - Complete YAML frontmatter appropriate for the target ecosystem
 - Maximum 200 lines of content (personalized skills may need more detail)
@@ -332,7 +428,7 @@ DO NOT:
 - DO NOT add explanations before or after the content
 - Content must be in %s
 - Start with the --- YAML frontmatter delimiter
-</rules>`, skillName, projectContext, ecosystemDesc, outputLanguageName(locale))
+</rules>`, skillName, projectContext, ecosystemDesc, personalizationGroundingRules("skill"), outputLanguageName(locale))
 }
 
 // BuildSkillsUserMessage constructs the user message for generating a single skill.
@@ -365,22 +461,7 @@ You will receive the complete project context and a template guide for the speci
 %s
 </existing_context>
 
-<grounding_rules>
-CRITICAL RULE — Distinguish between two types of content:
-
-1. TECHNICAL FRAMEWORK (you may opine freely): milestone structure, testing strategy,
-   implementation phases, task dependency graph, design patterns.
-
-2. DOMAIN LOGIC (only what is stated in the context): business rules, validations,
-   default values, data formats, edge cases, error messages, specific behaviors.
-
-For domain logic:
-- Only include rules, validations, formats, and behaviors EXPLICITLY mentioned in the existing context
-- DO NOT invent edge cases, default values, validation rules, or behaviors not documented
-- DO NOT speculate on how errors or edge cases should be handled if the context does not mention them
-- If a section requires domain details not covered, use "[DEFINE: brief description of what is missing]"
-- A precise but incomplete specification is better than a complete one with invented rules
-</grounding_rules>
+%s
 
 <workflow>
 1. Deeply analyze the existing context: architecture, stack, patterns, constraints
@@ -399,16 +480,10 @@ For domain logic:
 - Structured formats (lists, tables, YAML) over prose
 - Maximum 200 lines per file
 - Zero invented business rules — if not in the context, mark [DEFINE]
+- Base ALL content on the existing context provided
 </output_quality>
 
-<rules>
-- Respond ONLY with the markdown content of the file
-- DO NOT wrap the response in code blocks
-- DO NOT add explanations before or after the content
-- Content must be in %s
-- Base ALL content on the existing context provided
-- Mark with [DEFINE] any business rule, validation, or behavior not in the context
-</rules>`, existingContext, outputLanguageName(locale))
+%s`, existingContext, groundingRulesForGeneratedContent(), commonOutputRules(locale))
 }
 
 // BuildPersonalizedWorkflowsSystemPrompt returns a system prompt for generating personalized Antigravity workflows.
@@ -464,6 +539,46 @@ DO NOT:
 - Assume tools or services not mentioned in the project context
 </personalization_rules>
 
+%s
+
+<output_example>
+Reference shape (do not copy verbatim — adapt commands and tooling to the user's actual stack):
+
+---
+description: Run unit + integration tests with coverage for the Go monorepo and surface failures fast
+---
+
+# Run full test suite
+
+1. **Format and vet first**
+   ` + "```bash" + `
+   gofmt -l . && go vet ./...
+   ` + "```" + `
+   // turbo
+
+2. **Unit tests with coverage**
+   ` + "```bash" + `
+   go test -count=1 -race -coverprofile=coverage.out ./...
+   ` + "```" + `
+   // turbo
+   // capture: COVERAGE_OUT
+
+3. **Integration tests (requires docker compose up)**
+   // if docker compose ps --status=running | grep -q postgres
+   ` + "```bash" + `
+   go test -tags=integration ./tests/integration/...
+   ` + "```" + `
+
+4. **Coverage threshold gate**
+   ` + "```bash" + `
+   go tool cover -func={{COVERAGE_OUT}} | tail -1
+   ` + "```" + `
+   // turbo
+
+5. **Report**
+   Summarize: total packages tested, %% coverage, any failing tests with file:line references.
+</output_example>
+
 <output_quality>
 - YAML frontmatter with description (max 250 chars)
 - 5-15 numbered steps (enough detail without bloat)
@@ -479,7 +594,7 @@ DO NOT:
 - DO NOT add explanations before or after the content
 - Content must be in %s
 - Start with the --- YAML frontmatter delimiter
-</rules>`, workflowName, projectContext, outputLanguageName(locale))
+</rules>`, workflowName, projectContext, personalizationGroundingRules("workflow"), outputLanguageName(locale))
 }
 
 // BuildWorkflowsUserMessage constructs the user message for generating a single workflow.
@@ -517,12 +632,18 @@ The output must include proper YAML frontmatter.
 <skill_format>
 The SKILL.md file MUST follow this structure:
 
-1. YAML frontmatter (between --- markers) with:
+1. YAML frontmatter (between --- markers) with these REQUIRED fields:
    - name: workflow-name (kebab-case)
    - description: Short description of what this workflow does (max 250 chars)
    - disable-model-invocation: true
    - allowed-tools: space-separated list of tools Claude can use without permission prompts
      (e.g., "Bash(git *) Bash(npm *) Bash(go test *)")
+
+   Optional frontmatter fields (include when applicable):
+   - agent: auto | manual (default manual; use auto only for fully safe, idempotent flows)
+   - user-invocable: true | false (default true; set false if intended only as a nested helper
+     invoked by other skills/workflows)
+   - context: list of variables this workflow expects from the conversation (e.g., [BRANCH_NAME, TICKET_ID])
 
 2. Numbered steps in markdown with clear, actionable instructions
 3. Code blocks with exact commands the agent should run
@@ -551,8 +672,55 @@ DO NOT:
 - Assume tools or services not mentioned in the project context
 </personalization_rules>
 
+%s
+
+<output_example>
+Reference shape (do not copy verbatim — adapt to the user's actual stack):
+
+---
+name: release-cycle
+description: Cut a tagged release for the Go CLI, update changelog, and push to origin
+disable-model-invocation: true
+allowed-tools: Bash(git *) Bash(go *) Bash(gh *) Read Edit
+agent: manual
+user-invocable: true
+context: [VERSION, RELEASE_NOTES]
+---
+
+# Release cycle
+
+1. **Verify clean working tree**
+   Run ` + "`git status --short`" + `. If any files are listed, stop and ask the user how to proceed.
+
+2. **Run the full test suite**
+   Execute ` + "`go test -count=1 -race ./...`" + `. If any test fails, stop and report the first failing package.
+
+3. **Bump version**
+   Edit ` + "`internal/version/version.go`" + ` and replace the constant with ` + "`{{VERSION}}`" + `.
+
+4. **Update CHANGELOG.md**
+   Prepend a new section dated today with ` + "`{{RELEASE_NOTES}}`" + `, grouped by Added / Changed / Fixed.
+
+5. **Commit and tag**
+   ` + "```bash" + `
+   git add internal/version/version.go CHANGELOG.md
+   git commit -m "chore(release): v{{VERSION}}"
+   git tag -a v{{VERSION}} -m "v{{VERSION}}"
+   ` + "```" + `
+
+6. **Push branch and tag**
+   ` + "```bash" + `
+   git push origin HEAD && git push origin v{{VERSION}}
+   ` + "```" + `
+
+7. **Open GitHub release**
+   ` + "```bash" + `
+   gh release create v{{VERSION}} --notes-file CHANGELOG.md --title "v{{VERSION}}"
+   ` + "```" + `
+</output_example>
+
 <output_quality>
-- YAML frontmatter with name, description, disable-model-invocation, allowed-tools
+- YAML frontmatter with name, description, disable-model-invocation, allowed-tools (plus optional agent / user-invocable / context when applicable)
 - 5-15 numbered steps (enough detail without bloat)
 - Exact, copy-pasteable commands in code blocks
 - Each step independently understandable
@@ -565,7 +733,7 @@ DO NOT:
 - DO NOT add explanations before or after the content
 - Content must be in %s
 - Start with the --- YAML frontmatter delimiter
-</rules>`, workflowName, projectContext, outputLanguageName(locale))
+</rules>`, workflowName, projectContext, personalizationGroundingRules("Claude Code skill"), outputLanguageName(locale))
 }
 
 // BuildWorkflowSkillUserMessage constructs the user message for generating a native Claude Code SKILL.md.
