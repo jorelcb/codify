@@ -9,7 +9,10 @@
 set -u
 
 INPUT=$(cat)
-FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
+if ! FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null); then
+  echo "codify lint hook: jq fallo al parsear input — saltando lint" >&2
+  exit 0  # PostToolUse non-blocking — warn pero no bloquea
+fi
 
 # No file path → nothing to lint
 if [ -z "$FILE" ] || [ ! -f "$FILE" ]; then

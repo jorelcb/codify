@@ -9,7 +9,10 @@
 set -u
 
 INPUT=$(cat)
-FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
+if ! FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null); then
+  echo "codify hook error: jq fallo al parsear input — fail-closed" >&2
+  exit 2
+fi
 
 if [ -z "$FILE" ]; then
   exit 0

@@ -10,7 +10,10 @@
 set -u
 
 INPUT=$(cat)
-CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
+if ! CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null); then
+  echo "codify hook error: jq failed to parse input — failing closed" >&2
+  exit 2
+fi
 
 if [ -z "$CMD" ]; then
   exit 0

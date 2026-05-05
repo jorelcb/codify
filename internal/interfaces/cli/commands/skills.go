@@ -66,8 +66,14 @@ Presets:
     all                   - All convention skills
 
 Install:
-  global   - Install to agent's global path (~/.claude/skills/, ~/.codex/skills/)
-  project  - Install to project-local path (./.claude/skills/, ./.agents/skills/)
+  global   - Install to agent's global path:
+             claude → ~/.claude/skills/
+             codex → ~/.codex/skills/
+             antigravity → ~/.gemini/antigravity/skills/
+  project  - Install to project-local path:
+             claude → .claude/skills/
+             codex → .agents/skills/
+             antigravity → .agent/skills/
 
 When run without flags, an interactive menu is displayed.
 
@@ -402,10 +408,17 @@ func resolveSelection(categoryName, preset string) (*catalog.SkillCategory, stri
 // --- Install path resolution ---
 
 // defaultSkillsPath retorna el path por defecto relativo al proyecto.
+//
+// Convencion: cada ecosistema tiene su prefix dedicado para evitar colisiones:
+//   - claude:      .claude/skills/
+//   - codex:       .agents/skills/  (plural — convencion del Codex CLI)
+//   - antigravity: .agent/skills/   (singular — alineado con .agent/workflows/)
 func defaultSkillsPath(target string) string {
 	switch target {
-	case "codex", "antigravity":
+	case "codex":
 		return filepath.Join(".agents", "skills")
+	case "antigravity":
+		return filepath.Join(".agent", "skills")
 	default:
 		return filepath.Join(".claude", "skills")
 	}
@@ -421,7 +434,8 @@ func globalSkillsPath(target string) string {
 	case "codex":
 		return filepath.Join(home, ".codex", "skills")
 	case "antigravity":
-		return filepath.Join(home, ".agents", "skills")
+		// Aligned with .gemini/antigravity/global_workflows/ used by the workflows command.
+		return filepath.Join(home, ".gemini", "antigravity", "skills")
 	default:
 		return filepath.Join(home, ".claude", "skills")
 	}

@@ -74,6 +74,12 @@ func (p *GeminiProvider) GenerateContext(ctx context.Context, req service.Genera
 			fmt.Fprintf(p.progressOut, " done (%d tokens)\n", tokensOut)
 		}
 
+		validation := ValidateOutput(content, req.Mode, outputName)
+		if validation.Fatal {
+			return nil, fmt.Errorf("output for %s was rejected by validator: %v", outputName, validation.Warnings)
+		}
+		emitValidationFeedback(p.progressOut, outputName, validation)
+
 		files = append(files, service.GeneratedFile{
 			Name:    outputName,
 			Content: content,
@@ -94,6 +100,12 @@ func (p *GeminiProvider) generateSingleFile(
 	req service.GenerationRequest,
 	guide service.TemplateGuide,
 ) (content string, tokensIn int, tokensOut int, err error) {
+	// Modes that personalize against a user-provided project context require it non-empty.
+	needsContext := req.Mode == "skills" || req.Mode == "workflows" || req.Mode == "workflow-skills"
+	if needsContext && req.ProjectContext == "" {
+		return "", 0, 0, fmt.Errorf("mode %q requires non-empty ProjectContext", req.Mode)
+	}
+
 	var systemPrompt string
 	var userMessage string
 	switch req.Mode {
@@ -113,6 +125,9 @@ func (p *GeminiProvider) generateSingleFile(
 		systemPrompt = p.promptBuilder.BuildAnalyzeSystemPromptForFile(guide.Name, req.Locale)
 		userMessage = p.promptBuilder.BuildUserMessageForFile(req, guide)
 	default:
+		if req.Mode != "" && req.Mode != "generate" {
+			return "", 0, 0, fmt.Errorf("unknown generation mode: %q", req.Mode)
+		}
 		systemPrompt = p.promptBuilder.BuildSystemPromptForFile(guide.Name, req.Locale)
 		userMessage = p.promptBuilder.BuildUserMessageForFile(req, guide)
 	}

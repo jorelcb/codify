@@ -16,7 +16,10 @@
 set -u
 
 INPUT=$(cat)
-CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
+if ! CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null); then
+  echo "codify hook error: jq fallo al parsear input — fail-closed" >&2
+  exit 2
+fi
 
 if [ -z "$CMD" ]; then
   exit 0
@@ -45,7 +48,7 @@ DANGEROUS=(
   # Disk write to raw devices
   'dd[[:space:]]+.*of=/dev/(sd|nvme|hd)'
   # Format filesystem
-  'mkfs\.[a-z]+[[:space:]]+/dev/'
+  'mkfs\.[a-z0-9]+[[:space:]]+/dev/'
 )
 
 for pattern in "${DANGEROUS[@]}"; do

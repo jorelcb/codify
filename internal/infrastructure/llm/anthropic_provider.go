@@ -70,6 +70,12 @@ func (p *AnthropicProvider) GenerateContext(ctx context.Context, req service.Gen
 			fmt.Fprintf(p.progressOut, " done (%d tokens)\n", tokensOut)
 		}
 
+		validation := ValidateOutput(content, req.Mode, outputName)
+		if validation.Fatal {
+			return nil, fmt.Errorf("output for %s was rejected by validator: %v", outputName, validation.Warnings)
+		}
+		emitValidationFeedback(p.progressOut, outputName, validation)
+
 		files = append(files, service.GeneratedFile{
 			Name:    outputName,
 			Content: content,
@@ -90,6 +96,13 @@ func (p *AnthropicProvider) generateSingleFile(
 	req service.GenerationRequest,
 	guide service.TemplateGuide,
 ) (content string, tokensIn int, tokensOut int, err error) {
+	// Modes that personalize against a user-provided project context require it non-empty.
+	// Without it the LLM has nothing to anchor on and tends to invent stack details.
+	needsContext := req.Mode == "skills" || req.Mode == "workflows" || req.Mode == "workflow-skills"
+	if needsContext && req.ProjectContext == "" {
+		return "", 0, 0, fmt.Errorf("mode %q requires non-empty ProjectContext", req.Mode)
+	}
+
 	var systemPrompt string
 	var userMessage string
 	switch req.Mode {
@@ -109,15 +122,24 @@ func (p *AnthropicProvider) generateSingleFile(
 		systemPrompt = p.promptBuilder.BuildAnalyzeSystemPromptForFile(guide.Name, req.Locale)
 		userMessage = p.promptBuilder.BuildUserMessageForFile(req, guide)
 	default:
+		if req.Mode != "" && req.Mode != "generate" {
+			return "", 0, 0, fmt.Errorf("unknown generation mode: %q", req.Mode)
+		}
 		systemPrompt = p.promptBuilder.BuildSystemPromptForFile(guide.Name, req.Locale)
 		userMessage = p.promptBuilder.BuildUserMessageForFile(req, guide)
 	}
 
+	// Mark the system prompt as cacheable so subsequent calls within the
+	// same generation (one call per template guide) reuse the prompt cache
+	// instead of re-billing the full system prompt every time.
 	stream := p.client.Messages.NewStreaming(ctx, anthropic.MessageNewParams{
 		Model:     anthropic.Model(p.model),
 		MaxTokens: 16000,
 		System: []anthropic.TextBlockParam{
-			{Text: systemPrompt},
+			{
+				Text:         systemPrompt,
+				CacheControl: anthropic.NewCacheControlEphemeralParam(),
+			},
 		},
 		Messages: []anthropic.MessageParam{
 			anthropic.NewUserMessage(anthropic.NewTextBlock(userMessage)),
