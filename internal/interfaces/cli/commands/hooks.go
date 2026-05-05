@@ -2,8 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -13,6 +11,7 @@ import (
 	"github.com/jorelcb/codify/internal/application/dto"
 	"github.com/jorelcb/codify/internal/domain/catalog"
 	"github.com/jorelcb/codify/internal/infrastructure/filesystem"
+	"github.com/jorelcb/codify/internal/infrastructure/settings"
 )
 
 // hooksParams groups all parameters for the hooks command.
@@ -21,6 +20,7 @@ type hooksParams struct {
 	locale  string
 	output  string
 	install string
+	dryRun  bool
 }
 
 // NewHooksCmd creates the hooks command.
@@ -29,8 +29,8 @@ func NewHooksCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "hooks",
-		Short: "Generate Claude Code hook bundles (deterministic guardrails)",
-		Long: `Generate Claude Code hook bundles — shell scripts wired into events
+		Short: "Activate Claude Code hook bundles (deterministic guardrails)",
+		Long: `Activate Claude Code hook bundles — shell scripts wired into events
 (PreToolUse, PostToolUse, etc.) that run deterministically on every tool call.
 
 Hooks complement skills (prompt-based) and workflows (orchestration):
@@ -42,17 +42,18 @@ Presets:
   linting                 - Auto-format and lint files on Edit/Write (PostToolUse)
   security-guardrails     - Block dangerous commands and protect sensitive files (PreToolUse)
   convention-enforcement  - Validate Conventional Commits and protect main branches
-  all                     - All three presets merged into a single hooks.json
+  all                     - All three presets merged into a single hook block
 
-Output layout:
-  {output}/hooks.json   - hook configuration block to merge into settings.json
-  {output}/hooks/*.sh   - auxiliary scripts referenced by hooks.json
+Activation modes:
+  --install project   Auto-merge into .claude/settings.json + copy scripts to .claude/hooks/
+  --install global    Auto-merge into ~/.claude/settings.json + copy to ~/.claude/hooks/
+  --output PATH       Preview mode: write a standalone bundle (no settings change)
+  --dry-run           Print the proposed merge to stdout, write nothing
 
-To activate the hooks:
-  1. Move the scripts:    cp -r {output}/hooks/ ~/.claude/hooks/        (global)
-                       or cp -r {output}/hooks/ .claude/hooks/          (project)
-  2. Merge {output}/hooks.json into ~/.claude/settings.json (global)
-                                  or .claude/settings.json (project)
+Auto-install (default flow as of v1.20.0):
+  - Backs up the existing settings.json before any modification
+  - Idempotent: running twice with the same preset adds zero handlers the second time
+  - Only writes scripts that do not already exist; conflicting scripts are reported
 
 Note: hooks are a Claude Code feature; this command does not target Antigravity
 or Codex. Personalization is not supported — hooks are catalog-driven.
@@ -63,17 +64,20 @@ Requirements:
   - Claude Code v2.1.85+ for the convention-enforcement preset (uses 'if' field)
 
 Examples:
-  # Interactive mode (guided selection)
+  # Interactive mode (guided selection — auto-installs by default)
   codify hooks
 
-  # Generate the linting bundle into ./codify-hooks/
-  codify hooks --preset linting
+  # Activate the linting preset for this project
+  codify hooks --preset linting --install project
 
-  # Generate everything, install layout pre-built for the project scope
-  codify hooks --preset all --install project
+  # Activate everything globally
+  codify hooks --preset all --install global
 
-  # Custom output directory
-  codify hooks --preset security-guardrails --output ./tmp/sec-hooks`,
+  # Preview the bundle without touching settings.json
+  codify hooks --preset security-guardrails --output ./tmp/preview
+
+  # See the proposed merge without writing anything
+  codify hooks --preset all --install project --dry-run`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			explicit := make(map[string]bool)
 			cmd.Flags().Visit(func(f *pflag.Flag) {
@@ -85,8 +89,9 @@ Examples:
 
 	cmd.Flags().StringVarP(&p.preset, "preset", "p", "", "Hook preset: linting, security-guardrails, convention-enforcement, or all")
 	cmd.Flags().StringVar(&p.locale, "locale", defaultLocale, "Output language for stderr messages: en (English) or es (Spanish)")
-	cmd.Flags().StringVarP(&p.output, "output", "o", "", "Output directory (default: ./codify-hooks)")
-	cmd.Flags().StringVar(&p.install, "install", "", "Install scope: global or project (or omit for custom --output)")
+	cmd.Flags().StringVarP(&p.output, "output", "o", "", "Preview mode: write standalone bundle to this directory (no settings change)")
+	cmd.Flags().StringVar(&p.install, "install", "", "Install scope: global or project (auto-activates immediately)")
+	cmd.Flags().BoolVar(&p.dryRun, "dry-run", false, "Print the proposed settings.json merge but write nothing")
 
 	return cmd
 }
@@ -132,71 +137,136 @@ func runHooks(p hooksParams, explicit map[string]bool) error {
 		locale = defaultLocale
 	}
 
-	// 3. Resolve install scope and output path.
+	// 3. Resolve activation mode.
+	//
+	// Priority:
+	//   --output → preview mode (no settings change)
+	//   --install → auto-install
+	//   neither + interactive → ask the user
+	//   neither + non-interactive → default to project install
 	install := p.install
 	output := p.output
+	dryRun := p.dryRun
 
 	if !explicit["install"] && !explicit["output"] && interactive {
-		globalPath := globalHooksPath()
-		projectPath := defaultHooksPath()
-
 		var location string
-		location, err = promptSelect("Output location", []selectOption{
-			{fmt.Sprintf("Project (%s)", projectPath), "project"},
-			{fmt.Sprintf("Global (%s)", globalPath), "global"},
-			{"Custom output directory", "custom"},
+		location, err = promptSelect("Activation mode", []selectOption{
+			{"Project (.claude/settings.json + .claude/hooks/)", "project"},
+			{"Global (~/.claude/settings.json + ~/.claude/hooks/)", "global"},
+			{"Preview only (write a standalone bundle for inspection)", "preview"},
 		}, "project")
 		if err != nil {
 			return err
 		}
-
 		switch location {
 		case "global":
 			install = dto.InstallScopeGlobal
-			output = globalPath
 		case "project":
 			install = dto.InstallScopeProject
-			output = projectPath
 		default:
-			output, err = promptInput("Output directory", defaultHooksPath())
+			output, err = promptInput("Preview output directory", "./codify-hooks")
 			if err != nil {
 				return err
 			}
 		}
-	} else if explicit["install"] {
-		output = resolveHookInstallPath(install)
-	} else if output == "" {
-		output = defaultHooksPath()
+	} else if !explicit["install"] && !explicit["output"] {
+		install = dto.InstallScopeProject
 	}
 
-	// 4. Build config and execute.
 	config := &dto.HookConfig{
 		Category:   "hooks",
 		Preset:     preset,
 		Locale:     locale,
 		OutputPath: output,
 		Install:    install,
+		DryRun:     dryRun,
 	}
 
-	return executeHooks(config)
+	if install != "" {
+		return executeInstall(config)
+	}
+	return executePreview(config)
 }
 
-func executeHooks(config *dto.HookConfig) error {
+// executeInstall auto-activates hooks via settings.json merge.
+func executeInstall(config *dto.HookConfig) error {
 	fileWriter := filesystem.NewFileWriter()
 	dirManager := filesystem.NewDirectoryManager()
-	cmd := command.NewDeliverHooksCommand(fileWriter, dirManager, root.TemplatesFS)
+	deliverer := command.NewDeliverHooksCommand(fileWriter, dirManager, root.TemplatesFS)
+	installer := command.NewInstallHooksCommand(deliverer, fileWriter, dirManager)
+
+	mode := "install"
+	if config.DryRun {
+		mode = "dry-run"
+	}
 
 	fmt.Println()
-	fmt.Printf("Generating Claude Code hook bundle (static)\n")
+	fmt.Printf("Activating Claude Code hooks (%s)\n", mode)
+	fmt.Printf("  Preset: %s\n", config.Preset)
+	fmt.Printf("  Locale: %s\n", config.Locale)
+	fmt.Printf("  Scope: %s\n", config.Install)
+	fmt.Println()
+
+	result, err := installer.Execute(config)
+	if err != nil {
+		return fmt.Errorf("hook activation failed: %w", err)
+	}
+
+	if result.DryRun {
+		// For dry-run we already showed where it would go. Print the merged
+		// settings.json preview by re-running the merge against the loaded
+		// state — quickest path is to call PreviewMergedHooks again with a
+		// fresh load.
+		printDryRunPreview(config, result)
+		return nil
+	}
+
+	fmt.Println("Hooks activated successfully")
+	fmt.Printf("  Settings: %s\n", result.SettingsPath)
+	if result.BackupPath != "" {
+		fmt.Printf("  Backup:   %s\n", result.BackupPath)
+	}
+	fmt.Printf("  Hooks dir: %s\n", result.HooksDir)
+	if total := sumMap(result.HandlersAdded); total > 0 {
+		fmt.Printf("  Added:     %d handler(s) across %d event(s)\n", total, len(result.HandlersAdded))
+	}
+	if total := sumMap(result.HandlersSkipped); total > 0 {
+		fmt.Printf("  Skipped:   %d handler(s) already present\n", total)
+	}
+	if len(result.ScriptsCopied) > 0 {
+		fmt.Printf("  Scripts copied: %d\n", len(result.ScriptsCopied))
+		for _, s := range result.ScriptsCopied {
+			fmt.Printf("    + %s\n", s)
+		}
+	}
+	if len(result.ScriptsSkipped) > 0 {
+		fmt.Printf("  Scripts unchanged: %d (already on disk with identical content)\n", len(result.ScriptsSkipped))
+	}
+	if len(result.ScriptsConflict) > 0 {
+		fmt.Printf("  Scripts in conflict: %d (existing differs — not overwritten)\n", len(result.ScriptsConflict))
+		for _, s := range result.ScriptsConflict {
+			fmt.Printf("    ! %s\n", s)
+		}
+	}
+	fmt.Println()
+	fmt.Println("Verify in Claude Code: run /hooks")
+	return nil
+}
+
+// executePreview writes a standalone bundle — the v1.19.0 escape hatch.
+func executePreview(config *dto.HookConfig) error {
+	fileWriter := filesystem.NewFileWriter()
+	dirManager := filesystem.NewDirectoryManager()
+	deliverer := command.NewDeliverHooksCommand(fileWriter, dirManager, root.TemplatesFS)
+
+	fmt.Println()
+	fmt.Printf("Generating Claude Code hook bundle (preview mode)\n")
 	fmt.Printf("  Preset: %s\n", config.Preset)
 	fmt.Printf("  Locale: %s\n", config.Locale)
 	fmt.Printf("  Output: %s\n", config.OutputPath)
-	if config.Install != "" {
-		fmt.Printf("  Install scope: %s\n", config.Install)
-	}
 	fmt.Println()
 
-	result, err := cmd.Execute(config)
+	result, err := deliverer.Execute(config)
 	if err != nil {
 		return fmt.Errorf("hook bundle generation failed: %w", err)
 	}
@@ -208,47 +278,46 @@ func executeHooks(config *dto.HookConfig) error {
 		fmt.Printf("  - %s\n", f)
 	}
 	fmt.Println()
-	fmt.Println("To activate:")
-	fmt.Printf("  1. Copy scripts:    cp -r %s/hooks/ <YOUR_CLAUDE_DIR>/hooks/\n", result.OutputPath)
-	fmt.Printf("  2. Merge hook block from %s/hooks.json into <YOUR_CLAUDE_DIR>/settings.json\n", result.OutputPath)
-	fmt.Println()
-	fmt.Println("Where <YOUR_CLAUDE_DIR> is:")
-	fmt.Println("  ~/.claude    (global, applies to all projects)")
-	fmt.Println("  .claude      (project-local, can be committed to the repo)")
-	fmt.Println()
-	fmt.Println("Verify activation: run /hooks inside Claude Code.")
-
+	fmt.Println("This is preview mode: settings.json was NOT modified.")
+	fmt.Println("To activate, re-run with --install project|global, or merge manually.")
 	return nil
 }
 
-// --- Path resolution helpers ---
+// printDryRunPreview shows what settings.json would look like after the
+// merge, without writing anything. The InstallHooksCommand already
+// computed the merge, but the preview bytes were emitted internally —
+// for the CLI we re-load the settings and run a second preview.
+func printDryRunPreview(config *dto.HookConfig, result *command.InstallResult) {
+	fileWriter := filesystem.NewFileWriter()
+	dirManager := filesystem.NewDirectoryManager()
+	deliverer := command.NewDeliverHooksCommand(fileWriter, dirManager, root.TemplatesFS)
 
-// defaultHooksPath returns the default project-local output path.
-//
-// We deliberately use ./codify-hooks/ instead of .claude/hooks/ so the user
-// immediately sees the directory and understands these files require manual
-// merging into settings.json. Codify never auto-activates hooks.
-func defaultHooksPath() string {
-	return filepath.Join(".", "codify-hooks")
-}
-
-// globalHooksPath returns the default global (per-user) output path.
-func globalHooksPath() string {
-	home, err := os.UserHomeDir()
+	bundle, err := deliverer.Build(config.Locale, config.Preset)
 	if err != nil {
-		home = "~"
+		fmt.Printf("dry-run preview failed: %v\n", err)
+		return
 	}
-	return filepath.Join(home, "codify-hooks")
+	s, err := settings.Load(result.SettingsPath)
+	if err != nil {
+		fmt.Printf("dry-run preview failed: %v\n", err)
+		return
+	}
+	out, err := s.PreviewMergedHooks(bundle.HooksDoc)
+	if err != nil {
+		fmt.Printf("dry-run preview failed: %v\n", err)
+		return
+	}
+
+	fmt.Println("Proposed settings.json merge:")
+	fmt.Println()
+	fmt.Println(string(out))
+	fmt.Println("(dry-run: nothing was written)")
 }
 
-// resolveHookInstallPath maps an install scope to its concrete output path.
-func resolveHookInstallPath(install string) string {
-	switch install {
-	case dto.InstallScopeGlobal:
-		return globalHooksPath()
-	case dto.InstallScopeProject:
-		return defaultHooksPath()
-	default:
-		return defaultHooksPath()
+func sumMap(m map[string]int) int {
+	t := 0
+	for _, v := range m {
+		t += v
 	}
+	return t
 }
