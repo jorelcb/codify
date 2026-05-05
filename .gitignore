@@ -22,3 +22,5 @@ coverage.*
 
 # Private docs (not versionable)
 ROADMAP_PRIVATE.md
+research/
+docs/adr/
