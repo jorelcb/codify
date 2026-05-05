@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.22.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.23.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -263,6 +263,71 @@ flags > .codify/config.yml > ~/.codify/config.yml > built-in defaults
 ```
 
 Setting `--preset hexagonal` on the command line wins regardless of what's in either config file. Project-level config wins over user-level. Built-ins fill the gaps.
+
+---
+
+## 🔍 Lifecycle: Drift Detection
+
+Codify v1.23 introduces the first **lifecycle command**: `codify check`. The premise is simple — once Codify generates artifacts, the world keeps moving. Dependencies change, README evolves, someone hand-edits `AGENTS.md`. Without active checking, the artifacts drift silently out of sync with the project.
+
+`check` and its companion `reset-state` solve this without an LLM: SHA256 hashes of artifacts and input signals, captured at generation time and compared at check time. **Zero LLM cost. Zero network. Fully deterministic.**
+
+### `codify check` — detect drift in CI or locally
+
+```bash
+codify check                    # human-readable report; exit 1 on significant drift
+codify check --strict           # any drift (including minor) triggers exit 1
+codify check --json             # machine-readable JSON for CI pipelines
+codify check -o ./output/my-project   # if artifacts live elsewhere than cwd
+```
+
+**What it detects:**
+
+| Drift kind | Severity | What it means |
+|---|---|---|
+| `artifact_modified` | significant | A generated file (e.g. AGENTS.md) was edited after generation |
+| `artifact_missing` | significant | A file present in the snapshot is gone from disk |
+| `signal_changed` | significant | An input signal (`go.mod`, `Makefile`, `README.md`, etc.) changed — your context may be stale |
+| `signal_removed` | significant | A tracked signal is no longer on disk |
+| `artifact_new` | minor | A new artifact appeared since the snapshot |
+| `signal_added` | minor | A new signal appeared (informational) |
+
+**Exit codes:**
+
+- `0` — no significant drift (or no drift at all)
+- `1` — significant drift (default) or any drift (with `--strict`)
+- `2` — no `.codify/state.json` exists (project not bootstrapped)
+
+**CI usage example (GitHub Actions):**
+
+```yaml
+- name: Verify Codify artifacts are in sync
+  run: codify check --strict
+```
+
+A non-zero exit fails the job, so PRs that change dependencies without regenerating context are caught automatically.
+
+### `codify reset-state` — accept current FS as the new baseline
+
+When you intentionally edit `AGENTS.md` (e.g. you tightened a constraint by hand) and want Codify to consider that the new truth:
+
+```bash
+codify reset-state              # recompute state.json from current FS, atomic write
+codify reset-state --dry-run    # preview only, no changes
+```
+
+The command is read-only over your artifacts — it never modifies AGENTS.md or context files. It only updates `state.json` (with backup at `.bak`). Subsequent `check` runs compare against the new baseline.
+
+### How drift detection works under the hood
+
+Every successful `codify generate` / `codify analyze` / `codify init` writes `.codify/state.json` containing:
+
+- Project metadata (name, preset, language, locale, target)
+- Git context (commit, branch, remote, dirty status)
+- Artifacts: SHA256 + size + generation timestamp for each generated file
+- Input signals: SHA256 of well-known files (`go.mod`, `Makefile`, `README.md`, etc.)
+
+`codify check` recomputes this snapshot from the current FS and diffs the two. The whole operation is local, fast (<100ms typical), and fully reproducible.
 
 ---
 

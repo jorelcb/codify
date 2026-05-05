@@ -356,7 +356,27 @@ func runGenerateWithMode(projectName, description, language, projectType, archit
 		fmt.Printf("  - %s\n", f)
 	}
 
+	// 10. Persist .codify/state.json so `codify check` can detect drift later.
+	//     Mode "analyze" → kind="existing"; everything else → kind="new".
+	kind := "new"
+	if mode == "analyze" {
+		kind = "existing"
+	}
+	writeProjectSnapshot(commandFromMode(mode), projectName, preset, language, locale, "", kind, result.OutputPath)
+
 	return nil
+}
+
+// commandFromMode mapea el `mode` interno de generate a un valor amigable
+// para `state.generated_by`. "analyze" → "analyze", todo lo demás →
+// "generate". Si mode está vacío y conocemos otro origen (e.g. init),
+// el caller puede sobrescribirlo después invocando writeProjectSnapshot
+// directamente con el generatedBy correcto.
+func commandFromMode(mode string) string {
+	if mode == "analyze" {
+		return "analyze"
+	}
+	return "generate"
 }
 
 func truncateStr(s string, maxLen int) string {

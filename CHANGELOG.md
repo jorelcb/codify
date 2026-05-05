@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0] - 2026-05-05 - Lifecycle: drift detection (`check` + `reset-state`)
+
+### Added
+- **`codify check`** — drift detection. Compares `.codify/state.json` (snapshot) against the current FS state and reports any divergence: `artifact_modified`, `artifact_missing`, `artifact_new`, `signal_changed`, `signal_added`, `signal_removed`. Fully deterministic — no LLM calls, no network, zero cost. Suitable for CI:
+  - exit `0` when no significant drift
+  - exit `1` when significant drift detected (default) or any drift (with `--strict`)
+  - exit `2` when no `.codify/state.json` exists (project not bootstrapped)
+  - flags: `--strict`, `--output <dir>`, `--json`
+- **`codify reset-state`** — recompute `.codify/state.json` from the current FS without touching artifacts. Use case: user intentionally edited `AGENTS.md` and wants to accept the edits as the new baseline (avoids re-running an LLM). Read-only over generated files; only updates `state.json`. Atomic write with `.bak` backup. Flag `--dry-run` shows what would be recomputed.
+- New `internal/infrastructure/snapshot` package: `Build()` constructs a complete `State` from the FS (artifacts + input signals + git context). Pure / deterministic. Hashes via SHA256.
+- New `internal/domain/drift` package: types for drift entries (`Kind`, `Severity`, `Entry`, `Report`) and `SeverityOf` classification.
+- New `internal/infrastructure/drift` package: `Detector.Detect()` compares snapshot vs current FS and produces a report.
+- New BDD package `tests/bdd/drift_detection` with 8 scenarios covering no drift, modified artifact, missing artifact, new artifact, signal changed, signal removed, multi-drift, and severity classification.
+- Snapshot writing is now wired into `generate` and `analyze` automatically — every successful generation persists `.codify/state.json`. Lifecycle commands operate against this without further setup.
+- `init` was simplified: removed manual state.json creation and now relies on `generate`/`analyze` to write the initial snapshot, then re-writes once with the project target metadata that those commands don't have access to.
+
+### Changed
+- `init.go` no longer constructs `state.json` by hand; uses the shared `writeProjectSnapshot` helper that calls `snapshot.Build()`.
+- MCP server version bumped to 1.23.0.
+
+### Decisions
+- **Drift detection is deterministic.** No LLM is involved — comparison is pure SHA256 + filesystem stat. This is the line between v1.23 (free, local-only) and v1.24 (`codify update` + `codify audit` use LLM optionally).
+- **Severity classification is fixed**, not configurable in v1.23: `artifact_modified`, `artifact_missing`, `signal_changed`, `signal_removed` are *significant*; `artifact_new`, `signal_added` are *minor*. `--strict` flips minor into failure mode for users who want zero tolerance.
+- **state.json is single source of truth.** The same snapshot writer is used by generate, analyze, init, and reset-state — no parallel state-tracking mechanisms.
+- **Idempotent re-writes.** Calling `writeProjectSnapshot` multiple times is safe; each call overwrites `state.json` atomically with `.bak` backup.
+
 ## [1.22.0] - 2026-05-05 - Bootstrap UX (`config` + `init`)
 
 ### Added

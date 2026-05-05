@@ -21,7 +21,7 @@ import (
 	infratemplate "github.com/jorelcb/codify/internal/infrastructure/template"
 )
 
-const serverVersion = "1.22.0"
+const serverVersion = "1.23.0"
 
 // validContextPresets enumerates accepted preset names for context generation
 // (generate_context + analyze_project tools). "default" is a deprecated alias

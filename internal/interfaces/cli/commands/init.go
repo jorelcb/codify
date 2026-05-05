@@ -4,14 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/spf13/cobra"
 
 	domain "github.com/jorelcb/codify/internal/domain/config"
-	statedomain "github.com/jorelcb/codify/internal/domain/state"
 	infraconfig "github.com/jorelcb/codify/internal/infrastructure/config"
-	infrastate "github.com/jorelcb/codify/internal/infrastructure/state"
 )
 
 // codifyVersion se inyecta desde cli.Version en runtime; aquí se usa solo
@@ -56,7 +53,6 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	repo := infraconfig.NewRepository()
-	stateRepo := infrastate.NewRepository()
 
 	// Load effective config (builtin + user) para usarlo como defaults
 	effective, err := repo.LoadEffective()
@@ -212,27 +208,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Persistir state.json (sin hashes ni signals — eso lo agrega v1.23)
-	st := statedomain.New()
-	st.CodifyVersion = codifyVersion
-	st.GeneratedAt = time.Now().UTC().Format(time.RFC3339)
-	st.GeneratedBy = "init"
-	st.Project = statedomain.ProjectInfo{
-		Name:     projectName,
-		Preset:   preset,
-		Language: language,
-		Locale:   locale,
-		Target:   effective.Target,
-		Kind:     kind,
-	}
-	statePath, err := infraconfig.ProjectStatePath()
-	if err != nil {
-		return err
-	}
-	if err := stateRepo.Save(statePath, st); err != nil {
-		return fmt.Errorf("save state.json: %w", err)
-	}
-	fmt.Printf("\n✓ Wrote %s\n", statePath)
+	// Re-escribir state.json con el target correcto (que init conoce pero
+	// generate/analyze no — usan target="" por default). Esto sobreescribe
+	// el snapshot que ya escribió runGenerate/runAnalyze. Idempotente.
+	writeProjectSnapshot("init", projectName, preset, language, locale, effective.Target, kind, outputDir)
 
 	// Recomendaciones de comandos siguientes (composición en lugar de mega-comando)
 	fmt.Println()

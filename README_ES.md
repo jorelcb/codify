@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.22.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.23.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -263,6 +263,71 @@ flags > .codify/config.yml > ~/.codify/config.yml > built-in defaults
 ```
 
 Setear `--preset hexagonal` en linea de comandos gana sin importar que digan los archivos config. Project-level gana sobre user-level. Built-ins llenan los gaps.
+
+---
+
+## 🔍 Lifecycle: Drift Detection
+
+Codify v1.23 introduce el primer **lifecycle command**: `codify check`. La premisa es simple — una vez que Codify genera artefactos, el mundo sigue moviendose. Las dependencias cambian, el README evoluciona, alguien edita `AGENTS.md` a mano. Sin chequeo activo, los artefactos se desfasan silenciosamente del proyecto.
+
+`check` y su comando complementario `reset-state` resuelven esto sin LLM: hashes SHA256 de artefactos y senales de input, capturados al momento de generacion y comparados al momento de check. **Cero costo LLM. Cero red. Totalmente deterministico.**
+
+### `codify check` — detectar drift en CI o localmente
+
+```bash
+codify check                    # reporte legible; exit 1 si hay drift significativo
+codify check --strict           # cualquier drift (incluso minor) dispara exit 1
+codify check --json             # JSON machine-readable para pipelines CI
+codify check -o ./output/my-project   # si los artefactos viven fuera del cwd
+```
+
+**Qué detecta:**
+
+| Tipo de drift | Severidad | Que significa |
+|---|---|---|
+| `artifact_modified` | significant | Un archivo generado (e.g. AGENTS.md) fue editado despues de generacion |
+| `artifact_missing` | significant | Un archivo presente en el snapshot ya no esta en disco |
+| `signal_changed` | significant | Un input signal (`go.mod`, `Makefile`, `README.md`, etc.) cambio — tu contexto puede haber quedado desfasado |
+| `signal_removed` | significant | Un signal trackeado ya no esta en disco |
+| `artifact_new` | minor | Un nuevo artefacto aparecio desde el snapshot |
+| `signal_added` | minor | Un nuevo signal aparecio (informativo) |
+
+**Exit codes:**
+
+- `0` — sin drift significativo (o sin drift en general)
+- `1` — drift significativo (default) o cualquier drift (con `--strict`)
+- `2` — no existe `.codify/state.json` (proyecto sin bootstrap)
+
+**Ejemplo de uso en CI (GitHub Actions):**
+
+```yaml
+- name: Verify Codify artifacts are in sync
+  run: codify check --strict
+```
+
+Un exit no-cero falla el job, asi PRs que cambian dependencias sin regenerar contexto se detectan automaticamente.
+
+### `codify reset-state` — aceptar el FS actual como nuevo baseline
+
+Cuando editaste intencionalmente `AGENTS.md` (e.g. ajustaste una restriccion a mano) y querés que Codify considere eso como la nueva verdad:
+
+```bash
+codify reset-state              # recomputa state.json desde el FS actual, escritura atomica
+codify reset-state --dry-run    # solo preview, sin cambios
+```
+
+El comando es read-only sobre tus artefactos — nunca modifica AGENTS.md ni archivos de context. Solo actualiza `state.json` (con backup en `.bak`). Los `check` siguientes comparan contra el nuevo baseline.
+
+### Como funciona drift detection por debajo
+
+Cada `codify generate` / `codify analyze` / `codify init` exitoso escribe `.codify/state.json` que contiene:
+
+- Metadata del proyecto (nombre, preset, lenguaje, locale, target)
+- Contexto git (commit, branch, remote, dirty status)
+- Artefactos: SHA256 + tamano + timestamp de generacion para cada archivo generado
+- Input signals: SHA256 de archivos bien-conocidos (`go.mod`, `Makefile`, `README.md`, etc.)
+
+`codify check` recomputa este snapshot desde el FS actual y diffea los dos. La operacion es local, rapida (<100ms tipico), y totalmente reproducible.
 
 ---
 
