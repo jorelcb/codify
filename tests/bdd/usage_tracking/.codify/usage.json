@@ -1,0 +1,156 @@
+{
+  "schema_version": "1.0",
+  "started_at": "2026-05-05T21:42:17Z",
+  "entries": [
+    {
+      "timestamp": "2026-05-05T21:42:17Z",
+      "command": "test",
+      "provider": "test-provider",
+      "model": "claude-sonnet-4-6",
+      "input_tokens": 1000,
+      "output_tokens": 500,
+      "cost_usd_cents": 0,
+      "project": "usage_tracking",
+      "success": false,
+      "pricing_table_version": "2026-05"
+    },
+    {
+      "timestamp": "2026-05-05T21:42:17Z",
+      "command": "test",
+      "provider": "test-provider",
+      "model": "claude-sonnet-4-6",
+      "input_tokens": 1000,
+      "output_tokens": 500,
+      "cost_usd_cents": 0,
+      "project": "usage_tracking",
+      "success": false,
+      "pricing_table_version": "2026-05"
+    },
+    {
+      "timestamp": "2026-05-05T21:42:17Z",
+      "command": "test",
+      "provider": "test-provider",
+      "model": "claude-sonnet-4-6",
+      "input_tokens": 2000,
+      "output_tokens": 1000,
+      "cost_usd_cents": 1,
+      "project": "usage_tracking",
+      "success": false,
+      "pricing_table_version": "2026-05"
+    },
+    {
+      "timestamp": "2026-05-05T21:42:47Z",
+      "command": "test",
+      "provider": "test-provider",
+      "model": "claude-sonnet-4-6",
+      "input_tokens": 100000,
+      "output_tokens": 50000,
+      "cost_usd_cents": 105,
+      "project": "usage_tracking",
+      "success": false,
+      "pricing_table_version": "2026-05"
+    },
+    {
+      "timestamp": "2026-05-05T21:42:47Z",
+      "command": "test",
+      "provider": "test-provider",
+      "model": "claude-sonnet-4-6",
+      "input_tokens": 200000,
+      "output_tokens": 100000,
+      "cost_usd_cents": 210,
+      "project": "usage_tracking",
+      "success": false,
+      "pricing_table_version": "2026-05"
+    },
+    {
+      "timestamp": "2026-05-05T21:42:47Z",
+      "command": "test",
+      "provider": "test-provider",
+      "model": "claude-sonnet-4-6",
+      "input_tokens": 100000,
+      "output_tokens": 50000,
+      "cost_usd_cents": 105,
+      "project": "usage_tracking",
+      "success": false,
+      "pricing_table_version": "2026-05"
+    },
+    {
+      "timestamp": "2026-05-05T21:43:03Z",
+      "command": "test",
+      "provider": "test-provider",
+      "model": "claude-sonnet-4-6",
+      "input_tokens": 100000,
+      "output_tokens": 50000,
+      "cost_usd_cents": 105,
+      "project": "usage_tracking",
+      "success": false,
+      "pricing_table_version": "2026-05"
+    },
+    {
+      "timestamp": "2026-05-05T21:43:03Z",
+      "command": "test",
+      "provider": "test-provider",
+      "model": "claude-sonnet-4-6",
+      "input_tokens": 200000,
+      "output_tokens": 100000,
+      "cost_usd_cents": 210,
+      "project": "usage_tracking",
+      "success": false,
+      "pricing_table_version": "2026-05"
+    },
+    {
+      "timestamp": "2026-05-05T21:43:03Z",
+      "command": "test",
+      "provider": "test-provider",
+      "model": "claude-sonnet-4-6",
+      "input_tokens": 100000,
+      "output_tokens": 50000,
+      "cost_usd_cents": 105,
+      "project": "usage_tracking",
+      "success": false,
+      "pricing_table_version": "2026-05"
+    },
+    {
+      "timestamp": "2026-05-05T21:47:40Z",
+      "command": "test",
+      "provider": "test-provider",
+      "model": "claude-sonnet-4-6",
+      "input_tokens": 100000,
+      "output_tokens": 50000,
+      "cost_usd_cents": 105,
+      "project": "usage_tracking",
+      "success": false,
+      "pricing_table_version": "2026-05"
+    },
+    {
+      "timestamp": "2026-05-05T21:47:40Z",
+      "command": "test",
+      "provider": "test-provider",
+      "model": "claude-sonnet-4-6",
+      "input_tokens": 100000,
+      "output_tokens": 50000,
+      "cost_usd_cents": 105,
+      "project": "usage_tracking",
+      "success": false,
+      "pricing_table_version": "2026-05"
+    },
+    {
+      "timestamp": "2026-05-05T21:47:40Z",
+      "command": "test",
+      "provider": "test-provider",
+      "model": "claude-sonnet-4-6",
+      "input_tokens": 200000,
+      "output_tokens": 100000,
+      "cost_usd_cents": 210,
+      "project": "usage_tracking",
+      "success": false,
+      "pricing_table_version": "2026-05"
+    }
+  ],
+  "totals": {
+    "input_tokens": 1204000,
+    "output_tokens": 602000,
+    "cost_usd_cents": 1261,
+    "calls": 12
+  }
+}

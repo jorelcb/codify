@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"google.golang.org/genai"
 
@@ -52,8 +53,10 @@ func NewGeminiProvider(ctx context.Context, apiKey string, model string, progres
 
 // GenerateContext generates all context files by making one API call per file.
 func (p *GeminiProvider) GenerateContext(ctx context.Context, req service.GenerationRequest) (*service.GenerationResponse, error) {
+	start := time.Now()
 	var files []service.GeneratedFile
 	var totalIn, totalOut int
+	success := true
 
 	for i, guide := range req.TemplateGuides {
 		outputName := FileOutputName(guide.Name)
@@ -63,12 +66,14 @@ func (p *GeminiProvider) GenerateContext(ctx context.Context, req service.Genera
 		}
 
 		content, tokensIn, tokensOut, err := p.generateSingleFile(ctx, req, guide)
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate %s: %w", outputName, err)
-		}
-
 		totalIn += tokensIn
 		totalOut += tokensOut
+
+		if err != nil {
+			success = false
+			recordUsage("gemini", p.model, commandFromMode(req.Mode), totalIn, totalOut, time.Since(start), false)
+			return nil, fmt.Errorf("failed to generate %s: %w", outputName, err)
+		}
 
 		if p.progressOut != nil {
 			fmt.Fprintf(p.progressOut, " done (%d tokens)\n", tokensOut)
@@ -76,6 +81,7 @@ func (p *GeminiProvider) GenerateContext(ctx context.Context, req service.Genera
 
 		validation := ValidateOutput(content, req.Mode, outputName)
 		if validation.Fatal {
+			recordUsage("gemini", p.model, commandFromMode(req.Mode), totalIn, totalOut, time.Since(start), false)
 			return nil, fmt.Errorf("output for %s was rejected by validator: %v", outputName, validation.Warnings)
 		}
 		emitValidationFeedback(p.progressOut, outputName, validation)
@@ -85,6 +91,8 @@ func (p *GeminiProvider) GenerateContext(ctx context.Context, req service.Genera
 			Content: content,
 		})
 	}
+
+	recordUsage("gemini", p.model, commandFromMode(req.Mode), totalIn, totalOut, time.Since(start), success)
 
 	return &service.GenerationResponse{
 		Files:     files,

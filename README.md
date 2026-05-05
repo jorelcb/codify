@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.23.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.24.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -328,6 +328,139 @@ Every successful `codify generate` / `codify analyze` / `codify init` writes `.c
 - Input signals: SHA256 of well-known files (`go.mod`, `Makefile`, `README.md`, etc.)
 
 `codify check` recomputes this snapshot from the current FS and diffs the two. The whole operation is local, fast (<100ms typical), and fully reproducible.
+
+---
+
+## 🔄 Lifecycle: Update, Audit & Usage Tracking
+
+v1.24 builds on the drift detection foundation with three companion commands. Together they close the gap between "Codify generated artifacts once" and "Codify maintains them as the project evolves".
+
+### `codify update` — selective regeneration
+
+Once `codify check` flags drift, `codify update` does the actual refresh:
+
+```bash
+codify update                    # detect drift, regenerate via analyze if needed
+codify update --dry-run          # show what would change without LLM cost
+codify update --force            # regenerate even on minor drift
+codify update --accept-current   # keep current FS as new baseline (alias for reset-state)
+codify update --no-tracking      # skip usage recording for this invocation
+```
+
+**Behavior matrix:**
+
+| Drift state | Without `--force` | With `--force` |
+|---|---|---|
+| No drift | no-op, exit 0, no LLM call | no-op, exit 0 |
+| Only minor drift (`artifact_new`, `signal_added`) | report and exit 0 | regenerate |
+| Significant drift in signals (e.g. `go.mod` changed) | regenerate via analyze | regenerate via analyze |
+| Only hand-edits to artifacts (no signal changes) | refuses with exit 1; suggests `--accept-current` | regenerate (loses edits) |
+
+The "hand-edit refusal" exists deliberately — if you tightened a constraint in AGENTS.md by hand, regenerating would silently lose it.
+
+### `codify audit` — review commits against conventions
+
+`audit` evaluates recent git commits against project conventions:
+
+```bash
+codify audit                     # last 20 commits, rules-only (zero LLM cost)
+codify audit --since main~50     # all commits since main~50
+codify audit --strict            # any finding (incl. minor) fails the run
+codify audit --json              # machine-readable for CI pipelines
+codify audit --with-llm          # heuristic mode (v1.24.1+; falls back to rules-only in v1.24.0)
+```
+
+**Rules-only checks (deterministic, zero cost):**
+
+| Finding | Severity | Description |
+|---|---|---|
+| `commit_invalid_type` | significant | Header doesn't match `type[scope][!]: subject` or uses an unknown type |
+| `commit_trivial` | significant | Message is a placeholder (`wip`, `fix`, `update`, etc.) |
+| `commit_header_too_long` | minor | Header exceeds 72 characters |
+| `protected_branch_direct` | significant | Direct commit on `main` / `master` / `develop` / `production` (no merge commit detected) |
+
+Recognized commit types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+
+### `codify usage` — LLM cost transparency
+
+Every successful and failed LLM call (from `generate`, `analyze`, `update`, `spec`, `skills`, `workflows`, etc.) is automatically recorded with token counts and cost. Read the log with:
+
+```bash
+codify usage                       # current project's spending
+codify usage --global              # aggregate across all your projects
+codify usage --since 7d            # last 7 days only
+codify usage --by command          # break down by command name
+codify usage --by model            # break down by model name
+codify usage --json                # full JSON for scripting
+codify usage --reset               # archive current log and start fresh
+```
+
+**Sample output:**
+
+```
+Codify Usage — project scope (.codify/usage.json)
+════════════════════════════════════════════════════════════
+Total cost:     $0.42 (42 cents)
+Total calls:    17
+Total input:    142.3K tokens
+Total output:   31.8K tokens
+
+By command:
+  generate                  $0.12   2 calls
+  audit                     $0.18   8 calls
+  update                    $0.10   6 calls
+  spec                      $0.02   1 call
+```
+
+**Pricing transparency:** the cost is computed using a public list-price table embedded at `internal/domain/usage/pricing.go` (version `2026-05`). It reflects what Anthropic and Google publish on their pricing pages. If you have negotiated discounts, the figure shown is an upper bound — useful for comparison, not for invoicing.
+
+**Disabling tracking — three options, any one suffices:**
+
+```bash
+# 1. Per-invocation: skip just for this run
+codify update --no-tracking
+
+# 2. Per-shell: env variable
+export CODIFY_NO_USAGE_TRACKING=1
+
+# 3. Permanently: marker file
+touch ~/.codify/.no-usage-tracking
+```
+
+When tracking is disabled, no entries are written. The `codify usage` command will report zero (because nothing was recorded), but works fine.
+
+### CI integration — GitHub Actions pattern
+
+A drop-in workflow that runs `codify check` + `codify audit` on every pull request:
+
+```yaml
+# .github/workflows/codify.yml
+name: Codify drift + audit
+on: [pull_request]
+
+jobs:
+  codify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 50      # codify audit needs commit history
+
+      - name: Install Codify
+        run: |
+          go install github.com/jorelcb/codify/cmd/codify@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Verify generated artifacts are in sync
+        run: codify check --strict
+
+      - name: Audit recent commits
+        run: codify audit --since origin/main --strict
+```
+
+Both commands are deterministic and free — no API key needed for `check`, no API key needed for `audit --rules-only` (the v1.24.0 default). `update` and `audit --with-llm` (v1.24.1) require `ANTHROPIC_API_KEY` or `GEMINI_API_KEY`.
+
+A pre-built reusable action (`codify/check-action@v1`) is on the v1.24.x roadmap.
 
 ---
 

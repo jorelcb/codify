@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -48,8 +49,10 @@ func NewAnthropicProvider(apiKey string, model string, progressOut io.Writer) *A
 // GenerateContext generates all context files by making one API call per file.
 // This avoids JSON truncation issues and provides per-file progress.
 func (p *AnthropicProvider) GenerateContext(ctx context.Context, req service.GenerationRequest) (*service.GenerationResponse, error) {
+	start := time.Now()
 	var files []service.GeneratedFile
 	var totalIn, totalOut int
+	success := true
 
 	for i, guide := range req.TemplateGuides {
 		outputName := FileOutputName(guide.Name)
@@ -59,12 +62,14 @@ func (p *AnthropicProvider) GenerateContext(ctx context.Context, req service.Gen
 		}
 
 		content, tokensIn, tokensOut, err := p.generateSingleFile(ctx, req, guide)
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate %s: %w", outputName, err)
-		}
-
 		totalIn += tokensIn
 		totalOut += tokensOut
+
+		if err != nil {
+			success = false
+			recordUsage("anthropic", p.model, commandFromMode(req.Mode), totalIn, totalOut, time.Since(start), false)
+			return nil, fmt.Errorf("failed to generate %s: %w", outputName, err)
+		}
 
 		if p.progressOut != nil {
 			fmt.Fprintf(p.progressOut, " done (%d tokens)\n", tokensOut)
@@ -72,6 +77,7 @@ func (p *AnthropicProvider) GenerateContext(ctx context.Context, req service.Gen
 
 		validation := ValidateOutput(content, req.Mode, outputName)
 		if validation.Fatal {
+			recordUsage("anthropic", p.model, commandFromMode(req.Mode), totalIn, totalOut, time.Since(start), false)
 			return nil, fmt.Errorf("output for %s was rejected by validator: %v", outputName, validation.Warnings)
 		}
 		emitValidationFeedback(p.progressOut, outputName, validation)
@@ -81,6 +87,8 @@ func (p *AnthropicProvider) GenerateContext(ctx context.Context, req service.Gen
 			Content: content,
 		})
 	}
+
+	recordUsage("anthropic", p.model, commandFromMode(req.Mode), totalIn, totalOut, time.Since(start), success)
 
 	return &service.GenerationResponse{
 		Files:     files,

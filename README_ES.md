@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.23.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.24.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -328,6 +328,84 @@ Cada `codify generate` / `codify analyze` / `codify init` exitoso escribe `.codi
 - Input signals: SHA256 de archivos bien-conocidos (`go.mod`, `Makefile`, `README.md`, etc.)
 
 `codify check` recomputa este snapshot desde el FS actual y diffea los dos. La operacion es local, rapida (<100ms tipico), y totalmente reproducible.
+
+---
+
+## 🔄 Lifecycle: Update, Audit y Tracking de Uso
+
+v1.24 construye sobre la fundacion de drift detection con tres comandos complementarios. Juntos cierran el gap entre "Codify genero artefactos una vez" y "Codify los mantiene a medida que el proyecto evoluciona".
+
+### `codify update` — regeneracion selectiva
+
+```bash
+codify update                    # detecta drift, regenera via analyze si hace falta
+codify update --dry-run          # muestra que cambiaria sin costo LLM
+codify update --force            # regenera incluso con drift menor
+codify update --accept-current   # mantiene FS actual como nuevo baseline (alias de reset-state)
+```
+
+Si solo hay hand-edits a artefactos (sin signals cambiando), `update` se rehusa con exit 1 y sugiere `--accept-current` o `reset-state` — diseñado para no perder ediciones intencionales del usuario.
+
+### `codify audit` — revisar commits contra convenciones
+
+```bash
+codify audit                     # ultimos 20 commits, rules-only (cero costo LLM)
+codify audit --since main~50     # todos los commits desde main~50
+codify audit --strict            # cualquier finding (incl. minor) falla el run
+codify audit --json              # machine-readable para CI
+codify audit --with-llm          # heuristico (v1.24.1+; cae a rules-only en v1.24.0)
+```
+
+Findings rules-only: `commit_invalid_type`, `commit_trivial`, `commit_header_too_long`, `protected_branch_direct`. Types reconocidos: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, etc.
+
+### `codify usage` — transparencia de costos LLM
+
+Cada call LLM se registra automaticamente en `.codify/usage.json` (proyecto) y `~/.codify/usage.json` (global).
+
+```bash
+codify usage                       # gasto del proyecto actual
+codify usage --global              # agregado de todos los proyectos
+codify usage --since 7d            # ultimos 7 dias
+codify usage --by command          # breakdown por comando
+codify usage --json                # JSON para scripting
+codify usage --reset               # archiva log y empieza fresh
+```
+
+Costo computado con tabla de precios publica embebida (version `2026-05`). Refleja list prices de Anthropic y Google — **no** descuentos negociados.
+
+**Tres formas de opt-out:**
+
+```bash
+codify update --no-tracking                    # por invocacion
+export CODIFY_NO_USAGE_TRACKING=1              # por shell
+touch ~/.codify/.no-usage-tracking             # permanente
+```
+
+### CI con GitHub Actions
+
+```yaml
+# .github/workflows/codify.yml
+name: Codify drift + audit
+on: [pull_request]
+
+jobs:
+  codify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+      - name: Install Codify
+        run: |
+          go install github.com/jorelcb/codify/cmd/codify@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      - name: Verify generated artifacts in sync
+        run: codify check --strict
+      - name: Audit recent commits
+        run: codify audit --since origin/main --strict
+```
+
+`check` y `audit --rules-only` no requieren API key. `update` y `audit --with-llm` si.
 
 ---
 

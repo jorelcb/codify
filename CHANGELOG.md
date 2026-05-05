@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.0] - 2026-05-05 - Lifecycle: update + audit + usage tracking
+
+### Added
+- **`codify update`** — selective regeneration when input signals drift. Internally runs `check`; if drift is detected, delegates to `analyze` to refresh artifacts (records LLM usage). Detects the "user hand-edited AGENTS.md" case and refuses to regenerate without `--force` (preserves intent). Flags: `--dry-run`, `--force`, `--accept-current` (alias for `reset-state`), `--no-tracking`. Exit codes: 0 no-op or success, 1 hand-edits without `--force`, 2 missing snapshot.
+- **`codify audit`** — review recent commits against project conventions.
+  - **Default mode (rules-only):** deterministic, zero-cost, no LLM. Validates Conventional Commits format (type[scope][!]: subject), rejects unknown types, flags trivial messages (`wip`, `fix`, `update`, etc.), enforces 72-char header limit, detects direct commits to protected branches (`main`, `master`, `develop`, `production`).
+  - **`--with-llm`:** opt-in heuristic mode. **Planned for v1.24.1**; in v1.24.0 falls back to rules-only with a NOTICE.
+  - Exit codes: 0 clean, 1 significant findings (or any with `--strict`).
+  - Flags: `--since <ref>`, `--limit N`, `--strict`, `--rules-only`, `--with-llm`, `--json`.
+- **`codify usage`** — read LLM cost tracking from local files. Reports total cost (USD cents), token counts (input/output/cache), call counts. Subcommand options:
+  - `--global` to report `~/.codify/usage.json` (cross-project aggregate)
+  - `--since 7d|24h|30m` to filter by recency
+  - `--by command|model|provider` to group totals
+  - `--json` for machine-readable output
+  - `--reset` archives current log as `.bak.<timestamp>` and starts fresh
+- **Usage tracking now records every successful and failed LLM call** automatically from both Anthropic and Gemini providers. Each entry captures: timestamp, command, provider, model, input/output/cache tokens, computed cost (using the public list-price pricing table), duration, success flag, project name, and `pricing_table_version`.
+- **Triple opt-out** for usage tracking (per [ADR-005](docs/adr/0005-llm-usage-tracking.md)):
+  - Per-invocation flag: `--no-tracking` (on `update`, others as needed)
+  - Persistent env: `CODIFY_NO_USAGE_TRACKING=1`
+  - Persistent marker: `~/.codify/.no-usage-tracking`
+- **Pricing table** embedded at `internal/domain/usage/pricing.go` with version `2026-05`. Covers Claude Sonnet 4.6, Opus 4.6/4.7, and Gemini 3.1 Pro Preview. Each entry records the table version so historical reports remain interpretable when prices change.
+- **MCP tool `get_usage`** — read-only access to usage logs from agents. Parameters: `scope` (project/global), `since`, `by`. No LLM call inside; pure file read.
+- New domain packages:
+  - `internal/domain/usage` — `Entry`, `Totals`, `Log` types + `CostCents()` calculator + pricing table
+  - `internal/domain/audit` — `Kind`, `Severity`, `Finding`, `Report` types
+- New infrastructure packages:
+  - `internal/infrastructure/usage` — `Repository`, `Recorder`, paths, opt-out resolution
+  - `internal/infrastructure/audit` — deterministic rules engine (Conventional Commits parser, protected-branch detector, trivial-message matcher)
+- Both Anthropic and Gemini providers gained a `recordUsage()` shim called after every `GenerateContext` invocation (success or failure). The shim is best-effort; tracking errors never break the parent command.
+- New BDD packages with 14 scenarios total:
+  - `tests/bdd/audit_rules` — 7 scenarios (valid CC, breaking change, invalid type, header length, trivial messages, generic non-CC, merge commit detection)
+  - `tests/bdd/usage_tracking` — 7 scenarios (record/read roundtrip, cost calculation for known/unknown models, opt-out via env/flag, append accumulation)
+
+### Changed
+- MCP server version bumped to 1.24.0; total tool count from 9 to 10.
+
+### Deferred
+- **`codify audit --with-llm`** is implemented as a clear stub returning a NOTICE message. Full implementation in v1.24.1 once we settle on the prompt structure and JSON-output contract.
+- **GitHub Action** as a separately published repo (`codify/check-action@v1`): documented as a workflow YAML pattern in README; the published action shipped to `marketplace` deferred to a v1.24.x patch.
+
+### Decisions
+- **Cost is informational, not authoritative.** The pricing table reflects public list prices and may not match negotiated discounts. Users with custom pricing should treat the `cost_usd_cents` field as a relative indicator.
+- **Tracking is on by default.** A privacy-first default (off by default) was rejected because the value of cost visibility outweighs the friction of opt-out. The triple opt-out is robust enough that any user concerned about local-only telemetry can disable it permanently.
+- **Per-call recording, not aggregated.** Each LLM invocation is a separate entry; aggregates are recomputed on read. This avoids consistency bugs between entries and totals when files are hand-edited.
+- **Atomic file writes.** Both `usage.json` and `state.json` use `.tmp` + rename; `state.json` adds `.bak` backup, but `usage.json` is append-only and reproducible (regenerable via `--reset`) so no backup is taken on each save.
+
 ## [1.23.0] - 2026-05-05 - Lifecycle: drift detection (`check` + `reset-state`)
 
 ### Added
