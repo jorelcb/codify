@@ -181,3 +181,72 @@ func (p *GeminiProvider) generateSingleFile(
 
 	return text, int(inTokens), int(outTokens), nil
 }
+
+// EvaluatePrompt implements service.LLMProvider for one-shot prompt evaluation.
+// Mirrors the AnthropicProvider implementation: sends a single non-streaming
+// request and returns the raw text plus token counts. Records usage via the
+// shared shim.
+func (p *GeminiProvider) EvaluatePrompt(ctx context.Context, req service.EvaluationRequest) (*service.EvaluationResponse, error) {
+	start := time.Now()
+	maxTokens := int32(req.MaxTokens)
+	if maxTokens == 0 {
+		maxTokens = 4000
+	}
+
+	config := &genai.GenerateContentConfig{
+		SystemInstruction: genai.NewContentFromText(req.SystemPrompt, genai.RoleUser),
+		MaxOutputTokens:   maxTokens,
+	}
+
+	var textBuilder strings.Builder
+	var inTokens, outTokens int32
+	var streamErr error
+
+	for resp, err := range p.client.Models.GenerateContentStream(
+		ctx,
+		p.model,
+		genai.Text(req.UserPrompt),
+		config,
+	) {
+		if err != nil {
+			streamErr = err
+			break
+		}
+		if resp.UsageMetadata != nil {
+			inTokens = resp.UsageMetadata.PromptTokenCount
+			outTokens = resp.UsageMetadata.CandidatesTokenCount
+		}
+		for _, candidate := range resp.Candidates {
+			if candidate.Content != nil {
+				for _, part := range candidate.Content.Parts {
+					if part.Text != "" {
+						textBuilder.WriteString(part.Text)
+					}
+				}
+			}
+		}
+	}
+
+	cmd := req.Command
+	if cmd == "" {
+		cmd = "evaluate"
+	}
+
+	if streamErr != nil {
+		recordUsage("gemini", p.model, cmd, int(inTokens), int(outTokens), time.Since(start), false)
+		return nil, fmt.Errorf("streaming failed: %w", streamErr)
+	}
+
+	text := textBuilder.String()
+	recordUsage("gemini", p.model, cmd, int(inTokens), int(outTokens), time.Since(start), text != "")
+	if text == "" {
+		return nil, fmt.Errorf("empty response from LLM")
+	}
+
+	return &service.EvaluationResponse{
+		Text:      text,
+		Model:     p.model,
+		TokensIn:  int(inTokens),
+		TokensOut: int(outTokens),
+	}, nil
+}

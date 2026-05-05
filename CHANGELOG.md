@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.1] - 2026-05-05 - audit --with-llm + README sync
+
+### Added
+- **`codify audit --with-llm`** is now real (no longer a stub). When the flag is set, after running the rules-only baseline the audit additionally:
+  - Collects recent commits with header, body, and file stats
+  - Loads AGENTS.md from the project root
+  - Sends a structured prompt to the configured LLM provider asking it to flag commits that don't align with the documented conventions
+  - Parses the JSON response into `agents_alignment_issue` findings, marked `Heuristic=true` and tagged `(heuristic)` in human output
+  - Records the LLM call in `.codify/usage.json` and `~/.codify/usage.json` like every other LLM-backed command
+- New `EvaluatePrompt` method on `service.LLMProvider` for one-shot text completion (different from the multi-file `GenerateContext` flow). Implemented in Anthropic, Gemini, and Mock providers.
+- `internal/infrastructure/audit/llm_prompt.go` — system prompt + user prompt builder + JSON parser with markdown-fence stripping. Heuristic findings always have `Heuristic=true`. Invalid severity values fall back to `minor` to avoid double-counting noise.
+- 4 new BDD scenarios under `tests/bdd/audit_rules` covering the LLM JSON parser (happy path, fenced output, invalid severity fallback, non-JSON rejection). Total audit BDD scenarios: 11.
+- 7 new unit tests in `internal/infrastructure/audit/llm_prompt_test.go` covering parser edge cases.
+
+### Changed
+- `audit --with-llm` no longer prints the v1.24.0 NOTICE about being unimplemented; the flag is a real opt-in that requires `ANTHROPIC_API_KEY` or `GEMINI_API_KEY`. If the API key is missing or the LLM call fails, the audit emits a WARNING and falls back to rules-only output (exit code reflects the rules findings).
+- `audit` accepts new flags: `--model` (override default LLM) and `--no-tracking` (skip usage recording for this invocation).
+- README and README_ES synced with the actual v1.24 surface (the inconsistencies that accreted across v1.19–v1.24):
+  - "four things" / "cuatro cosas" → "six layers" / "seis capas" with an updated diagram showing Hooks and Lifecycle as first-class layers
+  - Quick Start section: old "Five ways" inventory expanded into a complete command surface section showing Bootstrap + Context + Specs + Skills + Workflows + Hooks + Lifecycle, plus a "free vs API-key-required" breakdown
+  - Top-of-file table of contents updated to link Configuration & Bootstrap, Hooks, Drift Detection, and Update/Audit/Usage sections (previously invisible from the TOC)
+  - Sample output `Preset: default` → `Preset: clean-ddd` (the rename landed in v1.21; the example was stale)
+  - MCP tools table now includes `get_usage` (added in v1.24.0); knowledge-tools section renamed to "Read-only tools" since `get_usage` is read-only but isn't really "knowledge"
+- MCP server version bumped to 1.24.1.
+
+### Decisions
+- **Heuristic findings are always tagged.** The LLM mode never produces findings that look identical to the deterministic rules — every LLM-sourced finding has `Heuristic=true`, uses the dedicated `agents_alignment_issue` kind, and prints with a `(heuristic)` suffix in human output. This keeps the trust boundary visible.
+- **The LLM call augments, never replaces, rules-only.** Both passes always run; LLM findings are appended to rule findings. If LLM fails, we degrade gracefully with a WARNING — never blocking the deterministic baseline.
+- **Severity validation on parse.** If the LLM returns an unrecognized severity (e.g. "critical"), the parser silently downgrades to `minor`. Better to under-report than to surface fake-significant noise and burn user trust.
+
 ## [1.24.0] - 2026-05-05 - Lifecycle: update + audit + usage tracking
 
 ### Added

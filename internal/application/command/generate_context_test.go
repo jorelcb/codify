@@ -25,6 +25,12 @@ func (m *mockLLMProvider) GenerateContext(_ context.Context, _ service.Generatio
 	return m.response, nil
 }
 
+// EvaluatePrompt is required by the LLMProvider interface but unused by
+// generate_context tests. Returns a fixed empty response.
+func (m *mockLLMProvider) EvaluatePrompt(_ context.Context, _ service.EvaluationRequest) (*service.EvaluationResponse, error) {
+	return &service.EvaluationResponse{Text: "", Model: "mock"}, nil
+}
+
 func TestGenerateContextCommand_Execute(t *testing.T) {
 	tmpDir := t.TempDir()
 

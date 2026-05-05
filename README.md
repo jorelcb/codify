@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.24.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.24.1-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -16,7 +16,7 @@
 
 **[English]** | [Español](README_ES.md)
 
-[Quick Start](#-quick-start) · [Context](#-context-generation) · [Specs](#-spec-driven-development) · [Skills](#-agent-skills) · [Workflows](#-workflows) · [MCP Server](#-mcp-server) · [Language Guides](#-language-specific-guides) · [Architecture](#%EF%B8%8F-architecture)
+[Quick Start](#-quick-start) · [Config & Bootstrap](#%EF%B8%8F-configuration--bootstrap) · [Context](#-context-generation) · [Specs](#-spec-driven-development) · [Skills](#-agent-skills) · [Workflows](#-workflows) · [Hooks](#-hooks) · [Drift Detection](#-lifecycle-drift-detection) · [Update / Audit / Usage](#-lifecycle-update-audit--usage-tracking) · [MCP Server](#-mcp-server) · [Language Guides](#-language-specific-guides) · [Architecture](#%EF%B8%8F-architecture)
 
 </div>
 
@@ -36,7 +36,7 @@ And the agent, with all its capability, improvises:
 
 ## 💡 The Solution
 
-**Codify** equips your AI agent with four things it needs to stop improvising:
+**Codify** equips your AI agent with six layers it needs to stop improvising:
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
@@ -49,12 +49,24 @@ And the agent, with all its capability, improvises:
 │  analyze     │     │  --with-specs│     │              │     │              │
 └──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
      Memory             Plan              Abilities          Orchestration
+
+┌─────────────────────────────────┐  ┌─────────────────────────────────────┐
+│           Hooks                 │  │            Lifecycle                │
+│                                 │  │                                     │
+│   Deterministic guardrails      │  │   Maintain artifacts over time      │
+│   on tool calls (Edit/Bash)     │  │                                     │
+│                                 │  │   config / init                     │
+│   hooks                         │  │   check / update / audit / usage    │
+└─────────────────────────────────┘  └─────────────────────────────────────┘
+       Determinism                              Custodianship
 ```
 
 - **Context** gives the agent architectural memory — stack, patterns, conventions, domain knowledge
 - **Specs** give the agent an implementation plan — features, acceptance criteria, task breakdowns
 - **Skills** give the agent reusable abilities — how to commit, version, design entities, review code
 - **Workflows** give the agent orchestration recipes — multi-step processes like feature development, bug fixing, releases
+- **Hooks** add deterministic guardrails — shell scripts on Claude Code lifecycle events, no LLM in the loop *(v1.19+)*
+- **Lifecycle** keeps everything in sync — `config`, `init`, `check`, `update`, `audit`, `usage` — drift detection, selective regen, commit auditing, cost transparency *(v1.22+)*
 
 It follows the [AGENTS.md standard](https://github.com/anthropics/AGENTS.md) — an open specification backed by the Linux Foundation for providing AI agents with project context. Files work out of the box with Claude Code, Cursor, Codex, and any agent that reads the standard.
 
@@ -137,12 +149,12 @@ codify init
 
 `init` is the smart entry point that picks the right flow for you. If you prefer to control each step explicitly, use `generate`/`analyze` directly.
 
-### Five ways to equip your agent
+### Codify command surface
 
 Every command supports **interactive mode** — run without flags and menus guide you through all options. Or pass flags explicitly for CI/scripting. Both forms read defaults from `~/.codify/config.yml` (user) and `.codify/config.yml` (project) when present, with merge precedence: flags > project > user > built-in defaults.
 
 ```bash
-# 1. Set your API key (Claude or Gemini)
+# 1. Set your API key (Claude or Gemini) — only needed for LLM-backed commands
 export ANTHROPIC_API_KEY="sk-ant-..."   # for Claude (default)
 # or
 export GEMINI_API_KEY="AI..."           # for Gemini
@@ -152,28 +164,33 @@ codify config         # User-level wizard (auto-launches first time, opt-out via
 codify init           # Project-level: new or existing → generate or analyze + state.json
 
 # ── Context: give your agent project memory ──
-codify generate
-# Interactive menus for: name, description, preset, language, model, locale, output, specs
-
-# Or pass all flags explicitly (zero prompts):
-codify generate payment-service \
-  --description "Payment microservice in Go with gRPC, PostgreSQL and Kafka" \
-  --language go
+codify generate            # Description-driven generation
+codify analyze             # Scan existing repo and generate context from it
 
 # ── Specs: give your agent an implementation plan ──
 codify spec payment-service \
   --from-context ./output/payment-service/
 
 # ── Skills: give your agent reusable abilities ──
-codify skills
-# Interactive menus for: category, preset, mode, target, install location
-# No API key needed for static mode.
+codify skills              # No API key for static mode
 
 # ── Workflows: give your agent orchestration recipes ──
-codify workflows
-# Interactive menus for: preset, target, mode, locale, install location
-# Supports Claude Code (native skills) and Antigravity (native .md) targets.
+codify workflows           # Claude (native skills) or Antigravity (native .md)
+
+# ── Hooks: deterministic guardrails on Claude Code lifecycle events (v1.19+) ──
+codify hooks               # linting / security-guardrails / convention-enforcement / all
+
+# ── Lifecycle: maintain artifacts over time (v1.22+) ──
+codify check               # Drift detection between snapshot and FS — no LLM, zero cost
+codify update              # Selective regen when input signals drift
+codify audit               # Review commits against conventions (rules-only by default; --with-llm opt-in)
+codify reset-state         # Recompute snapshot without touching artifacts
+codify usage               # Read LLM cost tracking from local files
 ```
+
+**Free, no API key**: `config`, `init` (when generating from scan only), `check`, `reset-state`, `audit` (rules-only mode), `usage`, `hooks`, `skills` (static mode), `workflows` (static mode), MCP knowledge tools (`commit_guidance`, `version_guidance`, `get_usage`).
+
+**Requires API key**: `generate`, `analyze`, `spec`, `skills --mode personalized`, `workflows --mode personalized`, `update`, `audit --with-llm`.
 
 ### Disabling the auto-launch prompt
 
@@ -195,7 +212,7 @@ touch ~/.codify/.no-auto-config
 ```
 🚀 Generating context for: payment-service
   Model: claude-sonnet-4-6
-  Preset: default
+  Preset: clean-ddd
   Language: go
 
   [1/5] Generating AGENTS.md... ✓
@@ -1068,12 +1085,13 @@ Add to `~/.gemini/settings.json`:
 
 All generative tools support `locale` (`en`/`es`) and `model` parameters. `generate_context` and `analyze_project` also accept `with_specs`. `generate_skills` accepts `mode`, `category`, `preset`, `target`, and `project_context`. `generate_workflows` accepts `mode`, `preset`, `target` (`claude`/`antigravity`), and `project_context`. `generate_hooks` accepts `preset` (`linting`/`security-guardrails`/`convention-enforcement`/`all`), `locale`, and `output` — no model or context (static-only).
 
-#### Knowledge tools (no API key needed)
+#### Read-only tools (no API key needed)
 
 | Tool | Description |
 |------|-------------|
 | `commit_guidance` | Conventional Commits spec and behavioral context for generating proper commit messages |
 | `version_guidance` | Semantic Versioning spec and behavioral context for determining version bumps |
+| `get_usage` | Read LLM cost tracking from local `.codify/usage.json` (project) or `~/.codify/usage.json` (global). Pure file read, no LLM call. Parameters: `scope` (`project`/`global`), `since` (e.g. `7d`/`24h`), `by` (`command`/`model`/`provider`) |
 
 Knowledge tools inject behavioral context into the calling agent — the agent receives the spec and instructions, then applies them to the current task. Supports `locale` (`en`/`es`).
 

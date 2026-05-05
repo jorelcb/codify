@@ -17,11 +17,16 @@ import (
 //   - Default content is "# Mock {{name}}\n\nGenerated for testing." when no
 //     entry is present.
 //   - Each call appends to Calls, so tests can assert on what was sent.
+//   - EvaluateResponse → exact text returned by EvaluatePrompt; defaults to "".
+//   - EvaluateCalls → list of EvaluationRequests for assertions.
 type MockProvider struct {
-	Responses map[string]string
-	Calls     []service.GenerationRequest
-	Err       error // when non-nil, GenerateContext returns this error instead.
-	Tokens    struct {
+	Responses        map[string]string
+	Calls            []service.GenerationRequest
+	Err              error // when non-nil, GenerateContext returns this error instead.
+	EvaluateResponse string
+	EvaluateCalls    []service.EvaluationRequest
+	EvaluateErr      error
+	Tokens           struct {
 		In  int
 		Out int
 	}
@@ -71,4 +76,20 @@ func (m *MockProvider) LastCall() service.GenerationRequest {
 		return service.GenerationRequest{}
 	}
 	return m.Calls[len(m.Calls)-1]
+}
+
+// EvaluatePrompt implements service.LLMProvider for tests. Returns
+// EvaluateResponse verbatim (or EvaluateErr if set). Records the request in
+// EvaluateCalls so tests can assert on prompts/commands.
+func (m *MockProvider) EvaluatePrompt(_ context.Context, req service.EvaluationRequest) (*service.EvaluationResponse, error) {
+	m.EvaluateCalls = append(m.EvaluateCalls, req)
+	if m.EvaluateErr != nil {
+		return nil, m.EvaluateErr
+	}
+	return &service.EvaluationResponse{
+		Text:      m.EvaluateResponse,
+		Model:     "mock",
+		TokensIn:  m.Tokens.In,
+		TokensOut: m.Tokens.Out,
+	}, nil
 }

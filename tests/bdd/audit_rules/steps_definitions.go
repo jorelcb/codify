@@ -28,12 +28,75 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I audit a commit with header "([^"]*)"$`, featureContext.iAuditACommitWithHeader)
 	ctx.Step(`^I audit a commit with a (\d+)-character header$`, featureContext.iAuditACommitWithNCharHeader)
 	ctx.Step(`^I check if a commit with (\d+) parents? is a merge commit$`, featureContext.iCheckIfACommitWithNParentsIsMerge)
+	ctx.Step(`^I parse the LLM response '(.+)'$`, featureContext.iParseTheLLMResponse)
+	ctx.Step(`^I parse the LLM response "([^"]+)"$`, featureContext.iParseTheLLMResponse)
+	ctx.Step(`^I parse the LLM response wrapped in JSON code fences$`, featureContext.iParseTheLLMResponseWrappedInFences)
 
 	ctx.Step(`^the audit findings should be empty$`, featureContext.theAuditFindingsShouldBeEmpty)
 	ctx.Step(`^the audit should contain a "([^"]*)" finding$`, featureContext.theAuditShouldContainFinding)
 	ctx.Step(`^the finding severity should be "([^"]*)"$`, featureContext.theFindingSeverityShouldBe)
 	ctx.Step(`^it should be reported as a merge commit$`, featureContext.itShouldBeReportedAsMergeCommit)
 	ctx.Step(`^it should not be reported as a merge commit$`, featureContext.itShouldNotBeReportedAsMergeCommit)
+	ctx.Step(`^the parsed findings should contain (\d+) entr(?:y|ies)$`, featureContext.theParsedFindingsShouldContainNEntries)
+	ctx.Step(`^the parsed finding should have heuristic flag set$`, featureContext.theParsedFindingShouldHaveHeuristicFlagSet)
+	ctx.Step(`^the parsed finding kind should be "([^"]*)"$`, featureContext.theParsedFindingKindShouldBe)
+	ctx.Step(`^the parsed finding severity should be "([^"]*)"$`, featureContext.theParsedFindingSeverityShouldBe)
+	ctx.Step(`^the parser should report an error$`, featureContext.theParserShouldReportAnError)
+}
+
+func (f *FeatureContext) iParseTheLLMResponse(raw string) error {
+	f.parsedFindings, f.parseErr = infraaudit.ParseLLMFindings(raw)
+	return nil
+}
+
+func (f *FeatureContext) iParseTheLLMResponseWrappedInFences() error {
+	raw := "```json\n[{\"commit_sha\":\"abc\",\"severity\":\"minor\",\"detail\":\"x\"}]\n```"
+	f.parsedFindings, f.parseErr = infraaudit.ParseLLMFindings(raw)
+	return nil
+}
+
+func (f *FeatureContext) theParsedFindingsShouldContainNEntries(n int) error {
+	if len(f.parsedFindings) != n {
+		return fmt.Errorf("expected %d parsed findings, got %d", n, len(f.parsedFindings))
+	}
+	return nil
+}
+
+func (f *FeatureContext) theParsedFindingShouldHaveHeuristicFlagSet() error {
+	if len(f.parsedFindings) == 0 {
+		return fmt.Errorf("no parsed findings to check heuristic flag")
+	}
+	if !f.parsedFindings[0].Heuristic {
+		return fmt.Errorf("expected heuristic=true on first parsed finding")
+	}
+	return nil
+}
+
+func (f *FeatureContext) theParsedFindingKindShouldBe(kind string) error {
+	if len(f.parsedFindings) == 0 {
+		return fmt.Errorf("no parsed findings to check kind")
+	}
+	if string(f.parsedFindings[0].Kind) != kind {
+		return fmt.Errorf("got kind %q, want %q", f.parsedFindings[0].Kind, kind)
+	}
+	return nil
+}
+
+func (f *FeatureContext) theParsedFindingSeverityShouldBe(severity string) error {
+	if len(f.parsedFindings) == 0 {
+		return fmt.Errorf("no parsed findings to check severity")
+	}
+	if string(f.parsedFindings[0].Severity) != severity {
+		return fmt.Errorf("got severity %q, want %q", f.parsedFindings[0].Severity, severity)
+	}
+	return nil
+}
+
+func (f *FeatureContext) theParserShouldReportAnError() error {
+	if f.parseErr == nil {
+		return fmt.Errorf("expected parser error, got nil")
+	}
+	return nil
 }
 
 func (f *FeatureContext) iAuditACommitWithHeader(header string) error {

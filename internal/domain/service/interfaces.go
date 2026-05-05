@@ -21,6 +21,15 @@ type DirectoryManager interface {
 // LLMProvider defines the interface for LLM-based content generation.
 type LLMProvider interface {
 	GenerateContext(ctx context.Context, request GenerationRequest) (*GenerationResponse, error)
+
+	// EvaluatePrompt sends a single one-shot prompt and returns the response
+	// text plus token counts. Used by lifecycle commands that need a single
+	// prompt→response cycle (e.g. `codify audit --with-llm`) instead of the
+	// multi-file template-driven flow of GenerateContext.
+	//
+	// Implementations record usage just like GenerateContext does — the
+	// caller does not need to know about the recorder.
+	EvaluatePrompt(ctx context.Context, request EvaluationRequest) (*EvaluationResponse, error)
 }
 
 // TemplateLoader defines the interface for loading template guides from disk.
@@ -57,6 +66,26 @@ type GeneratedFile struct {
 // GenerationResponse represents the LLM's response with generated files and metadata.
 type GenerationResponse struct {
 	Files     []GeneratedFile
+	Model     string
+	TokensIn  int
+	TokensOut int
+}
+
+// EvaluationRequest is a one-shot prompt evaluation. Used by lifecycle
+// commands (audit --with-llm) that need a single response instead of the
+// multi-file flow of GenerationRequest.
+type EvaluationRequest struct {
+	SystemPrompt string
+	UserPrompt   string
+	Command      string // for usage tracking ("audit", etc.)
+	MaxTokens    int    // optional; provider applies a sensible default if 0
+}
+
+// EvaluationResponse contains the raw text output of a one-shot prompt
+// evaluation plus token usage. The caller is responsible for parsing the
+// text (e.g. JSON) — providers do not interpret content.
+type EvaluationResponse struct {
+	Text      string
 	Model     string
 	TokensIn  int
 	TokensOut int

@@ -184,3 +184,66 @@ func (p *AnthropicProvider) generateSingleFile(
 
 	return text, int(inTokens), int(outTokens), nil
 }
+
+// EvaluatePrompt implements service.LLMProvider for one-shot prompt evaluation.
+// Used by `audit --with-llm` and other lifecycle commands that need a single
+// prompt→response cycle without the multi-file template flow.
+//
+// Token usage is recorded automatically via the same shim used by GenerateContext.
+func (p *AnthropicProvider) EvaluatePrompt(ctx context.Context, req service.EvaluationRequest) (*service.EvaluationResponse, error) {
+	start := time.Now()
+	maxTokens := int64(req.MaxTokens)
+	if maxTokens == 0 {
+		maxTokens = 4000 // sensible default for audit-sized responses
+	}
+
+	stream := p.client.Messages.NewStreaming(ctx, anthropic.MessageNewParams{
+		Model:     anthropic.Model(p.model),
+		MaxTokens: maxTokens,
+		System: []anthropic.TextBlockParam{
+			{Text: req.SystemPrompt},
+		},
+		Messages: []anthropic.MessageParam{
+			anthropic.NewUserMessage(anthropic.NewTextBlock(req.UserPrompt)),
+		},
+	})
+
+	var textBuilder strings.Builder
+	var inTokens, outTokens int64
+	for stream.Next() {
+		event := stream.Current()
+		switch evt := event.AsAny().(type) {
+		case anthropic.MessageStartEvent:
+			inTokens = evt.Message.Usage.InputTokens
+		case anthropic.ContentBlockDeltaEvent:
+			if delta, ok := evt.Delta.AsAny().(anthropic.TextDelta); ok {
+				textBuilder.WriteString(delta.Text)
+			}
+		case anthropic.MessageDeltaEvent:
+			outTokens = evt.Usage.OutputTokens
+		}
+	}
+
+	cmd := req.Command
+	if cmd == "" {
+		cmd = "evaluate"
+	}
+
+	if err := stream.Err(); err != nil {
+		recordUsage("anthropic", p.model, cmd, int(inTokens), int(outTokens), time.Since(start), false)
+		return nil, fmt.Errorf("streaming failed: %w", err)
+	}
+
+	text := textBuilder.String()
+	recordUsage("anthropic", p.model, cmd, int(inTokens), int(outTokens), time.Since(start), text != "")
+	if text == "" {
+		return nil, fmt.Errorf("empty response from LLM")
+	}
+
+	return &service.EvaluationResponse{
+		Text:      text,
+		Model:     p.model,
+		TokensIn:  int(inTokens),
+		TokensOut: int(outTokens),
+	}, nil
+}
