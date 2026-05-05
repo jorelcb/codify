@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.0] - 2026-05-04 - Codebase audit cleanup + auto-activated hooks
+
+### Added
+- **Hooks auto-activation**: `codify hooks --install project` (or `--install global`) now merges the bundle directly into `.claude/settings.json` and copies scripts to `.claude/hooks/`. Replaces the v1.19.0 ceremony of writing to `./codify-hooks/` for manual merge.
+- `--dry-run` flag on `codify hooks` that prints the proposed `settings.json` merge without writing anything
+- New `internal/infrastructure/settings` package with idempotent merge, automatic backup before overwrite, atomic write via `.tmp` + rename, and discovery helpers (`GlobalSettingsPath`, `ProjectSettingsPath`, `GlobalHooksDir`, `ProjectHooksDir`, `ResolveScope`)
+- New `InstallHooksCommand` orchestrator at `internal/application/command/install_hooks.go` (idempotent across runs; reports added vs skipped handlers and conflicting scripts)
+- LLM output validators (`internal/infrastructure/llm/validators.go`) detecting `[DEFINE]` markers, unbalanced code fences, missing frontmatter, and missing required `disable-model-invocation` / `allowed-tools` fields for workflow-skills. Wired into both Anthropic and Gemini providers; warnings surface to stderr after each generation
+- Anthropic prompt caching: system prompt is marked with `CacheControlEphemeral` so the per-file generation loop reuses the cached system prompt instead of paying for it on every guide
+- Mock LLM provider (`internal/infrastructure/llm/mock_provider.go`) for testing application/command orchestration without hitting real APIs
+- MCP parameter enums for `generate_skills`, `generate_workflows`, `generate_hooks`, plus `install_scope` parameter on `generate_hooks` (`global` / `project` / `preview`, default `preview`)
+- `[DEFINE]` heuristic warnings printed by the CLI when generated content contains unresolved markers
+- New catalog helpers `AllSkillPresetNames` and `WorkflowPresetNames` for MCP enum population
+- Output examples (`<output_example>` blocks) embedded in the personalized skills, workflows, and workflow-skills system prompts (few-shot anchoring)
+- Anti-hallucination grounding rules now applied uniformly to skills, workflows, and workflow-skills modes (previously only generate/analyze/spec had them)
+- Locale fallback warning to stderr when the requested locale is unsupported
+- New tests: `settings_test.go`, `install_hooks_test.go`, `validators_test.go`, `provider_factory_test.go`, plus expanded coverage of `application/dto`, `application/command`, and `domain/catalog`
+
+### Changed (BREAKING — minor)
+- `codify hooks --install project|global` now auto-activates immediately. The previous v1.19.0 default of writing to `./codify-hooks/` for manual merge is moved to `--output PATH` (preview mode)
+- Antigravity skills paths corrected to `.agent/skills/` (singular) — was `.agents/skills/` in v1.19.0. Aligns with the existing `.agent/workflows/` convention
+- `codify spec` no longer hard-requires `--from-context` at the flag level; the path is prompted in interactive mode (still required overall)
+- LLM dispatch fails loudly on unknown `Mode` values instead of silently falling back to `generate` mode
+
+### Fixed
+- `mkfs` regex bypass in `security-guardrails/block-dangerous-commands.sh`: `mkfs.ext4` and `mkfs.btrfs` were passing through (regex matched only alpha characters)
+- `jq` parse failures in hook scripts now fail closed (exit 2) for blocking PreToolUse hooks instead of silently allowing the operation; the non-blocking lint hook still exits 0 but logs to stderr
+- `ProjectContext` is now validated as non-empty in providers when mode requires it (skills/workflows/workflow-skills); previously the LLM received an empty placeholder and invented stack details
+- `workflow-skills` system prompt now documents the optional frontmatter fields `agent`, `user-invocable`, and `context` (audit fix #6)
+- `promptModel` no longer offers Anthropic options when no `ANTHROPIC_API_KEY` is set, and no Gemini options when no `GEMINI_API_KEY`/`GOOGLE_API_KEY` is set. Returns an explicit error if no key at all is found, instead of presenting unusable choices
+
+### Removed
+- Dead code: `validPresets` map in `internal/interfaces/mcp/server.go`
+- Manual merge ceremony for hooks: the README sections describing copy/paste of `hooks.json` into `settings.json` are gone (preview mode kept as escape hatch with explicit messaging)
+
 ## [1.19.0] - 2026-05-04 - Claude Code hook bundles (deterministic guardrails)
 
 ### Added

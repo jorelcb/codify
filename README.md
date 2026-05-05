@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.19.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.20.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -616,37 +616,27 @@ The three artifact layers complement each other:
 | `convention-enforcement` | `PreToolUse` (Bash with `if`) | Validate commit messages against Conventional Commits 1.0.0 (header ≤72 chars, valid type, no trivial placeholders) and block direct/force pushes to protected branches (`main`, `master`, `develop`, `production`, `release/*`). Requires Claude Code v2.1.85+. |
 | `all` | (combined) | All three preset bundles merged into a single `hooks.json` |
 
+### Activation modes (auto-install by default since v1.20.0)
+
+| Flag | Behavior |
+|---|---|
+| `--install project` (default in interactive) | Merge into `.claude/settings.json` and copy scripts to `.claude/hooks/`. Backs up the existing settings file before any modification. Idempotent — running it twice adds zero handlers the second time. |
+| `--install global` | Same as project, but targets `~/.claude/settings.json` and `~/.claude/hooks/` for all projects |
+| `--output PATH` | **Preview mode** — writes a standalone `{PATH}/hooks.json` + `{PATH}/hooks/*.sh` bundle for inspection or manual merge. Does NOT touch `settings.json`. Use this if you want to review the proposed changes before activating |
+| `--dry-run` | Prints the proposed `settings.json` after merge, exits 0, writes nothing |
+
 ### Output layout
 
 ```
-{output}/
-├── hooks.json         ← block to merge into your settings.json
-└── hooks/
-    ├── lint.sh                          (linting preset)
-    ├── block-dangerous-commands.sh      (security-guardrails)
-    ├── protect-sensitive-files.sh       (security-guardrails)
-    ├── validate-commit-message.sh       (convention-enforcement)
-    └── check-protected-branches.sh      (convention-enforcement)
-```
-
-### Activate the bundle (manual merge)
-
-Codify never auto-modifies your `settings.json` — you decide what to merge. After running the command:
-
-```bash
-# 1. Move scripts to your Claude config dir
-cp -r ./codify-hooks/hooks/ ~/.claude/hooks/        # global (all projects)
-# or
-cp -r ./codify-hooks/hooks/ .claude/hooks/          # project (commit to repo)
-
-# 2. Open ./codify-hooks/hooks.json and copy the "hooks" object into:
-#    ~/.claude/settings.json   (global)  or
-#    .claude/settings.json     (project)
-# Merge it as a sibling of your existing keys (theme, model, mcpServers, etc).
-
-# 3. Verify activation
-claude
-> /hooks
+~/.claude/                      OR   ./.claude/
+├── settings.json   (merged)         ├── settings.json   (merged)
+├── settings.json.codify-backup-…    ├── settings.json.codify-backup-…
+└── hooks/                            └── hooks/
+    ├── lint.sh                            ├── lint.sh
+    ├── block-dangerous-commands.sh        ├── block-dangerous-commands.sh
+    ├── protect-sensitive-files.sh         ├── protect-sensitive-files.sh
+    ├── validate-commit-message.sh         ├── validate-commit-message.sh
+    └── check-protected-branches.sh        └── check-protected-branches.sh
 ```
 
 ### Interactive mode
@@ -655,20 +645,41 @@ claude
 codify hooks
 # → Select preset (linting, security-guardrails, convention-enforcement, all)
 # → Select locale (en, es)
-# → Select output location (project / global / custom)
+# → Select activation mode (project / global / preview)
 ```
 
 ### CLI mode
 
 ```bash
-# Linting bundle into ./codify-hooks/
-codify hooks --preset linting
+# Activate everything for the current project (default flow)
+codify hooks --preset all --install project
 
-# All hooks combined, Spanish stderr
-codify hooks --preset all --locale es
+# Globally for all your projects
+codify hooks --preset all --install global
 
-# Security guardrails into custom path
-codify hooks --preset security-guardrails --output ./tmp/sec-hooks
+# Preview only (write bundle, don't touch settings.json)
+codify hooks --preset linting --output ./tmp/preview
+
+# See the proposed merge without writing anything
+codify hooks --preset all --install project --dry-run
+
+# Spanish stderr messages
+codify hooks --preset linting --install project --locale es
+```
+
+### Verify activation
+
+```bash
+claude
+> /hooks
+```
+
+### Rollback
+
+Every install backs up the previous `settings.json` to `settings.json.codify-backup-<timestamp>`. To roll back:
+
+```bash
+mv .claude/settings.json.codify-backup-<timestamp> .claude/settings.json
 ```
 
 ### Requirements
@@ -690,8 +701,9 @@ codify hooks [flags]
 |---|---|---|
 | `--preset` `-p` | `linting`, `security-guardrails`, `convention-enforcement`, or `all` | *(interactive)* |
 | `--locale` | Output language for stderr (`en` or `es`) | `en` |
-| `--install` | Install scope: `global` or `project` | *(interactive)* |
-| `--output` `-o` | Output directory | `./codify-hooks` |
+| `--install` | Install scope: `global` or `project` (auto-activates) | *(interactive — default `project`)* |
+| `--output` `-o` | Preview directory: write standalone bundle, no settings change | — |
+| `--dry-run` | Print the proposed `settings.json` merge but write nothing | `false` |
 
 ---
 
@@ -951,7 +963,7 @@ go test ./tests/...
 
 ## 📊 Project status
 
-**v1.19.0** 🎉
+**v1.20.0** 🎉
 
 ✅ **Working:**
 - Multi-provider LLM support (Anthropic Claude + Google Gemini)
@@ -963,8 +975,11 @@ go test ./tests/...
 - Skill categories (architecture, testing, conventions) with ecosystem-aware frontmatter (Claude, Codex, Antigravity)
 - **Workflows** — multi-step orchestration recipes for Claude Code (native skills) and Antigravity (native annotations)
 - **Workflow presets** — spec-driven-change (propose/apply/archive), bug-fix, release-cycle (static + personalized modes, multi-target)
+- **Hooks auto-activation** — `codify hooks --install project|global` merges into `settings.json` and copies scripts in one step (idempotent, with backup); `--output PATH` and `--dry-run` available as escape hatches
+- **LLM output validators** — surface `[DEFINE]` markers, missing frontmatter, unbalanced code fences, and missing required workflow-skill fields after every generation
+- **Anthropic prompt caching** — system prompt cache control reduces token costs across the per-file generation loop
 - **Unified interactive UX** — all commands prompt for missing parameters when run in a terminal
-- MCP Server mode (stdio + HTTP transport) with 8 tools
+- MCP Server mode (stdio + HTTP transport) with 8 tools, parameter enums for stricter agent validation
 - MCP knowledge tools (commit_guidance, version_guidance) — no API key needed
 - Preset system (default: DDD/Clean, neutral: generic)
 - AGENTS.md standard as root file
