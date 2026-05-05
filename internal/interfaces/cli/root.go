@@ -65,6 +65,7 @@ func init() {
 	rootCmd.AddCommand(commands.NewUsageCmd())
 	rootCmd.AddCommand(commands.NewUpdateCmd())
 	rootCmd.AddCommand(commands.NewAuditCmd())
+	rootCmd.AddCommand(commands.NewWatchCmd())
 
 	// Global flags can be added here
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.codify.yaml)")

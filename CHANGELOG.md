@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.25.0] - 2026-05-05 - Lifecycle: foreground watcher (`codify watch`)
+
+### Added
+- **`codify watch`** — foreground file watcher that monitors paths registered in `.codify/state.json` and re-runs drift detection when they change. Designed for active development sessions, NOT a background daemon. Exits cleanly on Ctrl+C. Behavior:
+  - Loads `.codify/state.json` once at startup; exits 2 if missing
+  - Subscribes via `fsnotify` to the parent dirs of registered input_signals + artifacts
+  - Debounces events (default 2s) before firing drift detection
+  - Prints drift reports to stdout, keeps watching
+  - `--auto-update` fires `codify update` on detected drift (records LLM usage)
+  - Without `--auto-update`, drift is informational only — user runs `check`/`update` manually
+- Flags: `--debounce <duration>` (e.g. `500ms`, `2s`), `--auto-update`, `--strict`, `--no-tracking`, `--output`.
+- New package `internal/infrastructure/watch` — wraps `fsnotify` with a debouncer, scope-limited to paths from `state.json`. Pure: takes paths + callback, returns events. Tested with temp dirs (5 unit tests + 6 BDD scenarios).
+- New BDD package `tests/bdd/watch_loop` covering startup, debounce coalescing, scope filtering, clean cancellation, and construction errors.
+- New ADR documenting the architectural decision: [ADR-008 — `codify watch` model](docs/adr/0008-watch-model-decision.md).
+
+### Decisions (per ADR-008)
+- **Foreground, not daemon.** No PID file management, no `--detach`, no signal handling beyond `Ctrl+C`. Users who need persistence wrap with `tmux` / `nohup` / `systemd` — Codify intentionally stays out of the daemon business.
+- **Scope-limited watching.** Only the paths in `state.json` are watched (input_signals + artifacts). No recursive walk, no ignore patterns. Bounded ~20 files for a typical project.
+- **In-house implementation, not config generation.** Modelo B (generating configs for `lefthook`/`pre-commit`/`watchexec`) was evaluated and explicitly NOT chosen as the primary mechanism. Rationale in ADR-008. The README now documents `codify check` integration patterns for those tools as a complementary option for git-hook-driven validation.
+- **No reload-on-config-change.** If `state.json` changes mid-run, watch does NOT auto-reload. User must `Ctrl+C` and re-run. This is intentional: reload-on-config-change is a daemon feature we explicitly skipped.
+
+### Changed
+- MCP server version bumped to 1.25.0.
+- `go.mod` adds `github.com/fsnotify/fsnotify v1.10.x` as a direct dependency.
+
+### Notes
+- `codify watch` does not currently invoke `update` interactively — `--auto-update` is non-interactive and records LLM usage automatically. To preview changes without running an LLM, run `codify watch` (read-only) and use the manual `update --dry-run` afterward.
+- Debounce default 2s is conservative. Editors that save-on-keystroke (e.g. Zed with auto-save) may benefit from `--debounce 500ms` or `1s`. CI environments that batch FS events may want `--debounce 5s`.
+
 ## [1.24.1] - 2026-05-05 - audit --with-llm + README sync
 
 ### Added

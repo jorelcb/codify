@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.24.1-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.25.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -423,6 +423,88 @@ jobs:
 ```
 
 `check` y `audit --rules-only` no requieren API key. `update` y `audit --with-llm` si.
+
+---
+
+## 👁️ Lifecycle: Watcher Foreground (`codify watch`)
+
+`codify watch` mantiene drift detection corriendo en background de tu sesion de editor. Re-ejecuta `check` automaticamente cuando cualquier archivo registrado en `.codify/state.json` cambia — input signals (e.g. `go.mod`, `Makefile`, `README.md`) y artefactos generados (`AGENTS.md`, `context/*.md`).
+
+```bash
+codify watch                         # default 2s debounce, solo reporta
+codify watch --debounce 500ms        # debounce mas ajustado para feedback rapido
+codify watch --auto-update --strict  # mantiene artefactos sincronizados agresivamente
+```
+
+**Comportamiento:**
+- Carga `.codify/state.json` una vez al startup; exit 2 si falta
+- Se suscribe via `fsnotify` a los dirs padres de los paths registrados (sin walk recursivo)
+- Debouncea eventos (default 2s) — cinco saves rapidos disparan UN check, no cinco
+- Imprime reportes de drift a stdout y sigue mirando
+- `--auto-update` corre `codify update` cuando detecta drift significativo (registra usage LLM)
+- `Ctrl+C` sale limpio
+
+### Por que foreground (no daemon)
+
+`codify watch` es intencionalmente un **proceso foreground**, NO un daemon de sistema. No tiene `--detach`, no hay PID file, no hay reload por señales. Decision documentada en [ADR-008](docs/adr/0008-watch-model-decision.md). Resumen:
+
+- **Manejo de PID files, signal handling, rotacion de logs, integracion con OS services** son problemas dificiles y fuera de scope para un proyecto de un solo mantenedor. Usuarios que necesitan persistencia envuelven con `tmux` / `nohup` / `systemd` / su supervisor preferido.
+- **El use case realista es de corta duracion** — arrancas `watch` cuando empezas a codear, lo paras cuando terminas. Horas, no semanas.
+- **El scope esta naturalmente acotado** — solo los ~20 paths de `state.json` se observan.
+
+### Envolver en un process supervisor
+
+Si si queres watch long-running:
+
+```bash
+# Sesion tmux que sobrevive cierre del terminal
+tmux new-session -d -s codify-watch "cd $(pwd) && codify watch"
+tmux attach -t codify-watch         # para inspeccionar; Ctrl+B luego D para detach
+
+# Unit de systemd (~/.config/systemd/user/codify-watch.service)
+[Unit]
+Description=Codify watch for %i
+[Service]
+WorkingDirectory=%h/projects/%i
+ExecStart=/usr/local/bin/codify watch --debounce 5s
+Restart=on-failure
+[Install]
+WantedBy=default.target
+
+# nohup para sobrevivir la sesion
+nohup codify watch > codify-watch.log 2>&1 &
+```
+
+### Alternativa — integracion con git-hooks via `codify check`
+
+Para usuarios cuyo modelo mental es "validar al hacer commit" en vez de "validar mientras edito", `codify check` es la herramienta correcta — es un one-shot deterministico disenado para CI y git hooks. Integrar via tu hook manager preferido:
+
+**lefthook (`lefthook.yml`):**
+```yaml
+pre-commit:
+  commands:
+    codify-check:
+      run: codify check --strict
+```
+
+**pre-commit (`.pre-commit-config.yaml`):**
+```yaml
+repos:
+  - repo: local
+    hooks:
+      - id: codify-check
+        name: Codify drift detection
+        entry: codify check --strict
+        language: system
+        pass_filenames: false
+```
+
+**watchexec (alternativa foreground sobre la misma base de FS-events):**
+```bash
+watchexec -w go.mod -w Makefile -w README.md -- codify check
+```
+
+Codify mismo no genera estos configs — la integracion es lo suficientemente corta y especifica del proyecto que copy-paste es el primitive correcto (per [ADR-008](docs/adr/0008-watch-model-decision.md)).
 
 ---
 

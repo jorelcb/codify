@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.24.1-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-1.25.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -478,6 +478,88 @@ jobs:
 Both commands are deterministic and free — no API key needed for `check`, no API key needed for `audit --rules-only` (the v1.24.0 default). `update` and `audit --with-llm` (v1.24.1) require `ANTHROPIC_API_KEY` or `GEMINI_API_KEY`.
 
 A pre-built reusable action (`codify/check-action@v1`) is on the v1.24.x roadmap.
+
+---
+
+## 👁️ Lifecycle: Foreground Watcher (`codify watch`)
+
+`codify watch` keeps drift detection running in the background of your editor session. It re-runs `check` automatically when any file registered in `.codify/state.json` changes — input signals (e.g. `go.mod`, `Makefile`, `README.md`) and generated artifacts (`AGENTS.md`, `context/*.md`).
+
+```bash
+codify watch                         # default 2s debounce, report-only
+codify watch --debounce 500ms        # tighter debounce for fast feedback
+codify watch --auto-update --strict  # aggressively keep artifacts in sync
+```
+
+**Behavior:**
+- Loads `.codify/state.json` once at startup; exits 2 if missing
+- Subscribes via `fsnotify` to the parent dirs of registered paths (no recursive walk)
+- Debounces events (default 2s) — five rapid saves trigger one drift check, not five
+- Prints drift reports to stdout and keeps watching
+- `--auto-update` runs `codify update` when significant drift is detected (records LLM usage)
+- `Ctrl+C` exits cleanly
+
+### Why foreground (not daemon)
+
+`codify watch` is intentionally a **foreground process**, not a system daemon. It has no `--detach`, no PID file, no signal-driven reload. This decision is documented in [ADR-008](docs/adr/0008-watch-model-decision.md). The summary:
+
+- **PID file management, signal handling, log rotation, OS service integration** are all hard problems and out of scope for a single-maintainer project. Users who need persistence can wrap with `tmux` / `nohup` / `systemd` / their preferred process supervisor.
+- **The realistic use case is short-lived** — you start `watch` when you start coding, you stop it when you stop. Hours, not weeks.
+- **Scope is naturally bounded** — only the ~20 paths in `state.json` are watched.
+
+### Wrapping in a process supervisor
+
+If you do want long-running watch:
+
+```bash
+# tmux session that survives terminal close
+tmux new-session -d -s codify-watch "cd $(pwd) && codify watch"
+tmux attach -t codify-watch         # to inspect; Ctrl+B then D to detach
+
+# systemd user unit (~/.config/systemd/user/codify-watch.service)
+[Unit]
+Description=Codify watch for %i
+[Service]
+WorkingDirectory=%h/projects/%i
+ExecStart=/usr/local/bin/codify watch --debounce 5s
+Restart=on-failure
+[Install]
+WantedBy=default.target
+
+# nohup for a quick session-survival
+nohup codify watch > codify-watch.log 2>&1 &
+```
+
+### Alternative — git-hook integration with `codify check`
+
+For users whose mental model is "validate at git commit" rather than "validate while editing", `codify check` is the right tool — it's a one-shot deterministic check designed for CI and git hooks. Integrate via your preferred hook manager:
+
+**lefthook (`lefthook.yml`):**
+```yaml
+pre-commit:
+  commands:
+    codify-check:
+      run: codify check --strict
+```
+
+**pre-commit (`.pre-commit-config.yaml`):**
+```yaml
+repos:
+  - repo: local
+    hooks:
+      - id: codify-check
+        name: Codify drift detection
+        entry: codify check --strict
+        language: system
+        pass_filenames: false
+```
+
+**watchexec (foreground alternative on the same FS-event basis):**
+```bash
+watchexec -w go.mod -w Makefile -w README.md -- codify check
+```
+
+Codify itself doesn't generate these configs — the integration is short and project-specific enough that copy-paste is the right primitive (per [ADR-008](docs/adr/0008-watch-model-decision.md)).
 
 ---
 
