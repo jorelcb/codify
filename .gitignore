@@ -24,3 +24,9 @@ coverage.*
 ROADMAP_PRIVATE.md
 research/
 docs/adr/
+
+# Codify lifecycle artifacts (project-level usage tracking is local-only per ADR-005)
+.codify/usage.json
+.codify/usage.json.bak.*
+**/.codify/usage.json
+**/.codify/usage.json.bak.*
