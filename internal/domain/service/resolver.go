@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -178,6 +179,126 @@ func ValidateRewrite(after string, hits []MarkerHit) ResolveDelta {
 	}
 
 	return delta
+}
+
+// SkipMode controls what happens to markers the user chose to skip.
+//
+// SkipModeUnset is the zero value and resolves to SkipModeTODO at apply
+// time — that way callers don't have to remember to set it explicitly to
+// get the user-friendly default.
+type SkipMode int
+
+const (
+	// SkipModeUnset means "use the default", which is SkipModeTODO. Lets
+	// ResolveRequest{} stay valid without the caller spelling out the mode.
+	SkipModeUnset SkipMode = iota
+
+	// SkipModeTODO replaces each skipped marker with a date-stamped TODO
+	// comment in the file's native syntax (// for go/js, # for python/yaml,
+	// <!-- --> for markdown/html, etc). Files with unknown extensions fall
+	// back to leaving the marker verbatim.
+	SkipModeTODO
+
+	// SkipModeVerbatim leaves every skipped marker as [DEFINE: ...]. Useful
+	// for users who want to grep their codebase for [DEFINE] later instead
+	// of TODO, or for files that should not be polluted with comments.
+	SkipModeVerbatim
+)
+
+// skipCommentTemplateByExt maps a file extension to a fmt template with two
+// %s placeholders: ISO date and the marker hint. Lowercase keys; lookup is
+// case-insensitive.
+var skipCommentTemplateByExt = map[string]string{
+	".md":   "<!-- TODO %s: %s -->",
+	".html": "<!-- TODO %s: %s -->",
+	".htm":  "<!-- TODO %s: %s -->",
+	".xml":  "<!-- TODO %s: %s -->",
+	".go":   "// TODO %s: %s",
+	".js":   "// TODO %s: %s",
+	".jsx":  "// TODO %s: %s",
+	".ts":   "// TODO %s: %s",
+	".tsx":  "// TODO %s: %s",
+	".java": "// TODO %s: %s",
+	".kt":   "// TODO %s: %s",
+	".rs":   "// TODO %s: %s",
+	".c":    "// TODO %s: %s",
+	".cpp":  "// TODO %s: %s",
+	".cc":   "// TODO %s: %s",
+	".h":    "// TODO %s: %s",
+	".hpp":  "// TODO %s: %s",
+	".swift": "// TODO %s: %s",
+	".cs":   "// TODO %s: %s",
+	".py":   "# TODO %s: %s",
+	".rb":   "# TODO %s: %s",
+	".sh":   "# TODO %s: %s",
+	".bash": "# TODO %s: %s",
+	".yml":  "# TODO %s: %s",
+	".yaml": "# TODO %s: %s",
+	".toml": "# TODO %s: %s",
+	".ini":  "# TODO %s: %s",
+}
+
+// hintFromMarker extracts the human-readable hint inside a [DEFINE: ...]
+// marker. Returns "value needed" for the bare [DEFINE] form so the resulting
+// TODO comment is never empty.
+func hintFromMarker(markerText string) string {
+	inner := strings.TrimPrefix(markerText, "[DEFINE")
+	inner = strings.TrimSuffix(inner, "]")
+	inner = strings.TrimPrefix(inner, ":")
+	inner = strings.TrimSpace(inner)
+	if inner == "" {
+		return "value needed"
+	}
+	return inner
+}
+
+// SkipReplacement returns the text that should replace markerText when the
+// user skipped it. Empty string means "leave the marker verbatim" — the
+// caller should not perform a substitution. Verbatim is also returned for
+// unknown extensions so we never write a comment in a syntax we don't
+// recognize.
+//
+// today is injected (as ISO yyyy-mm-dd) for deterministic testing; production
+// callers pass time.Now().Format("2006-01-02").
+func SkipReplacement(markerText, fileExt string, mode SkipMode, today string) string {
+	if mode == SkipModeUnset {
+		mode = SkipModeTODO
+	}
+	if mode == SkipModeVerbatim {
+		return ""
+	}
+	template, ok := skipCommentTemplateByExt[strings.ToLower(fileExt)]
+	if !ok {
+		return ""
+	}
+	return fmt.Sprintf(template, today, hintFromMarker(markerText))
+}
+
+// ApplySkipMode rewrites content so every still-present skipped marker is
+// replaced with a TODO anchor in the file's native syntax. Markers the user
+// answered are ignored — they were already integrated by the LLM rewrite or
+// literal substitution upstream.
+//
+// Pure function. Idempotent: running it twice on the same input produces the
+// same output (the second pass finds no markers to replace).
+func ApplySkipMode(content string, hits []MarkerHit, mode SkipMode, fileExt, today string) string {
+	if mode == SkipModeUnset {
+		mode = SkipModeTODO
+	}
+	if mode == SkipModeVerbatim {
+		return content
+	}
+	for _, h := range hits {
+		if h.Answer != "" {
+			continue
+		}
+		replacement := SkipReplacement(h.Text, fileExt, mode, today)
+		if replacement == "" {
+			continue
+		}
+		content = strings.Replace(content, h.Text, replacement, 1)
+	}
+	return content
 }
 
 // LiteralSubstitute replaces each answered marker with its answer text 1:1,

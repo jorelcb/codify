@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/jorelcb/codify/internal/domain/service"
 )
@@ -33,14 +35,17 @@ type ResolveMarkersCommand struct {
 	readFile  func(string) ([]byte, error)
 	writeFile func(string, []byte, os.FileMode) error
 	stderr    func(format string, args ...any)
+	today     func() string // ISO date used in TODO anchors; injectable for tests
 }
 
 // ResolveRequest carries everything the command needs to run a resolve pass
 // over a set of files. Locale flows into the LLM rewrite prompt; the
-// orchestrator itself is locale-agnostic.
+// orchestrator itself is locale-agnostic. SkipMode controls how unanswered
+// markers are written back to the file (default: TODO anchors).
 type ResolveRequest struct {
-	Files  []string
-	Locale string
+	Files    []string
+	Locale   string
+	SkipMode service.SkipMode
 }
 
 // ResolveResult summarizes the outcome. Useful for tests and for the future
@@ -74,7 +79,15 @@ func NewResolveMarkersCommand(
 		stderr: func(format string, args ...any) {
 			fmt.Fprintf(os.Stderr, format, args...)
 		},
+		today: func() string { return time.Now().Format("2006-01-02") },
 	}
+}
+
+// WithToday replaces the date provider used in TODO anchors. Tests use it
+// to keep assertions stable across runs.
+func (c *ResolveMarkersCommand) WithToday(today func() string) *ResolveMarkersCommand {
+	c.today = today
+	return c
 }
 
 // WithFileIO replaces the default file IO. Tests use it to redirect reads
@@ -172,6 +185,12 @@ func (c *ResolveMarkersCommand) Execute(ctx context.Context, req ResolveRequest)
 			c.stderr("  write skipped for %s: %v\n", fm.path, err)
 			continue
 		}
+
+		// Apply skip-mode AFTER the rewrite path so the LLM never sees TODO
+		// anchors as input — it always sees the original [DEFINE] markers and
+		// is told to leave skipped ones verbatim. The post-rewrite pass then
+		// converts those preserved markers to the user's chosen anchor style.
+		newContent = service.ApplySkipMode(newContent, fm.hits, req.SkipMode, filepath.Ext(fm.path), c.today())
 
 		if err := c.writeFile(fm.path, []byte(newContent), 0o644); err != nil {
 			c.stderr("  write failed for %s: %v\n", fm.path, err)
