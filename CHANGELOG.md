@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.6] - 2026-05-06 - Audit error clarity and global hooks path fix
+
+### Fixed
+- **`codify audit` error reporting.** `cmd.Output()` was discarding `stderr`, so three distinct git failures collapsed into the same opaque `git log failed: exit status 128`. A new `runGit` helper now captures stderr and translates the common modes:
+  - **Empty repository (no commits yet)** -> reported as `Audited 0 commits` with no findings, instead of an error.
+  - **Not a git repository** -> clear message pointing the user to run `codify audit` from inside a git repo.
+  - **Unknown revision** in `--since` -> surfaces git's literal stderr (e.g. `git: unknown revision or path not in the working tree`).
+  - **Other failures** -> first stderr line as context, instead of just the exit code.
+
+  `currentBranch` and `CollectCommitsForLLM` (used by `--with-llm`) also route through `runGit`, so audit error quality is consistent across the rule-based and LLM paths.
+
+- **`codify hooks --install global` produced broken handlers.** Hook scripts were copied to `~/.claude/hooks/`, but the `command` strings written into `settings.json` kept the project-scoped template form `"$CLAUDE_PROJECT_DIR"/.claude/hooks/...`. Result: in any project that didn't also have a project-scoped install, every hook handler failed with `No such file or directory`. A new `rewriteHookCommandsToHome` step now rewrites those commands to `"$HOME"/.claude/hooks/...` before the merge into `settings.json`, but only when scope is `global`. Project scope is left untouched. Two regression tests cover both branches.
+
 ## [2.0.5] - 2026-05-06 - Interactive [DEFINE] marker resolution (LLM rewrite by default, literal fallback)
 
 ### Added
