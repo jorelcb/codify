@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-05-06 - Patch: prevent silent JSON truncation in marker enrichment
+
+> Hotfix on the v2.1.0 resolver flow. When `codify generate` ran the post-generation resolve hook, files with several `[DEFINE]` markers (e.g. AGENTS.md with 4 markers) surfaced `marker enrichment unavailable for AGENTS.md (enrichment response is not valid JSON: unexpected end of JSON input)` and silently fell back to the legacy UI for those files. Root cause: the enricher capped `MaxTokens` at 2048, which was tight enough that multi-marker responses (LLM echoes each `marker_text` plus suggestions and rationale) got truncated mid-JSON. The streaming layer didn't observe `stop_reason`, so the cut response reached the parser as if it were complete.
+
+### Fixed
+- **Enricher token cap.** `MaxTokens` for `resolve-enrich` calls bumped from 2048 to 4096, giving multi-marker responses (4+ markers per file) enough headroom. Output is JSON-only and concise, so the cost impact is marginal but the truncation window closes.
+- **Diagnostic snippet on parse failure.** When `json.Unmarshal` fails inside the enricher, the error now includes the first ~200 chars of the cleaned response (or `<empty>` when the LLM returned only fences). Lets the next failure tell truncation apart from fence-only responses or stray prose without needing a reproduction.
+- **`max_tokens` stop-reason detection in Anthropic provider.** `EvaluatePrompt` now tracks `MessageDeltaEvent.Delta.StopReason` and returns an explicit `response truncated: max_tokens=N hit (output=M tokens) — bump MaxTokens for command "X"` error instead of returning the truncated text. Applies to every `EvaluatePrompt` caller (enricher, audit, rewrite), so future cap regressions surface where they originate, not several layers downstream.
+
+### Notes
+- No API or behavior changes outside the failure path. Successful enrichment flows are unchanged.
+- Pure patch release: no schema, no command-surface, no template changes.
+
 ## [2.1.0] - 2026-05-06 - Interactive resolver redesign — LLM-driven prompts, validator, TODO anchors, diff preview, standalone `codify resolve`
 
 > v2.0.5 introduced interactive `[DEFINE]` resolution as a single CLI helper file (`define_resolver.go`, ~200 lines mixing orchestration, LLM call, literal substitute, and prompt loop). v2.1.0 turns that helper into a real bounded context: domain ports, an application-layer command, infrastructure adapters for enrichment and sanitization, and CLI adapters for the prompter and the diff previewer — plus a first-class `codify resolve` subcommand. The UX shifts from "type your answer cold" to "the LLM proposes grounded suggestions you can pick by number, override, or skip", and a post-rewrite validator catches the LLM altering markers it was told to leave alone.
