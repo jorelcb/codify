@@ -408,6 +408,124 @@ func TestExecute_MissingFile_IsSkippedSilently(t *testing.T) {
 	}
 }
 
+// scriptedEnricher returns canned EnrichedMarker entries. Used to verify that
+// the orchestrator surfaces enrichment data through to the prompter.
+type scriptedEnricher struct {
+	out []service.EnrichedMarker
+	err error
+}
+
+func (e *scriptedEnricher) Enrich(_ context.Context, _, _, _ string, hits []service.MarkerHit) ([]service.EnrichedMarker, error) {
+	if e.err != nil {
+		// Mirror the real enricher contract: on error, still return entries
+		// for every hit so the orchestrator can keep walking.
+		fallback := make([]service.EnrichedMarker, len(hits))
+		for i, h := range hits {
+			fallback[i] = service.EnrichedMarker{MarkerHit: h}
+		}
+		return fallback, e.err
+	}
+	return e.out, nil
+}
+
+// recordingPrompter is a scriptedPrompter wrapper that captures the
+// EnrichedMarker passed to AskMarker so tests can assert the orchestrator
+// forwarded enrichment data correctly.
+type recordingPrompter struct {
+	scriptedPrompter
+	receivedEnrichments []service.EnrichedMarker
+}
+
+func (p *recordingPrompter) AskMarker(content string, m service.EnrichedMarker) (service.PromptedAnswer, error) {
+	p.receivedEnrichments = append(p.receivedEnrichments, m)
+	return p.scriptedPrompter.AskMarker(content, m)
+}
+
+func TestExecute_WithEnricher_ForwardsEnrichmentToPrompter(t *testing.T) {
+	fs := newInMemoryFS(map[string]string{
+		"AGENTS.md": "currency [DEFINE: code]",
+	})
+	enricher := &scriptedEnricher{
+		out: []service.EnrichedMarker{
+			{
+				MarkerHit:   service.MarkerHit{Text: "[DEFINE: code]", Line: 1},
+				Question:    "¿Qué moneda usa la aplicación?",
+				Suggestions: []string{"USD", "EUR"},
+				Default:     "USD",
+				Rationale:   "fintech context",
+			},
+		},
+	}
+	prompter := &recordingPrompter{
+		scriptedPrompter: scriptedPrompter{
+			confirm: true,
+			answers: []service.PromptedAnswer{{Answer: "USD"}},
+		},
+	}
+	cmd := newCommandWithFS(prompter, nil, fs).WithEnricher(enricher)
+
+	_, err := cmd.Execute(context.Background(), ResolveRequest{Files: []string{"AGENTS.md"}})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if len(prompter.receivedEnrichments) != 1 {
+		t.Fatalf("expected one AskMarker call, got %d", len(prompter.receivedEnrichments))
+	}
+	got := prompter.receivedEnrichments[0]
+	if got.Question != "¿Qué moneda usa la aplicación?" {
+		t.Errorf("question not forwarded: %q", got.Question)
+	}
+	if len(got.Suggestions) != 2 || got.Default != "USD" {
+		t.Errorf("suggestions/default not forwarded: %+v / %q", got.Suggestions, got.Default)
+	}
+}
+
+func TestExecute_EnricherError_FallsBackToZeroValueEnrichment(t *testing.T) {
+	fs := newInMemoryFS(map[string]string{
+		"AGENTS.md": "currency [DEFINE: code]",
+	})
+	enricher := &scriptedEnricher{err: errors.New("provider down")}
+	prompter := &recordingPrompter{
+		scriptedPrompter: scriptedPrompter{
+			confirm: true,
+			answers: []service.PromptedAnswer{{Answer: "USD"}},
+		},
+	}
+	cmd := newCommandWithFS(prompter, nil, fs).WithEnricher(enricher)
+
+	_, err := cmd.Execute(context.Background(), ResolveRequest{Files: []string{"AGENTS.md"}})
+	if err != nil {
+		t.Fatalf("Execute should not fail when enricher errors: %v", err)
+	}
+	if len(prompter.receivedEnrichments) != 1 {
+		t.Fatalf("expected one AskMarker call, got %d", len(prompter.receivedEnrichments))
+	}
+	if prompter.receivedEnrichments[0].Question != "" {
+		t.Errorf("expected zero-value enrichment after enricher error, got %+v", prompter.receivedEnrichments[0])
+	}
+}
+
+func TestExecute_NoEnricher_StillWorksAsLegacy(t *testing.T) {
+	fs := newInMemoryFS(map[string]string{
+		"AGENTS.md": "currency [DEFINE: code]",
+	})
+	prompter := &recordingPrompter{
+		scriptedPrompter: scriptedPrompter{
+			confirm: true,
+			answers: []service.PromptedAnswer{{Answer: "USD"}},
+		},
+	}
+	cmd := newCommandWithFS(prompter, nil, fs) // no enricher
+
+	_, err := cmd.Execute(context.Background(), ResolveRequest{Files: []string{"AGENTS.md"}})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if prompter.receivedEnrichments[0].Question != "" {
+		t.Errorf("nil enricher should produce zero-value enrichment, got %+v", prompter.receivedEnrichments[0])
+	}
+}
+
 // fakeProvider satisfies service.LLMProvider for testing the LLM path.
 // GenerateContext is not used by ResolveMarkersCommand and is left as a no-op.
 type fakeProvider struct {
