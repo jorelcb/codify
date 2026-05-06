@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -44,6 +45,22 @@ type EnrichedMarker struct {
 type PromptedAnswer struct {
 	Answer string
 	Skip   bool
+}
+
+// MarkerEnricher abstracts the LLM-driven step that turns raw [DEFINE: hint]
+// markers into user-friendly EnrichedMarker entries (natural-language
+// question + grounded suggestions + default).
+//
+// The orchestrator calls Enrich once per file before walking through
+// AskMarker. Implementations may return the same hits with empty Question /
+// Suggestions when they cannot infer safely — the prompter then degrades
+// gracefully to the legacy "show hint, ask for input" UI.
+//
+// Errors short-circuit enrichment for the file but never abort the whole
+// resolve flow: the orchestrator falls back to the unenriched UI for that
+// file.
+type MarkerEnricher interface {
+	Enrich(ctx context.Context, fileName, fileContent, locale string, hits []MarkerHit) ([]EnrichedMarker, error)
 }
 
 // InteractivePrompter abstracts the user-facing question loop so the
