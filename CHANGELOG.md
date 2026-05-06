@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2] - 2026-05-06 - SOFT auto-launch fires on bare `codify`
+
+### Fixed
+- **`codify` (no subcommand) now triggers the SOFT first-time prompt.** Previously, running `codify` alone with no `~/.codify/config.yml` would print the help text and exit silently — `cobra` short-circuits to its default help when no `Run`/`RunE` is defined on the root command, and `PersistentPreRunE` never fires. Combined with the v2.0.1 whitelist (which didn't include the root command name), the most natural first-touch invocation post-install was the *one* path where the auto-launch never had a chance to run.
+
+  Two-line fix:
+  - `rootCmd.RunE` now explicitly delegates to `cmd.Help()`. Cobra now treats the root as a runnable command, so `PersistentPreRunE` fires before help is printed.
+  - `isInteractiveSuitable` whitelist includes `"codify"` (the root command name) alongside the 14 subcommands from v2.0.1.
+
+  `--help` and `--version` still short-circuit before `RunE` per cobra semantics, so they don't trigger the prompt.
+
 ## [2.0.1] - 2026-05-06 - `codify config` wizard fixes
 
 User feedback on the v2.0 wizard surfaced three real issues. All fixed in this patch.

@@ -88,18 +88,25 @@ func MaybeAutoLaunchConfig(cmd *cobra.Command) error {
 }
 
 // isInteractiveSuitable determina si el comando que está corriendo amerita
-// ofrecer el wizard. Cubre tanto los flujos que producen output usando
-// defaults globales (generate, analyze, spec, skills, workflows, hooks,
-// init) como los lifecycle/utility commands donde el usuario llega
-// naturalmente en su primer contacto con la herramienta (usage, check,
-// audit, update, watch, list, reset-state). Quedan fuera: --help,
-// --version, serve, config (este último ya lanza el wizard por sí mismo).
+// ofrecer el wizard. Cubre:
+//   - El root `codify` sin subcomando (camino más natural post-instalación
+//     — sin esto, el primer launch nunca dispara el wizard).
+//   - Los flujos que producen output usando defaults globales (generate,
+//     analyze, spec, skills, workflows, hooks, init).
+//   - Los lifecycle/utility commands donde el usuario llega naturalmente
+//     en su primer contacto (usage, check, audit, update, watch, list,
+//     reset-state).
+//
+// Quedan fuera: --help, --version, serve, config (este último ya lanza
+// el wizard por sí mismo). Cobra short-circuitea --help/--version antes
+// de ejecutar RunE, por lo que PersistentPreRunE no fire para ellos.
 func isInteractiveSuitable(cmd *cobra.Command) bool {
 	if cmd == nil {
 		return false
 	}
 	switch cmd.Name() {
-	case "generate", "analyze", "spec", "skills", "workflows", "hooks", "init",
+	case "codify",
+		"generate", "analyze", "spec", "skills", "workflows", "hooks", "init",
 		"usage", "check", "audit", "update", "watch", "list", "reset-state":
 		return true
 	default:

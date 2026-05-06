@@ -30,6 +30,14 @@ Requires ANTHROPIC_API_KEY (for Claude) or GEMINI_API_KEY (for Gemini) environme
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		return commands.MaybeAutoLaunchConfig(cmd)
 	},
+	// RunE explícito para `codify` sin subcomando. Sin esto, cobra cae al
+	// help directamente y NUNCA dispara PersistentPreRunE — eso significaba
+	// que la primera vez que un usuario invoca `codify` (camino más natural
+	// post-instalación) el wizard nunca se ofrecía. Ahora: el auto-launch
+	// fires (vía PersistentPreRunE), y luego imprimimos el help estándar.
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmd.Help()
+	},
 }
 
 // Execute runs the root command
