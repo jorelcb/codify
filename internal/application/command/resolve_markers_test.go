@@ -222,6 +222,38 @@ func TestExecute_LLMPath_UsesProviderRewrite(t *testing.T) {
 	}
 }
 
+func TestExecute_LLMRewriteWithIssues_FallsBackToLiteral(t *testing.T) {
+	fs := newInMemoryFS(map[string]string{
+		"AGENTS.md": "currency [DEFINE: code], tz [DEFINE: tz]",
+	})
+	// Provider returns content that hallucinates a new marker — validator
+	// must catch this and trigger literal fallback.
+	provider := &fakeProvider{
+		rewriteWith: "currency USD, tz [DEFINE: tz] [DEFINE: hallucinated]",
+	}
+	prompter := &scriptedPrompter{
+		confirm: true,
+		answers: []service.PromptedAnswer{
+			{Answer: "USD"},
+			{Skip: true},
+		},
+	}
+	cmd := newCommandWithFS(prompter, provider, fs)
+
+	res, err := cmd.Execute(context.Background(), ResolveRequest{Files: []string{"AGENTS.md"}})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if res.UsedLLM != 0 || res.UsedLiteral != 1 {
+		t.Errorf("expected literal fallback, got %+v", res)
+	}
+	got := fs.write["AGENTS.md"]
+	want := "currency USD, tz [DEFINE: tz]"
+	if got != want {
+		t.Errorf("written content:\n  got:  %q\n  want: %q", got, want)
+	}
+}
+
 func TestExecute_LLMFailure_FallsBackToLiteral(t *testing.T) {
 	fs := newInMemoryFS(map[string]string{
 		"AGENTS.md": "currency [DEFINE: code]",

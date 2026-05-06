@@ -88,6 +88,87 @@ func TestLiteralSubstitute_NoAnswers_IsNoop(t *testing.T) {
 	}
 }
 
+func TestValidateRewrite_HappyPath_NoIssues(t *testing.T) {
+	hits := []MarkerHit{
+		{Text: "[DEFINE: code]", Line: 1, Answer: "USD"},
+		{Text: "[DEFINE: tz]", Line: 2, Answer: ""},
+	}
+	after := "Currency is USD\n[DEFINE: tz]\n"
+
+	d := ValidateRewrite(after, hits)
+
+	if d.HasIssues() {
+		t.Fatalf("unexpected issues: %+v", d)
+	}
+	if len(d.Resolved) != 1 || len(d.Skipped) != 1 {
+		t.Errorf("counters: %+v", d)
+	}
+}
+
+func TestValidateRewrite_LostSkippedMarker(t *testing.T) {
+	hits := []MarkerHit{{Text: "[DEFINE: tz]", Line: 1, Answer: ""}}
+	after := "Currency is USD\n" // LLM removed the skipped marker
+
+	d := ValidateRewrite(after, hits)
+
+	if !d.HasIssues() || len(d.Lost) != 1 {
+		t.Fatalf("expected 1 Lost, got %+v", d)
+	}
+	if d.Lost[0].Text != "[DEFINE: tz]" {
+		t.Errorf("Lost[0]: %+v", d.Lost[0])
+	}
+}
+
+func TestValidateRewrite_SpuriousMarker(t *testing.T) {
+	hits := []MarkerHit{{Text: "[DEFINE: code]", Line: 1, Answer: "USD"}}
+	after := "Currency is USD but [DEFINE: invented_field] appeared"
+
+	d := ValidateRewrite(after, hits)
+
+	if !d.HasIssues() || len(d.Spurious) != 1 {
+		t.Fatalf("expected 1 Spurious, got %+v", d)
+	}
+	if d.Spurious[0] != "[DEFINE: invented_field]" {
+		t.Errorf("Spurious[0]: %q", d.Spurious[0])
+	}
+}
+
+func TestValidateRewrite_NotApplied_AnsweredButPresent(t *testing.T) {
+	hits := []MarkerHit{{Text: "[DEFINE: code]", Line: 1, Answer: "USD"}}
+	after := "Currency is [DEFINE: code]" // LLM left the marker untouched
+
+	d := ValidateRewrite(after, hits)
+
+	if !d.HasIssues() || len(d.NotApplied) != 1 {
+		t.Fatalf("expected 1 NotApplied, got %+v", d)
+	}
+}
+
+func TestValidateRewrite_MixedIssues(t *testing.T) {
+	hits := []MarkerHit{
+		{Text: "[DEFINE: code]", Line: 1, Answer: "USD"}, // applied
+		{Text: "[DEFINE: tz]", Line: 2, Answer: ""},      // should remain
+		{Text: "[DEFINE: x]", Line: 3, Answer: "ans"},    // should disappear
+	}
+	// LLM: applied code, lost tz, did NOT apply x, hallucinated y
+	after := "Currency USD, x is [DEFINE: x], extra [DEFINE: y]"
+
+	d := ValidateRewrite(after, hits)
+
+	if !d.HasIssues() {
+		t.Fatal("expected issues")
+	}
+	if len(d.Lost) != 1 || d.Lost[0].Text != "[DEFINE: tz]" {
+		t.Errorf("Lost: %+v", d.Lost)
+	}
+	if len(d.NotApplied) != 1 || d.NotApplied[0].Text != "[DEFINE: x]" {
+		t.Errorf("NotApplied: %+v", d.NotApplied)
+	}
+	if len(d.Spurious) != 1 || d.Spurious[0] != "[DEFINE: y]" {
+		t.Errorf("Spurious: %+v", d.Spurious)
+	}
+}
+
 func TestLiteralSubstitute_DuplicateMarkerOnlyReplacesOnce(t *testing.T) {
 	// Two hits with the same Text but on different lines: each iteration must
 	// consume exactly one occurrence so they map to their respective spots.
