@@ -107,17 +107,15 @@ func promptLocale() (string, error) {
 
 // promptPreset displays template preset selection.
 //
-// Order: neutral first (recommended for greenfield), then opinionated presets
-// in increasing complexity. Aligns with ADR-001: in v2.0 the default flips
-// from clean-ddd to neutral; we already promote neutral as the recommended
-// option in the menu.
+// In v2.0 the default selection is `neutral` (no architectural opinion),
+// per ADR-001 phase 3 — completing the transition started in v1.21.
 func promptPreset() (string, error) {
 	return promptSelect("Select template preset", []selectOption{
-		{"Neutral (no architectural opinions — recommended)", "neutral"},
+		{"Neutral (no architectural opinions — default)", "neutral"},
 		{"Clean + DDD (DDD / Clean Architecture / BDD)", "clean-ddd"},
 		{"Hexagonal (Ports & Adapters — lighter than clean-ddd)", "hexagonal"},
 		{"Event-Driven (CQRS + Event Sourcing + Sagas)", "event-driven"},
-	}, "clean-ddd")
+	}, "neutral")
 }
 
 // promptLanguage displays programming language selection.

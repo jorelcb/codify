@@ -38,6 +38,7 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Step(`^the resolved template directory should be "([^"]*)"$`, featureContext.theResolvedTemplateDirShouldBe)
 	ctx.Step(`^the resolved mapping should have (\d+) entr(?:y|ies)$`, featureContext.theResolvedMappingShouldHaveNEntries)
 	ctx.Step(`^the legacy alias should map to category "([^"]*)" and preset "([^"]*)"$`, featureContext.theLegacyAliasShouldMapTo)
+	ctx.Step(`^the legacy alias should not be in the mapping$`, featureContext.theLegacyAliasShouldNotBeInTheMapping)
 	ctx.Step(`^the architecture preset names should contain "([^"]*)"$`, featureContext.theArchitecturePresetNamesShouldContain)
 }
 
@@ -99,6 +100,12 @@ func (f *FeatureContext) theLegacyAliasShouldMapTo(category, preset string) erro
 		return err
 	}
 	return assertions.AssertExpectedAndActual(assert.Equal, preset, f.legacyMap[1], "legacy preset mismatch")
+}
+
+// theLegacyAliasShouldNotBeInTheMapping is the v2.0 step for entries removed
+// from LegacyPresetMapping (e.g. the "default" alias removed per ADR-001).
+func (f *FeatureContext) theLegacyAliasShouldNotBeInTheMapping() error {
+	return assertions.AssertBool(assert.False, f.legacyOk, "expected legacy alias to be ABSENT from mapping")
 }
 
 func (f *FeatureContext) theArchitecturePresetNamesShouldContain(name string) error {

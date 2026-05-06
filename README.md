@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.25.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -10,29 +10,37 @@
 [![Gemini](https://img.shields.io/badge/Gemini-4285F4?style=for-the-badge&logo=google)](https://ai.google.dev)
 [![AGENTS.md](https://img.shields.io/badge/Standard-AGENTS.md-purple?style=for-the-badge)](https://github.com/anthropics/AGENTS.md)
 
-**Context. Specs. Skills. Workflows. Everything your AI agent needs before writing the first line of code.** 🏗️
+**Generate, audit, and evolve your AI agent's context across the whole project lifecycle.** 🏗️
 
-*Because an agent without context is an intern with root access.*
+*Because an agent without context is an intern with root access — and stale context is an intern reading three-week-old docs.*
 
 **[English]** | [Español](README_ES.md)
 
-[Quick Start](#-quick-start) · [Config & Bootstrap](#%EF%B8%8F-configuration--bootstrap) · [Context](#-context-generation) · [Specs](#-spec-driven-development) · [Skills](#-agent-skills) · [Workflows](#-workflows) · [Hooks](#-hooks) · [Drift Detection](#-lifecycle-drift-detection) · [Update / Audit / Usage](#-lifecycle-update-audit--usage-tracking) · [MCP Server](#-mcp-server) · [Language Guides](#-language-specific-guides) · [Architecture](#%EF%B8%8F-architecture)
+[Quick Start](#-quick-start) · [Config & Bootstrap](#%EF%B8%8F-configuration--bootstrap) · [Context](#-context-generation) · [Specs](#-spec-driven-development) · [Skills](#-agent-skills) · [Workflows](#-workflows) · [Hooks](#-hooks) · [Drift Detection](#-lifecycle-drift-detection) · [Update / Audit / Usage](#-lifecycle-update-audit--usage-tracking) · [Watch](#%EF%B8%8F-lifecycle-foreground-watcher-codify-watch) · [MCP Server](#-mcp-server) · [Language Guides](#-language-specific-guides) · [Architecture](#%EF%B8%8F-architecture) · [Migrating from v1.x](#-migrating-from-v1x)
 
 </div>
 
 ---
 
+> **Codify v2.0** — Codify is no longer just a one-shot generator. It now **generates, audits, and evolves** your agent's context across the project's lifecycle: drift detection (`check`), selective regeneration (`update`), commit auditing (`audit`), cost transparency (`usage`), foreground watching (`watch`), and bootstrap workflows (`config` + `init`). See the [migration section](#-migrating-from-v1x) if you're coming from v1.x.
+
+---
+
 ## 🎯 The Problem
 
-You tell your agent: *"Build a payments API in Go with microservices"*
+**Two problems, actually.**
 
-And the agent, with all its capability, improvises:
+**Problem 1 — the agent improvises.** You tell it: *"Build a payments API in Go with microservices"*, and:
 - Folder structures nobody asked for
 - Patterns that contradict your architecture
 - Decisions you'll revert in the next session
 - Zero continuity between sessions
 
-**It's not the agent's fault. It starts from scratch. Every. Single. Time.** 🔄
+It's not the agent's fault. It starts from scratch. Every. Single. Time. 🔄
+
+**Problem 2 — even when context exists, it drifts.** Three weeks ago you wrote a beautiful AGENTS.md. Since then `go.mod` added five deps, the Makefile gained four targets, the README evolved. The AGENTS.md still says what was true on day one. The agent reads it and confidently makes decisions on stale ground.
+
+**Codify v1.x solved Problem 1. Codify v2.0 solves both.** 🛠️
 
 ## 💡 The Solution
 
@@ -66,7 +74,7 @@ And the agent, with all its capability, improvises:
 - **Skills** give the agent reusable abilities — how to commit, version, design entities, review code
 - **Workflows** give the agent orchestration recipes — multi-step processes like feature development, bug fixing, releases
 - **Hooks** add deterministic guardrails — shell scripts on Claude Code lifecycle events, no LLM in the loop *(v1.19+)*
-- **Lifecycle** keeps everything in sync — `config`, `init`, `check`, `update`, `audit`, `usage` — drift detection, selective regen, commit auditing, cost transparency *(v1.22+)*
+- **Lifecycle** keeps everything in sync — `config`, `init`, `check`, `update`, `audit`, `usage`, `watch` — drift detection, selective regen, commit auditing, cost transparency, foreground watching *(v1.22+)*
 
 It follows the [AGENTS.md standard](https://github.com/anthropics/AGENTS.md) — an open specification backed by the Linux Foundation for providing AI agents with project context. Files work out of the box with Claude Code, Cursor, Codex, and any agent that reads the standard.
 
@@ -75,6 +83,7 @@ It follows the [AGENTS.md standard](https://github.com/anthropics/AGENTS.md) —
 ### 😱 Without Codify
 
 ```
+Day 1
 You: "Create a payments API in Go"
 
 Agent: *creates main.go with everything in one file*
@@ -87,12 +96,17 @@ Agent: "BDD tests? This is the first time you've mentioned that"
 You: "At least commit this properly"
 Agent: *writes "update code" as commit message*
 
-Result: 45 minutes correcting the agent 😤
+Day 22 (after AGENTS.md was written and never updated)
+You: "Add the new circuit-breaker dep we added last week"
+Agent: *uses go-retry — never heard of go-resilience because AGENTS.md is stale*
+
+Result: 45 minutes correcting the agent on day 1, two hours on day 22. 😤
 ```
 
 ### 🚀 With Codify
 
 ```
+Day 1
 You: "Create a payments API in Go"
 
 Agent: *reads AGENTS.md, CONTEXT.md, DEVELOPMENT_GUIDE.md*
@@ -105,8 +119,16 @@ Agent: *reads SKILL.md for conventional commits*
 Agent: "Done. Here's the commit following Conventional Commits:
         feat(payment): add payment domain entity with Stripe integration"
 
-Result: Coherent code from the first line ✨
+Day 22 (you've been editing in the background; AGENTS.md auto-stayed in sync)
+You: "Add the new circuit-breaker dep we added last week"
+Agent: *reads current AGENTS.md — knows go-resilience is the project's choice*
+Agent: "Adding go-resilience following the wrap-with-context pattern from
+        IDIOMS.md. Note that codify check ran clean before this session."
+
+Result: Coherent code from the first line, AND from line 1,000. ✨
 ```
+
+Behind the scenes on day 22, **`codify watch`** has been quietly running, **`codify check`** flagged the `go.mod` change, **`codify update`** refreshed AGENTS.md, and **`codify usage`** shows it cost $0.04 in tokens.
 
 ## ⚡ Quick Start
 
@@ -1271,6 +1293,65 @@ codify generate my-api \
 ```
 
 The file content becomes the project description. Supports any text format — markdown, plain text, etc. Mutually exclusive with `--description`.
+
+## 🚀 Migrating from v1.x
+
+Codify v2.0 has **one breaking change**. Everything else (multi-target support for Claude/Codex/Antigravity, all commands, all flags, all config keys) keeps working identically.
+
+### What changed
+
+| v1.x | v2.0 |
+|---|---|
+| `--preset default` (deprecated alias resolving to `clean-ddd` with warning) | **Removed** — returns a clear error with migration instructions |
+| Default value of `--preset` flag: `clean-ddd` | **`neutral`** (no architectural opinion baked in) |
+| `default` accepted in `~/.codify/config.yml` | Returns the same error at config load |
+
+The change in default reflects a project decision documented in [ADR-001](docs/adr/0001-default-preset-transition.md): Codify's "default" used to be DDD/Clean — opinionated. v2.0 makes the default architecturally neutral, so the agent gets a clean baseline unless you explicitly choose a stance.
+
+### Migration steps
+
+**If you used `--preset default` explicitly:**
+
+```bash
+# Before (v1.x):
+codify generate my-api -d "..." --preset default
+
+# After (v2.0): use clean-ddd (same behavior as v1.x default)
+codify generate my-api -d "..." --preset clean-ddd
+
+# OR adopt the new default explicitly:
+codify generate my-api -d "..." --preset neutral
+```
+
+**If you ran `codify generate` without `--preset` and want to keep v1.x behavior:**
+
+Two options:
+
+```bash
+# Option A — pass --preset clean-ddd on every invocation
+codify generate my-api -d "..." --preset clean-ddd
+
+# Option B — set it as your global default (recommended for CI/scripts)
+codify config set preset clean-ddd
+```
+
+**If your `~/.codify/config.yml` has `preset: default`:**
+
+```bash
+# Edit the file or use the CLI:
+codify config set preset clean-ddd   # to keep v1.x behavior
+codify config set preset neutral     # to adopt v2.0 default
+```
+
+### What did NOT change
+
+- All targets remain supported: `claude`, `codex`, `antigravity` (per [ADR-009](docs/adr/0009-antigravity-deprecation-reversal.md), reversing the v1.26 deprecation plan)
+- All commands work identically — `generate`, `analyze`, `spec`, `skills`, `workflows`, `hooks`, `config`, `init`, `check`, `update`, `audit`, `usage`, `watch`, `reset-state`
+- All other flags, all output formats, all MCP tools (10 total)
+- Config schema, state.json schema, usage.json schema — unchanged
+- Pricing table version, locale options, language options — unchanged
+
+If you don't pass `--preset` explicitly anywhere, the only observable difference is that newly-generated AGENTS.md/CONTEXT.md will be architecture-agnostic instead of DDD-flavored. Existing artifacts are not affected; `codify check` won't flag drift just because the version changed.
 
 ## 🏗️ Architecture
 

@@ -110,7 +110,7 @@ Examples:
 	cmd.Flags().StringVarP(&p.projectType, "type", "t", "", "Project type hint (api, cli, lib...)")
 	cmd.Flags().StringVarP(&p.architecture, "architecture", "a", "", "Architecture pattern hint")
 	cmd.Flags().StringVarP(&p.model, "model", "m", "", "LLM model (default: claude-sonnet-4-6, or gemini-3.1-pro-preview)")
-	cmd.Flags().StringVarP(&p.preset, "preset", "p", "clean-ddd", "Template preset: neutral (recommended), clean-ddd, hexagonal, event-driven (alias 'default' resolves to clean-ddd, deprecated — removed in v2.0)")
+	cmd.Flags().StringVarP(&p.preset, "preset", "p", "neutral", "Template preset: neutral (default — no architectural opinion), clean-ddd (DDD + Clean Architecture), hexagonal (Ports & Adapters), event-driven (CQRS + Event Sourcing + Sagas)")
 	cmd.Flags().StringVar(&p.locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
 	cmd.Flags().StringVarP(&p.output, "output", "o", "", "Output directory (default: current directory)")
 	cmd.Flags().BoolVar(&p.withSpecs, "with-specs", false, "Also generate SDD spec files after context generation")
@@ -230,11 +230,11 @@ func runGenerateInteractive(p generateParams, explicit map[string]bool) error {
 	return nil
 }
 
-// validPresets maps preset names to their directory name. "default" is a
-// deprecated alias for "clean-ddd" kept during v1.x — emits a warning and
-// resolves to "clean-ddd" via resolvePreset(). Removed in v2.0 per ADR-001.
+// validPresets maps preset names to their directory name. The "default" alias
+// was removed in v2.0 (ADR-001 phase 3). Users who relied on the v1.x default
+// (clean-ddd) must now pass --preset clean-ddd explicitly or set it in
+// ~/.codify/config.yml. The new default is "neutral" — no architectural opinion.
 var validPresets = map[string]bool{
-	"default":      true, // alias deprecated, resolves to clean-ddd
 	"clean-ddd":    true,
 	"neutral":      true,
 	"hexagonal":    true,
@@ -242,25 +242,28 @@ var validPresets = map[string]bool{
 	"workflow":     true,
 }
 
-// resolvePreset normalizes preset names. Emits a deprecation warning for
-// "default" (will be removed in v2.0). Falls back to "clean-ddd" for unknown
-// presets to preserve previous behavior of defaulting to the opinionated
-// preset rather than failing hard.
-func resolvePreset(preset string) string {
+// resolvePreset normalizes preset names. In v2.0 the deprecated "default" alias
+// returns an error with migration guidance; unknown presets also error rather
+// than silently falling back. The flag default is "neutral" so the empty path
+// (no --preset passed) resolves naturally without hitting this function.
+func resolvePreset(preset string) (string, error) {
 	if preset == "default" {
-		fmt.Fprintln(os.Stderr, "WARNING: --preset 'default' is deprecated and will be removed in v2.0.0. It now resolves to 'clean-ddd'. In v2.0 the default changes to 'neutral'. Set --preset explicitly or run 'codify config' to set your global default. See: docs/adr/0001-default-preset-transition.md")
-		return "clean-ddd"
+		return "", fmt.Errorf("preset 'default' was removed in Codify v2.0.0. Use --preset clean-ddd to keep v1.x behavior, or --preset neutral (the new default) for no architectural opinion. See the v2.0 migration section in README.md")
 	}
 	if !validPresets[preset] {
-		return "clean-ddd"
+		return "", fmt.Errorf("unknown preset %q. Valid presets: neutral, clean-ddd, hexagonal, event-driven", preset)
 	}
-	return preset
+	return preset, nil
 }
 
-// resolveTemplatePath builds the full template path: templates/{locale}/{preset}
-func resolveTemplatePath(locale, preset string) string {
-	preset = resolvePreset(preset)
-	return filepath.Join("templates", locale, preset)
+// resolveTemplatePath builds the full template path: templates/{locale}/{preset}.
+// Returns an error if the preset name is not valid (since v2.0 — no silent fallback).
+func resolveTemplatePath(locale, preset string) (string, error) {
+	preset, err := resolvePreset(preset)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join("templates", locale, preset), nil
 }
 
 // resolveLocaleBase returns the locale base directory: templates/{locale}
@@ -282,7 +285,10 @@ func runGenerateWithMode(projectName, description, language, projectType, archit
 	}
 
 	// 2. Load templates (base preset + language-specific if --language is provided)
-	templatePath := resolveTemplatePath(locale, preset)
+	templatePath, err := resolveTemplatePath(locale, preset)
+	if err != nil {
+		return err
+	}
 	var templateLoader service.TemplateLoader
 	if language != "" {
 		templateLoader = infratemplate.NewFileSystemTemplateLoaderWithLanguage(root.TemplatesFS, templatePath, resolveLocaleBase(locale), language)

@@ -162,9 +162,9 @@ func TestLegacyPresetMapping(t *testing.T) {
 		wantPre  string
 		wantOk   bool
 	}{
-		// "default" es alias deprecado de "clean-ddd" durante v1.x (ADR-001)
-		{"default", "architecture", "clean-ddd", true},
-		// "clean" se mantiene como alias por backward-compat durante v1.x
+		// "default" was removed in v2.0 (ADR-001 phase 3) — must NOT be in the map
+		{"default", "", "", false},
+		// "clean" stays as the v1.21 rename alias (clean → clean-ddd)
 		{"clean", "architecture", "clean-ddd", true},
 		{"clean-ddd", "architecture", "clean-ddd", true},
 		{"hexagonal", "architecture", "hexagonal", true},

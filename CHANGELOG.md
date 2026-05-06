@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-05-05 - Lifecycle Custodian (rebrand)
+
+> **Codify is no longer just a one-shot generator.** v2.0 is the moment when the project formally re-positions itself as a **lifecycle custodian** for AI agent context: it generates artifacts, then keeps them honest as the codebase evolves. Same six layers (Context, Specs, Skills, Workflows, Hooks, Lifecycle) that landed across v1.21–v1.25 — now framed and documented as a coherent product.
+
+### What v2.0 actually changes
+
+This is the **smallest possible breaking-change major release**. The narrative shift is large; the code surface change is one flag default.
+
+#### Breaking
+- **`--preset default` is removed.** Passing it returns an error with migration instructions, not a silent fallback. Removed from the CLI flag default value, the MCP tool enums, the validation maps, and `LegacyPresetMapping`. (Per [ADR-001](docs/adr/0001-default-preset-transition.md) phase 3.)
+- **The default value of `--preset` is now `neutral`** instead of `clean-ddd`. New AGENTS.md/CONTEXT.md generations made without `--preset` will be architecturally neutral — no DDD/Clean opinion baked in unless you ask for it. Existing artifacts are unaffected; `codify check` won't flag this as drift.
+
+That's the entire functional breaking change list. Everything else continues to work.
+
+### Migration
+
+A single CLI invocation covers most cases. See the [Migrating from v1.x](README.md#-migrating-from-v1x) section in README for full guidance:
+
+```bash
+# Match v1.x default behavior (DDD/Clean)
+codify config set preset clean-ddd
+
+# OR adopt the new default (no architectural opinion)
+codify config set preset neutral
+```
+
+Anywhere you previously passed `--preset default`, replace with `--preset clean-ddd` (same behavior) or `--preset neutral` (the new default).
+
+### What did NOT change
+
+- All targets remain supported: `claude`, `codex`, `antigravity`. The v1.26 antigravity deprecation was reversed via [ADR-009](docs/adr/0009-antigravity-deprecation-reversal.md).
+- All commands, flags, MCP tools (10 total), config/state/usage schemas, pricing table — unchanged.
+
+### Rebrand: README and positioning
+
+The README was rewritten to reflect the lifecycle custodian framing without changing the underlying capabilities. New tagline: *"Generate, audit, and evolve your AI agent's context across the whole project lifecycle."* Problem section now articulates the drift problem explicitly. Before/After example extended to "Day 22" showing the watcher/check/update flow.
+
+### Cancelled before shipping
+
+- **`codify migrate` command** — was planned for v1.26. Cancelled with the antigravity deprecation (ADR-009).
+- **v1.26 release entirely** — cancelled. v1.25 → v2.0 directly.
+
+### Decisions
+
+- **v2.0 is the rebrand, not a code rewrite.** The lifecycle custodian identity was built incrementally across v1.21–v1.25 (per [ADR-006](docs/adr/0006-incremental-release-model.md)).
+- **Minimum breaking surface.** v2.0 touches one flag default, the minimum required for the rebrand to be honest.
+- **Migration guide is documentation, not a command.**
+
+### Versions
+
+`.version` 1.25.0 → 2.0.0; README + README_ES badges; MCP `serverVersion`. Total BDD packages: 9, 30+ scenarios — all green.
+
 ## [1.25.0] - 2026-05-05 - Lifecycle: foreground watcher (`codify watch`)
 
 ### Added

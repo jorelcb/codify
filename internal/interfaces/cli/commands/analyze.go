@@ -66,7 +66,7 @@ Examples:
 	cmd.Flags().StringVarP(&p.name, "name", "n", "", "Project name (defaults to directory name)")
 	cmd.Flags().StringVarP(&p.language, "language", "l", "", "Override detected language (activates idiomatic guides)")
 	cmd.Flags().StringVarP(&p.model, "model", "m", "", "LLM model (default: claude-sonnet-4-6, or gemini-3.1-pro-preview)")
-	cmd.Flags().StringVarP(&p.preset, "preset", "p", "default", "Template preset: default or neutral")
+	cmd.Flags().StringVarP(&p.preset, "preset", "p", "neutral", "Template preset: neutral (default — no architectural opinion), clean-ddd (DDD + Clean Architecture), hexagonal (Ports & Adapters), event-driven (CQRS + Event Sourcing + Sagas)")
 	cmd.Flags().StringVar(&p.locale, "locale", defaultLocale, "Output language: en (English) or es (Spanish)")
 	cmd.Flags().StringVarP(&p.output, "output", "o", "", "Output directory (default: current directory)")
 	cmd.Flags().BoolVar(&p.withSpecs, "with-specs", false, "Also generate SDD spec files after context generation")

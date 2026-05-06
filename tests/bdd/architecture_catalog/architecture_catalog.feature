@@ -31,10 +31,10 @@ Feature: Architecture preset catalog
     Then the resolved template directory should be "event-driven"
     And the resolved mapping should have 5 entries
 
-  Scenario: Legacy "default" alias resolves to clean-ddd
+  Scenario: Legacy "default" alias is no longer present in v2.0
     Given the skills catalog is loaded
     When I look up legacy preset alias "default"
-    Then the legacy alias should map to category "architecture" and preset "clean-ddd"
+    Then the legacy alias should not be in the mapping
 
   Scenario: Legacy "clean" alias still resolves to clean-ddd
     Given the skills catalog is loaded

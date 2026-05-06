@@ -290,11 +290,11 @@ func (c *SkillCategory) OptionLabels() []string {
 	return labels
 }
 
-// LegacyPresetMapping mapea presets legados (--preset flag antiguo) al nuevo modelo.
-// "default" se mantiene como alias de "clean-ddd" durante v1.x — emite warning,
-// se elimina en v2.0 (ver docs/adr/0001-default-preset-transition.md).
+// LegacyPresetMapping mapea presets legados (--preset flag del comando skills)
+// al nuevo modelo de category+option. La entrada "default" fue removida en
+// v2.0 per ADR-001; "clean" se mantiene como alias del rename hecho en v1.21
+// (clean → clean-ddd) ya que es un cambio terminológico, no un default.
 var LegacyPresetMapping = map[string][2]string{
-	"default":     {"architecture", "clean-ddd"},
 	"clean":       {"architecture", "clean-ddd"},
 	"clean-ddd":   {"architecture", "clean-ddd"},
 	"hexagonal":   {"architecture", "hexagonal"},

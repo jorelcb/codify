@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-1.25.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue?style=for-the-badge)](https://github.com/jorelcb/codify/releases)
 [![MCP](https://img.shields.io/badge/MCP-Server-ff6b35?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/doc/go1.23)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
@@ -10,15 +10,19 @@
 [![Gemini](https://img.shields.io/badge/Gemini-4285F4?style=for-the-badge&logo=google)](https://ai.google.dev)
 [![AGENTS.md](https://img.shields.io/badge/Standard-AGENTS.md-purple?style=for-the-badge)](https://github.com/anthropics/AGENTS.md)
 
-**Contexto. Specs. Skills. Workflows. Hooks. Lifecycle. Todo lo que tu agente de IA necesita antes y despues de escribir la primera linea de codigo.** 🏗️
+**Genera, audita y evoluciona el contexto de tu agente de IA a lo largo del lifecycle del proyecto.** 🏗️
 
-*Porque un agente sin contexto es un pasante con acceso root.*
+*Porque un agente sin contexto es un pasante con acceso root — y un contexto desactualizado es un pasante leyendo docs de hace tres semanas.*
 
 [English](README.md) | **[Español]**
 
-[Quick Start](#-quick-start) · [Config y Bootstrap](#%EF%B8%8F-configuracion-y-bootstrap) · [Contexto](#-generacion-de-contexto) · [Specs](#-desarrollo-guiado-por-specs) · [Skills](#-agent-skills) · [Workflows](#-workflows) · [Hooks](#-hooks) · [Drift Detection](#-lifecycle-drift-detection) · [Update / Audit / Usage](#-lifecycle-update-audit-y-tracking-de-uso) · [MCP Server](#-mcp-server) · [Guias por Lenguaje](#-guias-por-lenguaje) · [Arquitectura](#%EF%B8%8F-arquitectura)
+[Quick Start](#-quick-start) · [Config y Bootstrap](#%EF%B8%8F-configuracion-y-bootstrap) · [Contexto](#-generacion-de-contexto) · [Specs](#-desarrollo-guiado-por-specs) · [Skills](#-agent-skills) · [Workflows](#-workflows) · [Hooks](#-hooks) · [Drift Detection](#-lifecycle-drift-detection) · [Update / Audit / Usage](#-lifecycle-update-audit-y-tracking-de-uso) · [Watch](#%EF%B8%8F-lifecycle-watcher-foreground-codify-watch) · [MCP Server](#-mcp-server) · [Guias por Lenguaje](#-guias-por-lenguaje) · [Arquitectura](#%EF%B8%8F-arquitectura) · [Migrando desde v1.x](#-migrando-desde-v1x)
 
 </div>
+
+---
+
+> **Codify v2.0** — Codify ya no es solamente un generador one-shot. Ahora **genera, audita y evoluciona** el contexto de tu agente a lo largo del lifecycle del proyecto: drift detection (`check`), regeneracion selectiva (`update`), audit de commits (`audit`), transparencia de costos (`usage`), watcher foreground (`watch`), y bootstrap (`config` + `init`). Ver la [seccion de migracion](#-migrando-desde-v1x) si venis de v1.x.
 
 ---
 
@@ -1216,6 +1220,64 @@ codify generate my-api \
 ```
 
 El contenido del archivo se convierte en la descripcion del proyecto. Soporta cualquier formato de texto — markdown, texto plano, etc. Mutuamente excluyente con `--description`.
+
+## 🚀 Migrando desde v1.x
+
+Codify v2.0 tiene **un solo cambio breaking**. Todo lo demas (multi-target Claude/Codex/Antigravity, todos los comandos, todos los flags, todas las claves de config) sigue funcionando identico.
+
+### Que cambio
+
+| v1.x | v2.0 |
+|---|---|
+| `--preset default` (alias deprecado que resolvia a `clean-ddd` con warning) | **Removido** — devuelve error claro con instrucciones de migracion |
+| Valor default del flag `--preset`: `clean-ddd` | **`neutral`** (sin opinion arquitectonica baked in) |
+| `default` aceptado en `~/.codify/config.yml` | Mismo error al cargar el config |
+
+El cambio de default refleja una decision documentada en [ADR-001](docs/adr/0001-default-preset-transition.md): el "default" de Codify era DDD/Clean — opinado. v2.0 hace que el default sea arquitectonicamente neutro, asi el agente parte de una base limpia salvo que elijas explicitamente una postura.
+
+### Pasos de migracion
+
+**Si usabas `--preset default` explicito:**
+
+```bash
+# Antes (v1.x):
+codify generate my-api -d "..." --preset default
+
+# Despues (v2.0): usa clean-ddd (mismo comportamiento que el default v1.x)
+codify generate my-api -d "..." --preset clean-ddd
+
+# O adopta el nuevo default explicitamente:
+codify generate my-api -d "..." --preset neutral
+```
+
+**Si corrias `codify generate` sin `--preset` y queres mantener el comportamiento v1.x:**
+
+Dos opciones:
+
+```bash
+# Opcion A — pasar --preset clean-ddd en cada invocacion
+codify generate my-api -d "..." --preset clean-ddd
+
+# Opcion B — setearlo como default global (recomendado para CI/scripts)
+codify config set preset clean-ddd
+```
+
+**Si tu `~/.codify/config.yml` tiene `preset: default`:**
+
+```bash
+codify config set preset clean-ddd   # mantener comportamiento v1.x
+codify config set preset neutral     # adoptar el default v2.0
+```
+
+### Lo que NO cambio
+
+- Todos los targets siguen soportados: `claude`, `codex`, `antigravity` (per [ADR-009](docs/adr/0009-antigravity-deprecation-reversal.md), revierte el plan de deprecacion v1.26)
+- Todos los comandos funcionan identico — `generate`, `analyze`, `spec`, `skills`, `workflows`, `hooks`, `config`, `init`, `check`, `update`, `audit`, `usage`, `watch`, `reset-state`
+- Todos los demas flags, formatos de output, MCP tools (10 totales)
+- Schemas de config, state.json, usage.json — sin cambios
+- Tabla de pricing, locales, lenguajes — sin cambios
+
+Si no pasas `--preset` explicito en ningun lado, la unica diferencia observable es que los nuevos AGENTS.md/CONTEXT.md generados van a ser arquitectura-agnosticos en vez de DDD-flavored. Los artefactos existentes no se afectan; `codify check` no flagea drift solo porque cambio la version.
 
 ## 🏗️ Arquitectura
 
