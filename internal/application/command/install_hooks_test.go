@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	root "github.com/jorelcb/codify"
@@ -205,6 +206,65 @@ func TestInstallHooks_DryRun(t *testing.T) {
 	hooksDir := filepath.Join(tmp, ".claude", "hooks")
 	if _, err := os.Stat(hooksDir); !os.IsNotExist(err) {
 		t.Fatalf("dry run created hooks dir (err=%v)", err)
+	}
+}
+
+func TestInstallHooks_GlobalRewritesCommandsToHome(t *testing.T) {
+	tmp := t.TempDir()
+	installer := newTestInstaller(tmp)
+
+	cfg := &dto.HookConfig{
+		Category: "hooks",
+		Preset:   "all",
+		Locale:   "en",
+		Install:  dto.InstallScopeGlobal,
+	}
+
+	if _, err := installer.Execute(cfg); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	settingsPath := filepath.Join(tmp, ".claude", "settings.json")
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("read settings.json: %v", err)
+	}
+	got := string(data)
+
+	if strings.Contains(got, "$CLAUDE_PROJECT_DIR") {
+		t.Fatalf("global install must rewrite $CLAUDE_PROJECT_DIR; settings.json:\n%s", got)
+	}
+	if !strings.Contains(got, `$HOME\"/.claude/hooks/`) {
+		t.Fatalf("global install must reference $HOME/.claude/hooks/; settings.json:\n%s", got)
+	}
+}
+
+func TestInstallHooks_ProjectKeepsClaudeProjectDir(t *testing.T) {
+	tmp := t.TempDir()
+	installer := newTestInstaller(tmp)
+
+	cfg := &dto.HookConfig{
+		Category: "hooks",
+		Preset:   "security-guardrails",
+		Locale:   "en",
+		Install:  dto.InstallScopeProject,
+	}
+
+	if _, err := installer.Execute(cfg); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(tmp, ".claude", "settings.json"))
+	if err != nil {
+		t.Fatalf("read settings.json: %v", err)
+	}
+	got := string(data)
+
+	if !strings.Contains(got, "$CLAUDE_PROJECT_DIR") {
+		t.Fatalf("project install must keep $CLAUDE_PROJECT_DIR; settings.json:\n%s", got)
+	}
+	if strings.Contains(got, `$HOME\"/.claude/hooks/`) {
+		t.Fatalf("project install must NOT rewrite to $HOME; settings.json:\n%s", got)
 	}
 }
 

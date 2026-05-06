@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/jorelcb/codify/internal/application/dto"
 	"github.com/jorelcb/codify/internal/domain/service"
@@ -100,6 +101,14 @@ func (c *InstallHooksCommand) Execute(config *dto.HookConfig) (*InstallResult, e
 		return nil, fmt.Errorf("failed to build hook bundle: %w", err)
 	}
 
+	// Los templates referencian los scripts vía $CLAUDE_PROJECT_DIR — correcto
+	// para scope project. En global, los scripts viven en ~/.claude/hooks/, así
+	// que reescribimos las rutas a $HOME para que el handler funcione desde
+	// cualquier proyecto activo (incluso uno sin .claude/hooks/ propio).
+	if config.Install == dto.InstallScopeGlobal {
+		rewriteHookCommandsToHome(bundle.HooksDoc)
+	}
+
 	s, err := c.loadSettings(settingsPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load settings %s: %w", settingsPath, err)
@@ -173,6 +182,48 @@ func (c *InstallHooksCommand) Execute(config *dto.HookConfig) (*InstallResult, e
 		ScriptsConflict: conflicting,
 		DryRun:          false,
 	}, nil
+}
+
+// rewriteHookCommandsToHome muta in-place el HooksDoc reemplazando
+// `"$CLAUDE_PROJECT_DIR"/.claude/hooks/` por `"$HOME"/.claude/hooks/` en cada
+// handler. Necesario para scope global: los scripts no están en cada proyecto
+// activo, sino en ~/.claude/hooks/.
+func rewriteHookCommandsToHome(doc map[string]any) {
+	hooks, ok := doc["hooks"].(map[string]any)
+	if !ok {
+		return
+	}
+	for _, eventVal := range hooks {
+		matchers, ok := eventVal.([]any)
+		if !ok {
+			continue
+		}
+		for _, m := range matchers {
+			matcher, ok := m.(map[string]any)
+			if !ok {
+				continue
+			}
+			handlers, ok := matcher["hooks"].([]any)
+			if !ok {
+				continue
+			}
+			for _, h := range handlers {
+				handler, ok := h.(map[string]any)
+				if !ok {
+					continue
+				}
+				cmd, ok := handler["command"].(string)
+				if !ok {
+					continue
+				}
+				handler["command"] = strings.ReplaceAll(
+					cmd,
+					`"$CLAUDE_PROJECT_DIR"/.claude/hooks/`,
+					`"$HOME"/.claude/hooks/`,
+				)
+			}
+		}
+	}
 }
 
 // hashEqual returns true when both byte slices have the same SHA-256.
