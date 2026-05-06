@@ -98,9 +98,9 @@ func runConfigWizard(repo *infraconfig.Repository, path string) error {
 	cfg.Locale = locale
 
 	target, err := promptSelect("Default target ecosystem", []selectOption{
-		{"Claude Code (recommended)", "claude"},
-		{"Codex", "codex"},
-		{"Antigravity (deprecated, removed in v2.0)", "antigravity"},
+		{"Claude Code (recommended — full support: skills, workflows, hooks)", "claude"},
+		{"Codex (skills only)", "codex"},
+		{"Antigravity (skills + workflows)", "antigravity"},
 	}, "claude")
 	if err != nil {
 		return err
