@@ -4,6 +4,7 @@
 package audit
 
 import (
+	"bytes"
 	"fmt"
 	"os/exec"
 	"regexp"
@@ -67,7 +68,7 @@ func Run(opts AuditOptions) (domain.Report, error) {
 
 	commits, err := listCommits(opts.ProjectPath, opts.Since, opts.Limit)
 	if err != nil {
-		return report, fmt.Errorf("git log failed: %w", err)
+		return report, err
 	}
 	report.CommitsAnalyzed = len(commits)
 
@@ -167,15 +168,16 @@ func listCommits(projectPath, since string, limit int) ([]commit, error) {
 		args = append(args, fmt.Sprintf("-n%d", limit))
 	}
 
-	cmd := exec.Command("git", args...)
-	cmd.Dir = projectPath
-	out, err := cmd.Output()
+	out, err := runGit(projectPath, args...)
 	if err != nil {
 		return nil, err
 	}
+	if out == "" {
+		return []commit{}, nil
+	}
 
 	commits := []commit{}
-	for _, line := range strings.Split(string(out), "\n") {
+	for _, line := range strings.Split(out, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -197,11 +199,49 @@ func listCommits(projectPath, since string, limit int) ([]commit, error) {
 }
 
 func currentBranch(projectPath string) string {
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	cmd.Dir = projectPath
-	out, err := cmd.Output()
+	out, err := runGit(projectPath, "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(out))
+	return strings.TrimSpace(out)
+}
+
+// runGit ejecuta git y devuelve stdout. En caso de fallo, traduce los modos de
+// error más comunes (no-repo, repo vacío, ref desconocida) a mensajes claros y
+// surfacea el stderr literal cuando no encaja en un patrón conocido. El caso
+// "repositorio vacío" se reporta como stdout vacío + nil err — el llamador lo
+// trata como cero commits, no como falla.
+func runGit(projectPath string, args ...string) (string, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = projectPath
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err == nil {
+		return string(out), nil
+	}
+
+	msg := firstLine(stderr.String())
+	switch {
+	case strings.Contains(msg, "not a git repository"):
+		return "", fmt.Errorf("not a git repository: %s (run `codify audit` from inside a git repo)", projectPath)
+	case strings.Contains(msg, "does not have any commits yet"),
+		strings.Contains(msg, "bad default revision 'HEAD'"),
+		strings.Contains(msg, "ambiguous argument 'HEAD'"):
+		return "", nil
+	case strings.Contains(msg, "unknown revision"), strings.Contains(msg, "ambiguous argument"):
+		return "", fmt.Errorf("git: %s", msg)
+	case msg != "":
+		return "", fmt.Errorf("git %s: %s", args[0], msg)
+	default:
+		return "", fmt.Errorf("git %s: %w", args[0], err)
+	}
+}
+
+func firstLine(s string) string {
+	s = strings.TrimSpace(s)
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		return strings.TrimSpace(s[:i])
+	}
+	return s
 }

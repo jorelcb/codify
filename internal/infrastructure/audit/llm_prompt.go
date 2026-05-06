@@ -97,14 +97,15 @@ func CollectCommitsForLLM(projectPath, since string, limit int) ([]CommitInfo, e
 		}
 		args = append(args, fmt.Sprintf("-n%d", limit))
 	}
-	cmd := exec.Command("git", args...)
-	cmd.Dir = projectPath
-	out, err := cmd.Output()
+	out, err := runGit(projectPath, args...)
 	if err != nil {
 		return nil, err
 	}
+	if out == "" {
+		return []CommitInfo{}, nil
+	}
 	commits := []CommitInfo{}
-	for _, raw := range strings.Split(string(out), "\x1e") {
+	for _, raw := range strings.Split(out, "\x1e") {
 		raw = strings.TrimSpace(raw)
 		if raw == "" {
 			continue
