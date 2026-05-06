@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3] - 2026-05-06 - `codify init` opt-in installs + clearer skill bundle labels
+
+### Added
+- **`codify init` now offers project-scoped skills/workflows/hooks installs at the end of bootstrap.** Mirroring the global flow that `codify config` runs in v2.0.1, after `init` finishes generate/analyze it walks through the same opt-in steps but with `--install project` semantics:
+  1. Skills (per category — architecture/testing/conventions, `skip` default)
+  2. Workflows (claude or antigravity targets only — bug-fix / release-cycle / spec-driven-change / all / `skip` default)
+  3. Hooks (claude only — linting / security-guardrails / convention-enforcement / all / `skip` default)
+
+  Previously `init` just printed *"Recommended next steps: codify skills…"* and exited — the user had to run three separate commands. Now they all run inline in the same wizard. Each step is opt-in with `skip` as default, so a user who only wants the context can hit Enter through and end up with the same artifacts as before.
+
+  The closing message was also cleaned up — it referenced "lifecycle commands arrive starting v1.23" (long since shipped), now lists the available `check / update / audit / watch / usage` commands directly.
+
+### Changed
+- **Preset labels in skill prompts now show file count.** `codify config` and `codify init` previously showed labels like *"Clean + DDD (DDD, BDD, CQRS, Hexagonal port skill)"* — clear about *what's* in the bundle but not how *many* skills the bundle contains, so users picking one preset and getting 4-5 SKILL.md files would think *"all of them got installed"*. Labels now end with `— N skill(s)` so the size is upfront. Same treatment applied to workflow preset labels.
+
+### Internal
+- `internal/interfaces/cli/commands/config_install.go` refactored — the previous `promptInstallGlobalSkills` / `installGlobalSkill` / `promptInstallGlobalHooks` helpers now take a `scope` parameter (`"global"` / `"project"`). New `promptInstallWorkflows` / `installWorkflow` helpers added. Both `config.go` (global) and `init.go` (project) call into the same code paths — one source of truth for the opt-in install UX.
+
 ## [2.0.2] - 2026-05-06 - SOFT auto-launch fires on bare `codify`
 
 ### Fixed

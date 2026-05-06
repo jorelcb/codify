@@ -129,13 +129,18 @@ func runConfigWizard(repo *infraconfig.Repository, path string) error {
 	}
 	fmt.Printf("\n✓ Saved %s\n", path)
 
-	if err := promptInstallGlobalSkills(target, locale); err != nil {
+	if err := promptInstallSkills(target, locale, "global"); err != nil {
 		fmt.Fprintf(os.Stderr, "\nWarning: global skills install step failed: %v\n", err)
 		fmt.Fprintln(os.Stderr, "You can retry anytime with 'codify skills --install global'.")
 	}
 
+	if err := promptInstallWorkflows(target, locale, "global"); err != nil {
+		fmt.Fprintf(os.Stderr, "\nWarning: global workflows install step failed: %v\n", err)
+		fmt.Fprintln(os.Stderr, "You can retry anytime with 'codify workflows --install global'.")
+	}
+
 	if target == "claude" {
-		if err := promptInstallGlobalHooks(locale); err != nil {
+		if err := promptInstallHooks(locale, "global"); err != nil {
 			fmt.Fprintf(os.Stderr, "\nWarning: global hooks install step failed: %v\n", err)
 			fmt.Fprintln(os.Stderr, "You can retry anytime with 'codify hooks --install global'.")
 		}

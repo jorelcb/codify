@@ -213,14 +213,40 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// el snapshot que ya escribió runGenerate/runAnalyze. Idempotente.
 	writeProjectSnapshot("init", projectName, preset, language, locale, effective.Target, kind, outputDir)
 
-	// Recomendaciones de comandos siguientes (composición en lugar de mega-comando)
+	// Mismo flujo opt-in que `codify config` pero a nivel de proyecto: skills,
+	// workflows (claude/antigravity) y hooks (claude). Cada uno tiene "skip"
+	// como default — el usuario que solo quería el contexto puede pasar de
+	// largo sin aceptar nada. Reusa los pipelines de los comandos
+	// `skills`/`workflows`/`hooks` con --install project.
+	target := effective.Target
+	if target == "" {
+		target = "claude"
+	}
+
+	if err := promptInstallSkills(target, locale, "project"); err != nil {
+		fmt.Fprintf(os.Stderr, "\nWarning: project skills install step failed: %v\n", err)
+		fmt.Fprintln(os.Stderr, "You can retry anytime with 'codify skills --install project'.")
+	}
+
+	if err := promptInstallWorkflows(target, locale, "project"); err != nil {
+		fmt.Fprintf(os.Stderr, "\nWarning: project workflows install step failed: %v\n", err)
+		fmt.Fprintln(os.Stderr, "You can retry anytime with 'codify workflows --install project'.")
+	}
+
+	if target == "claude" {
+		if err := promptInstallHooks(locale, "project"); err != nil {
+			fmt.Fprintf(os.Stderr, "\nWarning: project hooks install step failed: %v\n", err)
+			fmt.Fprintln(os.Stderr, "You can retry anytime with 'codify hooks --install project'.")
+		}
+	}
+
 	fmt.Println()
-	fmt.Println("Project bootstrapped. Recommended next steps:")
-	fmt.Println("  codify skills      Install architecture/testing/conventions skills (project-scoped)")
-	fmt.Println("  codify workflows   Install spec-driven-change / bug-fix / release-cycle workflows")
-	fmt.Println("  codify hooks       Install Claude Code hook bundles (linting / security / conventions)")
-	fmt.Println()
-	fmt.Println("Lifecycle commands (codify check / update / audit / watch) arrive starting v1.23.")
+	fmt.Println("Project bootstrapped. Lifecycle commands available:")
+	fmt.Println("  codify check    Detect drift between artifacts and current state")
+	fmt.Println("  codify update   Regenerate stale artifacts from drift report")
+	fmt.Println("  codify audit    Score artifacts against quality rules (--with-llm for richer findings)")
+	fmt.Println("  codify watch    Foreground watcher: re-runs check on file changes")
+	fmt.Println("  codify usage    LLM token + cost summary across runs")
 
 	return nil
 }
