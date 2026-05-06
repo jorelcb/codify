@@ -408,6 +408,92 @@ func TestExecute_MissingFile_IsSkippedSilently(t *testing.T) {
 	}
 }
 
+// scriptedPreviewer returns canned (apply, content) tuples per call.
+type scriptedPreviewer struct {
+	apply       bool
+	editedAfter []byte
+	err         error
+	calls       int
+}
+
+func (p *scriptedPreviewer) Preview(_ string, _, after []byte) (bool, []byte, error) {
+	p.calls++
+	if p.err != nil {
+		return false, nil, p.err
+	}
+	if !p.apply {
+		return false, nil, nil
+	}
+	if p.editedAfter != nil {
+		return true, p.editedAfter, nil
+	}
+	return true, after, nil
+}
+
+func TestExecute_PreviewerDiscards_FileLeftUntouched(t *testing.T) {
+	original := "currency [DEFINE: code]"
+	fs := newInMemoryFS(map[string]string{"AGENTS.md": original})
+	prompter := &scriptedPrompter{
+		confirm: true,
+		answers: []service.PromptedAnswer{{Answer: "USD"}},
+	}
+	previewer := &scriptedPreviewer{apply: false}
+	cmd := newCommandWithFS(prompter, nil, fs).WithPreviewer(previewer)
+
+	res, err := cmd.Execute(context.Background(), ResolveRequest{Files: []string{"AGENTS.md"}})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if res.FilesDiscarded != 1 || res.FilesRewritten != 0 {
+		t.Errorf("counters: %+v", res)
+	}
+	if _, written := fs.write["AGENTS.md"]; written {
+		t.Error("file should not be written when previewer discards")
+	}
+}
+
+func TestExecute_PreviewerEdits_AppliesEditedContent(t *testing.T) {
+	fs := newInMemoryFS(map[string]string{"AGENTS.md": "currency [DEFINE: code]"})
+	prompter := &scriptedPrompter{
+		confirm: true,
+		answers: []service.PromptedAnswer{{Answer: "USD"}},
+	}
+	previewer := &scriptedPreviewer{
+		apply:       true,
+		editedAfter: []byte("currency hand-edited"),
+	}
+	cmd := newCommandWithFS(prompter, nil, fs).WithPreviewer(previewer)
+
+	_, err := cmd.Execute(context.Background(), ResolveRequest{Files: []string{"AGENTS.md"}})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if got := fs.write["AGENTS.md"]; got != "currency hand-edited" {
+		t.Errorf("expected edited content to be written, got %q", got)
+	}
+}
+
+func TestExecute_PreviewerError_AppliesWithoutPreview(t *testing.T) {
+	fs := newInMemoryFS(map[string]string{"AGENTS.md": "currency [DEFINE: code]"})
+	prompter := &scriptedPrompter{
+		confirm: true,
+		answers: []service.PromptedAnswer{{Answer: "USD"}},
+	}
+	previewer := &scriptedPreviewer{err: errors.New("preview crashed")}
+	cmd := newCommandWithFS(prompter, nil, fs).WithPreviewer(previewer)
+
+	res, err := cmd.Execute(context.Background(), ResolveRequest{Files: []string{"AGENTS.md"}})
+	if err != nil {
+		t.Fatalf("Execute should not fail when previewer errors: %v", err)
+	}
+	if res.FilesRewritten != 1 {
+		t.Errorf("expected file written despite preview error, got %+v", res)
+	}
+	if got := fs.write["AGENTS.md"]; got != "currency USD" {
+		t.Errorf("content: %q", got)
+	}
+}
+
 // scriptedEnricher returns canned EnrichedMarker entries. Used to verify that
 // the orchestrator surfaces enrichment data through to the prompter.
 type scriptedEnricher struct {
