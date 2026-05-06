@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-05-06 - `codify config` wizard fixes
+
+User feedback on the v2.0 wizard surfaced three real issues. All fixed in this patch.
+
+### Fixed
+- **`promptModel` no longer auto-selects silently.** When only one provider's API key is set in the environment, the wizard now prints `→ Auto-selected model 'X' (only one provider key found; set Y to choose another)` to stderr instead of returning the only available model with zero output. When only `ANTHROPIC_API_KEY` is set, the picker still appears (Sonnet vs Opus is a real choice); when only `GEMINI_API_KEY`/`GOOGLE_API_KEY` is set, the wizard short-circuits with the explanatory line.
+- **SOFT first-time prompt now fires on more commands.** `isInteractiveSuitable` was previously gated to `generate, analyze, spec, skills, workflows, hooks, init`. Natural first-contact commands like `codify usage`, `codify check`, etc. would silently skip the *"Codify isn't configured globally yet — run interactive setup now?"* prompt. Whitelist widened to include `usage, check, audit, update, watch, list, reset-state`. `--help`, `--version`, `serve`, and `config` itself remain excluded by design.
+
+### Changed
+- **Wizard reordered + global skills/hooks install opt-in.** The `codify config` wizard previously asked `preset → locale → target → model`, with architecture preset as the *first* question. Architecture preset is project-scoped by nature — what global config really benefits from is letting the user opt into agent-wide skills/hooks. New flow:
+  1. Default target ecosystem (claude/codex/antigravity)
+  2. Default model (with auto-select notice when applicable)
+  3. Default locale (en/es)
+  4. Default architectural posture for new projects (still kept — applies to project commands run without `--preset`)
+  5. **NEW**: Global skills install — one prompt per catalog category (`architecture`, `testing`, `conventions`), with `skip` as the default. Picks trigger a static-mode global install (`~/.claude/skills/`, `~/.codex/skills/`, `~/.gemini/antigravity/skills/`). No LLM, no API key. Power users still run `codify skills` for finer control.
+  6. **NEW** (Claude only): Global hooks bundle install — `linting / security-guardrails / convention-enforcement / all / skip`. Reuses `InstallHooksCommand` to merge into `~/.claude/settings.json` and copy scripts to `~/.claude/hooks/`. Skipped for codex/antigravity because hooks are a Claude Code feature.
+
+  Defaults are saved to `~/.codify/config.yml` BEFORE the install steps run, so a failure in step 5 or 6 doesn't lose the wizard's main output. New helpers live in `internal/interfaces/cli/commands/config_install.go`; `config.go` keeps the wizard skeleton focused.
+
+### Notes
+- No breaking changes. Existing `~/.codify/config.yml` files are untouched. Re-running `codify config` on an already-configured system still prints the current config (does NOT re-launch the wizard) — same as before.
+- No new tests: all three changes are interactive prompt paths (huh-driven), out of scope for the existing unit + BDD suites.
+
 ## [2.0.0] - 2026-05-05 - Lifecycle Custodian (rebrand)
 
 > **Codify is no longer just a one-shot generator.** v2.0 is the moment when the project formally re-positions itself as a **lifecycle custodian** for AI agent context: it generates artifacts, then keeps them honest as the codebase evolves. Same six layers (Context, Specs, Skills, Workflows, Hooks, Lifecycle) that landed across v1.21–v1.25 — now framed and documented as a coherent product.
