@@ -77,25 +77,23 @@ func runConfigDefault(cmd *cobra.Command, args []string) error {
 	return runConfigWizard(repo, userPath)
 }
 
-// runConfigWizard ejecuta el wizard interactivo de primera vez. Recolecta
-// preset, locale, model, target y los persiste en ~/.codify/config.yml.
+// runConfigWizard ejecuta el wizard interactivo de primera vez.
+//
+// El wizard tiene dos fases:
+//   - Defaults globales: target, model, locale, preset (default architectural
+//     posture para comandos que no pasan --preset).
+//   - Install opcional a nivel agente: skills globales por categoría + hooks
+//     globales (solo Claude). Reutiliza la lógica de los comandos `skills` y
+//     `hooks` para no duplicar pipelines.
+//
+// El orden es deliberado: target primero porque condiciona los paths de
+// skills/hooks; preset al final porque es el más específico y solo aplica
+// a comandos de proyecto futuros, no a la configuración del agente.
 func runConfigWizard(repo *infraconfig.Repository, path string) error {
 	fmt.Println("Codify User Configuration")
 	fmt.Println("═════════════════════════")
 
 	cfg := domain.BuiltinDefaults()
-
-	preset, err := promptPreset()
-	if err != nil {
-		return err
-	}
-	cfg.Preset = preset
-
-	locale, err := promptLocale()
-	if err != nil {
-		return err
-	}
-	cfg.Locale = locale
 
 	target, err := promptSelect("Default target ecosystem", []selectOption{
 		{"Claude Code (recommended — full support: skills, workflows, hooks)", "claude"},
@@ -107,7 +105,6 @@ func runConfigWizard(repo *infraconfig.Repository, path string) error {
 	}
 	cfg.Target = target
 
-	// Modelo es opcional — saltearlo si no hay API keys disponibles
 	model, err := promptModel()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Skipping model selection: %v\n", err)
@@ -115,11 +112,35 @@ func runConfigWizard(repo *infraconfig.Repository, path string) error {
 		cfg.Model = model
 	}
 
+	locale, err := promptLocale()
+	if err != nil {
+		return err
+	}
+	cfg.Locale = locale
+
+	preset, err := promptPreset()
+	if err != nil {
+		return err
+	}
+	cfg.Preset = preset
+
 	if err := repo.Save(path, cfg); err != nil {
 		return fmt.Errorf("save config: %w", err)
 	}
-
 	fmt.Printf("\n✓ Saved %s\n", path)
+
+	if err := promptInstallGlobalSkills(target, locale); err != nil {
+		fmt.Fprintf(os.Stderr, "\nWarning: global skills install step failed: %v\n", err)
+		fmt.Fprintln(os.Stderr, "You can retry anytime with 'codify skills --install global'.")
+	}
+
+	if target == "claude" {
+		if err := promptInstallGlobalHooks(locale); err != nil {
+			fmt.Fprintf(os.Stderr, "\nWarning: global hooks install step failed: %v\n", err)
+			fmt.Fprintln(os.Stderr, "You can retry anytime with 'codify hooks --install global'.")
+		}
+	}
+
 	fmt.Println("\nDefaults active for future Codify commands. Re-run 'codify config' anytime to update.")
 	return nil
 }

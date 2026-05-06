@@ -73,6 +73,10 @@ func promptConfirm(title string, defaultVal bool) (bool, error) {
 // shown. If no key is set, returns a hard error so the user fixes their
 // environment instead of seeing a "false affordance" — picking a model
 // they cannot use and hitting an opaque API error later.
+//
+// If only one provider has its key set, the model is auto-selected — but
+// we print a notice to stderr so the user knows it happened and how to
+// get back the choice (set the other provider's key).
 func promptModel() (string, error) {
 	var options []selectOption
 	hasAnthropic := os.Getenv("ANTHROPIC_API_KEY") != ""
@@ -90,8 +94,16 @@ func promptModel() (string, error) {
 		return "", fmt.Errorf("no LLM API key found in environment; set ANTHROPIC_API_KEY or GEMINI_API_KEY (or GOOGLE_API_KEY) and re-run")
 	}
 
-	if len(options) == 1 {
-		return options[0].Value, nil
+	if !hasAnthropic || !hasGemini {
+		missing := "ANTHROPIC_API_KEY"
+		if hasAnthropic {
+			missing = "GEMINI_API_KEY (or GOOGLE_API_KEY)"
+		}
+		fmt.Fprintf(os.Stderr, "→ Auto-selected model '%s' (only one provider key found; set %s to choose another)\n", options[0].Value, missing)
+		if !hasAnthropic {
+			return options[0].Value, nil
+		}
+		// Anthropic is set: still let the user pick between Sonnet and Opus.
 	}
 
 	return promptSelect("Select LLM model", options, options[0].Value)

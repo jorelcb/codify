@@ -88,14 +88,19 @@ func MaybeAutoLaunchConfig(cmd *cobra.Command) error {
 }
 
 // isInteractiveSuitable determina si el comando que está corriendo amerita
-// ofrecer el wizard. Solo los flujos que producen output significativo
-// usando defaults globales pasan el filtro; --help/--version/serve no.
+// ofrecer el wizard. Cubre tanto los flujos que producen output usando
+// defaults globales (generate, analyze, spec, skills, workflows, hooks,
+// init) como los lifecycle/utility commands donde el usuario llega
+// naturalmente en su primer contacto con la herramienta (usage, check,
+// audit, update, watch, list, reset-state). Quedan fuera: --help,
+// --version, serve, config (este último ya lanza el wizard por sí mismo).
 func isInteractiveSuitable(cmd *cobra.Command) bool {
 	if cmd == nil {
 		return false
 	}
 	switch cmd.Name() {
-	case "generate", "analyze", "spec", "skills", "workflows", "hooks", "init":
+	case "generate", "analyze", "spec", "skills", "workflows", "hooks", "init",
+		"usage", "check", "audit", "update", "watch", "list", "reset-state":
 		return true
 	default:
 		return false
