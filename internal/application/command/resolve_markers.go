@@ -203,11 +203,21 @@ func (c *ResolveMarkersCommand) rewriteFile(
 ) (string, string, error) {
 	if c.provider != nil {
 		rewritten, err := rewriteWithLLM(ctx, c.provider, path, content, hits, locale)
-		if err == nil && rewritten != "" {
-			return rewritten, "llm", nil
-		}
-		if err != nil {
+		switch {
+		case err != nil:
 			c.stderr("  LLM rewrite failed for %s (%v); falling back to literal substitution\n", path, err)
+		case rewritten == "":
+			// nothing answered — leave the file untouched via literal path
+		default:
+			delta := service.ValidateRewrite(rewritten, hits)
+			if delta.HasIssues() {
+				c.stderr(
+					"  LLM rewrite altered markers for %s (lost=%d, spurious=%d, not-applied=%d); falling back to literal substitution\n",
+					path, len(delta.Lost), len(delta.Spurious), len(delta.NotApplied),
+				)
+			} else {
+				return rewritten, "llm", nil
+			}
 		}
 	}
 	return service.LiteralSubstitute(content, hits), "literal", nil

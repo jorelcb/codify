@@ -83,6 +83,103 @@ func ScanMarkers(content string) []MarkerHit {
 	return hits
 }
 
+// ResolveDelta classifies markers after a rewrite, distinguishing legitimate
+// outcomes from LLM hallucinations that warrant a literal-substitution
+// fallback. The classification is by marker text frequency before/after the
+// rewrite, not by line — line numbers shift naturally as the LLM integrates
+// answers into surrounding prose.
+type ResolveDelta struct {
+	Resolved   []MarkerHit // user answered AND marker disappeared: legitimate
+	Skipped    []MarkerHit // user did not answer AND marker still present: legitimate
+	NotApplied []MarkerHit // user answered BUT marker still present: LLM ignored answer
+	Lost       []MarkerHit // user skipped BUT marker disappeared: LLM hallucinated a fix
+	Spurious   []string    // marker text in output that did NOT exist in input: invented
+}
+
+// HasIssues reports whether the delta contains any class that indicates the
+// LLM rewrite is unsafe to keep — and hence the orchestrator should fall back
+// to literal substitution.
+func (d ResolveDelta) HasIssues() bool {
+	return len(d.NotApplied) > 0 || len(d.Lost) > 0 || len(d.Spurious) > 0
+}
+
+// ValidateRewrite compares the LLM-rewritten content against the original
+// hits and reports the delta. The validator does not know what the LLM
+// changed in the surrounding prose — it only checks marker presence/absence
+// against the user's answer/skip choices.
+func ValidateRewrite(after string, hits []MarkerHit) ResolveDelta {
+	afterHits := ScanMarkers(after)
+	afterCountByText := map[string]int{}
+	for _, h := range afterHits {
+		afterCountByText[h.Text]++
+	}
+
+	expectedRemainingByText := map[string]int{} // skipped markers that should still be present
+	knownTexts := map[string]bool{}
+	var skipped, resolved []MarkerHit
+	for _, h := range hits {
+		knownTexts[h.Text] = true
+		if h.Answer == "" {
+			expectedRemainingByText[h.Text]++
+			skipped = append(skipped, h)
+		} else {
+			resolved = append(resolved, h)
+		}
+	}
+
+	delta := ResolveDelta{Resolved: resolved, Skipped: skipped}
+
+	// Texts that appear in the rewrite: classify excess vs deficit.
+	for text, afterCount := range afterCountByText {
+		if !knownTexts[text] {
+			for i := 0; i < afterCount; i++ {
+				delta.Spurious = append(delta.Spurious, text)
+			}
+			continue
+		}
+		expected := expectedRemainingByText[text]
+		switch {
+		case afterCount > expected:
+			// More markers remain than the user wanted: LLM left some answered
+			// markers unchanged. Tag those as NotApplied.
+			excess := afterCount - expected
+			for _, h := range resolved {
+				if h.Text == text && excess > 0 {
+					delta.NotApplied = append(delta.NotApplied, h)
+					excess--
+				}
+			}
+		case afterCount < expected:
+			// Fewer markers remain than the user wanted: LLM altered some
+			// skipped markers it was told to leave alone.
+			deficit := expected - afterCount
+			for _, h := range skipped {
+				if h.Text == text && deficit > 0 {
+					delta.Lost = append(delta.Lost, h)
+					deficit--
+				}
+			}
+		}
+	}
+
+	// Texts that should remain (skipped) but don't appear in the rewrite at
+	// all: every occurrence is Lost.
+	for text, expected := range expectedRemainingByText {
+		if _, present := afterCountByText[text]; present {
+			continue // handled by the deficit branch above
+		}
+		remaining := expected
+		for _, h := range skipped {
+			if h.Text == text && remaining > 0 {
+				delta.Lost = append(delta.Lost, h)
+				remaining--
+			}
+		}
+	}
+
+	return delta
+}
+
 // LiteralSubstitute replaces each answered marker with its answer text 1:1,
 // preserving skipped markers verbatim. Pure function — used as fallback when
 // no LLM provider is available, or as recovery path when the LLM rewrite
