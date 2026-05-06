@@ -5,15 +5,13 @@ import (
 
 	"github.com/jorelcb/codify/internal/application/command"
 	"github.com/jorelcb/codify/internal/domain/service"
+	infraresolver "github.com/jorelcb/codify/internal/infrastructure/resolver"
 )
 
 // resolveDefineMarkers is the CLI adapter for the post-generation resolve
 // hook. It assembles the dependencies (huh-based prompter, the active LLM
-// provider) and delegates to command.ResolveMarkersCommand for the actual
-// orchestration.
-//
-// Kept as a free function (not a method on a type) because the call site in
-// generate.go is a single line and the adapter has no state of its own.
+// provider, the LLM-driven enricher) and delegates to
+// command.ResolveMarkersCommand for the actual orchestration.
 //
 // Returns nil when the environment is non-interactive (no TTY) — the same
 // behavior as the legacy resolver. Errors from Execute are surfaced to the
@@ -23,7 +21,8 @@ func resolveDefineMarkers(ctx context.Context, files []string, locale string, pr
 	if !isInteractive() {
 		return nil
 	}
-	cmd := command.NewResolveMarkersCommand(NewHuhPrompter(), provider)
+	cmd := command.NewResolveMarkersCommand(NewHuhPrompter(), provider).
+		WithEnricher(infraresolver.NewLLMEnricher(provider))
 	_, err := cmd.Execute(ctx, command.ResolveRequest{
 		Files:  files,
 		Locale: locale,

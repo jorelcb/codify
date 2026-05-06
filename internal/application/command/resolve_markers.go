@@ -31,7 +31,8 @@ import (
 // thin adapter that wires the prompter, provider, and file IO.
 type ResolveMarkersCommand struct {
 	prompter  service.InteractivePrompter
-	provider  service.LLMProvider // optional — nil means literal-only mode
+	provider  service.LLMProvider     // optional — nil means literal-only mode
+	enricher  service.MarkerEnricher  // optional — nil = legacy UI without LLM-driven prompts
 	readFile  func(string) ([]byte, error)
 	writeFile func(string, []byte, os.FileMode) error
 	stderr    func(format string, args ...any)
@@ -87,6 +88,14 @@ func NewResolveMarkersCommand(
 // to keep assertions stable across runs.
 func (c *ResolveMarkersCommand) WithToday(today func() string) *ResolveMarkersCommand {
 	c.today = today
+	return c
+}
+
+// WithEnricher wires an LLM-driven enricher that turns raw markers into
+// natural-language questions with grounded suggestions before the prompter
+// loop. Pass nil (or skip the call) to keep the legacy UI.
+func (c *ResolveMarkersCommand) WithEnricher(enricher service.MarkerEnricher) *ResolveMarkersCommand {
+	c.enricher = enricher
 	return c
 }
 
@@ -149,9 +158,28 @@ func (c *ResolveMarkersCommand) Execute(ctx context.Context, req ResolveRequest)
 		fm := &withMarkers[i]
 		c.prompter.AnnounceFile(fm.path, len(fm.hits))
 
+		// If an enricher is configured, ask it once per file for natural
+		// questions + grounded suggestions. On any failure (provider down,
+		// invalid JSON, sanitizer rejected everything) we still get a slice
+		// of zero-value EnrichedMarker entries from the enricher's fallback,
+		// and the prompter degrades to the legacy UI for that file.
+		enriched := make([]service.EnrichedMarker, len(fm.hits))
+		for j, h := range fm.hits {
+			enriched[j] = service.EnrichedMarker{MarkerHit: h}
+		}
+		if c.enricher != nil {
+			out, err := c.enricher.Enrich(ctx, fm.path, fm.content, req.Locale, fm.hits)
+			if err != nil {
+				c.stderr("  marker enrichment unavailable for %s (%v); using legacy UI for this file\n", fm.path, err)
+			}
+			if out != nil {
+				enriched = out
+			}
+		}
+
 		for j := range fm.hits {
 			hit := &fm.hits[j]
-			ans, err := c.prompter.AskMarker(fm.content, service.EnrichedMarker{MarkerHit: *hit})
+			ans, err := c.prompter.AskMarker(fm.content, enriched[j])
 			if err != nil {
 				return result, fmt.Errorf("prompt for %s line %d: %w", fm.path, hit.Line, err)
 			}

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/jorelcb/codify/internal/domain/service"
@@ -42,15 +43,86 @@ func (p *HuhPrompter) AnnounceFile(path string, markerCount int) {
 }
 
 // AskMarker shows the surrounding context and prompts for the user's input.
-// Empty input is treated as Skip=true.
+// Two UIs:
+//   - Enriched (Phase 3): when marker.Question is non-empty, render the
+//     LLM-derived question + numbered suggestions + default. Accepts a
+//     numeric pick (1-N), free text, Enter for default-or-skip, or "s" /
+//     "skip" for explicit skip.
+//   - Legacy: when no enrichment is available (nil enricher, LLM failure,
+//     sanitizer rejected everything), render the marker text and ask for
+//     free-text input, same as pre-Phase-3.
 func (p *HuhPrompter) AskMarker(fileContent string, marker service.EnrichedMarker) (service.PromptedAnswer, error) {
 	showMarkerLineContext(fileContent, marker.Line)
+
+	if marker.Question != "" {
+		return p.askEnriched(marker)
+	}
+	return p.askLegacy(marker)
+}
+
+func (p *HuhPrompter) askLegacy(marker service.EnrichedMarker) (service.PromptedAnswer, error) {
 	ans, err := promptInput(fmt.Sprintf("Your input for L%d (Enter to skip)", marker.Line), "")
 	if err != nil {
 		return service.PromptedAnswer{}, err
 	}
 	trimmed := strings.TrimSpace(ans)
 	return service.PromptedAnswer{Answer: trimmed, Skip: trimmed == ""}, nil
+}
+
+func (p *HuhPrompter) askEnriched(marker service.EnrichedMarker) (service.PromptedAnswer, error) {
+	fmt.Println()
+	fmt.Printf("    %s\n", marker.Question)
+	if marker.Rationale != "" {
+		fmt.Printf("    (%s)\n", marker.Rationale)
+	}
+	if len(marker.Suggestions) > 0 {
+		fmt.Println("    Suggestions:")
+		for i, s := range marker.Suggestions {
+			tag := ""
+			if s == marker.Default {
+				tag = " [default]"
+			}
+			fmt.Printf("      %d) %s%s\n", i+1, s, tag)
+		}
+	}
+
+	hint := "1-N, text, Enter to skip"
+	if marker.Default != "" {
+		hint = "1-N, text, Enter for default, s to skip"
+	}
+	raw, err := promptInput(fmt.Sprintf("Your answer (%s)", hint), "")
+	if err != nil {
+		return service.PromptedAnswer{}, err
+	}
+	return ParseEnrichedInput(raw, marker.Suggestions, marker.Default), nil
+}
+
+// ParseEnrichedInput converts the user's raw input into a PromptedAnswer
+// using the suggestions and default associated with the marker. Pure
+// function — exported for direct unit testing.
+//
+// Accepted forms:
+//   - empty input    -> default if non-empty, else skip
+//   - "s" / "skip"   -> explicit skip (case-insensitive, trimmed)
+//   - integer 1..N   -> picks the Nth suggestion (1-based)
+//   - anything else  -> free text answer
+func ParseEnrichedInput(raw string, suggestions []string, def string) service.PromptedAnswer {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		if def != "" {
+			return service.PromptedAnswer{Answer: def}
+		}
+		return service.PromptedAnswer{Skip: true}
+	}
+	low := strings.ToLower(trimmed)
+	if low == "s" || low == "skip" {
+		return service.PromptedAnswer{Skip: true}
+	}
+	// Numeric pick within the suggestion range.
+	if n, err := strconv.Atoi(trimmed); err == nil && n >= 1 && n <= len(suggestions) {
+		return service.PromptedAnswer{Answer: suggestions[n-1]}
+	}
+	return service.PromptedAnswer{Answer: trimmed}
 }
 
 // ReportFileResult prints the per-file outcome line.
