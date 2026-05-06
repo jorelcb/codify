@@ -76,7 +76,10 @@ func (fs *inMemoryFS) writeFile(path string, data []byte, _ os.FileMode) error {
 }
 
 func newCommandWithFS(prompter service.InteractivePrompter, provider service.LLMProvider, fs *inMemoryFS) *ResolveMarkersCommand {
-	return NewResolveMarkersCommand(prompter, provider).WithFileIO(fs.readFile, fs.writeFile).WithStderr(func(string, ...any) {})
+	return NewResolveMarkersCommand(prompter, provider).
+		WithFileIO(fs.readFile, fs.writeFile).
+		WithStderr(func(string, ...any) {}).
+		WithToday(func() string { return "2026-05-06" })
 }
 
 func TestExecute_NoMarkers_IsNoop(t *testing.T) {
@@ -185,7 +188,89 @@ func TestExecute_LiteralPath_ReplacesAnsweredMarkers(t *testing.T) {
 		t.Errorf("path usage: got %+v", res)
 	}
 	got := fs.write["AGENTS.md"]
+	want := "currency USD, tz <!-- TODO 2026-05-06: tz -->"
+	if got != want {
+		t.Errorf("written content:\n  got:  %q\n  want: %q", got, want)
+	}
+}
+
+func TestExecute_VerbatimSkipMode_LeavesMarkerUntouched(t *testing.T) {
+	fs := newInMemoryFS(map[string]string{
+		"AGENTS.md": "currency [DEFINE: code], tz [DEFINE: tz]",
+	})
+	prompter := &scriptedPrompter{
+		confirm: true,
+		answers: []service.PromptedAnswer{
+			{Answer: "USD"},
+			{Skip: true},
+		},
+	}
+	cmd := newCommandWithFS(prompter, nil, fs)
+
+	_, err := cmd.Execute(context.Background(), ResolveRequest{
+		Files:    []string{"AGENTS.md"},
+		SkipMode: service.SkipModeVerbatim,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	got := fs.write["AGENTS.md"]
 	want := "currency USD, tz [DEFINE: tz]"
+	if got != want {
+		t.Errorf("verbatim skip mode should not write TODO:\n  got:  %q\n  want: %q", got, want)
+	}
+}
+
+func TestExecute_TODOSkipMode_AppliesAnchorBasedOnExtension(t *testing.T) {
+	fs := newInMemoryFS(map[string]string{
+		"app.go":   "var currency = [DEFINE: code] // line",
+		"data.yml": "tz: [DEFINE: tz]\n",
+	})
+	prompter := &scriptedPrompter{
+		confirm: true,
+		answers: []service.PromptedAnswer{
+			{Skip: true}, // app.go marker
+			{Skip: true}, // data.yml marker
+		},
+	}
+	cmd := newCommandWithFS(prompter, nil, fs)
+
+	// Both files have all-skipped markers, so neither gets rewritten — the
+	// orchestrator only applies skip-mode after at least one answer triggers
+	// a write. Validate that contract is preserved (FilesUnchanged=2).
+	res, err := cmd.Execute(context.Background(), ResolveRequest{Files: []string{"app.go", "data.yml"}})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if res.FilesUnchanged != 2 || res.FilesRewritten != 0 {
+		t.Errorf("expected both files unchanged, got %+v", res)
+	}
+	if len(fs.write) != 0 {
+		t.Errorf("no writes should happen when all markers skipped: %v", fs.write)
+	}
+}
+
+func TestExecute_TODOSkipMode_AnchorsAppliedWhenFileWritten(t *testing.T) {
+	// Mixed file: one answer triggers the rewrite path, the skipped marker
+	// in the same file gets the TODO anchor.
+	fs := newInMemoryFS(map[string]string{
+		"app.go": "var currency = [DEFINE: code]\nvar tz = [DEFINE: tz]\n",
+	})
+	prompter := &scriptedPrompter{
+		confirm: true,
+		answers: []service.PromptedAnswer{
+			{Answer: "\"USD\""}, // applies
+			{Skip: true},         // gets TODO anchor in .go syntax
+		},
+	}
+	cmd := newCommandWithFS(prompter, nil, fs)
+
+	_, err := cmd.Execute(context.Background(), ResolveRequest{Files: []string{"app.go"}})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	got := fs.write["app.go"]
+	want := "var currency = \"USD\"\nvar tz = // TODO 2026-05-06: tz\n"
 	if got != want {
 		t.Errorf("written content:\n  got:  %q\n  want: %q", got, want)
 	}
@@ -248,7 +333,7 @@ func TestExecute_LLMRewriteWithIssues_FallsBackToLiteral(t *testing.T) {
 		t.Errorf("expected literal fallback, got %+v", res)
 	}
 	got := fs.write["AGENTS.md"]
-	want := "currency USD, tz [DEFINE: tz]"
+	want := "currency USD, tz <!-- TODO 2026-05-06: tz -->"
 	if got != want {
 		t.Errorf("written content:\n  got:  %q\n  want: %q", got, want)
 	}

@@ -88,6 +88,103 @@ func TestLiteralSubstitute_NoAnswers_IsNoop(t *testing.T) {
 	}
 }
 
+func TestSkipReplacement_MarkdownUsesHTMLComment(t *testing.T) {
+	got := SkipReplacement("[DEFINE: ISO 4217 code]", ".md", SkipModeTODO, "2026-05-06")
+	want := "<!-- TODO 2026-05-06: ISO 4217 code -->"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestSkipReplacement_GoUsesSlashComment(t *testing.T) {
+	got := SkipReplacement("[DEFINE: error code]", ".go", SkipModeTODO, "2026-05-06")
+	want := "// TODO 2026-05-06: error code"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestSkipReplacement_PythonUsesHashComment(t *testing.T) {
+	got := SkipReplacement("[DEFINE: timezone]", ".py", SkipModeTODO, "2026-05-06")
+	want := "# TODO 2026-05-06: timezone"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestSkipReplacement_UnknownExtension_ReturnsEmpty(t *testing.T) {
+	got := SkipReplacement("[DEFINE: x]", ".xyz", SkipModeTODO, "2026-05-06")
+	if got != "" {
+		t.Errorf("expected empty for unknown ext, got %q", got)
+	}
+}
+
+func TestSkipReplacement_VerbatimMode_ReturnsEmpty(t *testing.T) {
+	got := SkipReplacement("[DEFINE: x]", ".md", SkipModeVerbatim, "2026-05-06")
+	if got != "" {
+		t.Errorf("verbatim must signal no replacement, got %q", got)
+	}
+}
+
+func TestSkipReplacement_BareMarker_FallsBackToValueNeeded(t *testing.T) {
+	got := SkipReplacement("[DEFINE]", ".md", SkipModeTODO, "2026-05-06")
+	want := "<!-- TODO 2026-05-06: value needed -->"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestSkipReplacement_UnsetMode_ResolvesToTODO(t *testing.T) {
+	got := SkipReplacement("[DEFINE: x]", ".md", SkipModeUnset, "2026-05-06")
+	want := "<!-- TODO 2026-05-06: x -->"
+	if got != want {
+		t.Errorf("zero-value mode must default to TODO, got %q want %q", got, want)
+	}
+}
+
+func TestSkipReplacement_CaseInsensitiveExtension(t *testing.T) {
+	got := SkipReplacement("[DEFINE: x]", ".MD", SkipModeTODO, "2026-05-06")
+	want := "<!-- TODO 2026-05-06: x -->"
+	if got != want {
+		t.Errorf("uppercase ext should still match, got %q", got)
+	}
+}
+
+func TestApplySkipMode_PreservesAnsweredMarkers(t *testing.T) {
+	content := "answered [DEFINE: a], skipped [DEFINE: b]"
+	hits := []MarkerHit{
+		{Text: "[DEFINE: a]", Answer: "alpha"},
+		{Text: "[DEFINE: b]", Answer: ""},
+	}
+
+	got := ApplySkipMode(content, hits, SkipModeTODO, ".md", "2026-05-06")
+	want := "answered [DEFINE: a], skipped <!-- TODO 2026-05-06: b -->"
+	if got != want {
+		t.Errorf("got  %q\nwant %q", got, want)
+	}
+}
+
+func TestApplySkipMode_VerbatimIsNoop(t *testing.T) {
+	content := "skipped [DEFINE: b]"
+	hits := []MarkerHit{{Text: "[DEFINE: b]", Answer: ""}}
+
+	got := ApplySkipMode(content, hits, SkipModeVerbatim, ".md", "2026-05-06")
+	if got != content {
+		t.Errorf("verbatim must not modify content, got %q", got)
+	}
+}
+
+func TestApplySkipMode_Idempotent(t *testing.T) {
+	content := "skipped [DEFINE: b]"
+	hits := []MarkerHit{{Text: "[DEFINE: b]", Answer: ""}}
+
+	once := ApplySkipMode(content, hits, SkipModeTODO, ".md", "2026-05-06")
+	twice := ApplySkipMode(once, hits, SkipModeTODO, ".md", "2026-05-06")
+	if once != twice {
+		t.Errorf("expected idempotent, once=%q twice=%q", once, twice)
+	}
+}
+
 func TestValidateRewrite_HappyPath_NoIssues(t *testing.T) {
 	hits := []MarkerHit{
 		{Text: "[DEFINE: code]", Line: 1, Answer: "USD"},
