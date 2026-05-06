@@ -7,17 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.1.0] - 2026-05-06 - Interactive resolver redesign — LLM-driven prompts, validator, TODO anchors, diff preview, standalone `codify resolve`
 
-> v2.0.5 introduced interactive `[DEFINE]` resolution as a single CLI helper file (`define_resolver.go`). v2.1.0 turns that helper into a real bounded context: the resolver is now an application-layer command with its own domain interfaces, infrastructure (enricher, sanitizer), and CLI surface (prompter, previewer, standalone `resolve` subcommand). The UX defaults flip from "type your answer cold" to "the LLM proposes a grounded suggestion you accept, edit, or skip", and the rewrite step gains a validator that catches the LLM altering markers it shouldn't have touched.
+> v2.0.5 introduced interactive `[DEFINE]` resolution as a single CLI helper file (`define_resolver.go`, ~200 lines mixing orchestration, LLM call, literal substitute, and prompt loop). v2.1.0 turns that helper into a real bounded context: domain ports, an application-layer command, infrastructure adapters for enrichment and sanitization, and CLI adapters for the prompter and the diff previewer — plus a first-class `codify resolve` subcommand. The UX shifts from "type your answer cold" to "the LLM proposes grounded suggestions you can pick by number, override, or skip", and a post-rewrite validator catches the LLM altering markers it was told to leave alone.
 
 ### Added
-- **`codify resolve` standalone command.** Previously, marker resolution only fired at the tail of `generate` / `analyze` / `init`. v2.1.0 promotes it to a first-class subcommand that operates on already-existing files in the working directory:
+- **`codify resolve` standalone command.** Marker resolution previously only fired at the tail of `generate` / `analyze` / `init`. v2.1.0 promotes it to a first-class subcommand that operates on existing files. File selection is explicit:
   ```
-  codify resolve              # walk all files under . with [DEFINE] markers
-  codify resolve AGENTS.md    # restrict to one file
-  codify resolve docs/*.md    # restrict to a glob
+  codify resolve AGENTS.md CONTEXT.md   # explicit files
+  codify resolve --all                  # walk cwd, pick every file with markers
+  codify resolve --since=HEAD~5         # files changed in git since <ref>
   ```
-  Use case: the user shipped v2.0.x AGENTS.md / CONTEXT.md with markers left intact (declined the inline prompt, or generated before v2.0.5), and now wants to fill them in without re-running an LLM-backed `generate`. `codify resolve` reads the files in place, runs the same prompter/enricher/previewer pipeline, and rewrites them — no API call to regenerate, only the targeted resolution call.
-- **MarkerEnricher (LLM-suggested answers).** Before prompting the user, the resolver sends the file content + each marker's surrounding context to the LLM with a strict editor prompt that asks for a *grounded suggestion* — concrete enough to be useful, conservative enough to mark uncertainty. The user prompt now shows:
+  Without args/flags the command exits with a friendly error explaining the three selection modes. Flags: `--no-enrich`, `--no-preview`, `--skip-mode=todo|verbatim` (default `todo`), `--dry-run` (no writes, just reports what would change), `--locale`, `--model`. Use case: shipped v2.0.x context files with markers left intact (declined the inline prompt, or generated before v2.0.5) and want to fill them in without re-running an LLM-backed `generate`. The walk skips `.git`, `node_modules`, `vendor`, `.codify` and binary files (NUL byte in first 4KB).
+- **MarkerEnricher (LLM-driven prompts with grounded suggestions).** Before walking the prompter loop, the resolver makes one LLM call per file (`command="resolve-enrich"` for usage tracking) that turns each `[DEFINE: ...]` into a friendlier prompt. The user now sees a numbered list:
   ```
   ── AGENTS.md (2 markers) ──
 
@@ -25,46 +25,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
        41
     ▸  42  The supported currency is [DEFINE: ISO 4217 currency code], using two
 
-  Suggested: USD
-  Your input for L42 (Enter to accept, type to override, '-' to skip)
-  > _
+      ¿Qué moneda usa la aplicación?
+      (fintech context inferred from line 12)
+      Suggestions:
+        1) USD [default]
+        2) EUR
+        3) MXN
+      Your answer (1-N, text, Enter for default, s to skip)
   ```
-  Three-way input semantics: Enter accepts the suggestion, free text overrides, `-` skips. When the LLM can't suggest anything (returned empty / non-grounded), the prompt falls back to the v2.0.5 form ("Enter to skip"). The enrichment call uses `EvaluatePrompt` (not `GenerateContext`) and is recorded under `command="resolve-enrich"` in usage, separate from the main pass.
-- **TODO-anchor mode as the new default.** Skip on a marker no longer leaves a raw `[DEFINE: ...]` in the file — by default it's converted into an inline anchor of the form `<!-- TODO(codify): ISO 4217 currency code -->` (HTML comment) for `.md` files, or `# TODO(codify): ...` for non-markdown files where HTML comments don't render. The original `[DEFINE]` form is preserved verbatim only when the user explicitly opts out via `codify resolve --keep-define`. Rationale: `[DEFINE]` is a Codify-internal token that confuses readers (and LLMs) who didn't generate the file; `TODO(codify)` is universally understood, greppable, and won't be re-flagged by Codify's own validator on subsequent runs. Anchors include the original hint after the colon so the intent is recoverable.
-- **Post-rewrite validator.** After the LLM rewrites the file with the user's answers, the resolver re-scans the output for unintended marker mutations: did the LLM accidentally drop a `[DEFINE]` we asked it to keep verbatim (the user skipped that one)? Did it merge two markers? Did it introduce new `[DEFINE]` text the original didn't have? The validator catches all three cases and triggers an automatic fallback to the literal-substitution path (v2.0.5's mode A), preserving the user's answers without trusting a corrupted LLM output. WARNING printed to stderr so the user knows the rewrite was downgraded.
-- **Diff preview before write.** After the rewrite (or substitute) produces the new file content but BEFORE writing to disk, the previewer prints a colored unified diff of the proposed change and asks:
+  Input parser accepts: integer 1-N (pick suggestion), free text, Enter (uses default if present, else skips), `s` / `skip` (case-insensitive, explicit skip). When enrichment fails (provider error, malformed JSON, sanitizer rejected everything) or no API key is configured, the prompt degrades to the legacy v2.0.5 form (`Your input for L42 (Enter to skip)`) — never a hard failure.
+- **Suggestion sanitizer (anti-hallucination).** The enricher's output passes through a sanitizer (`internal/infrastructure/resolver/sanitizer.go`) that drops suggestions which look invented: URLs (any `http://`, `https://`, `ftp://`, `file://`, `git://` or net/url-recognizable form), file paths (leading `/`, `./`, `../`), multi-line strings, markdown-fenced text, values longer than 50 chars. Deduplicates case-insensitively, caps at 3 kept suggestions, and verifies the LLM's `default` matches one of the survivors (otherwise dropped). Question and rationale are truncated to 280 bytes with an ASCII ellipsis.
+- **TODO-anchor skip mode as the new default.** Skipping a marker no longer leaves `[DEFINE: ...]` verbatim — it's replaced with a date-stamped TODO comment in the file's native syntax:
+  - `.md` / `.html` / `.htm` / `.xml` → `<!-- TODO 2026-05-06: ISO 4217 code -->`
+  - `.go` / `.js` / `.ts` / `.jsx` / `.tsx` / `.java` / `.kt` / `.rs` / `.c` / `.cpp` / `.cc` / `.h` / `.hpp` / `.swift` / `.cs` → `// TODO 2026-05-06: ISO 4217 code`
+  - `.py` / `.rb` / `.sh` / `.bash` / `.yml` / `.yaml` / `.toml` / `.ini` → `# TODO 2026-05-06: ISO 4217 code`
+  - other extensions → fall back to verbatim (we never write a comment in a syntax we don't recognize)
+  
+  Rationale: `[DEFINE]` is a Codify-internal token that confuses humans, IDEs, and LLMs that didn't generate the file. `TODO` is universally understood, greppable, surfaced by IDE TODO panels, and the date stamp lets you spot stale ones. Hint preserved after the colon so intent is recoverable. Opt out per invocation with `--skip-mode=verbatim` (CLI) or by passing `service.SkipModeVerbatim` in `ResolveRequest`. `SkipModeUnset` (zero value) resolves to TODO so existing callers get the new default automatically.
+- **Post-rewrite validator (anti-hallucination).** After the LLM rewrites the file with the user's answers, `service.ValidateRewrite` re-scans the output and classifies markers by frequency comparison (line numbers shift naturally during rewrite, text counts are the stable signal):
+  - `Resolved` — answered AND disappeared (legitimate)
+  - `Skipped` — unanswered AND still present (legitimate)
+  - `NotApplied` — answered BUT still present (LLM ignored the input)
+  - `Lost` — unanswered BUT disappeared (LLM hallucinated a fix to a skipped marker)
+  - `Spurious` — present in output but never in input (invented)
+  
+  When `HasIssues()` returns true (`NotApplied`, `Lost`, or `Spurious` non-empty), the orchestrator logs the breakdown to stderr and falls back to deterministic literal substitution. The user's answers are never lost — worst case the LLM-prose-integrated path is downgraded to the literal path.
+- **Diff preview before write.** New `service.DiffPreviewer` port. After the rewrite (LLM or literal) and `ApplySkipMode` produce the proposed bytes but BEFORE writing to disk, the previewer renders a small unified-style diff (changed lines + 2 lines of context) and asks:
   ```
-  Apply changes to AGENTS.md? [a]pply / [d]iscard / [e]dit
+  About to rewrite AGENTS.md:
+        line 41
+    ▸ - The supported currency is [DEFINE: ISO 4217 currency code], using two
+    ▸ + The supported currency is USD, using two
+        line 43
+
+  Apply changes? Apply / Discard (keep file as-is) / Edit before applying
   ```
-  - `a` (default) — atomic write to disk
-  - `d` — discard everything for this file (markers stay intact)
-  - `e` — open the proposed content in `$EDITOR` for hand-tuning, then write the editor's result
-  The preview step is per-file. A user resolving 3 files can apply the first two and discard the third without losing the first two's work.
-- **`CacheableSystem` field on `EvaluationRequest`.** The new `resolve-enrich` and `resolve-rewrite` calls operate on the same file content with two different system prompts, often back-to-back. The Anthropic provider now recognizes `EvaluationRequest.CacheableSystem` and attaches `CacheControl: ephemeral` to the system block when set, so the second call hits cache for the (large) system prompt instead of paying full input-token cost. Gemini provider ignores the field (no equivalent yet); behavior unchanged. Saves ~70% of input cost on the rewrite pass for typical AGENTS.md sizes.
+  - **Apply** (default) → write proposed content
+  - **Discard** → file untouched, `FilesDiscarded++`
+  - **Edit** → write proposed content to a temp file with the file's extension (so `$EDITOR` picks the right syntax highlighting), invoke the editor synchronously (falling back to `vim` / `vi` / `nano` if `$EDITOR` is unset), read the saved bytes back, write those
+  
+  Per-file: a user resolving 3 files can apply the first two and discard the third without losing the first two's work. Editor failures degrade to "apply proposed content with stderr warning" — preview never blocks the resolve. CLI flag `--no-preview` skips the step entirely.
+- **`EvaluationRequest.CacheableSystem` flag.** The enricher makes one LLM call per file with the same system prompt across calls in a session. The Anthropic provider now reads `CacheableSystem` and attaches `CacheControl: ephemeral` to the system block when set, so subsequent calls within the 5-minute TTL window reuse the prompt cache instead of re-billing. Gemini provider ignores the flag (its caching API has a 4096-token minimum that most of our system prompts do not meet). Backwards compatible — existing callers (audit `--with-llm`) leave the flag at zero and see no change.
 
 ### Changed
-- **`define_resolver.go` reduced to a thin adapter.** What v2.0.5 called the "resolver" was a 200-line CLI file mixing orchestration, LLM call, literal substitute, and prompt loop. v2.1.0 splits this across:
-  - `internal/domain/service/resolver.go` — interfaces (`Prompter`, `Enricher`, `Sanitizer`, `Previewer`, `Rewriter`) + value types
-  - `internal/application/command/resolve_markers.go` — orchestrator (the algorithm: enrich → prompt → rewrite → validate → preview → write)
-  - `internal/infrastructure/resolver/enricher.go` — LLM-backed grounded-suggestion call + JSON parser
-  - `internal/infrastructure/resolver/sanitizer.go` — TODO-anchor conversion + `[DEFINE]` opt-out branch
-  - `internal/interfaces/cli/commands/resolver_prompter.go` — huh-driven prompt with three-way semantics
-  - `internal/interfaces/cli/commands/resolver_previewer.go` — diff render + apply/discard/edit branch
-  - `internal/interfaces/cli/commands/resolve.go` — standalone `resolve` subcommand entry point
-  - `internal/interfaces/cli/commands/define_resolver.go` — kept as a thin adapter so `generate`/`analyze`/`init` keep working through the same delegation chain (no caller changes)
-- **Default rewrite mode unchanged from v2.0.5** — LLM rewrite (mode B) still preferred when a provider is available, literal substitute (mode A) on LLM failure. v2.1.0 only adds the validator on top so corrupted LLM output downgrades cleanly to A.
-- **MCP tool surface unchanged.** No new tool — `codify resolve` is CLI-only in this release. Considered exposing `resolve_markers` as an MCP tool but deferred until the prompt/preview UX stabilizes; agents calling MCP would need a non-interactive variant first.
+- **`define_resolver.go` reduced to a thin adapter (~30 lines).** The v2.0.5 file (~200 lines mixing concerns) is split following Clean Architecture:
+  - `internal/domain/service/resolver.go` — types (`MarkerHit`, `EnrichedMarker`, `PromptedAnswer`, `ResolveDelta`, `SkipMode`); ports (`InteractivePrompter`, `MarkerEnricher`, `RewriteValidator`, `DiffPreviewer`); pure functions (`ScanMarkers`, `LiteralSubstitute`, `ValidateRewrite`, `ApplySkipMode`, `SkipReplacement`)
+  - `internal/application/command/resolve_markers.go` — `ResolveMarkersCommand` orchestrator (enrich → prompt → rewrite → validate → skip-mode → preview → write); injectable file IO, stderr, and `today()` for tests; `ResolveRequest` / `ResolveResult`
+  - `internal/infrastructure/resolver/enricher.go` — `LLMEnricher` wrapping `service.LLMProvider`, JSON schema + parser, fallback paths
+  - `internal/infrastructure/resolver/sanitizer.go` — `SanitizeFinding` and helpers (URL/path/multiline/length filters, dedup, default validation)
+  - `internal/interfaces/cli/commands/resolver_prompter.go` — `HuhPrompter` with two UI branches (legacy + enriched), `ParseEnrichedInput`
+  - `internal/interfaces/cli/commands/resolver_previewer.go` — `HuhDiffPreviewer`, hand-rolled `renderUnifiedDiff` (no external diff dependency), editor invocation with fallback chain
+  - `internal/interfaces/cli/commands/resolve.go` — `NewResolveCmd`, `discoverFiles` (`--all` / `--since=<ref>` / explicit), dry-run shim
+  - `internal/interfaces/cli/commands/define_resolver.go` — thin adapter (~30 lines) that wires huh prompter + enricher + previewer and delegates to `ResolveMarkersCommand`. Existing callers in `generate.go` / `analyze.go` / `init.go` are unchanged.
+- **Default rewrite path unchanged.** LLM rewrite still preferred when a provider is available, literal substitute on LLM failure. The validator and skip-mode pass run on top — they don't replace the existing two-path logic.
+- **Existing `resolve-defines` command tag preserved.** The rewrite call still uses `command="resolve-defines"` for usage tracking (legacy name kept for continuity in `.codify/usage.json`). The new enrichment call uses `command="resolve-enrich"` so the two appear as separate line items.
+- **MCP tool surface unchanged.** `codify resolve` is CLI-only in this release. Exposing `resolve_markers` as an MCP tool was deferred — agents calling MCP need a non-interactive variant first (no prompter, no editor invocation), and that surface is not designed yet.
+
+### Fixed
+- **UTF-8 byte-budget bug in suggestion truncation.** Initial implementation used `…` (3 bytes in UTF-8) as the ellipsis but counted bytes as if it were 1 char, causing assertions on `len(string)` to be off by 2. Switched to ASCII `...` so the byte count matches the visual count exactly.
 
 ### Internal
-- New BDD package `tests/bdd/resolve_markers/` with 7 scenarios covering: enrichment happy path, enrichment empty/non-grounded fallback, validator catches dropped marker, validator catches new marker, TODO-anchor sanitizer round-trip, `--keep-define` opt-out, diff preview discard branch.
-- Unit tests added across all 7 new files. Total resolver-related coverage: 6 new `*_test.go` files. Suite is green end-to-end.
-- `EvaluationRequest` is the single LLM transport for both enrichment and rewrite — same struct, two different system prompts and `CacheableSystem` flags. No new provider method.
-- 14 commits on `main` since v2.0.6 (1 refactor, 7 feat, 6 test). All conventional-commits compliant; no squash, intermediate steps preserved for archaeology.
+- New BDD package `tests/bdd/resolve_markers/` with 7 scenarios: single-file resolve writes the answer, multi-file rewrites count, skip-all-with-TODO produces the markdown anchor, verbatim opt-out preserves `[DEFINE]`, top-level decline leaves files untouched, LLM hallucination triggers literal fallback, diff-preview discard leaves the file untouched.
+- ~37 new unit tests across `internal/domain/service`, `internal/application/command`, `internal/infrastructure/resolver`, `internal/interfaces/cli/commands`. Suite green end-to-end.
+- 14 commits on `main` since v2.0.6 (1 refactor, 7 feat, 6 test, plus the release commit). Conventional-commits compliant; no squash, phase-by-phase commits preserved for archaeology.
+- New file layout: `internal/infrastructure/resolver/` is a new package; the existing `internal/infrastructure/llm/` is unchanged.
 
 ### Notes
-- `codify resolve` is **not** in MCP yet — see Internal note above.
-- TODO anchors use the `(codify)` namespace so users can grep/filter them distinctly from generic `TODO:` comments left by humans.
-- Prompt caching only applies to Anthropic. If you're on Gemini, the second call is a full re-encode of the system prompt; cost still goes up by ~30% over a single-pass design but the validator + preview safety is judged worth it.
+- TODO anchors include the ISO date (`2026-05-06`), no namespace tag — keeps them indistinguishable from human-written `TODO:` comments by tooling, but distinguishable by date when paired with `git blame`. If a `(codify)` or similar namespace becomes useful later, it can be added without breaking existing files.
+- Prompt caching only applies to Anthropic. Gemini callers pay full system-prompt input cost per enrichment call. Estimated overhead for a 3-file generation with markers in all 3: ~$0.003 with Anthropic + caching, ~$0.025 with Gemini, $0 without provider.
+- `codify resolve --dry-run` writes `(dry-run) would write <path>` to stdout per file but does not invoke the diff preview by default — pass it explicitly if you want both.
 
 ## [2.0.6] - 2026-05-06 - Audit error clarity and global hooks path fix
 

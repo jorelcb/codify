@@ -426,6 +426,124 @@ jobs:
 
 ---
 
+## ✏️ Lifecycle: Resolucion de Markers (`codify resolve`)
+
+`codify resolve` es la superficie standalone para llenar markers `[DEFINE: ...]` — los placeholders que el LLM emite en archivos de contexto generados cuando la descripcion del proyecto no cubrio algo. v2.1.0 lo promovio de un hook inline post-`generate` a un comando first-class que puedes correr en cualquier momento sobre archivos existentes.
+
+### Cuando usarlo
+
+- Ya shippeaste `AGENTS.md` / `CONTEXT.md` con markers intactos (declinaste el prompt inline durante `generate`, o generaste antes de v2.0.5).
+- Agregaste a mano una nueva seccion a un archivo de contexto y quieres re-resolver markers que se introdujeron.
+- Tu CI flageo markers `[DEFINE]` sin resolver y quieres arreglarlos en un solo paso sin re-generar.
+
+### Seleccion de archivos
+
+```bash
+codify resolve AGENTS.md CONTEXT.md   # lista explicita
+codify resolve --all                  # walk del cwd, todo archivo con marker
+codify resolve --since=HEAD~5         # archivos cambiados en git desde <ref>
+```
+
+El walk de `--all` salta `.git`, `node_modules`, `vendor`, `.codify`, y archivos binarios (byte NUL en los primeros 4KB).
+
+### Flujo interactivo (LLM-driven por default)
+
+Para cada archivo con markers, Codify hace una llamada LLM de enrichment para traducir el `[DEFINE: hint]` crudo en un prompt amigable con sugerencias grounded:
+
+```
+── AGENTS.md (2 markers) ──
+
+     40  ## Currency Configuration
+     41
+  ▸  42  The supported currency is [DEFINE: ISO 4217 currency code], using two
+
+    ¿Qué moneda usa la aplicación?
+    (contexto fintech inferido de linea 12)
+    Suggestions:
+      1) USD [default]
+      2) EUR
+      3) MXN
+    Your answer (1-N, text, Enter for default, s to skip)
+```
+
+Parser de input:
+- **entero 1-N** → elige la sugerencia
+- **texto libre** → usa como respuesta
+- **Enter** → usa default si existe, si no skip
+- **`s`** o **`skip`** → skip explicito (case-insensitive)
+
+Cuando el enrichment falla (sin API key, error del provider, respuesta malformada, sanitizer rechazo todo), el prompt cae a la forma legacy (`Your input for L42 (Enter to skip)`) — nunca un fallo duro.
+
+### Modo de skip
+
+Por default, skipear un marker lo reemplaza con un comentario TODO con fecha en la sintaxis nativa del archivo — la gap queda visible en panels de TODO del IDE y en grep:
+
+| Extension | Reemplazo |
+|---|---|
+| `.md`, `.html`, `.htm`, `.xml` | `<!-- TODO 2026-05-06: ISO 4217 code -->` |
+| `.go`, `.js`, `.ts`, `.java`, `.rs`, `.c`, `.cpp`, `.swift`, `.cs`, ... | `// TODO 2026-05-06: ISO 4217 code` |
+| `.py`, `.rb`, `.sh`, `.yml`, `.yaml`, `.toml`, `.ini`, ... | `# TODO 2026-05-06: ISO 4217 code` |
+| Otra / desconocida | Marker preservado verbatim (default safe) |
+
+Pasa `--skip-mode=verbatim` para mantener markers `[DEFINE: ...]` crudos en el archivo.
+
+### Diff preview
+
+Despues del rewrite, antes de tocar el archivo en disco, ves un diff unified pequeno y eliges:
+
+```
+About to rewrite AGENTS.md:
+    line 41
+  - The supported currency is [DEFINE: ISO 4217 currency code], using two
+  + The supported currency is USD, using two
+    line 43
+
+Apply changes?  Apply / Discard (keep file as-is) / Edit before applying
+```
+
+- **Apply** — escribe el contenido propuesto
+- **Discard** — archivo intacto, contribuye al contador `FilesDiscarded` del summary
+- **Edit** — abre el contenido propuesto en `$EDITOR` (con fallback a `vim` / `vi` / `nano`); se escriben los bytes guardados
+
+Salta el preview con `--no-preview`.
+
+### Guardrails anti-alucinacion
+
+Dos capas protegen contra el LLM haciendo mas de lo que se le pidio:
+
+1. **Sanitizer de sugerencias.** Antes que el usuario las vea, las sugerencias del enricher se filtran: URLs, paths de archivos, strings multi-linea, texto con markdown fences y valores de mas de 50 chars se descartan. Sugerencias se deduplican case-insensitive y se cap a 3 entradas; el default propuesto por el LLM debe matchear una de las sobrevivientes o se descarta.
+2. **Validator post-rewrite.** Despues que el LLM reescribe el archivo con las respuestas del usuario, Codify re-escanea el output y clasifica los markers por frecuencia (los numeros de linea cambian, los conteos de texto no):
+   - `Lost` — el usuario skipeo este marker pero el LLM lo borro igual
+   - `NotApplied` — el usuario respondio pero el marker sigue en el archivo
+   - `Spurious` — markers que no existian en el input pero aparecen en el output
+   
+   Cualquiera de esos dispara un fallback transparente a substitucion literal deterministica, preservando todas las respuestas del usuario. Va una WARNING a stderr explicando el downgrade.
+
+### Flags
+
+```bash
+codify resolve [files...] [flags]
+```
+
+| Flag | Descripcion | Default |
+|------|-------------|---------|
+| `--all`, `-a` | Walk del cwd recursivo por archivos con markers `[DEFINE]` | `false` |
+| `--since` | Solo resuelve archivos cambiados en git desde este ref (e.g. `HEAD~5`) | — |
+| `--no-enrich` | Salta el step LLM de question/suggestions (mas barato, menos amigable) | `false` |
+| `--no-preview` | Salta el diff preview antes de escribir archivos | `false` |
+| `--skip-mode` | `todo` (default, comentario TODO en sintaxis del archivo) o `verbatim` | `todo` |
+| `--dry-run` | Walk de markers y reporta que cambiaria sin escribir archivos | `false` |
+| `--locale` | Locale de output para los prompts de rewrite/enrichment del LLM | `en` |
+| `--model`, `-m` | Modelo LLM | auto-detect |
+
+### Notas de costo
+
+La llamada de enrichment usa prompt caching de Anthropic (TTL ephemeral de 5 min). Para una generacion tipica de 3 archivos, el mismo system prompt se reusa entre archivos — la segunda y tercera llamadas pegan el cache. Callers de Gemini pagan costo full de input-token por llamada (su API de caching tiene un minimo de 4096 tokens que los prompts del resolver no alcanzan). Sin provider configurado, el resolver cae a la UI legacy + substitucion literal — sin costo LLM, UX menos polished.
+
+El mismo flujo corre automaticamente al final de `codify generate` / `analyze` / `init`, asi que la mayoria de usuarios nunca invocan `codify resolve` a mano. Usalo cuando quieras revisar archivos existentes o cuando quieras alguno de los flags opt-out (`--no-enrich`, `--skip-mode=verbatim`, `--dry-run`).
+
+---
+
 ## 👁️ Lifecycle: Watcher Foreground (`codify watch`)
 
 `codify watch` mantiene drift detection corriendo en background de tu sesion de editor. Re-ejecuta `check` automaticamente cuando cualquier archivo registrado en `.codify/state.json` cambia — input signals (e.g. `go.mod`, `Makefile`, `README.md`) y artefactos generados (`AGENTS.md`, `context/*.md`).
@@ -1402,6 +1520,7 @@ Snapshot completo de la superficie. Lo que aparece aqui esta shippeado, testeado
 - ✅ `usage` — tracking local de costos LLM (`.codify/usage.json` + `~/.codify/usage.json`); `--global`, `--since`, `--by`, `--json`, `--reset`
 - ✅ `watch` — file watcher foreground con debounce, `--auto-update` opcional
 - ✅ `reset-state` — recomputa snapshot sin tocar artefactos
+- ✅ `resolve` — resolucion interactiva de markers `[DEFINE]` con prompts LLM-driven (sugerencias grounded + default), modo skip con TODO-anchor, validator post-rewrite (anti-alucinacion), diff preview, seleccion `--all` / `--since` / archivos explicitos, opt-outs `--no-enrich` / `--no-preview` / `--skip-mode=verbatim` / `--dry-run`
 
 **MCP server**
 - ✅ 10 tools: 7 generative (context/specs/analyze/skills/workflows/hooks/usage) + 3 read-only (commit_guidance/version_guidance/get_usage)

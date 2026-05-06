@@ -497,6 +497,124 @@ Both `check` and `audit` (rules-only mode, the default) are deterministic and fr
 
 ---
 
+## ✏️ Lifecycle: Marker Resolution (`codify resolve`)
+
+`codify resolve` is the standalone surface for filling in `[DEFINE: ...]` markers — the placeholders the LLM emits in generated context files when the project description didn't cover something. v2.1.0 promoted it from an inline post-`generate` hook to a first-class command you can run any time on existing files.
+
+### When to use
+
+- You shipped `AGENTS.md` / `CONTEXT.md` with markers left intact (declined the inline prompt during `generate`, or generated before v2.0.5).
+- You added a new section to a context file by hand and want to re-resolve any markers introduced.
+- Your CI flagged unresolved `[DEFINE]` markers and you want to fix them in a single pass without re-generating.
+
+### File selection
+
+```bash
+codify resolve AGENTS.md CONTEXT.md   # explicit list
+codify resolve --all                  # walk cwd, every file with a marker
+codify resolve --since=HEAD~5         # files changed in git since <ref>
+```
+
+The `--all` walk skips `.git`, `node_modules`, `vendor`, `.codify`, and binary files (NUL byte in first 4KB).
+
+### Interactive flow (LLM-driven by default)
+
+For each file with markers, Codify makes one LLM enrichment call to translate the raw `[DEFINE: hint]` into a friendly prompt with grounded suggestions:
+
+```
+── AGENTS.md (2 markers) ──
+
+     40  ## Currency Configuration
+     41
+  ▸  42  The supported currency is [DEFINE: ISO 4217 currency code], using two
+
+    What currency does the application use?
+    (fintech context inferred from line 12)
+    Suggestions:
+      1) USD [default]
+      2) EUR
+      3) MXN
+    Your answer (1-N, text, Enter for default, s to skip)
+```
+
+Input parser:
+- **integer 1-N** → pick the suggestion
+- **free text** → use as the answer
+- **Enter** → use the default if present, otherwise skip
+- **`s`** or **`skip`** → explicit skip (case-insensitive)
+
+When enrichment fails (no API key, provider error, malformed response, sanitizer rejected everything), the prompt degrades to the legacy form (`Your input for L42 (Enter to skip)`) — never a hard failure.
+
+### Skip mode
+
+By default, skipping a marker replaces it with a date-stamped TODO comment in the file's native syntax — so the gap stays visible in IDE TODO panels and grep:
+
+| Extension | Replacement |
+|---|---|
+| `.md`, `.html`, `.htm`, `.xml` | `<!-- TODO 2026-05-06: ISO 4217 code -->` |
+| `.go`, `.js`, `.ts`, `.java`, `.rs`, `.c`, `.cpp`, `.swift`, `.cs`, ... | `// TODO 2026-05-06: ISO 4217 code` |
+| `.py`, `.rb`, `.sh`, `.yml`, `.yaml`, `.toml`, `.ini`, ... | `# TODO 2026-05-06: ISO 4217 code` |
+| Other / unknown | Marker preserved verbatim (safe default) |
+
+Pass `--skip-mode=verbatim` to keep raw `[DEFINE: ...]` markers in the file.
+
+### Diff preview
+
+After the rewrite, before the file is touched on disk, you see a small unified diff and choose:
+
+```
+About to rewrite AGENTS.md:
+    line 41
+  - The supported currency is [DEFINE: ISO 4217 currency code], using two
+  + The supported currency is USD, using two
+    line 43
+
+Apply changes?  Apply / Discard (keep file as-is) / Edit before applying
+```
+
+- **Apply** — write the proposed content
+- **Discard** — file untouched, contributes to the `FilesDiscarded` counter in the summary
+- **Edit** — open the proposed content in `$EDITOR` (falling back to `vim` / `vi` / `nano`); the saved bytes are written
+
+Skip the preview entirely with `--no-preview`.
+
+### Anti-hallucination guardrails
+
+Two layers protect against the LLM doing more than it was asked:
+
+1. **Suggestion sanitizer.** Before the user sees them, suggestions returned by the enricher are filtered: URLs, file paths, multi-line strings, markdown-fenced text, and values longer than 50 chars are dropped. Suggestions are deduplicated case-insensitively and capped at 3 kept entries; the LLM-proposed default must match one of the survivors or it's discarded.
+2. **Post-rewrite validator.** After the LLM rewrites the file with the user's answers, Codify re-scans the output and classifies markers by frequency (line numbers shift, text counts don't):
+   - `Lost` — user skipped this marker but the LLM removed it anyway
+   - `NotApplied` — user answered but the marker is still in the file
+   - `Spurious` — markers that did not exist in the input but appear in the output
+   
+   Any of those triggers a transparent fallback to deterministic literal substitution, preserving every user answer. A WARNING goes to stderr explaining the downgrade.
+
+### Flags
+
+```bash
+codify resolve [files...] [flags]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--all`, `-a` | Walk cwd recursively for files containing `[DEFINE]` markers | `false` |
+| `--since` | Only resolve files changed in git since this ref (e.g. `HEAD~5`) | — |
+| `--no-enrich` | Skip the LLM-driven question/suggestions step (cheaper, less friendly) | `false` |
+| `--no-preview` | Skip the diff preview before writing files | `false` |
+| `--skip-mode` | `todo` (default, TODO comment in file syntax) or `verbatim` | `todo` |
+| `--dry-run` | Walk markers and report what would change without writing files | `false` |
+| `--locale` | Output locale for the LLM rewrite/enrichment prompts | `en` |
+| `--model`, `-m` | LLM model | auto-detected |
+
+### Cost notes
+
+The enrichment call uses Anthropic prompt caching (5-minute ephemeral TTL). For a typical 3-file generation, the same system prompt is reused across files — the second and third calls hit cache. Gemini callers pay full input-token cost per call (its caching API has a 4096-token minimum that resolver prompts don't meet). Without any provider configured, the resolver falls through to the legacy UI + literal substitution — no LLM cost, less polished UX.
+
+The same flow runs automatically at the tail of `codify generate` / `analyze` / `init`, so most users never invoke `codify resolve` by hand. Use it when you want to revisit existing files or when you want one of the opt-out flags (`--no-enrich`, `--skip-mode=verbatim`, `--dry-run`).
+
+---
+
 ## 👁️ Lifecycle: Foreground Watcher (`codify watch`)
 
 `codify watch` keeps drift detection running in the background of your editor session. It re-runs `check` automatically when any file registered in `.codify/state.json` changes — input signals (e.g. `go.mod`, `Makefile`, `README.md`) and generated artifacts (`AGENTS.md`, `context/*.md`).
@@ -1474,6 +1592,7 @@ The full surface in one snapshot — anything checked here is shipped, tested, a
 - ✅ `usage` — local LLM cost tracking (`.codify/usage.json` + `~/.codify/usage.json`); `--global`, `--since`, `--by`, `--json`, `--reset`
 - ✅ `watch` — foreground file watcher with debounce, optional `--auto-update`
 - ✅ `reset-state` — recompute snapshot without touching artifacts
+- ✅ `resolve` — interactive `[DEFINE]` marker resolution with LLM-driven prompts (grounded suggestions + default), TODO-anchor skip mode, post-rewrite validator (anti-hallucination), diff preview, `--all` / `--since` / explicit file selection, `--no-enrich` / `--no-preview` / `--skip-mode=verbatim` / `--dry-run` opt-outs
 
 **MCP server**
 - ✅ 10 tools: 7 generative (context/specs/analyze/skills/workflows/hooks/usage) + 3 read-only (commit_guidance/version_guidance/get_usage)
