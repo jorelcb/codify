@@ -79,6 +79,14 @@ type EvaluationRequest struct {
 	UserPrompt   string
 	Command      string // for usage tracking ("audit", etc.)
 	MaxTokens    int    // optional; provider applies a sensible default if 0
+
+	// CacheableSystem signals that the SystemPrompt is stable across
+	// successive calls (e.g. multiple files audited or enriched in the same
+	// session) and should be marked for prompt caching when the underlying
+	// provider supports it. Anthropic uses cache_control ephemeral; Gemini
+	// ignores the flag (its caching API has a 4k-token minimum that most
+	// of our system prompts do not meet).
+	CacheableSystem bool
 }
 
 // EvaluationResponse contains the raw text output of a one-shot prompt

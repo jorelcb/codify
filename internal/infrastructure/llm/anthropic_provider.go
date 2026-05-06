@@ -197,12 +197,19 @@ func (p *AnthropicProvider) EvaluatePrompt(ctx context.Context, req service.Eval
 		maxTokens = 4000 // sensible default for audit-sized responses
 	}
 
+	systemBlock := anthropic.TextBlockParam{Text: req.SystemPrompt}
+	if req.CacheableSystem {
+		// Mark the system prompt as cacheable so a sequence of EvaluatePrompt
+		// calls with the same SystemPrompt within the 5-minute TTL window
+		// reuses the prompt cache instead of re-billing. Used by the marker
+		// enricher (one call per generated file with markers) — high-traffic
+		// case where the system prompt is identical across calls.
+		systemBlock.CacheControl = anthropic.NewCacheControlEphemeralParam()
+	}
 	stream := p.client.Messages.NewStreaming(ctx, anthropic.MessageNewParams{
 		Model:     anthropic.Model(p.model),
 		MaxTokens: maxTokens,
-		System: []anthropic.TextBlockParam{
-			{Text: req.SystemPrompt},
-		},
+		System:    []anthropic.TextBlockParam{systemBlock},
 		Messages: []anthropic.MessageParam{
 			anthropic.NewUserMessage(anthropic.NewTextBlock(req.UserPrompt)),
 		},
