@@ -217,6 +217,7 @@ func (p *AnthropicProvider) EvaluatePrompt(ctx context.Context, req service.Eval
 
 	var textBuilder strings.Builder
 	var inTokens, outTokens int64
+	var stopReason anthropic.StopReason
 	for stream.Next() {
 		event := stream.Current()
 		switch evt := event.AsAny().(type) {
@@ -228,6 +229,9 @@ func (p *AnthropicProvider) EvaluatePrompt(ctx context.Context, req service.Eval
 			}
 		case anthropic.MessageDeltaEvent:
 			outTokens = evt.Usage.OutputTokens
+			if evt.Delta.StopReason != "" {
+				stopReason = anthropic.StopReason(evt.Delta.StopReason)
+			}
 		}
 	}
 
@@ -245,6 +249,11 @@ func (p *AnthropicProvider) EvaluatePrompt(ctx context.Context, req service.Eval
 	recordUsage("anthropic", p.model, cmd, int(inTokens), int(outTokens), time.Since(start), text != "")
 	if text == "" {
 		return nil, fmt.Errorf("empty response from LLM")
+	}
+	// Surface max_tokens truncation explicitly; otherwise downstream JSON
+	// parsing fails with the opaque "unexpected end of JSON input".
+	if stopReason == anthropic.StopReasonMaxTokens {
+		return nil, fmt.Errorf("response truncated: max_tokens=%d hit (output=%d tokens) — bump MaxTokens for command %q", maxTokens, outTokens, cmd)
 	}
 
 	return &service.EvaluationResponse{

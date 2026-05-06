@@ -97,7 +97,7 @@ func (e *LLMEnricher) Enrich(
 		SystemPrompt:    enrichmentSystemPrompt,
 		UserPrompt:      userPrompt,
 		Command:         "resolve-enrich",
-		MaxTokens:       2048,
+		MaxTokens:       4096,
 		CacheableSystem: true,
 	})
 	if err != nil {
@@ -107,7 +107,7 @@ func (e *LLMEnricher) Enrich(
 	cleaned := strings.TrimSpace(fenceRE.ReplaceAllString(resp.Text, ""))
 	var findings []llmFinding
 	if err := json.Unmarshal([]byte(cleaned), &findings); err != nil {
-		return enrichFallback(hits), fmt.Errorf("enrichment response is not valid JSON: %w", err)
+		return enrichFallback(hits), fmt.Errorf("enrichment response is not valid JSON: %w (response snippet: %q)", err, snippet(cleaned, 200))
 	}
 
 	return mergeFindingsIntoHits(hits, findings), nil
@@ -159,4 +159,17 @@ func enrichFallback(hits []service.MarkerHit) []service.EnrichedMarker {
 		out[i] = service.EnrichedMarker{MarkerHit: h}
 	}
 	return out
+}
+
+// snippet returns a leading slice of s for diagnostic logs, truncating with
+// an ellipsis when the original exceeded max. Empty input becomes "<empty>"
+// so the error surfaces the difference between fence-only and truncated JSON.
+func snippet(s string, max int) string {
+	if s == "" {
+		return "<empty>"
+	}
+	if len(s) <= max {
+		return s
+	}
+	return s[:max] + "..."
 }
