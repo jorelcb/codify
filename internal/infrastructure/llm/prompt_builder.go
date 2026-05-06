@@ -160,7 +160,7 @@ You will receive a project description and a structural template guide.
 2. Read the template guide provided in the user message
 3. Mentally separate: what is technical framework (opine freely) vs domain logic (only what was stated)
 4. For each template section, generate SPECIFIC and ACTIONABLE content for the described project
-5. Where the template uses variables like {{VARIABLE}}, generate real content ONLY if the description supports it; otherwise mark as [DEFINE]
+5. Where the template uses variables like {{VARIABLE}}, generate real content ONLY if the description supports it; otherwise emit a labelled placeholder of the form [DEFINE: <what is missing>] (always include the colon and a concrete hint — never a bare "[DEFINE]")
 6. Verify that no business rule or specific behavior was invented
 7. Place the most critical information at the BEGINNING and END of the file
 </workflow>
@@ -227,7 +227,7 @@ For scanned signals:
 For domain logic:
 - Only include what is EXPLICITLY present in the README or existing context files
 - DO NOT invent business rules, validations, or behaviors not documented in the scan
-- Mark "[DEFINE]" for business-domain concepts not inferable from the codebase
+- Mark business-domain concepts not inferable from the codebase as "[DEFINE: <what is missing>]" — always include the colon and a concrete hint, never a bare "[DEFINE]"
 </grounding_rules>
 
 <workflow>
@@ -236,7 +236,7 @@ For domain logic:
 3. Read the template guide provided in the user message
 4. For each template section, generate SPECIFIC content grounded in the scan data
 5. For commands sections, use EXACT build targets detected (not generic placeholders)
-6. Where the template asks for domain details not in the scan, mark as [DEFINE]
+6. Where the template asks for domain details not in the scan, emit a labelled placeholder "[DEFINE: <what is missing>]" — always include the colon and a concrete hint, never a bare "[DEFINE]"
 7. Place the most critical information at the BEGINNING and END of the file
 </workflow>
 
@@ -468,7 +468,7 @@ You will receive the complete project context and a template guide for the speci
 2. Read the template guide provided in the user message
 3. Identify which domain information is EXPLICITLY in the context and which you would have to invent
 4. Generate CONCRETE specifications COHERENT with the existing context
-5. For domain details not covered in the context, mark [DEFINE] instead of inventing
+5. For domain details not covered in the context, emit "[DEFINE: <what is missing>]" instead of inventing — always include the colon and a concrete hint, never a bare "[DEFINE]"
 6. Each specification must be implementable and verifiable
 7. Maintain total coherence with already documented architectural decisions
 </workflow>
@@ -479,7 +479,7 @@ You will receive the complete project context and a template guide for the speci
 - Total coherence with existing context
 - Structured formats (lists, tables, YAML) over prose
 - Maximum 200 lines per file
-- Zero invented business rules — if not in the context, mark [DEFINE]
+- Zero invented business rules — if not in the context, emit "[DEFINE: <what is missing>]" with a concrete hint
 - Base ALL content on the existing context provided
 </output_quality>
 

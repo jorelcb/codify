@@ -7,17 +7,27 @@ import (
 	"strings"
 )
 
+// DefineMarker represents a single "[DEFINE: ...]" placeholder emitted by the
+// LLM when it could not ground a piece of content in the user's input. Text
+// is the verbatim marker (with its hint if the model included one); Line is
+// the 1-based line number inside the generated file, so the CLI can point
+// the user directly at the spot.
+type DefineMarker struct {
+	Text string
+	Line int
+}
+
 // ValidationResult summarizes structural issues detected in a generated file.
 //
 // DefineMarkers carry the verbatim "[DEFINE: ...]" snippets that the LLM
 // emitted when it could not ground a piece of content in the user's input.
-// The CLI surfaces these so the user sees exactly what is missing.
+// The CLI surfaces these so the user sees exactly what is missing and where.
 //
 // Warnings are non-fatal but worth surfacing (e.g. unbalanced code fences,
 // missing frontmatter when one was expected). Fatal indicates the output
 // is unusable as-is and the caller should not write it to disk.
 type ValidationResult struct {
-	DefineMarkers []string
+	DefineMarkers []DefineMarker
 	Warnings      []string
 	Fatal         bool
 }
@@ -43,9 +53,13 @@ func ValidateOutput(content, mode, fileName string) ValidationResult {
 		return result
 	}
 
-	// 1. [DEFINE] markers — list verbatim so the user knows exactly what to fill in.
-	for _, m := range defineMarkerRE.FindAllString(content, -1) {
-		result.DefineMarkers = append(result.DefineMarkers, m)
+	// 1. [DEFINE] markers — list verbatim + line number so the user can jump
+	//    straight to each spot. We use FindAllStringIndex (positions) so the
+	//    line number is computable from the byte offset.
+	for _, idx := range defineMarkerRE.FindAllStringIndex(content, -1) {
+		text := content[idx[0]:idx[1]]
+		line := strings.Count(content[:idx[0]], "\n") + 1
+		result.DefineMarkers = append(result.DefineMarkers, DefineMarker{Text: text, Line: line})
 	}
 
 	// 2. Code fence balance — count triple-backtick line starts. An odd
@@ -104,7 +118,18 @@ func emitValidationFeedback(out io.Writer, fileName string, r ValidationResult) 
 		return
 	}
 	if len(r.DefineMarkers) > 0 {
-		fmt.Fprintf(out, "    %s has %d [DEFINE] marker(s) the user must resolve\n", fileName, len(r.DefineMarkers))
+		// Use a constructive frame: the LLM flagged a gap because the
+		// description didn't cover this concept — that's collaboration,
+		// not user error. Show line + verbatim marker so the user can
+		// jump straight to the spot and decide what to fill in.
+		noun := "spot needs"
+		if len(r.DefineMarkers) > 1 {
+			noun = "spots need"
+		}
+		fmt.Fprintf(out, "    %s — %d %s your input:\n", fileName, len(r.DefineMarkers), noun)
+		for _, m := range r.DefineMarkers {
+			fmt.Fprintf(out, "      L%-4d %s\n", m.Line, m.Text)
+		}
 	}
 	for _, w := range r.Warnings {
 		fmt.Fprintf(out, "    %s warning: %s\n", fileName, w)

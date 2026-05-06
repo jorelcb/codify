@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4] - 2026-05-06 - Constructive [DEFINE] marker reporting
+
+### Changed
+- **`[DEFINE]` validation messages reframed and made actionable.** During context generation, the validator inspects each generated file and surfaces spots where the LLM emitted a `[DEFINE: ...]` placeholder — these are the gaps the model didn't have enough info to fill in (anti-hallucination by design). Previously the message was:
+  ```
+  AGENTS.md has 1 [DEFINE] marker(s) the user must resolve
+  ```
+  This was both judgmental ("user must resolve") and useless (no line, no marker text — the user had to grep). New format:
+  ```
+  AGENTS.md — 1 spot needs your input:
+    L42  [DEFINE: ISO 4217 currency code]
+  ```
+  Each marker now appears with its 1-based line number and verbatim text, so the user can jump straight to it. Tone shifted from accusation to collaboration ("needs your input" — the LLM flagged a gap because the description didn't cover that concept; that's the system working, not user failure).
+
+- **Prompt instructions tightened to ban bare `[DEFINE]`.** All prompt builder paths (generate, analyze, personalized) now require the form `[DEFINE: <what is missing>]` with a concrete hint after the colon. A bare `[DEFINE]` told the user nothing about what to fill in. Existing regex still matches both forms (backward compatible for previously-generated files).
+
+### Internal
+- `ValidationResult.DefineMarkers` changed from `[]string` to `[]DefineMarker{Text, Line}`. Internal package — no external consumers. Tests updated to verify line + text capture.
+
 ## [2.0.3] - 2026-05-06 - `codify init` opt-in installs + clearer skill bundle labels
 
 ### Added

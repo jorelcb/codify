@@ -13,6 +13,18 @@ trigger the length-based warning together with the marker assertion below.
 	if len(r.DefineMarkers) != 2 {
 		t.Fatalf("DefineMarkers: got %d, want 2 (got: %v)", len(r.DefineMarkers), r.DefineMarkers)
 	}
+	if r.DefineMarkers[0].Text != "[DEFINE: ISO 4217 code]" {
+		t.Fatalf("first marker text: got %q, want %q", r.DefineMarkers[0].Text, "[DEFINE: ISO 4217 code]")
+	}
+	if r.DefineMarkers[0].Line != 3 {
+		t.Fatalf("first marker line: got %d, want 3", r.DefineMarkers[0].Line)
+	}
+	if r.DefineMarkers[1].Text != "[DEFINE]" {
+		t.Fatalf("second marker text: got %q, want %q", r.DefineMarkers[1].Text, "[DEFINE]")
+	}
+	if r.DefineMarkers[1].Line != 3 {
+		t.Fatalf("second marker line: got %d, want 3", r.DefineMarkers[1].Line)
+	}
 	if r.Fatal {
 		t.Fatal("Fatal should be false; markers are a soft signal")
 	}
