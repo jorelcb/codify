@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.5] - 2026-05-06 - Interactive [DEFINE] marker resolution (LLM rewrite by default, literal fallback)
+
+### Added
+- **Interactive resolution of `[DEFINE]` markers at the end of `codify generate` / `codify analyze` / `codify init`.** Previously the user got a list of *"L42  [DEFINE: ISO 4217 currency code]"* and had to alt-tab to their editor to fill each one in by hand. Now after the file listing prints, if any markers were emitted across the generated files, Codify offers:
+  ```
+  Found 7 [DEFINE] marker(s) across 3 file(s).
+  Resolve them interactively now? (Y/n) _
+  ```
+  On `Y`, it walks file-by-file, marker-by-marker, showing 5 lines of surrounding context per spot:
+  ```
+  ── AGENTS.md (2 markers) ──
+
+       40  ## Currency Configuration
+       41
+    ▸  42  The supported currency is [DEFINE: ISO 4217 currency code], using two
+       43  decimal places...
+
+  Your input for L42 (Enter to skip)
+  > USD
+  ```
+  Empty input = skip; the marker stays verbatim. Per-file, after collecting all answers, the file is rewritten in one of two modes:
+
+  - **B (default)**: when an LLM provider is available (which it always is during `generate`/`analyze` since those require an API key), the file content + the marker→answer map are sent to the LLM with a strict editor prompt that integrates each answer naturally into the surrounding sentence/paragraph and preserves all other content character-for-character. Output is the rewritten file.
+  - **A (fallback)**: when the LLM call fails (network, rate limit, etc.) — falls back to literal 1:1 substitution: each `[DEFINE: ...]` is replaced verbatim with the user's answer. Less polished, never loses the user's work.
+
+  Top-level decline (`n`) leaves all markers intact for manual editing — same UX as v2.0.4.
+
+  New file: `internal/interfaces/cli/commands/define_resolver.go` (orchestration + literal substitute + LLM rewrite call). Wired into `runGenerateWithMode` so all three commands (`generate`, `analyze`, `init`) inherit it via the existing delegation chain.
+
+### Internal
+- LLM rewrite call uses the existing `provider.EvaluatePrompt` interface (the same one `audit --with-llm` uses). Usage is recorded under `command="resolve-defines"`, so `codify usage` shows the cost separately from the main generation pass.
+
 ## [2.0.4] - 2026-05-06 - Constructive [DEFINE] marker reporting
 
 ### Changed

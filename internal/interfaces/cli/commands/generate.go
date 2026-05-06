@@ -362,6 +362,15 @@ func runGenerateWithMode(projectName, description, language, projectType, archit
 		fmt.Printf("  - %s\n", f)
 	}
 
+	// 9b. Interactive [DEFINE] resolve — when the LLM emitted placeholders for
+	//     gaps the description didn't cover, walk the user through each one
+	//     and rewrite via the LLM so the answer integrates naturally. Falls
+	//     back to literal substitution if the LLM call fails. No-op when
+	//     there are no markers or the user declines at the top-level prompt.
+	if err := resolveDefineMarkers(ctx, result.GeneratedFiles, locale, provider); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: define-marker resolve step failed: %v\n", err)
+	}
+
 	// 10. Persist .codify/state.json so `codify check` can detect drift later.
 	//     Mode "analyze" → kind="existing"; everything else → kind="new".
 	kind := "new"
