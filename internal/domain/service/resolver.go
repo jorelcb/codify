@@ -47,6 +47,22 @@ type PromptedAnswer struct {
 	Skip   bool
 }
 
+// DiffPreviewer abstracts the pre-write confirmation step. The orchestrator
+// calls Preview after the rewrite (LLM or literal) succeeds and the
+// skip-mode pass has been applied, but BEFORE writing to disk. The
+// implementation:
+//   - returns apply=true, content=as-is to write the proposed content,
+//   - returns apply=true, content=user-edited to apply an interactive edit,
+//   - returns apply=false to discard and keep the original on disk.
+//
+// Implementations are expected to handle their own UI: show a diff, ask
+// for confirmation, optionally invoke an external editor. Errors are
+// non-fatal at the orchestrator level — a preview that crashes degrades
+// to "apply without preview" with a stderr warning.
+type DiffPreviewer interface {
+	Preview(path string, before, after []byte) (apply bool, content []byte, err error)
+}
+
 // MarkerEnricher abstracts the LLM-driven step that turns raw [DEFINE: hint]
 // markers into user-friendly EnrichedMarker entries (natural-language
 // question + grounded suggestions + default).

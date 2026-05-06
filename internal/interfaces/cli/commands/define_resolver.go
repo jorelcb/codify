@@ -22,7 +22,8 @@ func resolveDefineMarkers(ctx context.Context, files []string, locale string, pr
 		return nil
 	}
 	cmd := command.NewResolveMarkersCommand(NewHuhPrompter(), provider).
-		WithEnricher(infraresolver.NewLLMEnricher(provider))
+		WithEnricher(infraresolver.NewLLMEnricher(provider)).
+		WithPreviewer(NewHuhDiffPreviewer())
 	_, err := cmd.Execute(ctx, command.ResolveRequest{
 		Files:  files,
 		Locale: locale,

@@ -33,6 +33,7 @@ type ResolveMarkersCommand struct {
 	prompter  service.InteractivePrompter
 	provider  service.LLMProvider     // optional — nil means literal-only mode
 	enricher  service.MarkerEnricher  // optional — nil = legacy UI without LLM-driven prompts
+	previewer service.DiffPreviewer   // optional — nil = write directly without preview
 	readFile  func(string) ([]byte, error)
 	writeFile func(string, []byte, os.FileMode) error
 	stderr    func(format string, args ...any)
@@ -56,6 +57,7 @@ type ResolveResult struct {
 	FilesScanned   int
 	FilesRewritten int
 	FilesUnchanged int // user skipped every marker in these
+	FilesDiscarded int // user discarded the rewrite at the diff-preview step
 	Resolved       int // markers actually replaced (sum across files)
 	Skipped        int // markers preserved verbatim
 	UsedLLM        int // files rewritten via LLM path
@@ -96,6 +98,14 @@ func (c *ResolveMarkersCommand) WithToday(today func() string) *ResolveMarkersCo
 // loop. Pass nil (or skip the call) to keep the legacy UI.
 func (c *ResolveMarkersCommand) WithEnricher(enricher service.MarkerEnricher) *ResolveMarkersCommand {
 	c.enricher = enricher
+	return c
+}
+
+// WithPreviewer wires a pre-write confirmation step that shows the user a
+// diff and lets them apply, discard, or edit the rewrite before the file is
+// touched on disk. Pass nil (or skip the call) to write directly.
+func (c *ResolveMarkersCommand) WithPreviewer(previewer service.DiffPreviewer) *ResolveMarkersCommand {
+	c.previewer = previewer
 	return c
 }
 
@@ -220,7 +230,24 @@ func (c *ResolveMarkersCommand) Execute(ctx context.Context, req ResolveRequest)
 		// converts those preserved markers to the user's chosen anchor style.
 		newContent = service.ApplySkipMode(newContent, fm.hits, req.SkipMode, filepath.Ext(fm.path), c.today())
 
-		if err := c.writeFile(fm.path, []byte(newContent), 0o644); err != nil {
+		finalBytes := []byte(newContent)
+		if c.previewer != nil {
+			apply, edited, err := c.previewer.Preview(fm.path, []byte(fm.content), finalBytes)
+			switch {
+			case err != nil:
+				c.stderr("  preview unavailable for %s (%v); applying without preview\n", fm.path, err)
+			case !apply:
+				result.FilesDiscarded++
+				c.prompter.ReportFileResult(fm.path, 0, "discarded")
+				continue
+			default:
+				if edited != nil {
+					finalBytes = edited
+				}
+			}
+		}
+
+		if err := c.writeFile(fm.path, finalBytes, 0o644); err != nil {
 			c.stderr("  write failed for %s: %v\n", fm.path, err)
 			continue
 		}
