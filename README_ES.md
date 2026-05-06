@@ -22,10 +22,6 @@
 
 ---
 
-> **Codify v2.0** — Codify ya no es solamente un generador one-shot. Ahora **genera, audita y evoluciona** el contexto de tu agente a lo largo del lifecycle del proyecto: drift detection (`check`), regeneracion selectiva (`update`), audit de commits (`audit`), transparencia de costos (`usage`), watcher foreground (`watch`), y bootstrap (`config` + `init`). Ver la [seccion de migracion](#-migrando-desde-v1x) si venis de v1.x.
-
----
-
 ## 🎯 El Problema
 
 Le dices a tu agente: *"Construye una API de pagos en Go con microservicios"*
@@ -69,8 +65,8 @@ Y el agente, con toda su capacidad, improvisa:
 - **Specs** le dan al agente un plan de implementacion — features, criterios de aceptacion, desglose de tareas
 - **Skills** le dan al agente habilidades reutilizables — como hacer commits, versionar, disenar entidades, hacer code review
 - **Workflows** le dan al agente recetas de orquestacion — procesos multi-paso como desarrollo de features, correccion de bugs, releases
-- **Hooks** agregan guardrails deterministicos — shell scripts en eventos de Claude Code, sin LLM en el loop *(v1.19+)*
-- **Lifecycle** mantiene todo en sincronia — `config`, `init`, `check`, `update`, `audit`, `usage` — drift detection, regen selectivo, audit de commits, transparencia de costos *(v1.22+)*
+- **Hooks** agregan guardrails deterministicos — shell scripts en eventos de Claude Code, sin LLM en el loop
+- **Lifecycle** mantiene todo en sincronia — `config`, `init`, `check`, `update`, `audit`, `usage`, `watch` — drift detection, regen selectivo, audit de commits, transparencia de costos, watcher foreground
 
 Sigue el [estandar AGENTS.md](https://github.com/anthropics/AGENTS.md) — una especificacion abierta respaldada por la Linux Foundation para proveer contexto de proyecto a agentes de IA. Los archivos funcionan directamente con Claude Code, Cursor, Codex y cualquier agente que lea el estandar.
 
@@ -181,10 +177,10 @@ codify skills              # No requiere API key en modo static
 # ── Workflows: dale a tu agente recetas de orquestacion ──
 codify workflows           # Claude (native skills) o Antigravity (.md nativo)
 
-# ── Hooks: guardrails deterministicos en eventos de Claude Code (v1.19+) ──
+# ── Hooks: guardrails deterministicos en eventos de Claude Code ──
 codify hooks               # linting / security-guardrails / convention-enforcement / all
 
-# ── Lifecycle: mantiene artefactos en el tiempo (v1.22+) ──
+# ── Lifecycle: mantiene artefactos en el tiempo ──
 codify check               # Drift detection — sin LLM, cero costo
 codify update              # Regen selectivo cuando los signals cambian
 codify audit               # Revisa commits contra convenciones (rules-only por default; --with-llm opt-in)
@@ -270,7 +266,7 @@ Keys validos: `preset`, `locale`, `language`, `model`, `target`, `provider`, `pr
 Despues, ambas ramas recolectan: preset arquitectonico (override del default global), lenguaje, locale, output dir, modelo. Resultado:
 
 - `.codify/config.yml` — defaults a nivel proyecto que persisten para todo el equipo via repo
-- `.codify/state.json` — snapshot del estado de generacion (consumido por lifecycle commands desde v1.23)
+- `.codify/state.json` — snapshot del estado de generacion (consumido por lifecycle commands)
 - `AGENTS.md` y `context/*.md` generados a `output/`
 
 Skills, workflows y hooks NO se incluyen — `init` imprime los comandos recomendados para mantener responsabilidades enfocadas. Corre `codify skills`, `codify workflows`, `codify hooks` por separado cuando los necesites.
@@ -289,9 +285,9 @@ Setear `--preset hexagonal` en linea de comandos gana sin importar que digan los
 
 ## 🔍 Lifecycle: Drift Detection
 
-Codify v1.23 introduce el primer **lifecycle command**: `codify check`. La premisa es simple — una vez que Codify genera artefactos, el mundo sigue moviendose. Las dependencias cambian, el README evoluciona, alguien edita `AGENTS.md` a mano. Sin chequeo activo, los artefactos se desfasan silenciosamente del proyecto.
+Una vez que Codify genera artefactos, el mundo sigue moviendose. Las dependencias cambian, el README evoluciona, alguien edita `AGENTS.md` a mano. Sin chequeo activo, los artefactos se desfasan silenciosamente del proyecto.
 
-`check` y su comando complementario `reset-state` resuelven esto sin LLM: hashes SHA256 de artefactos y senales de input, capturados al momento de generacion y comparados al momento de check. **Cero costo LLM. Cero red. Totalmente deterministico.**
+`codify check` y su comando complementario `codify reset-state` resuelven esto sin LLM: hashes SHA256 de artefactos y senales de input, capturados al momento de generacion y comparados al momento de check. **Cero costo LLM. Cero red. Totalmente deterministico.**
 
 ### `codify check` — detectar drift en CI o localmente
 
@@ -354,7 +350,7 @@ Cada `codify generate` / `codify analyze` / `codify init` exitoso escribe `.codi
 
 ## 🔄 Lifecycle: Update, Audit y Tracking de Uso
 
-v1.24 construye sobre la fundacion de drift detection con tres comandos complementarios. Juntos cierran el gap entre "Codify genero artefactos una vez" y "Codify los mantiene a medida que el proyecto evoluciona".
+Tres comandos construyen sobre la fundacion de drift detection para cerrar el gap entre "Codify genero artefactos una vez" y "Codify los mantiene a medida que el proyecto evoluciona": `update` regenera selectivamente, `audit` revisa commits contra convenciones documentadas, `usage` expone el costo LLM.
 
 ### `codify update` — regeneracion selectiva
 
@@ -374,7 +370,7 @@ codify audit                     # ultimos 20 commits, rules-only (cero costo LL
 codify audit --since main~50     # todos los commits desde main~50
 codify audit --strict            # cualquier finding (incl. minor) falla el run
 codify audit --json              # machine-readable para CI
-codify audit --with-llm          # heuristico (v1.24.1+; cae a rules-only en v1.24.0)
+codify audit --with-llm          # heuristico — envia commits + AGENTS.md al LLM (registra usage)
 ```
 
 Findings rules-only: `commit_invalid_type`, `commit_trivial`, `commit_header_too_long`, `protected_branch_direct`. Types reconocidos: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, etc.
@@ -516,6 +512,16 @@ Codify mismo no genera estos configs — la integracion es lo suficientemente co
 
 La base. Genera archivos siguiendo el [estandar AGENTS.md](https://github.com/anthropics/AGENTS.md) que le dan a tu agente memoria profunda del proyecto.
 
+### Cuando usar `generate` vs `analyze`
+
+| Situacion | Usar | Por que |
+|---|---|---|
+| Proyecto greenfield (sin codigo aun) | `codify generate` | Tu provees la descripcion; el LLM genera contexto contra ella |
+| Repo existente con codigo dentro | `codify analyze` | El scanner extrae senales factuales (deps, build targets, CI, frameworks) y los alimenta como ground truth — mucho mas preciso que una descripcion manual |
+| Repo existente + quieres sobreescribir lo que el scanner detecta | `codify analyze` primero, luego editar, luego `codify reset-state` | Scan-first, hand-tune segundo |
+| Tienes un design doc detallado | `codify generate --from-file ./docs/design.md` | Trata el contenido del archivo como la descripcion |
+| En duda | `codify init` | Pregunta "¿nuevo o existente?" y te enruta al flow correcto internamente |
+
 ### Comando `generate` — Contexto desde una descripcion
 
 ```bash
@@ -649,10 +655,10 @@ codify skills --category conventions --preset all --mode static
 codify skills --category conventions --preset all --mode static --install global
 
 # Instalar en el proyecto actual — compartible via git
-codify skills --category architecture --preset clean --mode static --install project
+codify skills --category architecture --preset clean-ddd --mode static --install project
 
 # Personalized: adaptado a tu proyecto via LLM
-codify skills --category architecture --preset clean --mode personalized \
+codify skills --category architecture --preset clean-ddd --mode personalized \
   --context "Microservicio Go con DDD, Godog BDD, PostgreSQL"
 
 # Skills de arquitectura para ecosistema Codex
@@ -670,14 +676,18 @@ codify skills --category architecture --preset neutral --target codex
 
 | Categoria | Preset | Skills |
 |-----------|--------|--------|
-| `architecture` | `clean` | DDD entity, Clean Architecture layer, BDD scenario, CQRS command, Hexagonal port |
 | `architecture` | `neutral` | Code review, test strategy, safe refactoring, API design |
+| `architecture` | `clean-ddd` | DDD entity, Clean Architecture layer, BDD scenario, CQRS command, Hexagonal port |
+| `architecture` | `hexagonal` | Port definition, Adapter pattern, Dependency inversion, Hexagonal integration test |
+| `architecture` | `event-driven` | Command handler, Domain event, Event projection, Saga orchestrator, Event idempotency |
 | `testing` | `foundational` | Test Desiderata — Las 12 propiedades de Kent Beck para buenos tests |
 | `testing` | `tdd` | Test-Driven Development — Red-Green-Refactor *(incluye foundational)* |
 | `testing` | `bdd` | Behavior-Driven Development — Given/When/Then *(incluye foundational)* |
 | `conventions` | `conventional-commit` | Conventional Commits |
 | `conventions` | `semantic-versioning` | Semantic Versioning |
 | `conventions` | `all` | Todas las skills de convenciones combinadas |
+
+Los cuatro presets de `architecture` son espejo de los cuatro `--preset` de generacion de contexto, asi que las skills instaladas con `hexagonal` se alinean con AGENTS.md/CONTEXT.md generados con `--preset hexagonal`.
 
 ### Ecosistemas target
 
@@ -954,7 +964,7 @@ Las tres capas de artefactos se complementan:
 | `convention-enforcement` | `PreToolUse` (Bash con `if`) | Valida mensajes de commit contra Conventional Commits 1.0.0 (titulo ≤72 chars, tipo valido, sin placeholders triviales) y bloquea push directo/force-push a branches protegidos (`main`, `master`, `develop`, `production`, `release/*`). Requiere Claude Code v2.1.85+. |
 | `all` | (combinado) | Los tres presets mergeados en un solo `hooks.json` |
 
-### Modos de activacion (auto-install por default desde v1.20.0)
+### Modos de activacion
 
 | Flag | Comportamiento |
 |---|---|
@@ -1184,20 +1194,20 @@ Sin `--language`, la herramienta genera 4 archivos. Con el flag, obtienes 5 — 
 
 ## 🎭 Presets
 
-Elige la filosofia arquitectonica para tu contexto. Codify v1.21 trae **4 presets**:
+Elige la filosofia arquitectonica para tu contexto. Codify trae **4 presets**:
 
 | Preset | Foco | Cuando usar |
 |---|---|---|
-| `neutral` *(recomendado para nuevos usuarios)* | Sin opinion arquitectonica — la estructura se adapta al proyecto | Greenfield exploratorio, scripts, herramientas, cuando querés minima opinion baked in |
-| `clean-ddd` *(default actual; pasara a `neutral` en v2.0)* | DDD + Clean Architecture + BDD + Domain layered | Sistemas de negocio long-lived, logica rica de dominio, equipos comodos con layered architecture |
+| `neutral` *(default)* | Sin opinion arquitectonica — la estructura se adapta al proyecto | Greenfield exploratorio, scripts, herramientas, donde querés minima opinion baked in |
+| `clean-ddd` | DDD + Clean Architecture + BDD + Domain layered | Sistemas de negocio long-lived, logica rica de dominio, equipos comodos con layered architecture |
 | `hexagonal` | Ports & Adapters — mas liviano que clean-ddd | Apps con preocupaciones fuertes de integracion externa, infra swappable, mas simple que DDD completo |
 | `event-driven` | CQRS + Event Sourcing + Sagas | Sistemas async, coordinacion multi-servicio, dominios event-first, audit trails |
 
 ```bash
-# Recomendado para nuevos usuarios — sin opinion arquitectonica
-codify generate my-api -d "API REST de inventario en Go" --preset neutral
+# Default — sin opinion arquitectonica
+codify generate my-api -d "API REST de inventario en Go"
 
-# Default (cambia a neutral en v2.0)
+# Clean + DDD
 codify generate my-api -d "API REST de inventario en Go" --preset clean-ddd
 
 # Hexagonal — ports & adapters
@@ -1206,8 +1216,6 @@ codify generate my-payments -d "Servicio de pagos" --preset hexagonal
 # Event-driven — CQRS + ES + sagas
 codify generate my-orders -d "Procesamiento de ordenes" --preset event-driven
 ```
-
-**Aviso de deprecacion:** `--preset default` aun funciona en v1.x pero emite un warning y resuelve a `clean-ddd`. Se elimina en v2.0; el valor por default de `--preset` pasa entonces a `neutral`. Ver [`docs/adr/0001-default-preset-transition.md`](docs/adr/0001-default-preset-transition.md).
 
 ### `--from-file` — Descripciones ricas desde archivos
 
@@ -1303,7 +1311,7 @@ internal/
 │
 └── interfaces/          🎯 Puntos de entrada
     ├── cli/commands/    generate, analyze, spec, skills, workflows, serve, list
-    └── mcp/             Servidor MCP (transporte stdio + HTTP, 8 herramientas)
+    └── mcp/             Servidor MCP (transporte stdio + HTTP, 10 herramientas)
 ```
 
 ### Sistema de templates
@@ -1311,12 +1319,16 @@ internal/
 ```
 templates/
 ├── en/                          Locale ingles
-│   ├── default/                 Preset recomendado (DDD/Clean Architecture)
+│   ├── neutral/                 Preset default — sin opinion arquitectonica
 │   │   ├── agents.template
 │   │   ├── context.template
 │   │   ├── interactions.template
 │   │   └── development_guide.template
-│   ├── neutral/                 Preset generico (sin opiniones arquitectonicas)
+│   ├── clean-ddd/               DDD + Clean Architecture + BDD
+│   │   └── (mismos archivos)
+│   ├── hexagonal/               Ports & Adapters
+│   │   └── (mismos archivos)
+│   ├── event-driven/            CQRS + Event Sourcing + Sagas
 │   │   └── (mismos archivos)
 │   ├── spec/                    Templates de especificacion (AI SDD)
 │   │   ├── constitution.template
@@ -1324,8 +1336,10 @@ templates/
 │   │   ├── plan.template
 │   │   └── tasks.template
 │   ├── skills/                  Templates de Agent Skills (static + guias LLM)
-│   │   ├── default/             Architecture: Clean (DDD, BDD, CQRS, Hexagonal)
-│   │   ├── neutral/             Architecture: Neutral (review, testing, API)
+│   │   ├── neutral/             Architecture: review, testing, API design, refactoring
+│   │   ├── clean-ddd/           Architecture: DDD entity, layer, BDD, CQRS, Hexagonal port
+│   │   ├── hexagonal/           Architecture: port, adapter, dependency inversion, integration test
+│   │   ├── event-driven/        Architecture: command handler, domain event, projection, saga, idempotency
 │   │   ├── testing/             Testing: Foundational, TDD, BDD
 │   │   └── conventions/         Conventions (conventional commits, semver)
 │   ├── workflows/              Templates de workflows
@@ -1334,6 +1348,10 @@ templates/
 │   │   ├── spec_propose.template
 │   │   ├── spec_apply.template
 │   │   └── spec_archive.template
+│   ├── hooks/                  Templates de bundles de hooks
+│   │   ├── linting/
+│   │   ├── security-guardrails/
+│   │   └── convention-enforcement/
 │   └── languages/               Guias idiomaticas por lenguaje
 │       ├── go/idioms.template
 │       ├── javascript/idioms.template
@@ -1357,36 +1375,51 @@ go test ./tests/...
 
 ## 📊 Estado del proyecto
 
-**v1.20.0** 🎉
+**v2.0.0**
 
-✅ **Funcionando:**
-- Soporte multi-proveedor LLM (Anthropic Claude + Google Gemini)
-- **Generacion de contextos** con streaming (`generate`, `analyze`)
-- **Analyze mejorado** — prompt diferenciado (factual vs aspiracional), scanner enriquecido con 18+ archivos de contexto, parseo de build targets, deteccion de patrones de testing, resumen de pipelines CI/CD, filtrado inteligente de README
-- **Generacion de specs SDD** a partir de contexto existente (`spec`, `--with-specs`)
-- **Agent Skills** con modo dual (static/personalized), seleccion guiada interactiva y catalogo declarativo
-- **Instalacion de skills** — `--install global` o `--install project` para instalacion directa en el path del agente
-- Categorias de skills (architecture, testing, conventions) con frontmatter por ecosistema (Claude, Codex, Antigravity)
-- **Workflows** — recetas de orquestacion multi-paso para Claude Code (native skills) y Antigravity (anotaciones nativas)
-- **Presets de workflows** — spec-driven-change (propose/apply/archive), bug-fix, release-cycle (modos static + personalized, multi-target)
-- **Hooks autoactivables** — `codify hooks --install project|global` mergea en `settings.json` y copia los scripts en un solo paso (idempotente, con backup); `--output PATH` y `--dry-run` quedan como escapes
-- **Validators de salida LLM** — destacan markers `[DEFINE]`, frontmatter ausente, code fences sin balancear y campos requeridos faltantes en workflow-skills despues de cada generacion
-- **Prompt caching de Anthropic** — el system prompt usa cache control reduciendo costos de tokens en el loop de generacion por archivo
-- **UX interactiva unificada** — todos los comandos preguntan por parametros faltantes en terminal
-- Servidor MCP (transporte stdio + HTTP) con 8 herramientas, parametros con enums para validacion mas estricta
-- Herramientas de conocimiento MCP (commit_guidance, version_guidance) — sin API key
-- Sistema de presets (default: DDD/Clean, neutral: generico)
-- Estandar AGENTS.md como root file
-- Guias idiomaticas por lenguaje (Go, JavaScript, Python)
-- Parseo de dependencias para 8 lenguajes (Go, JS/TS, Python, Rust, Java, Ruby, PHP, C#)
-- Reglas de grounding anti-alucinacion en prompts
-- CLI con Cobra + menus interactivos (charmbracelet/huh)
-- Distribucion via Homebrew formula (macOS/Linux)
+Snapshot completo de la superficie. Lo que aparece aqui esta shippeado, testeado y se comporta como esta documentado arriba.
 
-🚧 **Proximo:**
-- Tests de integracion end-to-end
-- Retries y manejo de rate limits
-- Autenticacion MCP server remoto (OAuth/BYOK)
+**Capa Context**
+- ✅ `generate` — contexto desde una descripcion (4 archivos, +1 con `--language`)
+- ✅ `analyze` — contexto desde un repo existente via project scanner (18+ patrones de archivos de contexto, parseo de build targets, deteccion CI/CD, frameworks + dependencias en 8 lenguajes)
+- ✅ `spec` + flag `--with-specs` — specs SDD (CONSTITUTION, SPEC, PLAN, TASKS)
+- ✅ Streaming, reglas de grounding anti-alucinacion, validators de output (markers `[DEFINE]`, frontmatter, balance de code fences)
+- ✅ Prompt caching de Anthropic en el loop de generacion por archivo
+
+**Capa Behavior**
+- ✅ `skills` — 4 presets de architecture (espejados con los presets de context) + testing + conventions; modos static + personalized; multi-ecosistema (claude, codex, antigravity)
+- ✅ `workflows` — spec-driven-change, bug-fix, release-cycle; static + personalized; claude (native skills) + antigravity (anotaciones nativas)
+- ✅ `hooks` — linting, security-guardrails, convention-enforcement; auto-install con backup + merge idempotente; `--output` preview y `--dry-run`
+
+**Capa Bootstrap**
+- ✅ `config` — wizard de config a nivel usuario con auto-launch SOFT (TTY-gated, triple opt-out); subcomandos `get` / `set` / `unset` / `edit` / `list`
+- ✅ `init` — smart router a nivel proyecto (nuevo vs existente) que delega a `generate` o `analyze`
+
+**Capa Lifecycle**
+- ✅ `check` — drift detection (artifact_modified, signal_changed, etc.) — deterministico, sin LLM
+- ✅ `update` — regeneracion selectiva via `analyze`; rechaza sobreescribir hand-edits sin `--force`
+- ✅ `audit` — Conventional Commits + branches protegidas (rules-only, gratis) + modo heuristico `--with-llm` (registra usage)
+- ✅ `usage` — tracking local de costos LLM (`.codify/usage.json` + `~/.codify/usage.json`); `--global`, `--since`, `--by`, `--json`, `--reset`
+- ✅ `watch` — file watcher foreground con debounce, `--auto-update` opcional
+- ✅ `reset-state` — recomputa snapshot sin tocar artefactos
+
+**MCP server**
+- ✅ 10 tools: 7 generative (context/specs/analyze/skills/workflows/hooks/usage) + 3 read-only (commit_guidance/version_guidance/get_usage)
+- ✅ Transportes stdio + HTTP; parametros con enums para validacion mas estricta; sin API key para read-only
+
+**Distribucion**
+- ✅ Homebrew tap (`brew install jorelcb/tap/codify`)
+- ✅ `go install github.com/jorelcb/codify/cmd/codify@latest`
+- ✅ Binarios pre-construidos en GitHub Releases
+
+**Calidad**
+- ✅ 9 paquetes BDD con 30+ scenarios; tests unitarios puros en domain + infrastructure
+- ✅ Layout interno DDD/Clean Architecture (el proyecto come de su propia comida)
+
+**Limites conocidos (intencionales, no roadmap):**
+- Sin modo daemon para `watch` — envolver con tmux/nohup/systemd si se necesita (per [ADR-008](docs/adr/0008-watch-model-decision.md))
+- Sin libreria Go `pkg/codify` — embedding via process boundary (CLI/MCP) es el contrato (per [ADR-003](docs/adr/0003-no-public-go-library.md))
+- Hooks son Claude Code-only (la primitive subyacente no existe en codex/antigravity)
 
 ## 💡 FAQ
 
@@ -1429,6 +1462,24 @@ Cada fase es un modo cognitivo distinto. *Propose* responde "¿que debe cambiar 
 **¿Codify reemplaza a OpenSpec?**
 No — lo complementa. El preset `spec-driven-change` genera skills que operan sobre workspaces formato OpenSpec (`openspec/specs/`, `openspec/changes/`, deltas ADDED/MODIFIED/REMOVED con scenarios G/W/T). Si ya usas OpenSpec, Codify te da skills de ciclo personalizadas via LLM adaptadas a tu stack. Si no, Codify es tu punto de entrada zero-config a la metodologia — combinado con `codify generate` y `codify spec`, obtienes el pipeline completo desde repo en blanco hasta iteracion gobernada.
 
+## 🆘 Solucion de Problemas
+
+Referencia rapida para los errores que mas se topan en primer contacto.
+
+| Error / Sintoma | Causa | Fix |
+|---|---|---|
+| `ANTHROPIC_API_KEY or GEMINI_API_KEY environment variable is required` | Comando que requiere LLM sin API key en el env | `export ANTHROPIC_API_KEY=...` (o Gemini); para comandos read-only como `check`, `audit --rules-only`, `usage`, no se necesita ninguna |
+| `preset 'default' was removed in Codify v2.0.0...` | Arrastraste `--preset default` desde un script v1.x o desde `~/.codify/config.yml` | `codify config set preset clean-ddd` (comportamiento v1.x) o `... preset neutral` (default v2.0). O pasa `--preset clean-ddd` explicitamente |
+| `No snapshot at .codify/state.json...` (exit 2) en `check` / `update` / `watch` | Proyecto sin bootstrap — nunca se corrio `init` / `generate` / `analyze` | Corre uno de esos primero, o `codify reset-state` si `state.json` se borro por accidente |
+| `codify update` se rehusa con "Only hand-edits to generated artifacts detected" | Editaste AGENTS.md a mano y `update` no quiere sobreescribir intencion | `codify update --accept-current` (= `reset-state`) para hacer que tus ediciones sean el nuevo baseline, o `--force` para regenerar (pierde ediciones) |
+| `codify watch` sale con "no watchable directories" | `state.json` existe pero sus paths registrados estan ausentes | `codify reset-state` para recomputar contra el FS actual |
+| `Codify isn't configured globally yet. Run interactive setup now?` bloquea scripts | El SOFT prompt de auto-launch dispara en TTY sin `~/.codify/config.yml` | Pasa `--no-auto-config`, o `export CODIFY_NO_AUTO_CONFIG=1`, o `touch ~/.codify/.no-auto-config` |
+| `codify hooks` funciona pero Claude Code no los ejecuta | `.claude/settings.json` no es cargado por tu version de Claude Code | Verifica que Claude Code sea v2.1.85+ (requerido para `convention-enforcement`); confirma con `claude /hooks` |
+| `audit --with-llm` cae a rules-only con WARNING | API key faltante O la llamada al LLM fallo | Mismo fix que el error de API key; rules-only igual produjo sus findings |
+| Scripts de hooks skippean en silencio (e.g. `lint.sh` no hace nada) | Herramienta requerida (gofmt, ruff, prettier, etc.) no instalada | `command -v <tool>` para verificar; instala la que quieras enforced |
+
+Si te topas con algo que no esta en esta tabla, abre un issue con: comando ejecutado, exit code, y stderr. El CHANGELOG y los ADRs en este repo documentan la mayoria de las decisiones de diseno — usualmente la respuesta esta ahi.
+
 ## 📚 Documentacion
 
 - [📋 AGENTS.md](AGENTS.md) — Contexto del proyecto para agentes de IA
@@ -1444,9 +1495,9 @@ Apache License 2.0 — ver [LICENSE](LICENSE).
 
 <div align="center">
 
-**Contexto. Specs. Skills. Workflows. Tu agente, completamente equipado.** 🧠
+**Contexto. Specs. Skills. Workflows. Hooks. Lifecycle. Tu agente, completamente equipado — y mantenido honesto.** 🧠
 
-*"Un agente sin contexto es un pasante con acceso root"*
+*"Un agente sin contexto es un pasante con acceso root — y contexto desactualizado es un pasante leyendo docs de hace tres semanas"*
 
 ⭐ Si te sirvio, dale una estrella — nos motiva a seguir construyendo
 

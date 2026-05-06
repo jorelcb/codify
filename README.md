@@ -22,25 +22,21 @@
 
 ---
 
-> **Codify v2.0** — Codify is no longer just a one-shot generator. It now **generates, audits, and evolves** your agent's context across the project's lifecycle: drift detection (`check`), selective regeneration (`update`), commit auditing (`audit`), cost transparency (`usage`), foreground watching (`watch`), and bootstrap workflows (`config` + `init`). See the [migration section](#-migrating-from-v1x) if you're coming from v1.x.
-
----
-
 ## 🎯 The Problem
 
-**Two problems, actually.**
+**Two problems, both real.**
 
-**Problem 1 — the agent improvises.** You tell it: *"Build a payments API in Go with microservices"*, and:
+**The agent improvises.** You tell it *"Build a payments API in Go with microservices"*, and:
 - Folder structures nobody asked for
 - Patterns that contradict your architecture
 - Decisions you'll revert in the next session
 - Zero continuity between sessions
 
-It's not the agent's fault. It starts from scratch. Every. Single. Time. 🔄
+It's not the agent's fault. Without context, it starts from scratch every session.
 
-**Problem 2 — even when context exists, it drifts.** Three weeks ago you wrote a beautiful AGENTS.md. Since then `go.mod` added five deps, the Makefile gained four targets, the README evolved. The AGENTS.md still says what was true on day one. The agent reads it and confidently makes decisions on stale ground.
+**Even when context exists, it drifts.** Three weeks ago you wrote a beautiful AGENTS.md. Since then `go.mod` added five deps, the Makefile gained four targets, the README evolved. The AGENTS.md still says what was true on day one. The agent reads it and confidently makes decisions on stale ground.
 
-**Codify v1.x solved Problem 1. Codify v2.0 solves both.** 🛠️
+**Codify equips the agent with context AND keeps that context honest as the codebase moves.** 🛠️
 
 ## 💡 The Solution
 
@@ -73,8 +69,8 @@ It's not the agent's fault. It starts from scratch. Every. Single. Time. 🔄
 - **Specs** give the agent an implementation plan — features, acceptance criteria, task breakdowns
 - **Skills** give the agent reusable abilities — how to commit, version, design entities, review code
 - **Workflows** give the agent orchestration recipes — multi-step processes like feature development, bug fixing, releases
-- **Hooks** add deterministic guardrails — shell scripts on Claude Code lifecycle events, no LLM in the loop *(v1.19+)*
-- **Lifecycle** keeps everything in sync — `config`, `init`, `check`, `update`, `audit`, `usage`, `watch` — drift detection, selective regen, commit auditing, cost transparency, foreground watching *(v1.22+)*
+- **Hooks** add deterministic guardrails — shell scripts on Claude Code lifecycle events, no LLM in the loop
+- **Lifecycle** keeps everything in sync — `config`, `init`, `check`, `update`, `audit`, `usage`, `watch` — drift detection, selective regen, commit auditing, cost transparency, foreground watching
 
 It follows the [AGENTS.md standard](https://github.com/anthropics/AGENTS.md) — an open specification backed by the Linux Foundation for providing AI agents with project context. Files work out of the box with Claude Code, Cursor, Codex, and any agent that reads the standard.
 
@@ -199,10 +195,10 @@ codify skills              # No API key for static mode
 # ── Workflows: give your agent orchestration recipes ──
 codify workflows           # Claude (native skills) or Antigravity (native .md)
 
-# ── Hooks: deterministic guardrails on Claude Code lifecycle events (v1.19+) ──
+# ── Hooks: deterministic guardrails on Claude Code lifecycle events ──
 codify hooks               # linting / security-guardrails / convention-enforcement / all
 
-# ── Lifecycle: maintain artifacts over time (v1.22+) ──
+# ── Lifecycle: maintain artifacts over time ──
 codify check               # Drift detection between snapshot and FS — no LLM, zero cost
 codify update              # Selective regen when input signals drift
 codify audit               # Review commits against conventions (rules-only by default; --with-llm opt-in)
@@ -288,7 +284,7 @@ Valid keys: `preset`, `locale`, `language`, `model`, `target`, `provider`, `proj
 After that, both branches collect: architectural preset (override of global default), language, locale, output directory, model. Result:
 
 - `.codify/config.yml` — project-scoped defaults that persist for everyone with the repo
-- `.codify/state.json` — snapshot of generation state (consumed by lifecycle commands starting v1.23)
+- `.codify/state.json` — snapshot of generation state (consumed by lifecycle commands)
 - Generated `AGENTS.md` and `context/*.md` written to `output/`
 
 Skills, workflows, and hooks are NOT bundled — `init` prints recommended next-step commands to keep responsibilities focused. Run `codify skills`, `codify workflows`, `codify hooks` separately when you want them.
@@ -307,9 +303,9 @@ Setting `--preset hexagonal` on the command line wins regardless of what's in ei
 
 ## 🔍 Lifecycle: Drift Detection
 
-Codify v1.23 introduces the first **lifecycle command**: `codify check`. The premise is simple — once Codify generates artifacts, the world keeps moving. Dependencies change, README evolves, someone hand-edits `AGENTS.md`. Without active checking, the artifacts drift silently out of sync with the project.
+Once Codify generates artifacts, the world keeps moving. Dependencies change, README evolves, someone hand-edits `AGENTS.md`. Without active checking, the artifacts drift silently out of sync with the project.
 
-`check` and its companion `reset-state` solve this without an LLM: SHA256 hashes of artifacts and input signals, captured at generation time and compared at check time. **Zero LLM cost. Zero network. Fully deterministic.**
+`codify check` and its companion `codify reset-state` solve this without an LLM: SHA256 hashes of artifacts and input signals, captured at generation time and compared at check time. **Zero LLM cost. Zero network. Fully deterministic.**
 
 ### `codify check` — detect drift in CI or locally
 
@@ -372,7 +368,7 @@ Every successful `codify generate` / `codify analyze` / `codify init` writes `.c
 
 ## 🔄 Lifecycle: Update, Audit & Usage Tracking
 
-v1.24 builds on the drift detection foundation with three companion commands. Together they close the gap between "Codify generated artifacts once" and "Codify maintains them as the project evolves".
+Three commands build on drift detection to close the gap between "Codify generated artifacts once" and "Codify maintains them as the project evolves": `update` regenerates selectively, `audit` reviews commits against documented conventions, `usage` exposes LLM cost.
 
 ### `codify update` — selective regeneration
 
@@ -406,7 +402,7 @@ codify audit                     # last 20 commits, rules-only (zero LLM cost)
 codify audit --since main~50     # all commits since main~50
 codify audit --strict            # any finding (incl. minor) fails the run
 codify audit --json              # machine-readable for CI pipelines
-codify audit --with-llm          # heuristic mode (v1.24.1+; falls back to rules-only in v1.24.0)
+codify audit --with-llm          # heuristic mode — sends commits + AGENTS.md to LLM (records usage)
 ```
 
 **Rules-only checks (deterministic, zero cost):**
@@ -497,9 +493,7 @@ jobs:
         run: codify audit --since origin/main --strict
 ```
 
-Both commands are deterministic and free — no API key needed for `check`, no API key needed for `audit --rules-only` (the v1.24.0 default). `update` and `audit --with-llm` (v1.24.1) require `ANTHROPIC_API_KEY` or `GEMINI_API_KEY`.
-
-A pre-built reusable action (`codify/check-action@v1`) is on the v1.24.x roadmap.
+Both `check` and `audit` (rules-only mode, the default) are deterministic and free — no API key required. `update` and `audit --with-llm` require `ANTHROPIC_API_KEY` or `GEMINI_API_KEY`.
 
 ---
 
@@ -588,6 +582,16 @@ Codify itself doesn't generate these configs — the integration is short and pr
 ## 📋 Context Generation
 
 The foundation. Generates files following the [AGENTS.md](https://github.com/anthropics/AGENTS.md) standard that give your agent deep project memory.
+
+### When to use `generate` vs `analyze`
+
+| Situation | Use | Why |
+|---|---|---|
+| Greenfield project (no code yet) | `codify generate` | You provide the description; the LLM generates context against it |
+| Existing repo with code in it | `codify analyze` | The scanner extracts factual signals (deps, build targets, CI, frameworks) and feeds them as ground truth — much higher accuracy than a manual description |
+| Existing repo + you want to override what the scanner detects | `codify analyze` first, then edit, then `codify reset-state` | Scan-first, hand-tune second |
+| You have a detailed design doc | `codify generate --from-file ./docs/design.md` | Treat the file's content as the description |
+| In doubt | `codify init` | Asks "new or existing?" and routes you to the right flow internally |
 
 ### `generate` command — Context from a description
 
@@ -743,14 +747,18 @@ codify skills --category architecture --preset neutral --target codex
 
 | Category | Preset | Skills |
 |----------|--------|--------|
-| `architecture` | `clean` | DDD entity, Clean Architecture layer, BDD scenario, CQRS command, Hexagonal port |
 | `architecture` | `neutral` | Code review, test strategy, safe refactoring, API design |
+| `architecture` | `clean-ddd` | DDD entity, Clean Architecture layer, BDD scenario, CQRS command, Hexagonal port |
+| `architecture` | `hexagonal` | Port definition, Adapter pattern, Dependency inversion, Hexagonal integration test |
+| `architecture` | `event-driven` | Command handler, Domain event, Event projection, Saga orchestrator, Event idempotency |
 | `testing` | `foundational` | Test Desiderata — Kent Beck's 12 properties of good tests |
 | `testing` | `tdd` | Test-Driven Development — Red-Green-Refactor *(includes foundational)* |
 | `testing` | `bdd` | Behavior-Driven Development — Given/When/Then *(includes foundational)* |
 | `conventions` | `conventional-commit` | Conventional Commits |
 | `conventions` | `semantic-versioning` | Semantic Versioning |
 | `conventions` | `all` | All convention skills combined |
+
+The four `architecture` presets mirror the four `--preset` options for context generation, so skills installed for `hexagonal` line up with AGENTS.md/CONTEXT.md generated under `--preset hexagonal`.
 
 ### Target ecosystems
 
@@ -1027,7 +1035,7 @@ The three artifact layers complement each other:
 | `convention-enforcement` | `PreToolUse` (Bash with `if`) | Validate commit messages against Conventional Commits 1.0.0 (header ≤72 chars, valid type, no trivial placeholders) and block direct/force pushes to protected branches (`main`, `master`, `develop`, `production`, `release/*`). Requires Claude Code v2.1.85+. |
 | `all` | (combined) | All three preset bundles merged into a single `hooks.json` |
 
-### Activation modes (auto-install by default since v1.20.0)
+### Activation modes
 
 | Flag | Behavior |
 |---|---|
@@ -1257,20 +1265,20 @@ Without `--language`, the tool generates 4 files. With it, you get 5 — and sig
 
 ## 🎭 Presets
 
-Choose the architectural philosophy for your context. Codify v1.21 ships **4 presets**:
+Choose the architectural philosophy for your context. Codify ships **4 presets**:
 
 | Preset | Focus | When to use |
 |---|---|---|
-| `neutral` *(recommended for new users)* | No architectural opinion — structure adapts to project | Greenfield exploration, scripts, tools, when you want minimal opinion baked in |
-| `clean-ddd` *(current default; will be neutral in v2.0)* | DDD + Clean Architecture + BDD + Layered domain | Long-lived business systems, domain-rich logic, teams comfortable with layered architecture |
+| `neutral` *(default)* | No architectural opinion — structure adapts to the project | Greenfield exploration, scripts, tools, anywhere you want minimal opinion baked in |
+| `clean-ddd` | DDD + Clean Architecture + BDD + Layered domain | Long-lived business systems, domain-rich logic, teams comfortable with layered architecture |
 | `hexagonal` | Ports & Adapters — lighter than clean-ddd | Apps with strong external integration concerns, swappable infra, simpler than full DDD |
 | `event-driven` | CQRS + Event Sourcing + Sagas | Async systems, multi-service coordination, event-first domains, audit trails |
 
 ```bash
-# Recommended for new users — no architectural opinion
-codify generate my-api -d "Inventory REST API in Go" --preset neutral
+# Default — no architectural opinion
+codify generate my-api -d "Inventory REST API in Go"
 
-# Default (will change to neutral in v2.0)
+# Clean + DDD
 codify generate my-api -d "Inventory REST API in Go" --preset clean-ddd
 
 # Hexagonal — ports & adapters
@@ -1279,8 +1287,6 @@ codify generate my-payments -d "Payment service" --preset hexagonal
 # Event-driven — CQRS + ES + sagas
 codify generate my-orders -d "Order processing" --preset event-driven
 ```
-
-**Deprecation notice:** `--preset default` still works in v1.x but emits a warning and resolves to `clean-ddd`. It will be removed in v2.0; the default value of `--preset` will then be `neutral`. See [`docs/adr/0001-default-preset-transition.md`](docs/adr/0001-default-preset-transition.md).
 
 ### `--from-file` — Rich descriptions from files
 
@@ -1377,7 +1383,7 @@ internal/
 │
 └── interfaces/          🎯 Entry points
     ├── cli/commands/    generate, analyze, spec, skills, workflows, serve, list
-    └── mcp/             MCP server (stdio + HTTP transport, 8 tools)
+    └── mcp/             MCP server (stdio + HTTP transport, 10 tools)
 ```
 
 ### Template system
@@ -1385,12 +1391,16 @@ internal/
 ```
 templates/
 ├── en/                          English locale
-│   ├── default/                 Recommended preset (DDD/Clean Architecture)
+│   ├── neutral/                 Default preset — no architectural opinion
 │   │   ├── agents.template
 │   │   ├── context.template
 │   │   ├── interactions.template
 │   │   └── development_guide.template
-│   ├── neutral/                 Generic preset (no architectural opinions)
+│   ├── clean-ddd/               DDD + Clean Architecture + BDD
+│   │   └── (same files)
+│   ├── hexagonal/               Ports & Adapters
+│   │   └── (same files)
+│   ├── event-driven/            CQRS + Event Sourcing + Sagas
 │   │   └── (same files)
 │   ├── spec/                    Specification templates (AI SDD)
 │   │   ├── constitution.template
@@ -1398,8 +1408,10 @@ templates/
 │   │   ├── plan.template
 │   │   └── tasks.template
 │   ├── skills/                  Agent Skills templates (static + LLM guides)
-│   │   ├── default/             Architecture: Clean (DDD, BDD, CQRS, Hexagonal)
-│   │   ├── neutral/             Architecture: Neutral (review, testing, API)
+│   │   ├── neutral/             Architecture: review, testing, API design, refactoring
+│   │   ├── clean-ddd/           Architecture: DDD entity, layer, BDD, CQRS, Hexagonal port
+│   │   ├── hexagonal/           Architecture: port, adapter, dependency inversion, integration test
+│   │   ├── event-driven/        Architecture: command handler, domain event, projection, saga, idempotency
 │   │   ├── testing/             Testing: Foundational, TDD, BDD
 │   │   └── conventions/         Conventions (conventional commits, semver)
 │   ├── workflows/              Workflow templates
@@ -1408,6 +1420,10 @@ templates/
 │   │   ├── spec_propose.template
 │   │   ├── spec_apply.template
 │   │   └── spec_archive.template
+│   ├── hooks/                  Hook bundle templates
+│   │   ├── linting/
+│   │   ├── security-guardrails/
+│   │   └── convention-enforcement/
 │   └── languages/               Language-specific idiomatic guides
 │       ├── go/idioms.template
 │       ├── javascript/idioms.template
@@ -1431,36 +1447,51 @@ go test ./tests/...
 
 ## 📊 Project status
 
-**v1.20.0** 🎉
+**v2.0.0**
 
-✅ **Working:**
-- Multi-provider LLM support (Anthropic Claude + Google Gemini)
-- **Context generation** with streaming (`generate`, `analyze`)
-- **Enhanced analyze** — differentiated prompt (factual vs aspirational), enriched scanner with 18+ context files, build target parsing, testing pattern detection, CI/CD pipeline summarization, smart README filtering
-- **SDD spec generation** from existing context (`spec`, `--with-specs`)
-- **Agent Skills** with dual mode (static/personalized), interactive guided selection, and declarative catalog
-- **Skills install** — `--install global` or `--install project` for direct agent path installation
-- Skill categories (architecture, testing, conventions) with ecosystem-aware frontmatter (Claude, Codex, Antigravity)
-- **Workflows** — multi-step orchestration recipes for Claude Code (native skills) and Antigravity (native annotations)
-- **Workflow presets** — spec-driven-change (propose/apply/archive), bug-fix, release-cycle (static + personalized modes, multi-target)
-- **Hooks auto-activation** — `codify hooks --install project|global` merges into `settings.json` and copies scripts in one step (idempotent, with backup); `--output PATH` and `--dry-run` available as escape hatches
-- **LLM output validators** — surface `[DEFINE]` markers, missing frontmatter, unbalanced code fences, and missing required workflow-skill fields after every generation
-- **Anthropic prompt caching** — system prompt cache control reduces token costs across the per-file generation loop
-- **Unified interactive UX** — all commands prompt for missing parameters when run in a terminal
-- MCP Server mode (stdio + HTTP transport) with 8 tools, parameter enums for stricter agent validation
-- MCP knowledge tools (commit_guidance, version_guidance) — no API key needed
-- Preset system (default: DDD/Clean, neutral: generic)
-- AGENTS.md standard as root file
-- Language-specific idiomatic guides (Go, JavaScript, Python)
-- Dependency parsing for 8 languages (Go, JS/TS, Python, Rust, Java, Ruby, PHP, C#)
-- Anti-hallucination grounding rules in prompts
-- CLI with Cobra + interactive menus (charmbracelet/huh)
-- Homebrew formula distribution (macOS/Linux)
+The full surface in one snapshot — anything checked here is shipped, tested, and behaves as documented above.
 
-🚧 **Coming next:**
-- End-to-end integration tests
-- Retries and rate limit handling
-- MCP server authentication (OAuth/BYOK for remote deployments)
+**Context layer**
+- ✅ `generate` — context from a description (4 files, +1 with `--language`)
+- ✅ `analyze` — context from an existing repo via project scanner (18+ context-file patterns, build-target parsing, CI/CD detection, framework + dependency parsing for 8 languages)
+- ✅ `spec` + `--with-specs` flag — SDD specs (CONSTITUTION, SPEC, PLAN, TASKS)
+- ✅ Streaming output, anti-hallucination grounding rules, output validators (`[DEFINE]` markers, frontmatter, code-fence balance)
+- ✅ Anthropic prompt caching across per-file generation loop
+
+**Behavior layer**
+- ✅ `skills` — 4 architecture presets (mirroring context presets) + testing + conventions; static + personalized modes; multi-ecosystem (claude, codex, antigravity)
+- ✅ `workflows` — spec-driven-change, bug-fix, release-cycle; static + personalized; claude (native skills) + antigravity (native annotations)
+- ✅ `hooks` — linting, security-guardrails, convention-enforcement; auto-install with backup + idempotent merge; `--output` preview and `--dry-run`
+
+**Bootstrap layer**
+- ✅ `config` — user-level config wizard with auto-launch SOFT (TTY-gated, triple opt-out); `get` / `set` / `unset` / `edit` / `list` subcommands
+- ✅ `init` — project-level smart router (new vs existing) that delegates to `generate` or `analyze`
+
+**Lifecycle layer**
+- ✅ `check` — drift detection (artifact_modified, signal_changed, etc.) — deterministic, no LLM
+- ✅ `update` — selective regeneration via `analyze`; refuses to overwrite hand-edits without `--force`
+- ✅ `audit` — Conventional Commits + protected branches (rules-only, free) + `--with-llm` heuristic mode (records usage)
+- ✅ `usage` — local LLM cost tracking (`.codify/usage.json` + `~/.codify/usage.json`); `--global`, `--since`, `--by`, `--json`, `--reset`
+- ✅ `watch` — foreground file watcher with debounce, optional `--auto-update`
+- ✅ `reset-state` — recompute snapshot without touching artifacts
+
+**MCP server**
+- ✅ 10 tools: 7 generative (context/specs/analyze/skills/workflows/hooks/usage) + 3 read-only (commit_guidance/version_guidance/get_usage)
+- ✅ stdio + HTTP transports; parameter enums for stricter agent validation; no API key needed for read-only tools
+
+**Distribution**
+- ✅ Homebrew tap (`brew install jorelcb/tap/codify`)
+- ✅ `go install github.com/jorelcb/codify/cmd/codify@latest`
+- ✅ Pre-built binaries in GitHub Releases
+
+**Quality**
+- ✅ 9 BDD packages with 30+ scenarios; pure unit tests across domain + infrastructure
+- ✅ DDD/Clean Architecture internal layout (the project eats its own dog food)
+
+**Known boundaries (intentional, not roadmap):**
+- No daemon mode for `watch` — wrap with tmux/nohup/systemd if needed (per [ADR-008](docs/adr/0008-watch-model-decision.md))
+- No `pkg/codify` Go library — embedding via process boundary (CLI/MCP) is the contract (per [ADR-003](docs/adr/0003-no-public-go-library.md))
+- Hooks are Claude Code-only (the underlying primitive doesn't exist for codex/antigravity)
 
 ## 💡 FAQ
 
@@ -1503,6 +1534,24 @@ Each phase is a different cognitive mode. *Propose* answers "what should change 
 **Does Codify replace OpenSpec?**
 No — it complements it. The `spec-driven-change` preset generates skills that operate on OpenSpec-format workspaces (`openspec/specs/`, `openspec/changes/`, ADDED/MODIFIED/REMOVED deltas with G/W/T scenarios). If you already use OpenSpec, Codify gives you LLM-personalized lifecycle skills tailored to your stack. If you don't, Codify is your zero-config entry point to the methodology — combined with `codify generate` and `codify spec`, you get the full pipeline from blank repo to governed iteration.
 
+## 🆘 Troubleshooting
+
+Quick reference for the errors most people hit on first contact.
+
+| Error / Symptom | Cause | Fix |
+|---|---|---|
+| `ANTHROPIC_API_KEY or GEMINI_API_KEY environment variable is required` | LLM-backed command without an API key in the env | `export ANTHROPIC_API_KEY=...` (or Gemini); for read-only commands like `check`, `audit --rules-only`, `usage`, none is needed |
+| `preset 'default' was removed in Codify v2.0.0...` | Carried `--preset default` from a v1.x script or `~/.codify/config.yml` | `codify config set preset clean-ddd` (v1.x behavior) or `... preset neutral` (v2.0 default). Or pass `--preset clean-ddd` explicitly |
+| `No snapshot at .codify/state.json...` (exit 2) on `check` / `update` / `watch` | Project not bootstrapped — never ran `init` / `generate` / `analyze` | Run one of those first, or `codify reset-state` if `state.json` was deleted by accident |
+| `codify update` refuses with "Only hand-edits to generated artifacts detected" | You edited AGENTS.md by hand and `update` doesn't want to overwrite intent | `codify update --accept-current` (= `reset-state`) to make your edits the new baseline, or `--force` to regenerate (loses edits) |
+| `codify watch` exits with "no watchable directories" | `state.json` exists but its registered paths are all missing | `codify reset-state` to recompute against the current FS |
+| `Codify isn't configured globally yet. Run interactive setup now?` prompt blocks scripts | Auto-launch SOFT prompt fires in a TTY without `~/.codify/config.yml` | Pass `--no-auto-config`, or `export CODIFY_NO_AUTO_CONFIG=1`, or `touch ~/.codify/.no-auto-config` |
+| `codify hooks` works but Claude Code doesn't run them | `.claude/settings.json` not loaded by your Claude Code version | Check Claude Code is v2.1.85+ (required for `convention-enforcement`); verify with `claude /hooks` |
+| `audit --with-llm` falls back to rules-only with WARNING | Missing API key OR LLM call failed | Same fix as the API-key error; rules-only still produced its findings |
+| Hooks scripts skip silently (e.g. `lint.sh` does nothing) | Required tool (gofmt, ruff, prettier, etc.) not installed | `command -v <tool>` to verify; install whichever you want enforced |
+
+If you hit something that's not in this table, open an issue with: command run, exit code, and stderr. The CHANGELOG and ADRs in this repo document most design decisions — usually the answer is in there.
+
 ## 📚 Documentation
 
 - [📋 AGENTS.md](AGENTS.md) — Project context for AI agents
@@ -1518,9 +1567,9 @@ Apache License 2.0 — see [LICENSE](LICENSE).
 
 <div align="center">
 
-**Context. Specs. Skills. Workflows. Your agent, fully equipped.** 🧠
+**Context. Specs. Skills. Workflows. Hooks. Lifecycle. Your agent, fully equipped — and kept honest.** 🧠
 
-*"An agent without context is an intern with root access"*
+*"An agent without context is an intern with root access — and stale context is an intern reading three-week-old docs"*
 
 ⭐ If this helped you, give it a star — it keeps us building
 
