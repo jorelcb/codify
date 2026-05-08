@@ -60,8 +60,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("load effective config: %w", err)
 	}
 
-	fmt.Println("Codify Project Bootstrap")
-	fmt.Println("════════════════════════")
+	fmt.Println("Codify · Bootstrap (project)")
+	fmt.Println("════════════════════════════")
 
 	kind, err := promptSelect("Is this a new project or an existing one?", []selectOption{
 		{"new — describe the project, generate context", "new"},
@@ -240,15 +240,36 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fmt.Println()
-	fmt.Println("Project bootstrapped. Lifecycle commands available:")
-	fmt.Println("  codify check    Detect drift between artifacts and current state")
-	fmt.Println("  codify update   Regenerate stale artifacts from drift report")
-	fmt.Println("  codify audit    Score artifacts against quality rules (--with-llm for richer findings)")
-	fmt.Println("  codify watch    Foreground watcher: re-runs check on file changes")
-	fmt.Println("  codify usage    LLM token + cost summary across runs")
+	printInitNextSteps(target)
 
 	return nil
+}
+
+// printInitNextSteps imprime un resumen de comandos recomendados agrupados por
+// fase del lifecycle (Equip / Maintain), siguiendo el modelo Bootstrap → Equip
+// → Maintain documentado en --help. Pensado para que el usuario que recién
+// terminó init sepa qué viene después sin tener que leer docs.
+func printInitNextSteps(target string) {
+	fmt.Println()
+	fmt.Println("✓ Project bootstrapped successfully.")
+	fmt.Println()
+	fmt.Println("Next steps")
+	fmt.Println("──────────")
+	fmt.Println()
+	fmt.Println("Equip (when you need more agent equipment):")
+	fmt.Println("  codify spec       Generate SDD specification files from this context")
+	fmt.Println("  codify skills     Re-run the interactive skills installer")
+	fmt.Println("  codify workflows  Re-run the interactive workflows installer")
+	if target == "claude" {
+		fmt.Println("  codify hooks      Re-run the interactive hooks installer")
+	}
+	fmt.Println()
+	fmt.Println("Maintain (as your project evolves):")
+	fmt.Println("  codify check      Detect drift between artifacts and current project state")
+	fmt.Println("  codify update     Regenerate stale artifacts from the drift report")
+	fmt.Println("  codify audit      Score commits against conventions (--with-llm for richer findings)")
+	fmt.Println("  codify watch      Foreground watcher: re-runs check on file changes")
+	fmt.Println("  codify usage      LLM token + cost summary across runs")
 }
 
 // runAnalyzeFromInit es un thin shim para invocar analyze desde init sin

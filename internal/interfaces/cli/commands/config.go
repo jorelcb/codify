@@ -90,8 +90,8 @@ func runConfigDefault(cmd *cobra.Command, args []string) error {
 // skills/hooks; preset al final porque es el más específico y solo aplica
 // a comandos de proyecto futuros, no a la configuración del agente.
 func runConfigWizard(repo *infraconfig.Repository, path string) error {
-	fmt.Println("Codify User Configuration")
-	fmt.Println("═════════════════════════")
+	fmt.Println("Codify · Bootstrap (workstation)")
+	fmt.Println("════════════════════════════════")
 
 	cfg := domain.BuiltinDefaults()
 
@@ -146,8 +146,27 @@ func runConfigWizard(repo *infraconfig.Repository, path string) error {
 		}
 	}
 
-	fmt.Println("\nDefaults active for future Codify commands. Re-run 'codify config' anytime to update.")
+	printConfigNextSteps()
 	return nil
+}
+
+// printConfigNextSteps imprime el siguiente paso natural tras el bootstrap a
+// nivel workstation: bootstrappear un proyecto. Mantiene paridad estructural
+// con printInitNextSteps (init.go) para que el usuario vea la misma forma
+// "Next steps" en ambos puntos de entrada (config y init).
+func printConfigNextSteps() {
+	fmt.Println()
+	fmt.Println("✓ Workstation defaults saved.")
+	fmt.Println()
+	fmt.Println("Next steps")
+	fmt.Println("──────────")
+	fmt.Println()
+	fmt.Println("Bootstrap (per project):")
+	fmt.Println("  codify init       Bootstrap a project (new or existing) using these defaults")
+	fmt.Println()
+	fmt.Println("Update workstation defaults later:")
+	fmt.Println("  codify config     Re-run this wizard")
+	fmt.Println("  codify config set <key> <value>")
 }
 
 func newConfigGetCmd() *cobra.Command {

@@ -16,12 +16,28 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "codify",
-	Short: "Codify - Generate AI-optimized context files for your projects",
-	Long: `Codify takes your project description and generates
-context files using LLMs (Anthropic Claude or Google Gemini). These files give
-your AI development agent the architectural context it needs to build coherently.
+	Short: "Codify - Provision, equip, and maintain AI development environments",
+	Long: `Codify provisions, equips, and maintains AI development environments —
+generating project context with LLMs (Anthropic Claude or Google Gemini) and
+managing its lifecycle as the project evolves.
 
-Requires ANTHROPIC_API_KEY (for Claude) or GEMINI_API_KEY (for Gemini) environment variable.`,
+Requires ANTHROPIC_API_KEY (for Claude) or GEMINI_API_KEY (for Gemini) environment variable.
+
+Lifecycle phases:
+
+    ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+    │  Bootstrap  │ ──▶ │    Equip    │ ──▶ │  Maintain   │
+    └─────────────┘     └─────────────┘     └─────────────┘
+       config              generate            check
+       init                analyze             update
+                           spec                audit
+                           skills              watch
+                           workflows           usage
+                           hooks               resolve
+
+  • Bootstrap (one-time)  — set up the workstation (config) or a project (init)
+  • Equip      (per need) — generate context, install skills/workflows/hooks, write specs
+  • Maintain   (ongoing)  — detect drift, regenerate, audit commits, track usage`,
 	Version: Version,
 	// PersistentPreRunE corre antes de cada subcomando, lo cual habilita el
 	// auto-launch SOFT del wizard de configuración global la primera vez.
@@ -50,6 +66,23 @@ func Execute() error {
 	return rootCmd.Execute()
 }
 
+// Command group IDs map to lifecycle phases. Cobra renders commands grouped
+// under their group's title in `codify --help`. See ADR-0007 for the
+// Bootstrap/Equip/Maintain phase model.
+const (
+	groupBootstrap = "bootstrap"
+	groupEquip     = "equip"
+	groupMaintain  = "maintain"
+	groupSystem    = "system"
+)
+
+// withGroup attaches a GroupID to a cobra command and returns it. Keeps the
+// init() block readable without a separate statement per command.
+func withGroup(cmd *cobra.Command, groupID string) *cobra.Command {
+	cmd.GroupID = groupID
+	return cmd
+}
+
 func init() {
 	// Set version template
 	rootCmd.SetVersionTemplate(fmt.Sprintf(
@@ -57,24 +90,35 @@ func init() {
 		Version, Commit, Date,
 	))
 
-	// Add subcommands
-	rootCmd.AddCommand(commands.NewGenerateCmd())
-	rootCmd.AddCommand(commands.NewAnalyzeCmd())
-	rootCmd.AddCommand(commands.NewSpecCmd())
-	rootCmd.AddCommand(commands.NewSkillsCmd())
-	rootCmd.AddCommand(commands.NewWorkflowsCmd())
-	rootCmd.AddCommand(commands.NewHooksCmd())
-	rootCmd.AddCommand(commands.NewServeCmd())
-	rootCmd.AddCommand(commands.NewListCmd())
-	rootCmd.AddCommand(commands.NewConfigCmd())
-	rootCmd.AddCommand(commands.NewInitCmd())
-	rootCmd.AddCommand(commands.NewCheckCmd())
-	rootCmd.AddCommand(commands.NewResetStateCmd())
-	rootCmd.AddCommand(commands.NewUsageCmd())
-	rootCmd.AddCommand(commands.NewUpdateCmd())
-	rootCmd.AddCommand(commands.NewAuditCmd())
-	rootCmd.AddCommand(commands.NewWatchCmd())
-	rootCmd.AddCommand(commands.NewResolveCmd())
+	// Register lifecycle phase groups. Order here drives display order in --help.
+	rootCmd.AddGroup(
+		&cobra.Group{ID: groupBootstrap, Title: "Bootstrap (one-time setup):"},
+		&cobra.Group{ID: groupEquip, Title: "Equip (install context, skills, workflows, hooks, specs):"},
+		&cobra.Group{ID: groupMaintain, Title: "Maintain (ongoing lifecycle: drift, audit, usage):"},
+		&cobra.Group{ID: groupSystem, Title: "System:"},
+	)
+
+	// Add subcommands, grouped by lifecycle phase.
+	rootCmd.AddCommand(withGroup(commands.NewConfigCmd(), groupBootstrap))
+	rootCmd.AddCommand(withGroup(commands.NewInitCmd(), groupBootstrap))
+
+	rootCmd.AddCommand(withGroup(commands.NewGenerateCmd(), groupEquip))
+	rootCmd.AddCommand(withGroup(commands.NewAnalyzeCmd(), groupEquip))
+	rootCmd.AddCommand(withGroup(commands.NewSpecCmd(), groupEquip))
+	rootCmd.AddCommand(withGroup(commands.NewSkillsCmd(), groupEquip))
+	rootCmd.AddCommand(withGroup(commands.NewWorkflowsCmd(), groupEquip))
+	rootCmd.AddCommand(withGroup(commands.NewHooksCmd(), groupEquip))
+
+	rootCmd.AddCommand(withGroup(commands.NewCheckCmd(), groupMaintain))
+	rootCmd.AddCommand(withGroup(commands.NewUpdateCmd(), groupMaintain))
+	rootCmd.AddCommand(withGroup(commands.NewAuditCmd(), groupMaintain))
+	rootCmd.AddCommand(withGroup(commands.NewWatchCmd(), groupMaintain))
+	rootCmd.AddCommand(withGroup(commands.NewUsageCmd(), groupMaintain))
+	rootCmd.AddCommand(withGroup(commands.NewResolveCmd(), groupMaintain))
+	rootCmd.AddCommand(withGroup(commands.NewResetStateCmd(), groupMaintain))
+
+	rootCmd.AddCommand(withGroup(commands.NewServeCmd(), groupSystem))
+	rootCmd.AddCommand(withGroup(commands.NewListCmd(), groupSystem))
 
 	// Global flags can be added here
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.codify.yaml)")
