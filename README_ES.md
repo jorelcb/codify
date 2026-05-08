@@ -16,7 +16,9 @@
 
 [English](README.md) | **[Español]**
 
-[Quick Start](#-quick-start) · [Config y Bootstrap](#%EF%B8%8F-configuracion-y-bootstrap) · [Contexto](#-generacion-de-contexto) · [Specs](#-desarrollo-guiado-por-specs) · [Skills](#-agent-skills) · [Workflows](#-workflows) · [Hooks](#-hooks) · [Drift Detection](#-lifecycle-drift-detection) · [Update / Audit / Usage](#-lifecycle-update-audit-y-tracking-de-uso) · [Watch](#%EF%B8%8F-lifecycle-watcher-foreground-codify-watch) · [MCP Server](#-mcp-server) · [Guias por Lenguaje](#-guias-por-lenguaje) · [Arquitectura](#%EF%B8%8F-arquitectura) · [Migrando desde v1.x](#-migrando-desde-v1x)
+**Lifecycle:** [🚀 Bootstrap](#-bootstrap-setup-unico) · [🧰 Equip](#-equip-instala-contexto-skills-workflows-hooks-specs) · [🔧 Maintain](#-maintain-lifecycle-continuo)
+
+**Atajos:** [Quick Start](#-quick-start) · [Fases de un vistazo](#%EF%B8%8F-fases-del-lifecycle-de-un-vistazo) · [MCP Server](#-mcp-server) · [Guias por Lenguaje](#-guias-por-lenguaje) · [Arquitectura](#%EF%B8%8F-arquitectura) · [Migrando desde v1.x](#-migrando-desde-v1x) · [FAQ](#-faq) · [Solucion de Problemas](#-solucion-de-problemas)
 
 </div>
 
@@ -70,6 +72,28 @@ Y el agente, con toda su capacidad, improvisa:
 
 Sigue el [estandar AGENTS.md](https://github.com/anthropics/AGENTS.md) — una especificacion abierta respaldada por la Linux Foundation para proveer contexto de proyecto a agentes de IA. Los archivos funcionan directamente con Claude Code, Cursor, Codex y cualquier agente que lea el estandar.
 
+## 🗺️ Fases del lifecycle de un vistazo
+
+Codify agrupa sus comandos en tres fases que reflejan como un developer adopta y usa la herramienta:
+
+```
+    ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+    │  Bootstrap  │ ──▶ │    Equip    │ ──▶ │  Maintain   │
+    └─────────────┘     └─────────────┘     └─────────────┘
+       config              generate            check
+       init                analyze             update
+                           spec                audit
+                           skills              watch
+                           workflows           usage
+                           hooks               resolve
+```
+
+- **Bootstrap (setup unico)** — configura la workstation (`codify config`) o un proyecto (`codify init`).
+- **Equip (segun necesites)** — genera contexto, instala skills/workflows/hooks, escribe specs.
+- **Maintain (continuo)** — detecta drift, regenera, audita commits, registra uso.
+
+El mismo diagrama esta en `codify --help`. Para la matriz completa de **workstation vs proyecto** y **greenfield vs brownfield** ver [`docs/lifecycle-matrix.md`](docs/lifecycle-matrix.md) (en ingles).
+
 ## ✨ Antes y despues
 
 ### 😱 Sin Codify
@@ -110,136 +134,48 @@ Resultado: Codigo coherente desde la primera linea ✨
 
 ## ⚡ Quick Start
 
-### Instalacion
+Secuencia recomendada para el primer uso. Cada paso mapea a una fase del lifecycle ([ver diagrama arriba](#%EF%B8%8F-fases-del-lifecycle-de-un-vistazo)). Para el tour completo con outputs esperados ver [`docs/getting-started.md`](docs/getting-started.md) (en ingles).
 
 ```bash
-# Homebrew (macOS/Linux — no requiere Go)
-brew tap jorelcb/tap
-brew install codify
+# 1. Instalar (Homebrew / go install / GitHub Releases)
+brew tap jorelcb/tap && brew install codify
 
-# O via go install
-go install github.com/jorelcb/codify/cmd/codify@latest
+# 2. Bootstrap — defaults de workstation (una vez)
+codify config
 
-# O descarga binarios pre-compilados desde GitHub Releases
-# https://github.com/jorelcb/codify/releases
+# 3. Bootstrap — tu proyecto (greenfield o brownfield)
+cd my-project && codify init
+
+# 4. Equip — instala solo lo que necesites (cada uno es opcional)
+codify spec <name> --from-context ./output/<name>/    # SDD specs
+codify skills                                         # Skills reutilizables
+codify workflows                                      # Recetas multi-paso
+codify hooks                                          # Guardrails de Claude Code
+
+# 5. Maintain — mantiene los artefactos honestos a medida que el codigo evoluciona
+codify check    # Drift detection — sin LLM, cero costo
+codify update   # Regen selectivo cuando los signals cambian
+codify audit    # Revisa commits contra convenciones
+codify watch    # Watcher foreground
+codify usage    # Resumen de tokens y costo LLM
+codify resolve  # Llena marcadores [DEFINE: ...]
 ```
 
-### Setup unico (recomendado)
+API keys (`ANTHROPIC_API_KEY` o `GEMINI_API_KEY`) solo se requieren para comandos LLM-backed — ver tabla en [`docs/getting-started.md`](docs/getting-started.md#api-keys).
 
-La primera vez que ejecutes cualquier comando interactivo de Codify, se te ofrecera lanzar el wizard de configuracion:
-
-```bash
-codify generate
-# → Codify isn't configured globally yet. Run interactive setup now? [Yes / No / Skip permanently]
-# → Yes ejecuta: codify config (wizard para preset, locale, model, target por default)
-```
-
-Tambien podes ejecutar `codify config` en cualquier momento. La configuracion persiste en `~/.codify/config.yml` y aplica como default para todos los comandos siguientes (los flags siguen ganando).
-
-**Bootstrap de proyecto** con `codify init`:
-
-```bash
-cd my-project/
-codify init
-# → ¿Proyecto nuevo o existente?
-#   - new      → te pide descripcion (inline o desde archivo), corre `generate` internamente
-#   - existing → escanea el codebase, corre `analyze` internamente
-# → Persiste .codify/config.yml + .codify/state.json
-```
-
-`init` es el smart entry point que elige el flujo correcto por vos. Si preferis controlar cada paso explicitamente, usa `generate`/`analyze` directamente.
-
-### Superficie de comandos de Codify
-
-Todos los comandos soportan **modo interactivo** — ejecuta sin flags y los menus te guian por cada opcion. O pasa los flags explicitamente para CI/scripting. Ambos modos leen defaults de `~/.codify/config.yml` (usuario) y `.codify/config.yml` (proyecto) cuando existen, con precedencia: flags > project > user > built-in defaults.
-
-```bash
-# 1. Configura tu API key (Claude o Gemini) — solo para comandos LLM-backed
-export ANTHROPIC_API_KEY="sk-ant-..."   # para Claude (default)
-# o
-export GEMINI_API_KEY="AI..."           # para Gemini
-
-# ── Bootstrap: configura una vez, equipa un proyecto end-to-end ──
-codify config         # Wizard a nivel usuario (auto-launch primera vez, opt-out via env / marker / flag)
-codify init           # Project-level: nuevo o existente → generate o analyze + state.json
-
-# ── Contexto: dale a tu agente memoria del proyecto ──
-codify generate            # Generacion desde descripcion
-codify analyze             # Escanea repo existente y genera contexto
-
-# ── Specs: dale a tu agente un plan de implementacion ──
-codify spec payment-service \
-  --from-context ./output/payment-service/
-
-# ── Skills: dale a tu agente habilidades reutilizables ──
-codify skills              # No requiere API key en modo static
-
-# ── Workflows: dale a tu agente recetas de orquestacion ──
-codify workflows           # Claude (native skills) o Antigravity (.md nativo)
-
-# ── Hooks: guardrails deterministicos en eventos de Claude Code ──
-codify hooks               # linting / security-guardrails / convention-enforcement / all
-
-# ── Lifecycle: mantiene artefactos en el tiempo ──
-codify check               # Drift detection — sin LLM, cero costo
-codify update              # Regen selectivo cuando los signals cambian
-codify audit               # Revisa commits contra convenciones (rules-only por default; --with-llm opt-in)
-codify reset-state         # Recomputa snapshot sin tocar artefactos
-codify usage               # Lee tracking de costos LLM desde archivos locales
-```
-
-**Sin API key**: `config`, `init` (cuando solo escaneas), `check`, `reset-state`, `audit` (modo rules-only), `usage`, `hooks`, `skills` (modo static), `workflows` (modo static), MCP knowledge tools (`commit_guidance`, `version_guidance`, `get_usage`).
-
-**Requiere API key**: `generate`, `analyze`, `spec`, `skills --mode personalized`, `workflows --mode personalized`, `update`, `audit --with-llm`.
-
-### Desactivar el prompt de auto-launch
-
-El prompt de primera vez es **soft** — solo aparece en TTYs interactivos y nunca bloquea CI ni scripts. Tres formas de opt-out:
-
-```bash
-# Por invocacion: skip solo para este run
-codify generate --no-auto-config ...
-
-# Por shell: variable de entorno
-export CODIFY_NO_AUTO_CONFIG=1
-
-# Permanente: marker file (creado automaticamente al elegir "Skip permanently")
-touch ~/.codify/.no-auto-config
-```
-
-### Lo que vas a ver
-
-```
-🚀 Generating context for: payment-service
-  Model: claude-sonnet-4-6
-  Preset: clean-ddd
-  Language: go
-
-  [1/5] Generating AGENTS.md... ✓
-  [2/5] Generating CONTEXT.md... ✓
-  [3/5] Generating INTERACTIONS_LOG.md... ✓
-  [4/5] Generating DEVELOPMENT_GUIDE.md... ✓
-  [5/5] Generating IDIOMS.md... ✓
-
-📁 Output: output/payment-service/
-  ├── AGENTS.md                → Root file (tech stack, comandos, convenciones)
-  └── context/
-      ├── CONTEXT.md           → Arquitectura y diseno tecnico
-      ├── INTERACTIONS_LOG.md  → Bitacora de sesiones y ADRs
-      ├── DEVELOPMENT_GUIDE.md → Metodologia, testing, seguridad
-      └── IDIOMS.md            → Patrones idiomaticos (Go)
-
-✅ Done! 5 files generated
-   Total tokens: ~18,200
-```
+El auto-launch de `codify config` la primera vez es soft (solo TTY, nunca bloquea CI). Opt-out via `--no-auto-config`, `CODIFY_NO_AUTO_CONFIG=1`, o `~/.codify/.no-auto-config`.
 
 ---
 
-## ⚙️ Configuracion y Bootstrap
+## 🚀 Bootstrap (setup unico)
+
+> **Setup de una vez** para la workstation y por proyecto. Despues paseas a la [fase Equip](#-equip-instala-contexto-skills-workflows-hooks-specs).
+
+### ⚙️ Configuracion y Bootstrap
 
 Dos comandos complementarios definen como Codify se comporta: **`codify config`** a nivel usuario y **`codify init`** a nivel proyecto. Ambos componen sobre los comandos standalone existentes; son smart entry points, no reemplazos.
 
-### `codify config` — defaults a nivel usuario
+#### `codify config` — defaults a nivel usuario
 
 `codify config` gestiona tus preferencias globales en `~/.codify/config.yml`. La primera vez que corres cualquier comando interactivo de Codify en TTY sin que ese archivo exista, se te ofrece lanzar el wizard. Tres respuestas: Yes (correr wizard), No (usar defaults esta vez), Skip permanently (crea `~/.codify/.no-auto-config` para que el prompt no aparezca mas).
 
@@ -254,7 +190,7 @@ Dos comandos complementarios definen como Codify se comporta: **`codify config`*
 
 Keys validos: `preset`, `locale`, `language`, `model`, `target`, `provider`, `project_name`.
 
-### `codify init` — bootstrap a nivel proyecto
+#### `codify init` — bootstrap a nivel proyecto
 
 `codify init` pregunta primero: ¿proyecto nuevo o existente? Segun la respuesta enruta al flujo correcto:
 
@@ -271,7 +207,7 @@ Despues, ambas ramas recolectan: preset arquitectonico (override del default glo
 
 Skills, workflows y hooks NO se incluyen — `init` imprime los comandos recomendados para mantener responsabilidades enfocadas. Corre `codify skills`, `codify workflows`, `codify hooks` por separado cuando los necesites.
 
-### Precedencia de merge
+#### Precedencia de merge
 
 Cuando cualquier comando resuelve un valor (preset, locale, model, etc.):
 
@@ -283,354 +219,15 @@ Setear `--preset hexagonal` en linea de comandos gana sin importar que digan los
 
 ---
 
-## 🔍 Lifecycle: Drift Detection
+## 🧰 Equip (instala contexto, skills, workflows, hooks, specs)
 
-Una vez que Codify genera artefactos, el mundo sigue moviendose. Las dependencias cambian, el README evoluciona, alguien edita `AGENTS.md` a mano. Sin chequeo activo, los artefactos se desfasan silenciosamente del proyecto.
+> **Instala solo lo que necesites.** Cada comando abajo es independiente y opcional. Despues de equipar, la [fase Maintain](#-maintain-lifecycle-continuo) mantiene todo honesto a medida que el proyecto evoluciona.
 
-`codify check` y su comando complementario `codify reset-state` resuelven esto sin LLM: hashes SHA256 de artefactos y senales de input, capturados al momento de generacion y comparados al momento de check. **Cero costo LLM. Cero red. Totalmente deterministico.**
-
-### `codify check` — detectar drift en CI o localmente
-
-```bash
-codify check                    # reporte legible; exit 1 si hay drift significativo
-codify check --strict           # cualquier drift (incluso minor) dispara exit 1
-codify check --json             # JSON machine-readable para pipelines CI
-codify check -o ./output/my-project   # si los artefactos viven fuera del cwd
-```
-
-**Qué detecta:**
-
-| Tipo de drift | Severidad | Que significa |
-|---|---|---|
-| `artifact_modified` | significant | Un archivo generado (e.g. AGENTS.md) fue editado despues de generacion |
-| `artifact_missing` | significant | Un archivo presente en el snapshot ya no esta en disco |
-| `signal_changed` | significant | Un input signal (`go.mod`, `Makefile`, `README.md`, etc.) cambio — tu contexto puede haber quedado desfasado |
-| `signal_removed` | significant | Un signal trackeado ya no esta en disco |
-| `artifact_new` | minor | Un nuevo artefacto aparecio desde el snapshot |
-| `signal_added` | minor | Un nuevo signal aparecio (informativo) |
-
-**Exit codes:**
-
-- `0` — sin drift significativo (o sin drift en general)
-- `1` — drift significativo (default) o cualquier drift (con `--strict`)
-- `2` — no existe `.codify/state.json` (proyecto sin bootstrap)
-
-**Ejemplo de uso en CI (GitHub Actions):**
-
-```yaml
-- name: Verify Codify artifacts are in sync
-  run: codify check --strict
-```
-
-Un exit no-cero falla el job, asi PRs que cambian dependencias sin regenerar contexto se detectan automaticamente.
-
-### `codify reset-state` — aceptar el FS actual como nuevo baseline
-
-Cuando editaste intencionalmente `AGENTS.md` (e.g. ajustaste una restriccion a mano) y querés que Codify considere eso como la nueva verdad:
-
-```bash
-codify reset-state              # recomputa state.json desde el FS actual, escritura atomica
-codify reset-state --dry-run    # solo preview, sin cambios
-```
-
-El comando es read-only sobre tus artefactos — nunca modifica AGENTS.md ni archivos de context. Solo actualiza `state.json` (con backup en `.bak`). Los `check` siguientes comparan contra el nuevo baseline.
-
-### Como funciona drift detection por debajo
-
-Cada `codify generate` / `codify analyze` / `codify init` exitoso escribe `.codify/state.json` que contiene:
-
-- Metadata del proyecto (nombre, preset, lenguaje, locale, target)
-- Contexto git (commit, branch, remote, dirty status)
-- Artefactos: SHA256 + tamano + timestamp de generacion para cada archivo generado
-- Input signals: SHA256 de archivos bien-conocidos (`go.mod`, `Makefile`, `README.md`, etc.)
-
-`codify check` recomputa este snapshot desde el FS actual y diffea los dos. La operacion es local, rapida (<100ms tipico), y totalmente reproducible.
-
----
-
-## 🔄 Lifecycle: Update, Audit y Tracking de Uso
-
-Tres comandos construyen sobre la fundacion de drift detection para cerrar el gap entre "Codify genero artefactos una vez" y "Codify los mantiene a medida que el proyecto evoluciona": `update` regenera selectivamente, `audit` revisa commits contra convenciones documentadas, `usage` expone el costo LLM.
-
-### `codify update` — regeneracion selectiva
-
-```bash
-codify update                    # detecta drift, regenera via analyze si hace falta
-codify update --dry-run          # muestra que cambiaria sin costo LLM
-codify update --force            # regenera incluso con drift menor
-codify update --accept-current   # mantiene FS actual como nuevo baseline (alias de reset-state)
-```
-
-Si solo hay hand-edits a artefactos (sin signals cambiando), `update` se rehusa con exit 1 y sugiere `--accept-current` o `reset-state` — diseñado para no perder ediciones intencionales del usuario.
-
-### `codify audit` — revisar commits contra convenciones
-
-```bash
-codify audit                     # ultimos 20 commits, rules-only (cero costo LLM)
-codify audit --since main~50     # todos los commits desde main~50
-codify audit --strict            # cualquier finding (incl. minor) falla el run
-codify audit --json              # machine-readable para CI
-codify audit --with-llm          # heuristico — envia commits + AGENTS.md al LLM (registra usage)
-```
-
-Findings rules-only: `commit_invalid_type`, `commit_trivial`, `commit_header_too_long`, `protected_branch_direct`. Types reconocidos: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, etc.
-
-### `codify usage` — transparencia de costos LLM
-
-Cada call LLM se registra automaticamente en `.codify/usage.json` (proyecto) y `~/.codify/usage.json` (global).
-
-```bash
-codify usage                       # gasto del proyecto actual
-codify usage --global              # agregado de todos los proyectos
-codify usage --since 7d            # ultimos 7 dias
-codify usage --by command          # breakdown por comando
-codify usage --json                # JSON para scripting
-codify usage --reset               # archiva log y empieza fresh
-```
-
-Costo computado con tabla de precios publica embebida (version `2026-05`). Refleja list prices de Anthropic y Google — **no** descuentos negociados.
-
-**Tres formas de opt-out:**
-
-```bash
-codify update --no-tracking                    # por invocacion
-export CODIFY_NO_USAGE_TRACKING=1              # por shell
-touch ~/.codify/.no-usage-tracking             # permanente
-```
-
-### CI con GitHub Actions
-
-```yaml
-# .github/workflows/codify.yml
-name: Codify drift + audit
-on: [pull_request]
-
-jobs:
-  codify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 50
-      - name: Install Codify
-        run: |
-          go install github.com/jorelcb/codify/cmd/codify@latest
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-      - name: Verify generated artifacts in sync
-        run: codify check --strict
-      - name: Audit recent commits
-        run: codify audit --since origin/main --strict
-```
-
-`check` y `audit --rules-only` no requieren API key. `update` y `audit --with-llm` si.
-
----
-
-## ✏️ Lifecycle: Resolucion de Markers (`codify resolve`)
-
-`codify resolve` es la superficie standalone para llenar markers `[DEFINE: ...]` — los placeholders que el LLM emite en archivos de contexto generados cuando la descripcion del proyecto no cubrio algo. v2.1.0 lo promovio de un hook inline post-`generate` a un comando first-class que puedes correr en cualquier momento sobre archivos existentes.
-
-### Cuando usarlo
-
-- Ya shippeaste `AGENTS.md` / `CONTEXT.md` con markers intactos (declinaste el prompt inline durante `generate`, o generaste antes de v2.0.5).
-- Agregaste a mano una nueva seccion a un archivo de contexto y quieres re-resolver markers que se introdujeron.
-- Tu CI flageo markers `[DEFINE]` sin resolver y quieres arreglarlos en un solo paso sin re-generar.
-
-### Seleccion de archivos
-
-```bash
-codify resolve AGENTS.md CONTEXT.md   # lista explicita
-codify resolve --all                  # walk del cwd, todo archivo con marker
-codify resolve --since=HEAD~5         # archivos cambiados en git desde <ref>
-```
-
-El walk de `--all` salta `.git`, `node_modules`, `vendor`, `.codify`, y archivos binarios (byte NUL en los primeros 4KB).
-
-### Flujo interactivo (LLM-driven por default)
-
-Para cada archivo con markers, Codify hace una llamada LLM de enrichment para traducir el `[DEFINE: hint]` crudo en un prompt amigable con sugerencias grounded:
-
-```
-── AGENTS.md (2 markers) ──
-
-     40  ## Currency Configuration
-     41
-  ▸  42  The supported currency is [DEFINE: ISO 4217 currency code], using two
-
-    ¿Qué moneda usa la aplicación?
-    (contexto fintech inferido de linea 12)
-    Suggestions:
-      1) USD [default]
-      2) EUR
-      3) MXN
-    Your answer (1-N, text, Enter for default, s to skip)
-```
-
-Parser de input:
-- **entero 1-N** → elige la sugerencia
-- **texto libre** → usa como respuesta
-- **Enter** → usa default si existe, si no skip
-- **`s`** o **`skip`** → skip explicito (case-insensitive)
-
-Cuando el enrichment falla (sin API key, error del provider, respuesta malformada, sanitizer rechazo todo), el prompt cae a la forma legacy (`Your input for L42 (Enter to skip)`) — nunca un fallo duro.
-
-### Modo de skip
-
-Por default, skipear un marker lo reemplaza con un comentario TODO con fecha en la sintaxis nativa del archivo — la gap queda visible en panels de TODO del IDE y en grep:
-
-| Extension | Reemplazo |
-|---|---|
-| `.md`, `.html`, `.htm`, `.xml` | `<!-- TODO 2026-05-06: ISO 4217 code -->` |
-| `.go`, `.js`, `.ts`, `.java`, `.rs`, `.c`, `.cpp`, `.swift`, `.cs`, ... | `// TODO 2026-05-06: ISO 4217 code` |
-| `.py`, `.rb`, `.sh`, `.yml`, `.yaml`, `.toml`, `.ini`, ... | `# TODO 2026-05-06: ISO 4217 code` |
-| Otra / desconocida | Marker preservado verbatim (default safe) |
-
-Pasa `--skip-mode=verbatim` para mantener markers `[DEFINE: ...]` crudos en el archivo.
-
-### Diff preview
-
-Despues del rewrite, antes de tocar el archivo en disco, ves un diff unified pequeno y eliges:
-
-```
-About to rewrite AGENTS.md:
-    line 41
-  - The supported currency is [DEFINE: ISO 4217 currency code], using two
-  + The supported currency is USD, using two
-    line 43
-
-Apply changes?  Apply / Discard (keep file as-is) / Edit before applying
-```
-
-- **Apply** — escribe el contenido propuesto
-- **Discard** — archivo intacto, contribuye al contador `FilesDiscarded` del summary
-- **Edit** — abre el contenido propuesto en `$EDITOR` (con fallback a `vim` / `vi` / `nano`); se escriben los bytes guardados
-
-Salta el preview con `--no-preview`.
-
-### Guardrails anti-alucinacion
-
-Dos capas protegen contra el LLM haciendo mas de lo que se le pidio:
-
-1. **Sanitizer de sugerencias.** Antes que el usuario las vea, las sugerencias del enricher se filtran: URLs, paths de archivos, strings multi-linea, texto con markdown fences y valores de mas de 50 chars se descartan. Sugerencias se deduplican case-insensitive y se cap a 3 entradas; el default propuesto por el LLM debe matchear una de las sobrevivientes o se descarta.
-2. **Validator post-rewrite.** Despues que el LLM reescribe el archivo con las respuestas del usuario, Codify re-escanea el output y clasifica los markers por frecuencia (los numeros de linea cambian, los conteos de texto no):
-   - `Lost` — el usuario skipeo este marker pero el LLM lo borro igual
-   - `NotApplied` — el usuario respondio pero el marker sigue en el archivo
-   - `Spurious` — markers que no existian en el input pero aparecen en el output
-   
-   Cualquiera de esos dispara un fallback transparente a substitucion literal deterministica, preservando todas las respuestas del usuario. Va una WARNING a stderr explicando el downgrade.
-
-### Flags
-
-```bash
-codify resolve [files...] [flags]
-```
-
-| Flag | Descripcion | Default |
-|------|-------------|---------|
-| `--all`, `-a` | Walk del cwd recursivo por archivos con markers `[DEFINE]` | `false` |
-| `--since` | Solo resuelve archivos cambiados en git desde este ref (e.g. `HEAD~5`) | — |
-| `--no-enrich` | Salta el step LLM de question/suggestions (mas barato, menos amigable) | `false` |
-| `--no-preview` | Salta el diff preview antes de escribir archivos | `false` |
-| `--skip-mode` | `todo` (default, comentario TODO en sintaxis del archivo) o `verbatim` | `todo` |
-| `--dry-run` | Walk de markers y reporta que cambiaria sin escribir archivos | `false` |
-| `--locale` | Locale de output para los prompts de rewrite/enrichment del LLM | `en` |
-| `--model`, `-m` | Modelo LLM | auto-detect |
-
-### Notas de costo
-
-La llamada de enrichment usa prompt caching de Anthropic (TTL ephemeral de 5 min). Para una generacion tipica de 3 archivos, el mismo system prompt se reusa entre archivos — la segunda y tercera llamadas pegan el cache. Callers de Gemini pagan costo full de input-token por llamada (su API de caching tiene un minimo de 4096 tokens que los prompts del resolver no alcanzan). Sin provider configurado, el resolver cae a la UI legacy + substitucion literal — sin costo LLM, UX menos polished.
-
-El mismo flujo corre automaticamente al final de `codify generate` / `analyze` / `init`, asi que la mayoria de usuarios nunca invocan `codify resolve` a mano. Usalo cuando quieras revisar archivos existentes o cuando quieras alguno de los flags opt-out (`--no-enrich`, `--skip-mode=verbatim`, `--dry-run`).
-
----
-
-## 👁️ Lifecycle: Watcher Foreground (`codify watch`)
-
-`codify watch` mantiene drift detection corriendo en background de tu sesion de editor. Re-ejecuta `check` automaticamente cuando cualquier archivo registrado en `.codify/state.json` cambia — input signals (e.g. `go.mod`, `Makefile`, `README.md`) y artefactos generados (`AGENTS.md`, `context/*.md`).
-
-```bash
-codify watch                         # default 2s debounce, solo reporta
-codify watch --debounce 500ms        # debounce mas ajustado para feedback rapido
-codify watch --auto-update --strict  # mantiene artefactos sincronizados agresivamente
-```
-
-**Comportamiento:**
-- Carga `.codify/state.json` una vez al startup; exit 2 si falta
-- Se suscribe via `fsnotify` a los dirs padres de los paths registrados (sin walk recursivo)
-- Debouncea eventos (default 2s) — cinco saves rapidos disparan UN check, no cinco
-- Imprime reportes de drift a stdout y sigue mirando
-- `--auto-update` corre `codify update` cuando detecta drift significativo (registra usage LLM)
-- `Ctrl+C` sale limpio
-
-### Por que foreground (no daemon)
-
-`codify watch` es intencionalmente un **proceso foreground**, NO un daemon de sistema. No tiene `--detach`, no hay PID file, no hay reload por señales. Decision documentada en [ADR-008](docs/adr/0008-watch-model-decision.md). Resumen:
-
-- **Manejo de PID files, signal handling, rotacion de logs, integracion con OS services** son problemas dificiles y fuera de scope para un proyecto de un solo mantenedor. Usuarios que necesitan persistencia envuelven con `tmux` / `nohup` / `systemd` / su supervisor preferido.
-- **El use case realista es de corta duracion** — arrancas `watch` cuando empezas a codear, lo paras cuando terminas. Horas, no semanas.
-- **El scope esta naturalmente acotado** — solo los ~20 paths de `state.json` se observan.
-
-### Envolver en un process supervisor
-
-Si si queres watch long-running:
-
-```bash
-# Sesion tmux que sobrevive cierre del terminal
-tmux new-session -d -s codify-watch "cd $(pwd) && codify watch"
-tmux attach -t codify-watch         # para inspeccionar; Ctrl+B luego D para detach
-
-# Unit de systemd (~/.config/systemd/user/codify-watch.service)
-[Unit]
-Description=Codify watch for %i
-[Service]
-WorkingDirectory=%h/projects/%i
-ExecStart=/usr/local/bin/codify watch --debounce 5s
-Restart=on-failure
-[Install]
-WantedBy=default.target
-
-# nohup para sobrevivir la sesion
-nohup codify watch > codify-watch.log 2>&1 &
-```
-
-### Alternativa — integracion con git-hooks via `codify check`
-
-Para usuarios cuyo modelo mental es "validar al hacer commit" en vez de "validar mientras edito", `codify check` es la herramienta correcta — es un one-shot deterministico disenado para CI y git hooks. Integrar via tu hook manager preferido:
-
-**lefthook (`lefthook.yml`):**
-```yaml
-pre-commit:
-  commands:
-    codify-check:
-      run: codify check --strict
-```
-
-**pre-commit (`.pre-commit-config.yaml`):**
-```yaml
-repos:
-  - repo: local
-    hooks:
-      - id: codify-check
-        name: Codify drift detection
-        entry: codify check --strict
-        language: system
-        pass_filenames: false
-```
-
-**watchexec (alternativa foreground sobre la misma base de FS-events):**
-```bash
-watchexec -w go.mod -w Makefile -w README.md -- codify check
-```
-
-Codify mismo no genera estos configs — la integracion es lo suficientemente corta y especifica del proyecto que copy-paste es el primitive correcto (per [ADR-008](docs/adr/0008-watch-model-decision.md)).
-
----
-
-## 📋 Generacion de Contexto
+### 📋 Generacion de Contexto
 
 La base. Genera archivos siguiendo el [estandar AGENTS.md](https://github.com/anthropics/AGENTS.md) que le dan a tu agente memoria profunda del proyecto.
 
-### Cuando usar `generate` vs `analyze`
+#### Cuando usar `generate` vs `analyze`
 
 | Situacion | Usar | Por que |
 |---|---|---|
@@ -640,7 +237,7 @@ La base. Genera archivos siguiendo el [estandar AGENTS.md](https://github.com/an
 | Tienes un design doc detallado | `codify generate --from-file ./docs/design.md` | Trata el contenido del archivo como la descripcion |
 | En duda | `codify init` | Pregunta "¿nuevo o existente?" y te enruta al flow correcto internamente |
 
-### Comando `generate` — Contexto desde una descripcion
+#### Comando `generate` — Contexto desde una descripcion
 
 ```bash
 codify generate payment-service \
@@ -648,7 +245,7 @@ codify generate payment-service \
   --language go
 ```
 
-### Comando `analyze` — Contexto desde un proyecto existente
+#### Comando `analyze` — Contexto desde un proyecto existente
 
 Escanea un codebase existente y genera archivos de contexto a partir de lo que encuentra. Usa un **prompt diferenciado** que trata los datos del scan como ground truth factual, produciendo output mas preciso que una descripcion manual.
 
@@ -666,7 +263,7 @@ Escanea un codebase existente y genera archivos de contexto a partir de lo que e
 codify analyze /path/to/my-project
 ```
 
-### Archivos generados
+#### Archivos generados
 
 | Archivo | Que hace |
 |---------|----------|
@@ -678,7 +275,7 @@ codify analyze /path/to/my-project
 
 Coloca estos archivos en la raiz de tu proyecto. Agentes compatibles (Claude Code, Cursor, Codex, etc.) los leen automaticamente.
 
-### Opciones
+#### Opciones
 
 ```bash
 codify generate [nombre-proyecto] [flags]
@@ -700,7 +297,7 @@ Todos los flags son opcionales en una terminal — los menus interactivos pregun
 
 ---
 
-## 📐 Desarrollo Guiado por Specs
+### 📐 Desarrollo Guiado por Specs
 
 A partir de contexto existente, genera especificaciones listas para implementar. Esto habilita **AI Spec-Driven Development (AI SDD)**: tu agente implementa una spec, no improvisa.
 
@@ -708,14 +305,14 @@ A partir de contexto existente, genera especificaciones listas para implementar.
 Tu idea → generate (contexto) → spec (especificaciones) → El agente escribe codigo con contexto completo
 ```
 
-### Comando `spec`
+#### Comando `spec`
 
 ```bash
 codify spec payment-service \
   --from-context ./output/payment-service/
 ```
 
-### `--with-specs` — Pipeline completo en un comando
+#### `--with-specs` — Pipeline completo en un comando
 
 Disponible en `generate` y `analyze`. Encadena generacion de contexto + specs + actualizacion de AGENTS.md en una sola ejecucion:
 
@@ -726,7 +323,7 @@ codify generate my-api \
   --with-specs
 ```
 
-### Archivos de spec generados
+#### Archivos de spec generados
 
 | Archivo | Que hace |
 |---------|----------|
@@ -737,18 +334,18 @@ codify generate my-api \
 
 ---
 
-## 🧩 Agent Skills
+### 🧩 Agent Skills
 
 Las skills son [Agent Skills](https://agentskills.io) reutilizables (archivos SKILL.md) que le ensenan a tu agente *como* ejecutar tareas especificas — seguir Conventional Commits, aplicar patrones DDD, hacer code reviews, versionar releases. Complementan los archivos de contexto: el contexto le dice al agente *que* es tu proyecto, las skills le dicen *como* hacer las cosas bien.
 
-### Dos modos
+#### Dos modos
 
 | Modo | Que hace | API key | Costo | Velocidad |
 |------|----------|---------|-------|-----------|
 | **Static** | Entrega skills pre-construidas desde el catalogo embebido. Listas para produccion, con frontmatter por ecosistema. | No necesaria | Gratis | Instantaneo |
 | **Personalized** | El LLM adapta las skills a tu proyecto — los ejemplos usan tu dominio, lenguaje y stack. | Requerida | ~centavos | ~10s |
 
-### Modo interactivo
+#### Modo interactivo
 
 Solo ejecuta `codify skills` — el menu interactivo te guia por cada decision:
 
@@ -763,7 +360,7 @@ codify skills
 # → Si personalized: describe tu proyecto, elige modelo
 ```
 
-### Modo CLI
+#### Modo CLI
 
 ```bash
 # Static: entrega instantanea, sin API key
@@ -783,14 +380,14 @@ codify skills --category architecture --preset clean-ddd --mode personalized \
 codify skills --category architecture --preset neutral --target codex
 ```
 
-### Scopes de instalacion
+#### Scopes de instalacion
 
 | Scope | Path (Claude) | Path (Codex) | Uso |
 |-------|---------------|--------------|-----|
 | `global` | `~/.claude/skills/` | `~/.codex/skills/` | Accesible desde cualquier proyecto |
 | `project` | `./.claude/skills/` | `./.agents/skills/` | Committed a git, compartido con el equipo |
 
-### Catalogo de skills
+#### Catalogo de skills
 
 | Categoria | Preset | Skills |
 |-----------|--------|--------|
@@ -807,7 +404,7 @@ codify skills --category architecture --preset neutral --target codex
 
 Los cuatro presets de `architecture` son espejo de los cuatro `--preset` de generacion de contexto, asi que las skills instaladas con `hexagonal` se alinean con AGENTS.md/CONTEXT.md generados con `--preset hexagonal`.
 
-### Ecosistemas target
+#### Ecosistemas target
 
 Cada ecosistema recibe frontmatter YAML especifico y rutas de salida:
 
@@ -817,7 +414,7 @@ Cada ecosistema recibe frontmatter YAML especifico y rutas de salida:
 | `codex` | `name`, `description` | `.agents/skills/` |
 | `antigravity` | `name`, `description`, `triggers` | `.agents/skills/` |
 
-### Opciones
+#### Opciones
 
 ```bash
 codify skills [flags]
@@ -837,7 +434,7 @@ codify skills [flags]
 
 ---
 
-## 🔄 Workflows
+### 🔄 Workflows
 
 Los workflows son recetas de orquestacion multi-paso que los agentes de IA ejecutan bajo demanda. A diferencia de las skills (que ensenan *como* hacer una tarea especifica), los workflows orquestan *secuencias de tareas* — desde la creacion del branch hasta el merge del PR, desde el reporte del bug hasta el deploy del fix.
 
@@ -854,14 +451,14 @@ Cada skill de Claude incluye frontmatter YAML:
 - `disable-model-invocation: true` — Solo invocacion explicita del usuario
 - `allowed-tools` — Herramientas permitidas para el workflow
 
-### Dos modos
+#### Dos modos
 
 | Modo | Que hace | API key | Costo | Velocidad |
 |------|----------|---------|-------|-----------|
 | **Static** | Entrega workflows pre-construidos del catalogo embebido. Frontmatter por ecosistema. | No necesaria | Gratis | Instantaneo |
 | **Personalized** | LLM adapta workflows a tu proyecto — los pasos referencian tus herramientas, CI/CD y targets de despliegue. | Requerida | ~centavos | ~10s |
 
-### Modo interactivo
+#### Modo interactivo
 
 ```bash
 codify workflows
@@ -873,7 +470,7 @@ codify workflows
 # → Si personalized: describe tu proyecto, elige modelo
 ```
 
-### Modo CLI
+#### Modo CLI
 
 ```bash
 # Claude Code: generar workflow skills nativos
@@ -896,21 +493,21 @@ codify workflows --preset all --target claude --mode personalized \
   --context "Microservicio Go con CI/CD via GitHub Actions"
 ```
 
-### Ecosistemas target
+#### Ecosistemas target
 
 | Target | Salida | Estructura | Diferencia clave |
 |--------|--------|------------|------------------|
 | `claude` | Native skill | `{workflow}/SKILL.md` con frontmatter YAML | Anotaciones eliminadas, instrucciones en prosa |
 | `antigravity` *(default)* | Archivo `.md` plano | `{workflow}.md` con frontmatter YAML | Anotaciones nativas: `// turbo`, `// capture`, `// if`, `// parallel` |
 
-### Scopes de instalacion
+#### Scopes de instalacion
 
 | Scope | Path Claude | Path Antigravity |
 |-------|-------------|------------------|
 | `global` | `~/.claude/skills/` | `~/.gemini/antigravity/global_workflows/` |
 | `project` | `.claude/skills/` | `.agent/workflows/` |
 
-### Catalogo de workflows
+#### Catalogo de workflows
 
 | Preset | Workflow | Descripcion |
 |--------|----------|-------------|
@@ -919,7 +516,7 @@ codify workflows --preset all --target claude --mode personalized \
 | `release-cycle` | Release Cycle | Bump de version → changelog → tag → deploy |
 | `all` | Todos los workflows | Todos los presets de workflow combinados |
 
-### Spec-driven Change: la filosofia
+#### Spec-driven Change: la filosofia
 
 `spec-driven-change` es el workflow recomendado para agregar features y hacer cambios no triviales. Implementa **Spec-Driven Development (SDD)**: una metodologia donde los artefactos formales de planeacion preceden al codigo, y donde cada cambio al sistema es una evolucion trackeable y revisable de las specifications — no solo un diff de codigo.
 
@@ -1033,7 +630,7 @@ La estructura de salida (`openspec/specs/`, `openspec/changes/`, formato delta c
 - **Soporte de locale**: skills en ingles y espanol out of the box
 - **Pipeline integrado**: combinado con `codify generate` + `codify spec`, obtienes bootstrap SDD end-to-end
 
-### Skills vs Workflows
+#### Skills vs Workflows
 
 | | Skills | Workflows |
 |-|--------|-----------|
@@ -1042,7 +639,7 @@ La estructura de salida (`openspec/specs/`, `openspec/changes/`, formato delta c
 | **Invocacion** | El agente lee cuando es relevante | El usuario invoca via `/command` |
 | **Ejemplos** | Conventional Commits, DDD entity, code review | Ciclo de cambio spec-driven, bug fix, release cycle |
 
-### Opciones
+#### Opciones
 
 ```bash
 codify workflows [flags]
@@ -1061,7 +658,7 @@ codify workflows [flags]
 
 ---
 
-## 🪝 Hooks
+### 🪝 Hooks
 
 Los hooks son **guardrails deterministicos** para Claude Code. Donde los skills (prompts) y los workflows (orquestacion) dependen de que el LLM haga lo correcto, los hooks son scripts shell que **siempre** se ejecutan en eventos del lifecycle (`PreToolUse`, `PostToolUse`, etc.) — hacen cumplir reglas en cada llamada, por exit code.
 
@@ -1073,7 +670,7 @@ Las tres capas de artefactos se complementan:
 | **Workflows** | Lifecycle multi-skill | Usuario lo invoca via slash command | Depende del LLM |
 | **Hooks** | Scripts shell en eventos | Cada llamada a tool que coincida | 100% (exit codes) |
 
-### Catalogo de presets
+#### Catalogo de presets
 
 | Preset | Evento | Proposito |
 |---|---|---|
@@ -1082,7 +679,7 @@ Las tres capas de artefactos se complementan:
 | `convention-enforcement` | `PreToolUse` (Bash con `if`) | Valida mensajes de commit contra Conventional Commits 1.0.0 (titulo ≤72 chars, tipo valido, sin placeholders triviales) y bloquea push directo/force-push a branches protegidos (`main`, `master`, `develop`, `production`, `release/*`). Requiere Claude Code v2.1.85+. |
 | `all` | (combinado) | Los tres presets mergeados en un solo `hooks.json` |
 
-### Modos de activacion
+#### Modos de activacion
 
 | Flag | Comportamiento |
 |---|---|
@@ -1091,7 +688,7 @@ Las tres capas de artefactos se complementan:
 | `--output PATH` | **Modo preview** — escribe `{PATH}/hooks.json` + `{PATH}/hooks/*.sh` standalone para inspeccion o merge manual. NO toca `settings.json` |
 | `--dry-run` | Imprime el `settings.json` resultante del merge propuesto, sale 0, no escribe nada |
 
-### Estructura de salida
+#### Estructura de salida
 
 ```
 ~/.claude/                      O    ./.claude/
@@ -1105,7 +702,7 @@ Las tres capas de artefactos se complementan:
     └── check-protected-branches.sh        └── check-protected-branches.sh
 ```
 
-### Modo interactivo
+#### Modo interactivo
 
 ```bash
 codify hooks
@@ -1114,7 +711,7 @@ codify hooks
 # → Selecciona modo de activacion (project / global / preview)
 ```
 
-### Modo CLI
+#### Modo CLI
 
 ```bash
 # Activar todo para el proyecto actual (flujo default)
@@ -1133,14 +730,14 @@ codify hooks --preset all --install project --dry-run
 codify hooks --preset linting --install project --locale es
 ```
 
-### Verificar activacion
+#### Verificar activacion
 
 ```bash
 claude
 > /hooks
 ```
 
-### Rollback
+#### Rollback
 
 Cada install hace backup del `settings.json` previo a `settings.json.codify-backup-<timestamp>`. Para revertir:
 
@@ -1148,16 +745,16 @@ Cada install hace backup del `settings.json` previo a `settings.json.codify-back
 mv .claude/settings.json.codify-backup-<timestamp> .claude/settings.json
 ```
 
-### Requisitos
+#### Requisitos
 
 - **Bash** + **jq** (Linux/macOS nativo; Windows requiere Git Bash o WSL)
 - **Claude Code v2.1.85+** (solo para el preset `convention-enforcement`, que usa el campo `if` en handlers)
 
-### Limitaciones honestas
+#### Limitaciones honestas
 
 Los scripts bash usan patrones regex, no AST parsing. Detienen comandos **descuidados** del agente, no adversarios motivados — ofuscacion sofisticada (e.g. `eval $(echo b3JtIC1yZiAv | base64 -d)`) puede burlar la deteccion. Para garantias mas fuertes usa una herramienta dedicada como [bash-guardian](https://github.com/RoaringFerrum/claude-code-bash-guardian). Los scripts son cortos y deliberadamente editables: extiende los arrays de patrones para tu modelo de riesgo especifico.
 
-### Opciones
+#### Opciones
 
 ```bash
 codify hooks [flags]
@@ -1170,6 +767,353 @@ codify hooks [flags]
 | `--install` | Scope de instalacion: `global` o `project` (auto-activa) | *(interactivo — default `project`)* |
 | `--output` `-o` | Directorio preview: escribe bundle standalone, no toca settings | — |
 | `--dry-run` | Imprime el merge propuesto sin escribir nada | `false` |
+
+---
+
+## 🔧 Maintain (lifecycle continuo)
+
+> **Continuo.** Estos comandos operan sobre un proyecto ya equipado. Detectan drift, regeneran artefactos desactualizados, auditan commits y mantienen el costo transparente. Aplican igual a proyectos greenfield y brownfield.
+
+### 🔍 Lifecycle: Drift Detection
+
+Una vez que Codify genera artefactos, el mundo sigue moviendose. Las dependencias cambian, el README evoluciona, alguien edita `AGENTS.md` a mano. Sin chequeo activo, los artefactos se desfasan silenciosamente del proyecto.
+
+`codify check` y su comando complementario `codify reset-state` resuelven esto sin LLM: hashes SHA256 de artefactos y senales de input, capturados al momento de generacion y comparados al momento de check. **Cero costo LLM. Cero red. Totalmente deterministico.**
+
+#### `codify check` — detectar drift en CI o localmente
+
+```bash
+codify check                    # reporte legible; exit 1 si hay drift significativo
+codify check --strict           # cualquier drift (incluso minor) dispara exit 1
+codify check --json             # JSON machine-readable para pipelines CI
+codify check -o ./output/my-project   # si los artefactos viven fuera del cwd
+```
+
+**Qué detecta:**
+
+| Tipo de drift | Severidad | Que significa |
+|---|---|---|
+| `artifact_modified` | significant | Un archivo generado (e.g. AGENTS.md) fue editado despues de generacion |
+| `artifact_missing` | significant | Un archivo presente en el snapshot ya no esta en disco |
+| `signal_changed` | significant | Un input signal (`go.mod`, `Makefile`, `README.md`, etc.) cambio — tu contexto puede haber quedado desfasado |
+| `signal_removed` | significant | Un signal trackeado ya no esta en disco |
+| `artifact_new` | minor | Un nuevo artefacto aparecio desde el snapshot |
+| `signal_added` | minor | Un nuevo signal aparecio (informativo) |
+
+**Exit codes:**
+
+- `0` — sin drift significativo (o sin drift en general)
+- `1` — drift significativo (default) o cualquier drift (con `--strict`)
+- `2` — no existe `.codify/state.json` (proyecto sin bootstrap)
+
+**Ejemplo de uso en CI (GitHub Actions):**
+
+```yaml
+- name: Verify Codify artifacts are in sync
+  run: codify check --strict
+```
+
+Un exit no-cero falla el job, asi PRs que cambian dependencias sin regenerar contexto se detectan automaticamente.
+
+#### `codify reset-state` — aceptar el FS actual como nuevo baseline
+
+Cuando editaste intencionalmente `AGENTS.md` (e.g. ajustaste una restriccion a mano) y querés que Codify considere eso como la nueva verdad:
+
+```bash
+codify reset-state              # recomputa state.json desde el FS actual, escritura atomica
+codify reset-state --dry-run    # solo preview, sin cambios
+```
+
+El comando es read-only sobre tus artefactos — nunca modifica AGENTS.md ni archivos de context. Solo actualiza `state.json` (con backup en `.bak`). Los `check` siguientes comparan contra el nuevo baseline.
+
+#### Como funciona drift detection por debajo
+
+Cada `codify generate` / `codify analyze` / `codify init` exitoso escribe `.codify/state.json` que contiene:
+
+- Metadata del proyecto (nombre, preset, lenguaje, locale, target)
+- Contexto git (commit, branch, remote, dirty status)
+- Artefactos: SHA256 + tamano + timestamp de generacion para cada archivo generado
+- Input signals: SHA256 de archivos bien-conocidos (`go.mod`, `Makefile`, `README.md`, etc.)
+
+`codify check` recomputa este snapshot desde el FS actual y diffea los dos. La operacion es local, rapida (<100ms tipico), y totalmente reproducible.
+
+---
+
+### 🔄 Lifecycle: Update, Audit y Tracking de Uso
+
+Tres comandos construyen sobre la fundacion de drift detection para cerrar el gap entre "Codify genero artefactos una vez" y "Codify los mantiene a medida que el proyecto evoluciona": `update` regenera selectivamente, `audit` revisa commits contra convenciones documentadas, `usage` expone el costo LLM.
+
+#### `codify update` — regeneracion selectiva
+
+```bash
+codify update                    # detecta drift, regenera via analyze si hace falta
+codify update --dry-run          # muestra que cambiaria sin costo LLM
+codify update --force            # regenera incluso con drift menor
+codify update --accept-current   # mantiene FS actual como nuevo baseline (alias de reset-state)
+```
+
+Si solo hay hand-edits a artefactos (sin signals cambiando), `update` se rehusa con exit 1 y sugiere `--accept-current` o `reset-state` — diseñado para no perder ediciones intencionales del usuario.
+
+#### `codify audit` — revisar commits contra convenciones
+
+```bash
+codify audit                     # ultimos 20 commits, rules-only (cero costo LLM)
+codify audit --since main~50     # todos los commits desde main~50
+codify audit --strict            # cualquier finding (incl. minor) falla el run
+codify audit --json              # machine-readable para CI
+codify audit --with-llm          # heuristico — envia commits + AGENTS.md al LLM (registra usage)
+```
+
+Findings rules-only: `commit_invalid_type`, `commit_trivial`, `commit_header_too_long`, `protected_branch_direct`. Types reconocidos: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, etc.
+
+#### `codify usage` — transparencia de costos LLM
+
+Cada call LLM se registra automaticamente en `.codify/usage.json` (proyecto) y `~/.codify/usage.json` (global).
+
+```bash
+codify usage                       # gasto del proyecto actual
+codify usage --global              # agregado de todos los proyectos
+codify usage --since 7d            # ultimos 7 dias
+codify usage --by command          # breakdown por comando
+codify usage --json                # JSON para scripting
+codify usage --reset               # archiva log y empieza fresh
+```
+
+Costo computado con tabla de precios publica embebida (version `2026-05`). Refleja list prices de Anthropic y Google — **no** descuentos negociados.
+
+**Tres formas de opt-out:**
+
+```bash
+codify update --no-tracking                    # por invocacion
+export CODIFY_NO_USAGE_TRACKING=1              # por shell
+touch ~/.codify/.no-usage-tracking             # permanente
+```
+
+#### CI con GitHub Actions
+
+```yaml
+# .github/workflows/codify.yml
+name: Codify drift + audit
+on: [pull_request]
+
+jobs:
+  codify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+      - name: Install Codify
+        run: |
+          go install github.com/jorelcb/codify/cmd/codify@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      - name: Verify generated artifacts in sync
+        run: codify check --strict
+      - name: Audit recent commits
+        run: codify audit --since origin/main --strict
+```
+
+`check` y `audit --rules-only` no requieren API key. `update` y `audit --with-llm` si.
+
+---
+
+### ✏️ Lifecycle: Resolucion de Markers (`codify resolve`)
+
+`codify resolve` es la superficie standalone para llenar markers `[DEFINE: ...]` — los placeholders que el LLM emite en archivos de contexto generados cuando la descripcion del proyecto no cubrio algo. v2.1.0 lo promovio de un hook inline post-`generate` a un comando first-class que puedes correr en cualquier momento sobre archivos existentes.
+
+#### Cuando usarlo
+
+- Ya shippeaste `AGENTS.md` / `CONTEXT.md` con markers intactos (declinaste el prompt inline durante `generate`, o generaste antes de v2.0.5).
+- Agregaste a mano una nueva seccion a un archivo de contexto y quieres re-resolver markers que se introdujeron.
+- Tu CI flageo markers `[DEFINE]` sin resolver y quieres arreglarlos en un solo paso sin re-generar.
+
+#### Seleccion de archivos
+
+```bash
+codify resolve AGENTS.md CONTEXT.md   # lista explicita
+codify resolve --all                  # walk del cwd, todo archivo con marker
+codify resolve --since=HEAD~5         # archivos cambiados en git desde <ref>
+```
+
+El walk de `--all` salta `.git`, `node_modules`, `vendor`, `.codify`, y archivos binarios (byte NUL en los primeros 4KB).
+
+#### Flujo interactivo (LLM-driven por default)
+
+Para cada archivo con markers, Codify hace una llamada LLM de enrichment para traducir el `[DEFINE: hint]` crudo en un prompt amigable con sugerencias grounded:
+
+```
+── AGENTS.md (2 markers) ──
+
+     40  ## Currency Configuration
+     41
+  ▸  42  The supported currency is [DEFINE: ISO 4217 currency code], using two
+
+    ¿Qué moneda usa la aplicación?
+    (contexto fintech inferido de linea 12)
+    Suggestions:
+      1) USD [default]
+      2) EUR
+      3) MXN
+    Your answer (1-N, text, Enter for default, s to skip)
+```
+
+Parser de input:
+- **entero 1-N** → elige la sugerencia
+- **texto libre** → usa como respuesta
+- **Enter** → usa default si existe, si no skip
+- **`s`** o **`skip`** → skip explicito (case-insensitive)
+
+Cuando el enrichment falla (sin API key, error del provider, respuesta malformada, sanitizer rechazo todo), el prompt cae a la forma legacy (`Your input for L42 (Enter to skip)`) — nunca un fallo duro.
+
+#### Modo de skip
+
+Por default, skipear un marker lo reemplaza con un comentario TODO con fecha en la sintaxis nativa del archivo — la gap queda visible en panels de TODO del IDE y en grep:
+
+| Extension | Reemplazo |
+|---|---|
+| `.md`, `.html`, `.htm`, `.xml` | `<!-- TODO 2026-05-06: ISO 4217 code -->` |
+| `.go`, `.js`, `.ts`, `.java`, `.rs`, `.c`, `.cpp`, `.swift`, `.cs`, ... | `// TODO 2026-05-06: ISO 4217 code` |
+| `.py`, `.rb`, `.sh`, `.yml`, `.yaml`, `.toml`, `.ini`, ... | `# TODO 2026-05-06: ISO 4217 code` |
+| Otra / desconocida | Marker preservado verbatim (default safe) |
+
+Pasa `--skip-mode=verbatim` para mantener markers `[DEFINE: ...]` crudos en el archivo.
+
+#### Diff preview
+
+Despues del rewrite, antes de tocar el archivo en disco, ves un diff unified pequeno y eliges:
+
+```
+About to rewrite AGENTS.md:
+    line 41
+  - The supported currency is [DEFINE: ISO 4217 currency code], using two
+  + The supported currency is USD, using two
+    line 43
+
+Apply changes?  Apply / Discard (keep file as-is) / Edit before applying
+```
+
+- **Apply** — escribe el contenido propuesto
+- **Discard** — archivo intacto, contribuye al contador `FilesDiscarded` del summary
+- **Edit** — abre el contenido propuesto en `$EDITOR` (con fallback a `vim` / `vi` / `nano`); se escriben los bytes guardados
+
+Salta el preview con `--no-preview`.
+
+#### Guardrails anti-alucinacion
+
+Dos capas protegen contra el LLM haciendo mas de lo que se le pidio:
+
+1. **Sanitizer de sugerencias.** Antes que el usuario las vea, las sugerencias del enricher se filtran: URLs, paths de archivos, strings multi-linea, texto con markdown fences y valores de mas de 50 chars se descartan. Sugerencias se deduplican case-insensitive y se cap a 3 entradas; el default propuesto por el LLM debe matchear una de las sobrevivientes o se descarta.
+2. **Validator post-rewrite.** Despues que el LLM reescribe el archivo con las respuestas del usuario, Codify re-escanea el output y clasifica los markers por frecuencia (los numeros de linea cambian, los conteos de texto no):
+   - `Lost` — el usuario skipeo este marker pero el LLM lo borro igual
+   - `NotApplied` — el usuario respondio pero el marker sigue en el archivo
+   - `Spurious` — markers que no existian en el input pero aparecen en el output
+   
+   Cualquiera de esos dispara un fallback transparente a substitucion literal deterministica, preservando todas las respuestas del usuario. Va una WARNING a stderr explicando el downgrade.
+
+#### Flags
+
+```bash
+codify resolve [files...] [flags]
+```
+
+| Flag | Descripcion | Default |
+|------|-------------|---------|
+| `--all`, `-a` | Walk del cwd recursivo por archivos con markers `[DEFINE]` | `false` |
+| `--since` | Solo resuelve archivos cambiados en git desde este ref (e.g. `HEAD~5`) | — |
+| `--no-enrich` | Salta el step LLM de question/suggestions (mas barato, menos amigable) | `false` |
+| `--no-preview` | Salta el diff preview antes de escribir archivos | `false` |
+| `--skip-mode` | `todo` (default, comentario TODO en sintaxis del archivo) o `verbatim` | `todo` |
+| `--dry-run` | Walk de markers y reporta que cambiaria sin escribir archivos | `false` |
+| `--locale` | Locale de output para los prompts de rewrite/enrichment del LLM | `en` |
+| `--model`, `-m` | Modelo LLM | auto-detect |
+
+#### Notas de costo
+
+La llamada de enrichment usa prompt caching de Anthropic (TTL ephemeral de 5 min). Para una generacion tipica de 3 archivos, el mismo system prompt se reusa entre archivos — la segunda y tercera llamadas pegan el cache. Callers de Gemini pagan costo full de input-token por llamada (su API de caching tiene un minimo de 4096 tokens que los prompts del resolver no alcanzan). Sin provider configurado, el resolver cae a la UI legacy + substitucion literal — sin costo LLM, UX menos polished.
+
+El mismo flujo corre automaticamente al final de `codify generate` / `analyze` / `init`, asi que la mayoria de usuarios nunca invocan `codify resolve` a mano. Usalo cuando quieras revisar archivos existentes o cuando quieras alguno de los flags opt-out (`--no-enrich`, `--skip-mode=verbatim`, `--dry-run`).
+
+---
+
+### 👁️ Lifecycle: Watcher Foreground (`codify watch`)
+
+`codify watch` mantiene drift detection corriendo en background de tu sesion de editor. Re-ejecuta `check` automaticamente cuando cualquier archivo registrado en `.codify/state.json` cambia — input signals (e.g. `go.mod`, `Makefile`, `README.md`) y artefactos generados (`AGENTS.md`, `context/*.md`).
+
+```bash
+codify watch                         # default 2s debounce, solo reporta
+codify watch --debounce 500ms        # debounce mas ajustado para feedback rapido
+codify watch --auto-update --strict  # mantiene artefactos sincronizados agresivamente
+```
+
+**Comportamiento:**
+- Carga `.codify/state.json` una vez al startup; exit 2 si falta
+- Se suscribe via `fsnotify` a los dirs padres de los paths registrados (sin walk recursivo)
+- Debouncea eventos (default 2s) — cinco saves rapidos disparan UN check, no cinco
+- Imprime reportes de drift a stdout y sigue mirando
+- `--auto-update` corre `codify update` cuando detecta drift significativo (registra usage LLM)
+- `Ctrl+C` sale limpio
+
+#### Por que foreground (no daemon)
+
+`codify watch` es intencionalmente un **proceso foreground**, NO un daemon de sistema. No tiene `--detach`, no hay PID file, no hay reload por señales. Decision documentada en [ADR-008](docs/adr/0008-watch-model-decision.md). Resumen:
+
+- **Manejo de PID files, signal handling, rotacion de logs, integracion con OS services** son problemas dificiles y fuera de scope para un proyecto de un solo mantenedor. Usuarios que necesitan persistencia envuelven con `tmux` / `nohup` / `systemd` / su supervisor preferido.
+- **El use case realista es de corta duracion** — arrancas `watch` cuando empezas a codear, lo paras cuando terminas. Horas, no semanas.
+- **El scope esta naturalmente acotado** — solo los ~20 paths de `state.json` se observan.
+
+#### Envolver en un process supervisor
+
+Si si queres watch long-running:
+
+```bash
+# Sesion tmux que sobrevive cierre del terminal
+tmux new-session -d -s codify-watch "cd $(pwd) && codify watch"
+tmux attach -t codify-watch         # para inspeccionar; Ctrl+B luego D para detach
+
+# Unit de systemd (~/.config/systemd/user/codify-watch.service)
+[Unit]
+Description=Codify watch for %i
+[Service]
+WorkingDirectory=%h/projects/%i
+ExecStart=/usr/local/bin/codify watch --debounce 5s
+Restart=on-failure
+[Install]
+WantedBy=default.target
+
+# nohup para sobrevivir la sesion
+nohup codify watch > codify-watch.log 2>&1 &
+```
+
+#### Alternativa — integracion con git-hooks via `codify check`
+
+Para usuarios cuyo modelo mental es "validar al hacer commit" en vez de "validar mientras edito", `codify check` es la herramienta correcta — es un one-shot deterministico disenado para CI y git hooks. Integrar via tu hook manager preferido:
+
+**lefthook (`lefthook.yml`):**
+```yaml
+pre-commit:
+  commands:
+    codify-check:
+      run: codify check --strict
+```
+
+**pre-commit (`.pre-commit-config.yaml`):**
+```yaml
+repos:
+  - repo: local
+    hooks:
+      - id: codify-check
+        name: Codify drift detection
+        entry: codify check --strict
+        language: system
+        pass_filenames: false
+```
+
+**watchexec (alternativa foreground sobre la misma base de FS-events):**
+```bash
+watchexec -w go.mod -w Makefile -w README.md -- codify check
+```
+
+Codify mismo no genera estos configs — la integracion es lo suficientemente corta y especifica del proyecto que copy-paste es el primitive correcto (per [ADR-008](docs/adr/0008-watch-model-decision.md)).
 
 ---
 
@@ -1583,28 +1527,30 @@ No — lo complementa. El preset `spec-driven-change` genera skills que operan s
 
 ## 🆘 Solucion de Problemas
 
-Referencia rapida para los errores que mas se topan en primer contacto.
+Los errores comunes y sus fixes rapidos estan consolidados en [`docs/troubleshooting.md`](docs/troubleshooting.md) (en ingles). Los mas frecuentes:
 
-| Error / Sintoma | Causa | Fix |
-|---|---|---|
-| `ANTHROPIC_API_KEY or GEMINI_API_KEY environment variable is required` | Comando que requiere LLM sin API key en el env | `export ANTHROPIC_API_KEY=...` (o Gemini); para comandos read-only como `check`, `audit --rules-only`, `usage`, no se necesita ninguna |
-| `preset 'default' was removed in Codify v2.0.0...` | Arrastraste `--preset default` desde un script v1.x o desde `~/.codify/config.yml` | `codify config set preset clean-ddd` (comportamiento v1.x) o `... preset neutral` (default v2.0). O pasa `--preset clean-ddd` explicitamente |
-| `No snapshot at .codify/state.json...` (exit 2) en `check` / `update` / `watch` | Proyecto sin bootstrap — nunca se corrio `init` / `generate` / `analyze` | Corre uno de esos primero, o `codify reset-state` si `state.json` se borro por accidente |
-| `codify update` se rehusa con "Only hand-edits to generated artifacts detected" | Editaste AGENTS.md a mano y `update` no quiere sobreescribir intencion | `codify update --accept-current` (= `reset-state`) para hacer que tus ediciones sean el nuevo baseline, o `--force` para regenerar (pierde ediciones) |
-| `codify watch` sale con "no watchable directories" | `state.json` existe pero sus paths registrados estan ausentes | `codify reset-state` para recomputar contra el FS actual |
-| `Codify isn't configured globally yet. Run interactive setup now?` bloquea scripts | El SOFT prompt de auto-launch dispara en TTY sin `~/.codify/config.yml` | Pasa `--no-auto-config`, o `export CODIFY_NO_AUTO_CONFIG=1`, o `touch ~/.codify/.no-auto-config` |
-| `codify hooks` funciona pero Claude Code no los ejecuta | `.claude/settings.json` no es cargado por tu version de Claude Code | Verifica que Claude Code sea v2.1.85+ (requerido para `convention-enforcement`); confirma con `claude /hooks` |
-| `audit --with-llm` cae a rules-only con WARNING | API key faltante O la llamada al LLM fallo | Mismo fix que el error de API key; rules-only igual produjo sus findings |
-| Scripts de hooks skippean en silencio (e.g. `lint.sh` no hace nada) | Herramienta requerida (gofmt, ruff, prettier, etc.) no instalada | `command -v <tool>` para verificar; instala la que quieras enforced |
+- **`ANTHROPIC_API_KEY or GEMINI_API_KEY environment variable is required`** — configura la key para comandos LLM-backed; los read-only (`check`, `audit --rules-only`, `usage`) no la necesitan.
+- **`No snapshot at .codify/state.json...`** — proyecto sin bootstrap: corre `codify init`, `generate`, o `analyze` primero; o `codify reset-state` si el archivo se borro.
+- **El prompt `Codify isn't configured globally yet. Run interactive setup now?` bloquea scripts** — pasa `--no-auto-config`, configura `CODIFY_NO_AUTO_CONFIG=1`, o `touch ~/.codify/.no-auto-config`.
 
-Si te topas con algo que no esta en esta tabla, abre un issue con: comando ejecutado, exit code, y stderr. El CHANGELOG y los ADRs en este repo documentan la mayoria de las decisiones de diseno — usualmente la respuesta esta ahi.
+Si tu sintoma no aparece en [`docs/troubleshooting.md`](docs/troubleshooting.md), abre un issue con: comando ejecutado, exit code, y stderr. El CHANGELOG y los ADRs documentan la mayoria de las decisiones de diseno.
 
 ## 📚 Documentacion
 
+**Empieza aca:**
+- [📘 Getting Started](docs/getting-started.md) — Tour end-to-end de 5 minutos con outputs esperados *(en ingles)*
+- [📋 Lifecycle Matrix](docs/lifecycle-matrix.md) — Que comando aplica a workstation vs proyecto, greenfield vs brownfield *(en ingles)*
+- [📖 Command Reference](docs/command-reference.md) — Cheatsheet de cada comando, agrupado por fase *(en ingles)*
+- [🆘 Troubleshooting](docs/troubleshooting.md) — Errores comunes y fixes *(en ingles)*
+
+**Referencia:**
+- [📐 ADRs](docs/adr/) — Architectural Decision Records *(en ingles)*
 - [📋 AGENTS.md](AGENTS.md) — Contexto del proyecto para agentes de IA
 - [🏛️ Arquitectura](context/CONTEXT.md) — Detalle DDD/Clean Architecture
 - [📝 Changelog](CHANGELOG.md) — Historial de cambios
-- [📐 Specs](specs/) — Especificaciones tecnicas (SDD)
+- [🧪 Specs](specs/) — Especificaciones tecnicas (SDD)
+
+> Los docs de `docs/` se mantienen en ingles por ahora. Las versiones en espanol pueden agregarse en el futuro segun demanda.
 
 ## 📄 Licencia
 
