@@ -30,6 +30,7 @@ type workflowsParams struct {
 	output         string
 	install        string
 	projectContext string
+	sddStandard    string // ADR-0011 — empty = use config/default precedence (only used by spec-driven-change preset)
 }
 
 // NewWorkflowsCmd creates the workflows command.
@@ -107,6 +108,7 @@ Examples:
 	cmd.Flags().StringVarP(&p.output, "output", "o", "", "Output directory")
 	cmd.Flags().StringVar(&p.install, "install", "", "Install scope: global or project")
 	cmd.Flags().StringVar(&p.projectContext, "context", "", "Project context for personalized mode")
+	cmd.Flags().StringVar(&p.sddStandard, "sdd-standard", "", "SDD standard for spec-driven-change preset: openspec (default) or spec-kit. Overrides project/user config.")
 
 	return cmd
 }
@@ -214,13 +216,22 @@ func runWorkflows(p workflowsParams, explicit map[string]bool) error {
 		output = defaultWorkflowsPath(target)
 	}
 
-	// 6. Resolve templates from catalog
+	// 6. Resolve templates from catalog.
+	//    Para presets SDD-aware (spec-driven-change) el TemplateDir y el
+	//    TemplateMapping se derivan del SpecStandard activo (ADR-0011).
+	//    Para los demás presets (bug-fix, release-cycle) el adapter no
+	//    afecta — los campos estáticos del catálogo se usan tal cual.
 	cat, err := catalog.FindWorkflowCategory("workflows")
 	if err != nil {
 		return err
 	}
 
-	selection, err := cat.Resolve(preset)
+	standard, err := workflowsActiveStandard(preset, p.sddStandard)
+	if err != nil {
+		return err
+	}
+
+	selection, err := cat.ResolveWithSpecStandard(preset, standard)
 	if err != nil {
 		return err
 	}
@@ -508,4 +519,34 @@ func workflowTargetLabel(target string) string {
 		return "Claude Code"
 	}
 	return "Antigravity"
+}
+
+// workflowsActiveStandard determina si el preset elegido necesita un
+// SpecStandard activo y, de ser así, lo resuelve aplicando la precedencia
+// ADR-0011 (flag > project config > user config > default).
+//
+// Solo los presets SDD-aware (spec-driven-change y "all" que lo incluye)
+// requieren resolver. Para bug-fix/release-cycle se devuelve nil para
+// señalizar al catálogo que use los campos estáticos.
+//
+// El helper reusa resolveSpecStandard (definido en spec.go) para mantener
+// una sola fuente de verdad sobre la regla de selección.
+func workflowsActiveStandard(preset, flag string) (service.SpecStandard, error) {
+	if !presetNeedsSpecStandard(preset) {
+		return nil, nil
+	}
+	return resolveSpecStandard(flag)
+}
+
+// presetNeedsSpecStandard centraliza la lista de presets que dependen del
+// SpecStandard activo. Mantenido como función (en lugar de un set literal)
+// para que sea trivial agregar futuros presets SDD-aware sin tocar el
+// llamador.
+func presetNeedsSpecStandard(preset string) bool {
+	switch preset {
+	case "spec-driven-change", "all":
+		return true
+	default:
+		return false
+	}
 }

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"maps"
 	"strings"
+
+	"github.com/jorelcb/codify/internal/domain/service"
 )
 
 // SkillCategory representa una categoría de nivel 1 en el menú de skills.
@@ -16,11 +18,26 @@ type SkillCategory struct {
 }
 
 // SkillOption representa una sub-opción dentro de una categoría.
+//
+// Algunas opciones son SDD-aware: su TemplateDir y TemplateMapping varían
+// según el SpecStandard activo (ver ADR-0011). Para preservar
+// retrocompatibilidad y BDD scenarios existentes, los campos estáticos
+// TemplateDir/TemplateMapping siguen vigentes y actúan como fallback (suelen
+// apuntar al estándar default — OpenSpec). El override dinámico se aplica
+// cuando el caller invoca SkillCategory.ResolveWithSpecStandard pasando un
+// SpecStandard no-nil.
 type SkillOption struct {
 	Name            string            // identificador: "clean", "neutral", "conventional-commit"
 	Label           string            // display: "Clean (DDD, BDD, CQRS, Hexagonal)"
-	TemplateDir     string            // directorio en templates/{locale}/skills/
+	TemplateDir     string            // directorio en templates/{locale}/...
 	TemplateMapping map[string]string // nil = todos los templates del dir; map = solo los indicados
+
+	// SDDAware indica que esta opción es parametrizada por el SpecStandard
+	// activo. Cuando es true y ResolveWithSpecStandard recibe un
+	// SpecStandard no-nil, TemplateDir y TemplateMapping se reemplazan por
+	// los valores derivados del adapter (TemplateDir() + LifecycleWorkflowIDs).
+	// Cuando es false, TemplateDir/TemplateMapping se usan tal cual.
+	SDDAware bool
 }
 
 // ResolvedSelection es el resultado de resolver una selección del catálogo.
@@ -238,33 +255,82 @@ func FindCategory(name string) (*SkillCategory, error) {
 	return nil, fmt.Errorf("unknown category: %s", name)
 }
 
-// Resolve resuelve la selección de una sub-opción (o "all") dentro de la categoría.
+// Resolve resuelve la selección de una sub-opción (o "all") dentro de la
+// categoría usando los campos estáticos TemplateDir/TemplateMapping. Para
+// presets SDD-aware sin SpecStandard explícito, se devuelve el fallback
+// (típicamente OpenSpec), preservando el comportamiento histórico.
 func (c *SkillCategory) Resolve(preset string) (*ResolvedSelection, error) {
+	return c.ResolveWithSpecStandard(preset, nil)
+}
+
+// ResolveWithSpecStandard resuelve la selección aplicando el SpecStandard
+// activo a las opciones marcadas como SDDAware. Cuando std es nil, se
+// comporta igual que Resolve. Para opciones no-SDDAware el parámetro std es
+// ignorado.
+//
+// Esta firma permite que el comando workflows propague el adapter activo
+// sin que los presets no-SDD (bug-fix, release-cycle) tengan que conocer
+// la abstracción.
+func (c *SkillCategory) ResolveWithSpecStandard(preset string, std service.SpecStandard) (*ResolvedSelection, error) {
 	if preset == "all" {
 		if c.Exclusive {
 			return nil, fmt.Errorf("category %q does not support 'all' (options are mutually exclusive)", c.Name)
 		}
-		return c.resolveAll(), nil
+		return c.resolveAll(std), nil
 	}
 
 	for _, opt := range c.Options {
 		if opt.Name == preset {
-			return &ResolvedSelection{
-				TemplateDir:     opt.TemplateDir,
-				TemplateMapping: opt.TemplateMapping,
-			}, nil
+			return optionToSelection(opt, std), nil
 		}
 	}
 	return nil, fmt.Errorf("unknown preset %q in category %q", preset, c.Name)
 }
 
-// resolveAll combina todas las opciones de la categoría en una sola selección.
-func (c *SkillCategory) resolveAll() *ResolvedSelection {
+// optionToSelection construye un ResolvedSelection para una opción concreta.
+// Si la opción es SDDAware y se proveyó un SpecStandard, el dir y el mapping
+// se derivan del adapter; en caso contrario se usan los campos estáticos.
+func optionToSelection(opt SkillOption, std service.SpecStandard) *ResolvedSelection {
+	if opt.SDDAware && std != nil {
+		dir, mapping := sddAwareSelection(std)
+		return &ResolvedSelection{TemplateDir: dir, TemplateMapping: mapping}
+	}
+	return &ResolvedSelection{
+		TemplateDir:     opt.TemplateDir,
+		TemplateMapping: opt.TemplateMapping,
+	}
+}
+
+// sddAwareSelection deriva TemplateDir + TemplateMapping a partir del
+// SpecStandard activo. La convención es:
+//
+//	TemplateDir = "sdd/{standard.TemplateDir()}/workflows"
+//	TemplateMapping = { "{guideID}.template" -> "{guideID}" } para cada
+//	                  guideID en standard.LifecycleWorkflowIDs()
+//
+// Centralizado acá para que un único lugar conozca el contrato del layout
+// de templates por estándar (espejo de lo que hace `codify spec` en
+// cli/commands/spec.go).
+func sddAwareSelection(std service.SpecStandard) (string, map[string]string) {
+	dir := "sdd/" + std.TemplateDir() + "/workflows"
+	ids := std.LifecycleWorkflowIDs()
+	mapping := make(map[string]string, len(ids))
+	for _, id := range ids {
+		mapping[id+".template"] = id
+	}
+	return dir, mapping
+}
+
+// resolveAll combina todas las opciones de la categoría en una sola
+// selección. Las opciones SDDAware contribuyen vía sddAwareSelection cuando
+// hay un SpecStandard activo.
+func (c *SkillCategory) resolveAll(std service.SpecStandard) *ResolvedSelection {
 	merged := make(map[string]string)
 	var dir string
 	for _, opt := range c.Options {
-		dir = opt.TemplateDir
-		maps.Copy(merged, opt.TemplateMapping)
+		sel := optionToSelection(opt, std)
+		dir = sel.TemplateDir
+		maps.Copy(merged, sel.TemplateMapping)
 	}
 	return &ResolvedSelection{
 		TemplateDir:     dir,

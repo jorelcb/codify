@@ -3,6 +3,8 @@ package catalog
 import (
 	"strings"
 	"testing"
+
+	"github.com/jorelcb/codify/internal/infrastructure/sdd"
 )
 
 func TestFindWorkflowCategory(t *testing.T) {
@@ -213,5 +215,88 @@ func TestWorkflowPresetNames_IncludesAllAlias(t *testing.T) {
 	}
 	if !hasAll {
 		t.Error("'all' alias missing from workflow preset names")
+	}
+}
+
+// TestResolveWithSpecStandard_OpenSpec valida que el preset spec-driven-change
+// produce los workflows OpenSpec cuando el adapter OpenSpec está activo.
+// Espejo del comportamiento estático histórico — debe ser idéntico al fallback.
+func TestResolveWithSpecStandard_OpenSpec(t *testing.T) {
+	cat, _ := FindWorkflowCategory("workflows")
+	std := sdd.NewOpenSpecAdapter()
+
+	sel, err := cat.ResolveWithSpecStandard("spec-driven-change", std)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if sel.TemplateDir != "sdd/openspec/workflows" {
+		t.Errorf("got dir %q, want sdd/openspec/workflows", sel.TemplateDir)
+	}
+	if len(sel.TemplateMapping) != 3 {
+		t.Errorf("got %d mappings, want 3", len(sel.TemplateMapping))
+	}
+	for _, want := range []string{"spec_propose.template", "spec_apply.template", "spec_archive.template"} {
+		if _, ok := sel.TemplateMapping[want]; !ok {
+			t.Errorf("expected template %q in mapping, got %v", want, sel.TemplateMapping)
+		}
+	}
+}
+
+// TestResolveWithSpecStandard_SpecKit valida que el mismo preset produce los
+// workflows Spec-Kit (specify/plan/tasks) cuando el adapter Spec-Kit está
+// activo. Es la verificación principal del wiring SDD-aware.
+func TestResolveWithSpecStandard_SpecKit(t *testing.T) {
+	cat, _ := FindWorkflowCategory("workflows")
+	std := sdd.NewSpecKitAdapter()
+
+	sel, err := cat.ResolveWithSpecStandard("spec-driven-change", std)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if sel.TemplateDir != "sdd/spec-kit/workflows" {
+		t.Errorf("got dir %q, want sdd/spec-kit/workflows", sel.TemplateDir)
+	}
+	if len(sel.TemplateMapping) != 3 {
+		t.Errorf("got %d mappings, want 3", len(sel.TemplateMapping))
+	}
+	for _, want := range []string{"speckit_specify.template", "speckit_plan.template", "speckit_tasks.template"} {
+		if _, ok := sel.TemplateMapping[want]; !ok {
+			t.Errorf("expected template %q in mapping, got %v", want, sel.TemplateMapping)
+		}
+	}
+}
+
+// TestResolveWithSpecStandard_NilFallsBackToStatic confirma que pasar
+// std=nil reproduce el comportamiento del Resolve legacy (campos estáticos
+// del preset, que apuntan a OpenSpec). Es lo que mantiene los BDD scenarios
+// de v2.2.0 verdes sin tocarlos.
+func TestResolveWithSpecStandard_NilFallsBackToStatic(t *testing.T) {
+	cat, _ := FindWorkflowCategory("workflows")
+
+	sel, err := cat.ResolveWithSpecStandard("spec-driven-change", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if sel.TemplateDir != "sdd/openspec/workflows" {
+		t.Errorf("nil std should use OpenSpec fallback, got %q", sel.TemplateDir)
+	}
+}
+
+// TestResolveWithSpecStandard_NonSDDPresetIgnoresStandard confirma que
+// pasar un SpecStandard a un preset no-SDD (bug-fix, release-cycle) no
+// afecta el resultado. Garantiza que el adapter no se filtra a presets
+// que no lo necesitan.
+func TestResolveWithSpecStandard_NonSDDPresetIgnoresStandard(t *testing.T) {
+	cat, _ := FindWorkflowCategory("workflows")
+	std := sdd.NewSpecKitAdapter() // un adapter no-default a propósito
+
+	for _, preset := range []string{"bug-fix", "release-cycle"} {
+		sel, err := cat.ResolveWithSpecStandard(preset, std)
+		if err != nil {
+			t.Fatalf("preset %q: unexpected error: %v", preset, err)
+		}
+		if sel.TemplateDir != "workflows" {
+			t.Errorf("preset %q: SDD adapter must not affect non-SDD presets, got dir %q", preset, sel.TemplateDir)
+		}
 	}
 }
