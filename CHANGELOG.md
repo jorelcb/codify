@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-05-07 - Lifecycle phase model in CLI/docs + SDD pluggable (OpenSpec ↔ Spec-Kit)
+
+> Three coordinated tracks of post-internal-review work, no breaking changes. The CLI now organizes commands by lifecycle phase (Bootstrap → Equip → Maintain), the documentation surfaces that model end-to-end, and `codify spec` becomes pluggable: OpenSpec stays the default but the new GitHub Spec-Kit adapter lands as a first-class alternative selectable via `--sdd-standard` flag, project config, or user config. Decisions captured in ADR-0010 (catalog architecture, planned for v3) and ADR-0011 (SDD pluggable, shipped in this release).
+
+### Added
+
+#### CLI lifecycle phase model
+- **Cobra command groups** — `codify --help` now renders commands grouped by phase: **Bootstrap** (`config`, `init`), **Equip** (`generate`, `analyze`, `spec`, `skills`, `workflows`, `hooks`), **Maintain** (`check`, `update`, `audit`, `watch`, `usage`, `resolve`, `reset-state`), **System** (`serve`, `list`). Internal helper `withGroup` keeps the registration tidy.
+- **Phase diagram in root help** — ASCII diagram (Bootstrap → Equip → Maintain) embedded in the root command's `Long`, listing which commands belong to each phase. Same diagram appears in `README.md` and `docs/lifecycle-matrix.md` for cross-surface consistency.
+- **`init` next-steps output** — after a successful `codify init`, the printout splits into **Equip (when needed)** and **Maintain (as your project evolves)** sections. The Equip block lists `spec`/`skills`/`workflows`/`hooks` (hooks shown only when `target == "claude"`); the Maintain block lists `check`/`update`/`audit`/`watch`/`usage`. Banners changed to "Codify · Bootstrap (project)" / "Codify · Bootstrap (workstation)".
+- **`config` next-steps output** — `codify config` now closes with a "Next steps" block pointing the user at `codify init` (Bootstrap per project) plus `codify config` / `codify config set` for later updates. Mirrors the structure of `init`'s output.
+
+#### Documentation reorganization
+- **`docs/getting-started.md`** (225 lines) — 5-minute tour from install to maintain, with full transcripts for greenfield (`codify init` → new) and brownfield (`codify init` → existing) flows. CI integration example included.
+- **`docs/troubleshooting.md`** (74 lines) — common errors table + diagnostic playbook (auto-launch loops, unexpected drift, LLM auth errors).
+- **`docs/command-reference.md`** (97 lines) — cheatsheet of every command, grouped by phase, with scope, API key requirements, and links back to README sections.
+- **`docs/lifecycle-matrix.md`** (95 lines) — scope × kind × phase decision matrix (workstation vs project, greenfield vs brownfield) with recommended sequencing for first-time devs and brownfield adopters.
+- **README restructure** — top nav redesigned around the three phases, new `🗺️ Lifecycle phases at a glance` section with the ASCII diagram, Quick Start condensed from 122 lines to a 31-line numbered cheatsheet that points to `docs/getting-started.md`. Phase headers (`🚀 Bootstrap`, `🧰 Equip`, `🔧 Maintain`) added with intro notes. Major sections reordered so Equip detail (Context / Specs / Skills / Workflows / Hooks) precedes Maintain detail (Drift / Update / Marker / Watch). 55 sub-headers cascaded `###` → `####` to preserve hierarchy. Troubleshooting in README abbreviated and links to the dedicated doc. Documentation section reshaped into "Start here" + "Reference". Same restructure mirrored in `README_ES.md` (with explicit note that `docs/` is English-only by design).
+
+#### SDD standard pluggability (ADR-0011)
+- **`SpecStandard` port** in `internal/domain/service/spec_standard.go` — interface with `ID`, `DisplayName`, `BootstrapArtifacts`, `OutputLayout` (`LayoutFlat` or `LayoutFeatureGrouped`), `TemplateDir`, `SystemPromptHints`, `LifecycleWorkflowIDs`. Adapters live in `internal/infrastructure/sdd/`.
+- **`OpenSpecAdapter`** — preserves 100% of v2.1.x `codify spec` behavior. Stays the default and is registered automatically. Templates relocated from `templates/{locale}/spec/` to `templates/{locale}/sdd/openspec/spec/`, and from `templates/{locale}/workflows/spec_*.template` to `templates/{locale}/sdd/openspec/workflows/`. The `bug_fix` and `release_cycle` workflow templates stay at the top-level `workflows/` directory because they are not SDD-specific.
+- **`SpecKitAdapter`** — implements [GitHub Spec-Kit](https://github.com/github/spec-kit) format: feature-grouped layout (`specs/<feature-id>/`), lowercase file names with hyphens (`spec.md`, `plan.md`, `data-model.md`), no constitution file, linear lifecycle (`/specify` → `/plan` → `/tasks` without deltas/archive). Six templates per locale under `templates/{locale}/sdd/spec-kit/spec/` covering required (`speckit_spec`, `speckit_plan`, `speckit_tasks`) and optional (`speckit_research`, `speckit_data_model`, `speckit_quickstart`) artifacts. Three lifecycle workflow templates under `templates/{locale}/sdd/spec-kit/workflows/` (`speckit_specify`, `speckit_plan`, `speckit_tasks`) — these define the slash-command-equivalent guides; full wiring into the `workflows` command preset is deferred.
+- **`Registry` of SpecStandard adapters** in `internal/infrastructure/sdd/registry.go` — `NewDefaultRegistry()` registers OpenSpec + Spec-Kit. `Lookup(id)` returns explicit error listing available IDs on miss. `Resolve(flagValue, projectStandardID, userStandardID)` applies ADR-0011 precedence (flag → project config → user config → built-in default `openspec`). Unknown intermediate IDs fail explicitly rather than silently fall back.
+- **`--sdd-standard` flag** on `codify spec` — accepts `openspec` or `spec-kit`. Help text documents the precedence chain and points at ADR-0011.
+- **`sdd_standard` config key** in user (`~/.codify/config.yml`) and project (`.codify/config.yml`) configs. Available via `codify config get sdd_standard` / `codify config set sdd_standard <id>` / `codify config unset sdd_standard`. Validation is lazy (the registry validates at resolve time, not on `set`) so a config file referencing a future standard does not break unrelated commands.
+- **Per-guide output filenames via `TemplateGuide.OutputFileName`** — domain-level field on the existing `TemplateGuide` struct. Allows the spec command to override the canonical filename (`spec` → `SPEC.md` for OpenSpec, `spec` → `spec.md` for Spec-Kit) without polluting the shared `fileOutputNames` map maintained for context/skills/workflows guides. Helper `GuideOutputName(guide)` resolves the override first, falls back to the global map.
+- **`SDDStandardHints` on `GenerationRequest`** — the active adapter's prompt addendum is propagated through the spec generation pipeline so the LLM respects per-standard conventions (lowercase, per-feature dir for Spec-Kit). `BuildSpecSystemPrompt` now accepts a `standardHints` parameter, injected after the grounding rules block.
+- **Feature ID handling** — `dto.SpecConfig` gains `Layout`, `FeatureID`, `StandardID`, `StandardHints`. For `LayoutFeatureGrouped`, the spec command derives `featureID` from the project name via `slugifyFeatureID` (lowercase, ASCII alphanumeric, hyphens for spaces/specials, fallback `"feature"` on empty). Output writes to `specs/<feature>/<file>.md`. `LayoutFlat` preserves the historical `specs/<file>.md`.
+- **`buildSpecsReferenceSection` is layout-aware** — the Specifications section appended to AGENTS.md after `codify spec` lists files at `specs/<file>` for OpenSpec or `specs/<feature>/<file>` for Spec-Kit. Iterates `BootstrapArtifacts()` so adding standards with new file sets requires no edit here.
+- **18 BDD scenarios / 74 steps** in `tests/bdd/sdd_standard/` covering: adapter contract per standard, required vs optional artifact splits, lowercase enforcement on Spec-Kit, absence of constitution file in Spec-Kit, lifecycle workflow IDs, system prompt hints (EN + ES), resolution precedence (default fallback, user-only, project overrides user, flag overrides everything), explicit errors on unknown flag/project IDs, and embedded FS template availability for both standards.
+
+### Changed
+
+- **CLI root command's `Short`** changed from `"Generate AI-optimized context files for your projects"` to `"Provision, equip, and maintain AI development environments"` to reflect the broader phase model.
+- **`spec-driven-change` workflow preset** template path moved from `workflows/` to `sdd/openspec/workflows/`. Behavior preserved; consumers loading the preset receive the same three workflow files. Test scenarios in `tests/bdd/workflow_catalog/workflow_catalog.feature` and `internal/domain/catalog/workflow_catalog_test.go` updated accordingly.
+- **`codify spec --help`** rewritten — describes the active SDD standard, mentions Spec-Kit as a first-class alternative, points at ADR-0011 and `docs/command-reference.md`. Progress output (`Generating specs for: ...`) now includes `SDD standard: ...` and `Feature ID: ...` (the latter only when `LayoutFeatureGrouped`).
+- **`fileOutputNames` global map** in `internal/infrastructure/llm/prompt_builder.go` is no longer the sole source of truth for spec file names. Providers (Anthropic, Gemini, mock) call `GuideOutputName(guide)` instead of `FileOutputName(guide.Name)` so per-guide overrides take effect. `FileOutputName(name)` remains as the fallback path for guides that do not vary by standard (context, skills, workflows).
+
+### Migration notes
+
+- **No action required for existing projects.** OpenSpec stays the default. Running `codify spec` after upgrading produces the exact same `specs/CONSTITUTION.md`, `specs/SPEC.md`, `specs/PLAN.md`, `specs/TASKS.md` as v2.1.x.
+- **To opt into Spec-Kit globally:** `codify config set sdd_standard spec-kit`.
+- **To opt into Spec-Kit for a single project:** add `sdd_standard: spec-kit` to `.codify/config.yml`.
+- **To opt into Spec-Kit for a single invocation:** `codify spec my-project --from-context . --sdd-standard=spec-kit`.
+
+### Deferred (intentionally not in v2.2.0)
+
+- **`workflows --preset spec-driven-change`** still ships only the OpenSpec workflow templates. The Spec-Kit equivalents (`speckit_specify`, `speckit_plan`, `speckit_tasks`) exist on disk but are not wired into the workflow_catalog yet — that wiring requires the workflow_catalog to resolve `TemplateDir` through the active `SpecStandard` adapter and is queued as a follow-up.
+- **`mcp/server.go`** spec-related response strings still reference OpenSpec file names verbatim (`specs/CONSTITUTION.md`, etc.). Cosmetic refactor to make them adapter-aware is queued.
+- **Spanish localization of `docs/`.** `README.md` and `README_ES.md` are kept in parallel, but the deeper `docs/` (`getting-started.md`, `troubleshooting.md`, `command-reference.md`, `lifecycle-matrix.md`) ship in English only. ES versions can land later if there is real demand — a note in `README_ES.md` makes that explicit.
+- **Catalog architecture (ADR-0010)** is accepted but not implemented. Track D — `PackageManifest`, `PackageSource` ports, multi-ecosystem (Claude + Gemini + Antigravity), workstation/project install via interactive `catalog` command — remains the v3.0 target.
+
+### Tests
+- Suite grew from 32 to 34 packages: added `internal/infrastructure/sdd/` (registry + speckit unit tests, 14 test cases) and `tests/bdd/sdd_standard/` (godog feature with 18 scenarios). All BDD scenarios across the project remain green.
+
 ## [2.1.1] - 2026-05-06 - Patch: prevent silent JSON truncation in marker enrichment
 
 > Hotfix on the v2.1.0 resolver flow. When `codify generate` ran the post-generation resolve hook, files with several `[DEFINE]` markers (e.g. AGENTS.md with 4 markers) surfaced `marker enrichment unavailable for AGENTS.md (enrichment response is not valid JSON: unexpected end of JSON input)` and silently fell back to the legacy UI for those files. Root cause: the enricher capped `MaxTokens` at 2048, which was tight enough that multi-marker responses (LLM echoes each `marker_text` plus suggestions and rationale) got truncated mid-JSON. The streaming layer didn't observe `stop_reason`, so the cut response reached the parser as if it were complete.
