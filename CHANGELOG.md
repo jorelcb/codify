@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-05-08 - Workflow preset spec-driven-change is now SDD-aware
+
+> Closes the last functional gap from v2.2.0's "Deferred" section: `codify workflows --preset spec-driven-change` now respects the active SDD standard. Spec-Kit users get the `speckit-specify`/`speckit-plan`/`speckit-tasks` skills installed; OpenSpec users keep getting `spec-propose`/`spec-apply`/`spec-archive`. No breaking changes — OpenSpec stays default and existing workflows continue to install identically when no override is provided.
+
+### Added
+- **`--sdd-standard` flag on `codify workflows`** — same precedence chain as `codify spec` (flag > project config > user config > built-in default `openspec`). Only applies to SDD-aware presets (`spec-driven-change` and `all`); other presets ignore it.
+- **`SkillCategory.ResolveWithSpecStandard(preset, std)` method** in `internal/domain/catalog/`. Existing `Resolve(preset)` is preserved as a thin wrapper passing `nil`, which routes SDD-aware presets to their static OpenSpec fallback.
+- **`SkillOption.SDDAware bool` field** marks options whose `TemplateDir` and `TemplateMapping` are derived at resolve time from the active `SpecStandard` adapter (specifically `TemplateDir()` + `LifecycleWorkflowIDs()`).
+- **WorkflowMetadata entries** for `speckit_specify`, `speckit_plan`, `speckit_tasks` so frontmatter generation produces correct descriptions for the Spec-Kit skills.
+
+### Changed
+- **`spec-driven-change` workflow preset** is now `SDDAware: true`. The static `TemplateDir: "sdd/openspec/workflows"` plus 3-template mapping remain as fallback, preserving v2.2.0 behavior for callers that use the legacy `Resolve(preset)` method (e.g., existing BDD scenarios) and for users who don't override the standard.
+- **`codify workflows` internals** call `cat.ResolveWithSpecStandard` with the resolved adapter. The new helper `workflowsActiveStandard` only invokes adapter resolution when the preset actually needs it (`presetNeedsSpecStandard` returns true for `spec-driven-change` and `all`); other presets receive `nil` so the adapter never leaks to `bug-fix` or `release-cycle`.
+
+### Migration
+- **No action required for existing users.** Default remains OpenSpec; running `codify workflows --preset spec-driven-change` produces the exact same output as v2.2.0.
+- **Spec-Kit users** can now use any of:
+  - `codify workflows --preset spec-driven-change --sdd-standard=spec-kit`
+  - `codify config set sdd_standard spec-kit` (workstation-wide), then run the preset normally.
+  - Adding `sdd_standard: spec-kit` to `.codify/config.yml` (project-wide).
+
+### Tests
+- Four new unit tests in `internal/domain/catalog/workflow_catalog_test.go` lock the contract: OpenSpec resolution, Spec-Kit resolution, nil-std fallback to static fields, and isolation (passing a Spec-Kit adapter to non-SDD presets must not affect them).
+- All v2.2.0 BDD scenarios stay green without modification — the static fallback path is exercised by the legacy `Resolve(preset)` calls in those scenarios.
+- End-to-end verified: `codify workflows --preset spec-driven-change --sdd-standard=spec-kit --target=claude --mode=static --install=project` installs `.claude/skills/speckit-{specify,plan,tasks}/SKILL.md`; the same command without the flag installs `.claude/skills/spec-{propose,apply,archive}/SKILL.md`.
+
 ## [2.2.0] - 2026-05-07 - Lifecycle phase model in CLI/docs + SDD pluggable (OpenSpec ↔ Spec-Kit)
 
 > Three coordinated tracks of post-internal-review work, no breaking changes. The CLI now organizes commands by lifecycle phase (Bootstrap → Equip → Maintain), the documentation surfaces that model end-to-end, and `codify spec` becomes pluggable: OpenSpec stays the default but the new GitHub Spec-Kit adapter lands as a first-class alternative selectable via `--sdd-standard` flag, project config, or user config. Decisions captured in ADR-0010 (catalog architecture, planned for v3) and ADR-0011 (SDD pluggable, shipped in this release).
