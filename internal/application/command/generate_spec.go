@@ -41,13 +41,16 @@ func (c *GenerateSpecCommand) Execute(
 	existingContext string,
 	templateGuides []service.TemplateGuide,
 ) (*dto.GenerationResult, error) {
-	// 1. Build generation request in spec mode
+	// 1. Build generation request in spec mode. SDDStandardHints carries
+	//    the active standard's prompt addendum so the LLM respects per-standard
+	//    conventions (file naming, layout, etc.).
 	req := service.GenerationRequest{
 		ProjectDescription: existingContext,
 		TemplateGuides:     templateGuides,
 		ExistingContext:    existingContext,
-		Mode:              "spec",
-		Locale:            config.Locale,
+		Mode:               "spec",
+		Locale:             config.Locale,
+		SDDStandardHints:   config.StandardHints,
 	}
 
 	// 2. Call LLM provider
@@ -56,8 +59,13 @@ func (c *GenerateSpecCommand) Execute(
 		return nil, fmt.Errorf("LLM spec generation failed: %w", err)
 	}
 
-	// 3. Create specs output directory
+	// 3. Create specs output directory honoring the active SpecStandard's layout.
+	//    LayoutFlat            → <output>/specs/
+	//    LayoutFeatureGrouped  → <output>/specs/<FeatureID>/
 	specsDir := filepath.Join(config.OutputPath, "specs")
+	if config.Layout == service.LayoutFeatureGrouped && config.FeatureID != "" {
+		specsDir = filepath.Join(specsDir, config.FeatureID)
+	}
 	if err := c.directoryManager.CreateDir(specsDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create specs directory: %w", err)
 	}

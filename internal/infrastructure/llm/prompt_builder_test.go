@@ -288,7 +288,7 @@ func TestPromptBuilder_BuildSpecSystemPrompt(t *testing.T) {
 	builder := NewPromptBuilder()
 
 	existingContext := "# My Project Context\n\nThis is the architecture description."
-	prompt := builder.BuildSpecSystemPrompt(existingContext, "en")
+	prompt := builder.BuildSpecSystemPrompt(existingContext, "en", "")
 
 	if prompt == "" {
 		t.Error("BuildSpecSystemPrompt() returned empty string")

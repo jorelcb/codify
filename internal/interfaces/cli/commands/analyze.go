@@ -213,7 +213,10 @@ func runAnalyzeInteractive(projectPath string, p analyzeParams, explicit map[str
 		fmt.Println()
 		fmt.Println("--- Generating specs from context ---")
 		fmt.Println()
-		return runSpec(p.name, p.output, p.output, p.model, p.locale)
+		// `analyze --with-specs` no expone --sdd-standard; respeta la
+		// elección del config (project > user > default). Si se necesita
+		// overridear desde analyze, se agrega flag dedicado y se pasa acá.
+		return runSpec(p.name, p.output, p.output, p.model, p.locale, "")
 	}
 
 	return nil

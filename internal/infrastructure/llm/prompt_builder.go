@@ -59,11 +59,28 @@ var localeLanguageNames = map[string]string{
 }
 
 // FileOutputName returns the output file name for a given template guide name.
+// Used as a fallback when no per-guide override is available.
+//
+// Prefer GuideOutputName(guide) at call sites that have a TemplateGuide in
+// hand — it respects the optional guide.OutputFileName override which lets
+// SpecStandard adapters dispatch file names without mutating this global
+// map (see ADR-0011).
 func FileOutputName(guideName string) string {
 	if name, ok := fileOutputNames[guideName]; ok {
 		return name
 	}
 	return guideName + ".md"
+}
+
+// GuideOutputName resuelve el nombre de archivo para un TemplateGuide.
+// Prioriza guide.OutputFileName (cuando lo setea el caller — típicamente la
+// spec command para variar SPEC.md vs spec.md por SpecStandard); si está
+// vacío, cae al mapping global.
+func GuideOutputName(guide service.TemplateGuide) string {
+	if guide.OutputFileName != "" {
+		return guide.OutputFileName
+	}
+	return FileOutputName(guide.Name)
 }
 
 // outputLanguageName returns the language name for the given locale (defaults to English).
@@ -276,7 +293,7 @@ func (b *PromptBuilder) BuildUserMessageForFile(req service.GenerationRequest, g
 		sb.WriteString("</project_metadata>\n\n")
 	}
 
-	sb.WriteString(fmt.Sprintf("<template_guide file=\"%s\">\n", FileOutputName(guide.Name)))
+	sb.WriteString(fmt.Sprintf("<template_guide file=\"%s\">\n", GuideOutputName(guide)))
 	sb.WriteString(guide.Content)
 	sb.WriteString("\n</template_guide>\n")
 
@@ -445,7 +462,12 @@ func (b *PromptBuilder) BuildSkillsUserMessage(guide service.TemplateGuide, targ
 }
 
 // BuildSpecSystemPrompt returns a system prompt for generating spec files from existing context.
-func (b *PromptBuilder) BuildSpecSystemPrompt(existingContext string, locale string) string {
+//
+// standardHints es el bloque que el SpecStandard activo aporta para reforzar
+// convenciones específicas del estándar (layout, naming, etc.). Vacío para
+// OpenSpec — la base ya describe ese formato. No-vacío para Spec-Kit
+// (lowercase filenames, per-feature dir, etc.).
+func (b *PromptBuilder) BuildSpecSystemPrompt(existingContext string, locale string, standardHints string) string {
 	return fmt.Sprintf(`<role>
 You are a senior software architect specialized in technical specifications.
 Your task is to generate SDD (Spec-Driven Development) specification documents from an existing project context.
@@ -461,7 +483,7 @@ You will receive the complete project context and a template guide for the speci
 %s
 </existing_context>
 
-%s
+%s%s
 
 <workflow>
 1. Deeply analyze the existing context: architecture, stack, patterns, constraints
@@ -483,7 +505,7 @@ You will receive the complete project context and a template guide for the speci
 - Base ALL content on the existing context provided
 </output_quality>
 
-%s`, existingContext, groundingRulesForGeneratedContent(), commonOutputRules(locale))
+%s`, existingContext, groundingRulesForGeneratedContent(), standardHints, commonOutputRules(locale))
 }
 
 // BuildPersonalizedWorkflowsSystemPrompt returns a system prompt for generating personalized Antigravity workflows.

@@ -1,0 +1,34 @@
+# Quickstart: {{FEATURE_NAME}}
+
+> Artefacto opcional Spec-Kit. Pasos concretos que ejercitan la historia
+> principal de usuario end-to-end — usado para verificacion manual y como
+> referencia para integration tests. Vive en
+> `specs/<feature-id>/quickstart.md`.
+
+## Prerequisitos
+
+- {{PREREQ_1}}
+- {{PREREQ_2}}
+
+## Pasos
+
+1. {{ACCION_1}}
+   - Esperado: {{EXPECTATIVA_1}}
+
+2. {{ACCION_2}}
+   - Esperado: {{EXPECTATIVA_2}}
+
+3. {{ACCION_3}}
+   - Esperado: {{EXPECTATIVA_3}}
+
+## Criterios de Exito
+
+El feature funciona si:
+- [ ] {{CRITERIO_1}}
+- [ ] {{CRITERIO_2}}
+- [ ] {{CRITERIO_3}}
+
+## Limpieza
+
+- {{PASO_LIMPIEZA_1}}
+- {{PASO_LIMPIEZA_2}}

@@ -1,0 +1,43 @@
+# /plan — Spec-Kit lifecycle workflow
+
+Translate `spec.md` into a concrete technical plan. Captures **how** the
+feature will be built before any code is written.
+
+## Goal
+
+Produce `specs/<feature-id>/plan.md` (and optionally research.md /
+data-model.md) from an existing spec.md, aligned with project conventions.
+
+## Pre-checks
+
+- `specs/<feature-id>/spec.md` exists and has no unresolved [DEFINE]
+  markers in critical sections.
+- Open questions from spec.md are answered (record decisions in research.md).
+
+## Steps
+
+1. **Read spec.md.** Extract requirements, scenarios, scope.
+2. **Capture technical context.** Language, frameworks, datastore,
+   deployment target, test strategy — match the existing repo conventions.
+3. **Run a Constitution Check.** Verify the plan respects the project's
+   architectural pattern, naming conventions, dependency policy, and test
+   layering.
+4. **Define project structure.** Exact paths for new and modified files.
+5. **Break the work into design phases.** Skeleton → core logic → wiring &
+   tests. Number each step.
+6. **Document trade-offs.** For non-obvious decisions, list options
+   considered and why one was chosen.
+7. **List risks and mitigations.** Be specific.
+8. **Optional artifacts:** If the feature has real unknowns or non-trivial
+   data, also produce `research.md` and `data-model.md`.
+
+## Don'ts
+
+- Do not enumerate tasks here — that is /tasks territory.
+- Do not skip the Constitution Check. Misalignment caught here is cheap;
+  caught after coding is expensive.
+
+## Output
+
+`specs/<feature-id>/plan.md` populated, plus optional research.md and
+data-model.md when warranted.

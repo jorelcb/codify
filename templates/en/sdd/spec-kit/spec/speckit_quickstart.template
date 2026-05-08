@@ -1,0 +1,33 @@
+# Quickstart: {{FEATURE_NAME}}
+
+> Spec-Kit optional artifact. Concrete steps that exercise the primary user
+> story end to end — used for manual verification and as an integration
+> test reference. Lives at `specs/<feature-id>/quickstart.md`.
+
+## Prerequisites
+
+- {{PREREQ_1}}
+- {{PREREQ_2}}
+
+## Steps
+
+1. {{STEP_1_ACTION}}
+   - Expected: {{STEP_1_EXPECTATION}}
+
+2. {{STEP_2_ACTION}}
+   - Expected: {{STEP_2_EXPECTATION}}
+
+3. {{STEP_3_ACTION}}
+   - Expected: {{STEP_3_EXPECTATION}}
+
+## Success Criteria
+
+The feature is working if:
+- [ ] {{CRITERION_1}}
+- [ ] {{CRITERION_2}}
+- [ ] {{CRITERION_3}}
+
+## Cleanup
+
+- {{CLEANUP_STEP_1}}
+- {{CLEANUP_STEP_2}}

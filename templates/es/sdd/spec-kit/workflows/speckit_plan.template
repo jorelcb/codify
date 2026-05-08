@@ -1,0 +1,46 @@
+# /plan — Workflow del lifecycle Spec-Kit
+
+Traducir spec.md en un plan tecnico concreto. Captura **como** se construye
+el feature antes de escribir codigo.
+
+## Objetivo
+
+Producir `specs/<feature-id>/plan.md` (y opcionalmente research.md /
+data-model.md) a partir del spec.md existente, alineado con las
+convenciones del proyecto.
+
+## Pre-checks
+
+- `specs/<feature-id>/spec.md` existe y no tiene marcadores [DEFINE] sin
+  resolver en secciones criticas.
+- Las preguntas abiertas de spec.md estan respondidas (registrar las
+  decisiones en research.md).
+
+## Pasos
+
+1. **Leer spec.md.** Extraer requisitos, escenarios, alcance.
+2. **Capturar contexto tecnico.** Lenguaje, frameworks, datastore, target
+   de despliegue, estrategia de tests — todo en linea con el repo.
+3. **Constitution Check.** Verificar que el plan respeta el patron
+   arquitectonico del proyecto, naming, politica de dependencias y
+   layering de tests.
+4. **Definir estructura del proyecto.** Paths exactos de archivos nuevos
+   y modificados.
+5. **Dividir el trabajo en fases de diseno.** Esqueleto → logica core →
+   wiring & tests. Numerar cada paso.
+6. **Documentar trade-offs.** Para decisiones no obvias, listar opciones
+   y por que se eligio una.
+7. **Listar riesgos y mitigaciones.** Ser especifico.
+8. **Artefactos opcionales:** Si el feature tiene incognitas reales o
+   datos no triviales, producir tambien `research.md` y `data-model.md`.
+
+## No hacer
+
+- No enumerar tasks aqui — eso es territorio de /tasks.
+- No saltarse el Constitution Check. Detectar misalignment aca es barato;
+  detectarlo despues de codear es caro.
+
+## Salida
+
+`specs/<feature-id>/plan.md` poblado, mas opcional research.md y
+data-model.md cuando aplique.

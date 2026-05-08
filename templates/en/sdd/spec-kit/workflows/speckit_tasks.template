@@ -1,0 +1,45 @@
+# /tasks — Spec-Kit lifecycle workflow
+
+Decompose plan.md into concrete, ordered, executable units of work. The
+output of /tasks is what gets implemented.
+
+## Goal
+
+Produce `specs/<feature-id>/tasks.md` with an actionable, dependency-ordered
+checklist that another engineer (human or AI) can execute end-to-end.
+
+## Pre-checks
+
+- `specs/<feature-id>/plan.md` exists, design phases enumerated.
+- Constitution Check in plan.md is green.
+
+## Steps
+
+1. **Walk plan.md design phases in order.** For each phase, enumerate
+   atomic tasks with a globally unique identifier (T-1, T-2, ...).
+2. **Specify exact file paths.** Each task should reference the file or
+   directory it touches. Generic tasks like "implement the feature" are
+   forbidden.
+3. **Mark parallelism.** Tasks independent from their predecessor get [P].
+4. **Declare dependencies.** Each task lists which earlier T-IDs must be
+   completed first.
+5. **Set acceptance criteria.** Each task has a testable, observable outcome.
+6. **Group sections.** Setup → Core Implementation → Tests → Wiring & Polish.
+7. **Add a "Done When" checklist.** Aggregates pass conditions: tests pass,
+   quickstart steps run, Constitution Check still green.
+
+## Don'ts
+
+- Do not invent tasks not derivable from plan.md.
+- Do not write tasks without a file path target.
+- Do not skip dependencies — implicit ordering breaks parallel execution.
+
+## Output
+
+A populated `specs/<feature-id>/tasks.md` ready for execution.
+
+## After /tasks
+
+Implementation. Spec-Kit does not have an /archive phase — a feature is done
+when all tasks are checked, tests pass, and `quickstart.md` (if present)
+runs cleanly.

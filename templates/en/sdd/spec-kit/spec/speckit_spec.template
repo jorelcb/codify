@@ -1,0 +1,57 @@
+# Feature Specification: {{FEATURE_NAME}}
+
+> Spec-Kit format. Captures **what** the feature does and **why**, not how
+> it is built. Lives at `specs/<feature-id>/spec.md`.
+
+## Overview
+
+{{ONE_PARAGRAPH_DESCRIPTION_OF_THE_FEATURE}}
+
+## User Scenarios
+
+### Primary Story
+**As a** {{ACTOR}}
+**I want** {{ACTION}}
+**So that** {{BENEFIT}}
+
+### Acceptance Scenarios
+
+1. **GIVEN** {{PRECONDITION}}
+   **WHEN** {{TRIGGER}}
+   **THEN** {{EXPECTED_OUTCOME}}
+
+2. **GIVEN** {{PRECONDITION}}
+   **WHEN** {{TRIGGER}}
+   **THEN** {{EXPECTED_OUTCOME}}
+
+### Edge Cases
+
+| Case | Expected Behavior |
+|---|---|
+| {{EDGE_CASE_1}} | {{BEHAVIOR_1}} |
+| {{EDGE_CASE_2}} | {{BEHAVIOR_2}} |
+
+## Functional Requirements
+
+- **FR-1:** {{REQUIREMENT_STATEMENT}}
+  - Acceptance: {{TESTABLE_CRITERION}}
+- **FR-2:** {{REQUIREMENT_STATEMENT}}
+  - Acceptance: {{TESTABLE_CRITERION}}
+
+## Non-Functional Requirements
+
+- **Performance:** {{TARGET_LATENCY_OR_THROUGHPUT}}
+- **Security:** {{SECURITY_REQUIREMENT}}
+- **Availability:** {{AVAILABILITY_TARGET}}
+
+## Out of Scope
+
+Items explicitly NOT in this feature:
+- {{EXCLUDED_ITEM_1}}
+- {{EXCLUDED_ITEM_2}}
+
+## Open Questions
+
+Uncertainties to resolve before starting plan.md:
+- {{OPEN_QUESTION_1}}
+- {{OPEN_QUESTION_2}}

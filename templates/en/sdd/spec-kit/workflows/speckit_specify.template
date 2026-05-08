@@ -1,0 +1,48 @@
+# /specify — Spec-Kit lifecycle workflow
+
+Capture **what** a feature does and **why**. The output of /specify is the
+single source of truth that downstream phases (/plan, /tasks) build on.
+
+## Goal
+
+Produce a complete `specs/<feature-id>/spec.md` from the user's natural-language
+description of the feature, without inventing details that are not stated.
+
+## When to use
+
+- Starting a new feature.
+- The user has a description but no implementation plan yet.
+
+## Pre-checks
+
+- Confirm a feature-id is decided (kebab-case, derived from project context
+  unless overridden).
+- Confirm `specs/<feature-id>/` does not already contain a spec.md (avoid
+  silent overwrite).
+
+## Steps
+
+1. **Read the feature description.** If ambiguous, ask the user for at most
+   3 clarifying questions before drafting.
+2. **Draft user scenarios.** Primary story + 1–3 acceptance scenarios in
+   GIVEN/WHEN/THEN form.
+3. **Identify edge cases.** Capture the 2–4 most likely failure or boundary
+   conditions and the expected behavior for each.
+4. **Capture functional and non-functional requirements.** Numbered, with a
+   testable acceptance criterion each.
+5. **List explicit out-of-scope items.** Helps downstream avoid scope creep.
+6. **Surface open questions.** Anything that must be answered before /plan.
+7. **Write `specs/<feature-id>/spec.md`** following the Spec-Kit template.
+
+## Don'ts
+
+- Do not include implementation details (frameworks, file paths, library
+  names). Those go in /plan.
+- Do not write tasks. Tasks come out of /tasks, after /plan.
+- Do not write code. /specify is design-time.
+
+## Output
+
+A populated `specs/<feature-id>/spec.md` with `[DEFINE: ...]` markers wherever
+the description left a real gap. Open questions go in the dedicated section,
+not as fake answers.

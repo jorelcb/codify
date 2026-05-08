@@ -1,0 +1,23 @@
+# Investigacion: {{FEATURE_NAME}}
+
+> Artefacto opcional Spec-Kit. Captura investigacion previa que informa
+> spec/plan/tasks. Generar SOLO cuando hay incognitas reales o decisiones
+> tecnologicas que requirieron evaluacion. Vive en
+> `specs/<feature-id>/research.md`.
+
+## Decisiones Tomadas
+
+| Decision | Razon | Alternativas Rechazadas |
+|---|---|---|
+| {{DECISION_1}} | {{RAZON_1}} | {{ALT_1_RECHAZADA}} |
+| {{DECISION_2}} | {{RAZON_2}} | {{ALT_2_RECHAZADA}} |
+
+## Preguntas Abiertas Resueltas
+
+- {{PREGUNTA_1}} → {{RESPUESTA_1}}
+- {{PREGUNTA_2}} → {{RESPUESTA_2}}
+
+## Referencias
+
+- {{LINK_O_DOC_1}}
+- {{LINK_O_DOC_2}}

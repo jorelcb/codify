@@ -1,0 +1,50 @@
+# /specify — Workflow del lifecycle Spec-Kit
+
+Captura **que** hace un feature y **por que**. La salida de /specify es la
+fuente de verdad sobre la que se apoyan las fases siguientes (/plan, /tasks).
+
+## Objetivo
+
+Producir un `specs/<feature-id>/spec.md` completo a partir de la descripcion
+del feature en lenguaje natural, sin inventar detalles que no esten dichos.
+
+## Cuando usarlo
+
+- Iniciando un feature nuevo.
+- El usuario tiene una descripcion pero todavia no hay plan de implementacion.
+
+## Pre-checks
+
+- Confirmar que el feature-id esta decidido (kebab-case, derivado del
+  contexto del proyecto salvo override explicito).
+- Confirmar que `specs/<feature-id>/` no contiene un spec.md previo (evitar
+  sobreescritura silenciosa).
+
+## Pasos
+
+1. **Leer la descripcion del feature.** Si es ambigua, hacer hasta 3
+   preguntas de clarificacion antes de empezar a redactar.
+2. **Redactar escenarios de usuario.** Historia principal + 1–3 criterios
+   de aceptacion en formato DADO/CUANDO/ENTONCES.
+3. **Identificar casos borde.** Capturar los 2–4 mas probables (fallas o
+   limites) y el comportamiento esperado de cada uno.
+4. **Capturar requisitos funcionales y no funcionales.** Numerados, con
+   un criterio de aceptacion verificable cada uno.
+5. **Listar items explicitamente fuera de alcance.** Ayuda aguas abajo a
+   evitar scope creep.
+6. **Surface preguntas abiertas.** Cualquier cosa que deba responderse
+   antes de /plan.
+7. **Escribir `specs/<feature-id>/spec.md`** siguiendo el template Spec-Kit.
+
+## No hacer
+
+- No incluir detalles de implementacion (frameworks, paths, librerias).
+  Eso va en /plan.
+- No escribir tasks. Las tasks salen de /tasks, despues de /plan.
+- No escribir codigo. /specify es design-time.
+
+## Salida
+
+Un `specs/<feature-id>/spec.md` poblado, con marcadores `[DEFINE: ...]`
+donde la descripcion dejo huecos reales. Las preguntas abiertas viven en
+su seccion dedicada, no como respuestas inventadas.

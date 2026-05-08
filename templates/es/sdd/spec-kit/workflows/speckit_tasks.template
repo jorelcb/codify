@@ -1,0 +1,49 @@
+# /tasks — Workflow del lifecycle Spec-Kit
+
+Descomponer plan.md en unidades de trabajo concretas, ordenadas y
+ejecutables. La salida de /tasks es lo que se implementa.
+
+## Objetivo
+
+Producir `specs/<feature-id>/tasks.md` con un checklist accionable y
+ordenado por dependencias que cualquier ingeniero (humano o AI) pueda
+ejecutar end-to-end.
+
+## Pre-checks
+
+- `specs/<feature-id>/plan.md` existe, fases de diseno enumeradas.
+- Constitution Check de plan.md verde.
+
+## Pasos
+
+1. **Recorrer las fases de plan.md en orden.** Para cada fase, enumerar
+   tasks atomicos con identificador unico global (T-1, T-2, ...).
+2. **Especificar paths exactos de archivos.** Cada task debe referenciar
+   el archivo o directorio que toca. Tasks genericos tipo "implementar
+   el feature" estan prohibidos.
+3. **Marcar paralelismo.** Tasks independientes del predecesor reciben [P].
+4. **Declarar dependencias.** Cada task lista que T-IDs anteriores deben
+   completarse primero.
+5. **Definir criterios de aceptacion.** Cada task tiene un resultado
+   verificable y observable.
+6. **Agrupar secciones.** Setup → Core Implementation → Tests →
+   Wiring & Polish.
+7. **Agregar checklist "Done When".** Agrega condiciones de pass: tests
+   pasan, pasos de quickstart corren, Constitution Check sigue verde.
+
+## No hacer
+
+- No inventar tasks que no se derivan de plan.md.
+- No escribir tasks sin un path de archivo target.
+- No saltearse las dependencias — el orden implicito rompe la ejecucion
+  paralela.
+
+## Salida
+
+Un `specs/<feature-id>/tasks.md` poblado, listo para ejecucion.
+
+## Despues de /tasks
+
+Implementacion. Spec-Kit no tiene fase /archive — un feature esta done
+cuando todas las tasks estan tildadas, los tests pasan, y `quickstart.md`
+(si existe) corre sin errores.

@@ -1,0 +1,57 @@
+# Especificacion de Feature: {{FEATURE_NAME}}
+
+> Formato Spec-Kit. Captura **que** hace el feature y **por que**, no como
+> se construye. Vive en `specs/<feature-id>/spec.md`.
+
+## Resumen
+
+{{DESCRIPCION_DEL_FEATURE_EN_UN_PARRAFO}}
+
+## Escenarios de Usuario
+
+### Historia Principal
+**Como** {{ACTOR}}
+**Quiero** {{ACCION}}
+**Para que** {{BENEFICIO}}
+
+### Criterios de Aceptacion
+
+1. **DADO** {{PRECONDICION}}
+   **CUANDO** {{TRIGGER}}
+   **ENTONCES** {{RESULTADO_ESPERADO}}
+
+2. **DADO** {{PRECONDICION}}
+   **CUANDO** {{TRIGGER}}
+   **ENTONCES** {{RESULTADO_ESPERADO}}
+
+### Casos Borde
+
+| Caso | Comportamiento Esperado |
+|---|---|
+| {{CASO_1}} | {{COMPORTAMIENTO_1}} |
+| {{CASO_2}} | {{COMPORTAMIENTO_2}} |
+
+## Requisitos Funcionales
+
+- **RF-1:** {{ENUNCIADO}}
+  - Aceptacion: {{CRITERIO_VERIFICABLE}}
+- **RF-2:** {{ENUNCIADO}}
+  - Aceptacion: {{CRITERIO_VERIFICABLE}}
+
+## Requisitos No Funcionales
+
+- **Performance:** {{LATENCIA_O_THROUGHPUT}}
+- **Seguridad:** {{REQUISITO_DE_SEGURIDAD}}
+- **Disponibilidad:** {{TARGET_DE_DISPONIBILIDAD}}
+
+## Fuera de Alcance
+
+Items que NO forman parte de este feature:
+- {{ITEM_EXCLUIDO_1}}
+- {{ITEM_EXCLUIDO_2}}
+
+## Preguntas Abiertas
+
+Incertidumbres a resolver antes de plan.md:
+- {{PREGUNTA_1}}
+- {{PREGUNTA_2}}

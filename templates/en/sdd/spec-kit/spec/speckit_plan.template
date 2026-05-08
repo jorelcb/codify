@@ -1,0 +1,57 @@
+# Implementation Plan: {{FEATURE_NAME}}
+
+> Spec-Kit format. Captures **how** the feature will be built — technical
+> context, design decisions, and the path from spec to working code.
+> Lives at `specs/<feature-id>/plan.md`.
+
+## Technical Context
+
+| Aspect | Decision |
+|---|---|
+| Language | {{LANGUAGE_AND_VERSION}} |
+| Primary framework | {{FRAMEWORK}} |
+| Datastore | {{DB_CHOICE}} |
+| Deployment target | {{DEPLOYMENT_TARGET}} |
+| Test strategy | {{TEST_STRATEGY}} |
+
+## Constitution Check
+
+Confirm the plan aligns with project conventions:
+- [ ] Architecture: {{ARCHITECTURAL_PATTERN}} respected
+- [ ] Naming: matches existing modules
+- [ ] Test layering: unit/integration/e2e split is consistent with repo
+- [ ] Dependency policy: {{DEPENDENCY_POLICY_NOTE}}
+
+## Project Structure
+
+Files this feature will add or modify:
+
+```
+{{PATH_TO_NEW_OR_CHANGED_FILES}}
+```
+
+## Design Phases
+
+### Phase 1 — Skeleton
+- {{SCAFFOLD_STEP}}
+- {{SCAFFOLD_STEP}}
+
+### Phase 2 — Core logic
+- {{CORE_STEP}}
+- {{CORE_STEP}}
+
+### Phase 3 — Wiring & tests
+- {{WIRING_STEP}}
+- {{TESTING_STEP}}
+
+## Trade-offs Considered
+
+| Option | Pros | Cons | Decision |
+|---|---|---|---|
+| {{OPTION_A}} | {{PROS_A}} | {{CONS_A}} | {{CHOSEN_OR_REJECTED}} |
+| {{OPTION_B}} | {{PROS_B}} | {{CONS_B}} | {{CHOSEN_OR_REJECTED}} |
+
+## Risks
+
+- {{RISK_1}} — Mitigation: {{MITIGATION_1}}
+- {{RISK_2}} — Mitigation: {{MITIGATION_2}}

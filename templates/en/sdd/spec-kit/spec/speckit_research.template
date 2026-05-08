@@ -1,0 +1,23 @@
+# Research: {{FEATURE_NAME}}
+
+> Spec-Kit optional artifact. Captures background investigation that
+> informs the spec/plan/tasks. Generate ONLY when there are real unknowns
+> or technology choices that needed evaluation. Lives at
+> `specs/<feature-id>/research.md`.
+
+## Decisions Made
+
+| Decision | Rationale | Alternatives rejected |
+|---|---|---|
+| {{DECISION_1}} | {{RATIONALE_1}} | {{ALT_1_REJECTED}} |
+| {{DECISION_2}} | {{RATIONALE_2}} | {{ALT_2_REJECTED}} |
+
+## Open Questions Resolved
+
+- {{QUESTION_1}} → {{ANSWER_1}}
+- {{QUESTION_2}} → {{ANSWER_2}}
+
+## References
+
+- {{LINK_OR_DOC_1}}
+- {{LINK_OR_DOC_2}}

@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestBuiltinDefaults(t *testing.T) {
 	cfg := BuiltinDefaults()
@@ -90,5 +93,55 @@ func TestUnset(t *testing.T) {
 	}
 	if c.Locale != "es" {
 		t.Errorf("locale should be untouched: got %q", c.Locale)
+	}
+}
+
+func TestBuiltinDefaults_SDDStandard(t *testing.T) {
+	cfg := BuiltinDefaults()
+	if cfg.SDDStandard != "openspec" {
+		t.Errorf("default sdd_standard: got %q, want openspec (ADR-0011)", cfg.SDDStandard)
+	}
+}
+
+func TestSDDStandard_GetSetUnset(t *testing.T) {
+	c := &Config{}
+	if err := c.Set("sdd_standard", "spec-kit"); err != nil {
+		t.Fatalf("set sdd_standard: %v", err)
+	}
+	v, err := c.Get("sdd_standard")
+	if err != nil {
+		t.Fatalf("get sdd_standard: %v", err)
+	}
+	if v != "spec-kit" {
+		t.Errorf("got %q, want spec-kit", v)
+	}
+	if err := c.Unset("sdd_standard"); err != nil {
+		t.Fatalf("unset sdd_standard: %v", err)
+	}
+	if c.SDDStandard != "" {
+		t.Errorf("sdd_standard should be empty after unset: got %q", c.SDDStandard)
+	}
+}
+
+func TestKeys_IncludesSDDStandard(t *testing.T) {
+	keys := Keys()
+	if !slices.Contains(keys, "sdd_standard") {
+		t.Errorf("Keys() should include sdd_standard, got %v", keys)
+	}
+}
+
+func TestMerge_SDDStandard(t *testing.T) {
+	base := Config{SDDStandard: "openspec"}
+	override := Config{SDDStandard: "spec-kit"}
+	base.Merge(override)
+	if base.SDDStandard != "spec-kit" {
+		t.Errorf("override should win: got %q, want spec-kit", base.SDDStandard)
+	}
+
+	// Empty override should NOT clear base — Merge only applies non-empty fields.
+	base2 := Config{SDDStandard: "openspec"}
+	base2.Merge(Config{})
+	if base2.SDDStandard != "openspec" {
+		t.Errorf("empty override should preserve base: got %q", base2.SDDStandard)
 	}
 }

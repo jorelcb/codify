@@ -55,7 +55,7 @@ func (p *AnthropicProvider) GenerateContext(ctx context.Context, req service.Gen
 	success := true
 
 	for i, guide := range req.TemplateGuides {
-		outputName := FileOutputName(guide.Name)
+		outputName := GuideOutputName(guide)
 
 		if p.progressOut != nil {
 			fmt.Fprintf(p.progressOut, "  [%d/%d] Generating %s...", i+1, len(req.TemplateGuides), outputName)
@@ -115,7 +115,7 @@ func (p *AnthropicProvider) generateSingleFile(
 	var userMessage string
 	switch req.Mode {
 	case "spec":
-		systemPrompt = p.promptBuilder.BuildSpecSystemPrompt(req.ExistingContext, req.Locale)
+		systemPrompt = p.promptBuilder.BuildSpecSystemPrompt(req.ExistingContext, req.Locale, req.SDDStandardHints)
 		userMessage = p.promptBuilder.BuildUserMessageForFile(req, guide)
 	case "skills":
 		systemPrompt = p.promptBuilder.BuildPersonalizedSkillsSystemPrompt(guide.Name, req.Target, req.Locale, req.ProjectContext)

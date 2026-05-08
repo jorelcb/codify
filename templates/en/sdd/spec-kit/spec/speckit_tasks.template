@@ -1,0 +1,37 @@
+# Tasks: {{FEATURE_NAME}}
+
+> Spec-Kit format. Concrete, ordered, executable units of work derived from
+> plan.md. Lives at `specs/<feature-id>/tasks.md`.
+>
+> Mark `[P]` for tasks that can run in parallel with the previous one.
+
+## Setup
+
+- [ ] **T-1** — {{SETUP_TASK}}  → `{{EXACT_FILE_OR_PATH}}`
+- [ ] **T-2** [P] — {{SETUP_TASK}}  → `{{EXACT_FILE_OR_PATH}}`
+
+## Core Implementation
+
+- [ ] **T-10** — {{CORE_TASK}}  → `{{EXACT_FILE_OR_PATH}}`
+  - Depends on: T-1, T-2
+  - Acceptance: {{TESTABLE_OUTCOME}}
+- [ ] **T-11** — {{CORE_TASK}}  → `{{EXACT_FILE_OR_PATH}}`
+  - Depends on: T-10
+  - Acceptance: {{TESTABLE_OUTCOME}}
+
+## Tests
+
+- [ ] **T-20** [P] — Unit tests for {{COMPONENT}}  → `{{EXACT_TEST_PATH}}`
+- [ ] **T-21** — Integration test for {{FLOW}}  → `{{EXACT_TEST_PATH}}`
+- [ ] **T-22** [P] — End-to-end check matching `quickstart.md` steps
+
+## Wiring & Polish
+
+- [ ] **T-30** — {{WIRING_TASK}}  → `{{EXACT_FILE_OR_PATH}}`
+- [ ] **T-31** — Update docs / changelog
+
+## Done When
+
+- [ ] All tests above pass on CI
+- [ ] `quickstart.md` flow runs cleanly
+- [ ] Constitution check from plan.md remains green

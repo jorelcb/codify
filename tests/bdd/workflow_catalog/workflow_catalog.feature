@@ -32,7 +32,7 @@ Feature: Workflow catalog management
     Given the workflow catalog is loaded
     And I have workflow category "workflows"
     When I resolve workflow preset "spec-driven-change"
-    Then the resolved template directory should be "workflows"
+    Then the resolved template directory should be "sdd/openspec/workflows"
     And the resolved mapping should have 3 entries
 
   Scenario: Resolve all workflows combines all presets

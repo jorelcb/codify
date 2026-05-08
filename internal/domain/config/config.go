@@ -8,6 +8,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 )
 
 // SchemaVersion es la versión del schema de config.yml. Se persiste para
@@ -42,6 +43,14 @@ type Config struct {
 	// ProjectName solo aplica a nivel proyecto (.codify/config.yml).
 	ProjectName string `yaml:"project_name,omitempty"`
 
+	// SDDStandard identifica el estándar de Spec-Driven Development activo
+	// (ver ADR-0011). Valores soportados: "openspec" (default), "spec-kit".
+	// Vacío = usar built-in default (openspec). Validación contra la lista
+	// de adapters registrados sucede al momento de resolver el estándar,
+	// no al cargar el archivo — así un config con un estándar futuro no
+	// rompe la carga, solo el comando que efectivamente lo necesite.
+	SDDStandard string `yaml:"sdd_standard,omitempty"`
+
 	// CreatedAt timestamp ISO 8601 de cuándo se creó este archivo.
 	CreatedAt string `yaml:"created_at,omitempty"`
 
@@ -54,13 +63,14 @@ type Config struct {
 // ProjectName ni timestamps; esos solo aplican a archivos persistidos.
 func BuiltinDefaults() Config {
 	return Config{
-		Version:  SchemaVersion,
-		Preset:   "clean-ddd", // ADR-001: cambia a "neutral" en v2.0
-		Locale:   "en",
-		Target:   "claude",
-		Language: "",
-		Model:    "",
-		Provider: "",
+		Version:     SchemaVersion,
+		Preset:      "clean-ddd", // ADR-001: cambia a "neutral" en v2.0
+		Locale:      "en",
+		Target:      "claude",
+		Language:    "",
+		Model:       "",
+		Provider:    "",
+		SDDStandard: "openspec", // ADR-0011: OpenSpec sigue siendo default
 	}
 }
 
@@ -99,6 +109,9 @@ func (c *Config) Merge(override Config) {
 	if override.ProjectName != "" {
 		c.ProjectName = override.ProjectName
 	}
+	if override.SDDStandard != "" {
+		c.SDDStandard = override.SDDStandard
+	}
 }
 
 // Get devuelve el valor de un campo por nombre (key). Soporta los keys
@@ -120,10 +133,12 @@ func (c *Config) Get(key string) (string, error) {
 		return c.Provider, nil
 	case "project_name":
 		return c.ProjectName, nil
+	case "sdd_standard":
+		return c.SDDStandard, nil
 	case "version":
 		return c.Version, nil
 	default:
-		return "", fmt.Errorf("unknown config key: %q (valid: preset, locale, language, model, target, provider, project_name)", key)
+		return "", fmt.Errorf("unknown config key: %q (valid: %s)", key, validKeysHint())
 	}
 }
 
@@ -146,8 +161,10 @@ func (c *Config) Set(key, value string) error {
 		c.Provider = value
 	case "project_name":
 		c.ProjectName = value
+	case "sdd_standard":
+		c.SDDStandard = value
 	default:
-		return fmt.Errorf("unknown config key: %q (valid: preset, locale, language, model, target, provider, project_name)", key)
+		return fmt.Errorf("unknown config key: %q (valid: %s)", key, validKeysHint())
 	}
 	return nil
 }
@@ -167,5 +184,12 @@ func Keys() []string {
 		"target",
 		"provider",
 		"project_name",
+		"sdd_standard",
 	}
+}
+
+// validKeysHint construye el listado de keys válidos para mensajes de error.
+// Centralizado para evitar drift cuando se agregan keys nuevos.
+func validKeysHint() string {
+	return strings.Join(Keys(), ", ")
 }

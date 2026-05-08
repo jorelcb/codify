@@ -1,0 +1,57 @@
+# Plan de Implementacion: {{FEATURE_NAME}}
+
+> Formato Spec-Kit. Captura **como** se construye el feature — contexto
+> tecnico, decisiones de diseno y el camino de spec a codigo funcionando.
+> Vive en `specs/<feature-id>/plan.md`.
+
+## Contexto Tecnico
+
+| Aspecto | Decision |
+|---|---|
+| Lenguaje | {{LENGUAJE_Y_VERSION}} |
+| Framework principal | {{FRAMEWORK}} |
+| Datastore | {{DB}} |
+| Target de despliegue | {{TARGET}} |
+| Estrategia de tests | {{ESTRATEGIA_TESTS}} |
+
+## Constitution Check
+
+Confirmar que el plan respeta las convenciones del proyecto:
+- [ ] Arquitectura: {{PATRON_ARQUITECTONICO}} respetado
+- [ ] Naming: coincide con modulos existentes
+- [ ] Layering de tests: split unit/integration/e2e consistente con el repo
+- [ ] Politica de dependencias: {{NOTA_DE_POLITICA}}
+
+## Estructura del Proyecto
+
+Archivos que este feature agrega o modifica:
+
+```
+{{PATHS_DE_ARCHIVOS_NUEVOS_O_MODIFICADOS}}
+```
+
+## Fases de Diseno
+
+### Fase 1 — Esqueleto
+- {{PASO_SCAFFOLD}}
+- {{PASO_SCAFFOLD}}
+
+### Fase 2 — Logica core
+- {{PASO_CORE}}
+- {{PASO_CORE}}
+
+### Fase 3 — Wiring y tests
+- {{PASO_WIRING}}
+- {{PASO_TESTING}}
+
+## Trade-offs Considerados
+
+| Opcion | Pros | Contras | Decision |
+|---|---|---|---|
+| {{OPCION_A}} | {{PROS_A}} | {{CONTRAS_A}} | {{ELEGIDA_O_RECHAZADA}} |
+| {{OPCION_B}} | {{PROS_B}} | {{CONTRAS_B}} | {{ELEGIDA_O_RECHAZADA}} |
+
+## Riesgos
+
+- {{RIESGO_1}} — Mitigacion: {{MITIGACION_1}}
+- {{RIESGO_2}} — Mitigacion: {{MITIGACION_2}}

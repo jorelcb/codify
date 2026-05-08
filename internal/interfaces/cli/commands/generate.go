@@ -224,7 +224,10 @@ func runGenerateInteractive(p generateParams, explicit map[string]bool) error {
 		fmt.Println()
 		fmt.Println("--- Generating specs from context ---")
 		fmt.Println()
-		return runSpec(p.projectName, p.output, p.output, p.model, p.locale)
+		// `generate --with-specs` no expone --sdd-standard; respeta la
+		// elección del config (project > user > default). Si se necesita
+		// overridear desde generate, se agrega flag dedicado y se pasa acá.
+		return runSpec(p.projectName, p.output, p.output, p.model, p.locale, "")
 	}
 
 	return nil

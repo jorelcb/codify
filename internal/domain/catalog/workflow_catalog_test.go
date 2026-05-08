@@ -52,7 +52,10 @@ func TestWorkflowResolve_Presets(t *testing.T) {
 	}{
 		{"bug-fix", "workflows", 1},
 		{"release-cycle", "workflows", 1},
-		{"spec-driven-change", "workflows", 3},
+		// spec-driven-change templates moved to sdd/openspec/workflows/
+		// in C.2 (ADR-0011: SDD pluggable). Other workflow presets stay
+		// at the top-level workflows/ directory.
+		{"spec-driven-change", "sdd/openspec/workflows", 3},
 	}
 
 	for _, tt := range presets {

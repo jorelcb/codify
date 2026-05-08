@@ -56,7 +56,7 @@ func (m *MockProvider) GenerateContext(_ context.Context, req service.Generation
 			content = fmt.Sprintf("# Mock %s\n\nGenerated for testing. Body padded to keep validators happy and exceed the truncation threshold of 200 characters so we don't trigger length warnings during test runs.", g.Name)
 		}
 		files = append(files, service.GeneratedFile{
-			Name:    FileOutputName(g.Name),
+			Name:    GuideOutputName(g),
 			Content: content,
 		})
 	}

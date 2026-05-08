@@ -61,9 +61,14 @@ var WorkflowCategories = []SkillCategory{
 				},
 			},
 			{
-				Name:        "spec-driven-change",
-				Label:       "Spec-driven Change (propose → apply → archive)",
-				TemplateDir: "workflows",
+				Name:  "spec-driven-change",
+				Label: "Spec-driven Change (propose → apply → archive)",
+				// Templates live under templates/{locale}/sdd/openspec/workflows/
+				// because their content is OpenSpec-specific (delta layout,
+				// archive paths). When SpecKitAdapter lands (C.3), the
+				// workflow loader will resolve the path through the active
+				// SpecStandard adapter rather than this hardcoded dir.
+				TemplateDir: "sdd/openspec/workflows",
 				TemplateMapping: map[string]string{
 					"spec_propose.template": "spec_propose",
 					"spec_apply.template":   "spec_apply",
