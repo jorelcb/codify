@@ -1,0 +1,17 @@
+[package]
+name = "codify-app"
+description = "Piel Tauri de codify-NG (fase 1). Linkea codify-core in-process; solo renderiza y captura decisiones."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+codify-core = { path = "../codify-core" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# NOTA: las dependencias de Tauri (tauri, tauri-build) se incorporan en T029,
+# donde se cablea la GUI. Se difieren a propósito para no arrastrar el árbol de
+# dependencias del WebView antes de que el core lo necesite.

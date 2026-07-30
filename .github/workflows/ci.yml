@@ -1,0 +1,33 @@
+name: ci
+
+# CI de codify-NG. Incluye las fitness functions que la constitución exige como
+# enforcement ejecutable: dirección de dependencias (Principio I) y cero-egress
+# en modo local (restricción de proyecto).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Tests (incluye fitness functions de arquitectura y cero-egress)
+        run: cargo test --workspace
