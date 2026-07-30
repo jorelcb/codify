@@ -15,6 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # La piel Tauri enlaza contra el WebView del sistema; en Linux hay que proveerlo.
+      - name: Dependencias de sistema para Tauri
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libayatana-appindicator3-dev patchelf
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:

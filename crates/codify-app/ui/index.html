@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>codify</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <span class="brand">codify</span>
+      <input
+        id="repo"
+        type="text"
+        placeholder="Ruta del repositorio a documentar"
+        spellcheck="false"
+      />
+      <label class="mode">
+        <input id="local" type="checkbox" checked />
+        <span>modo local</span>
+      </label>
+      <button id="start">Iniciar</button>
+      <span id="state" class="state" data-state="idle">sin sesión</span>
+    </header>
+
+    <main id="stream" class="stream" aria-live="polite">
+      <p class="hint">
+        Elige un repositorio y pulsa <strong>Iniciar</strong>. Verás aquí, en orden, lo que el
+        agente va leyendo y lo que no logra resolver.
+      </p>
+    </main>
+
+    <script src="main.js"></script>
+  </body>
+</html>

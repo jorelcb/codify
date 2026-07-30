@@ -1,0 +1,141 @@
+/* Scaffold de la piel (T003). El diseño de la experiencia se aborda en T030,
+   guiado por specs/002-authoring-experience. */
+
+:root {
+  --bg: #0f1115;
+  --panel: #161922;
+  --line: #262b38;
+  --fg: #e6e8ee;
+  --muted: #9aa3b2;
+  --accent: #6ea8fe;
+  --grounded: #4ec9a5;
+  --tentative: #e2b341;
+  --contradiction: #e2685f;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f7f8fa;
+    --panel: #ffffff;
+    --line: #e3e6ec;
+    --fg: #1a1d24;
+    --muted: #5c6675;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
+.bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+}
+
+.brand {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+#repo {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+.mode {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+button {
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--accent);
+  color: #0b0d12;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.state {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.stream {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 18px 14px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hint {
+  color: var(--muted);
+}
+
+/* Un bloque por acción: el relato cronológico de lo que pasó (FR-020). */
+.block {
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 9px 12px;
+  overflow-wrap: anywhere;
+}
+
+.block .what {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.block .target {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+/* La distinción NO depende solo del color: cada estado lleva su etiqueta. */
+.block[data-kind="activity"] { border-left-color: var(--muted); }
+.block[data-kind="resolved"] { border-left-color: var(--grounded); }
+.block[data-kind="unresolved"] { border-left-color: var(--tentative); }
+.block[data-kind="contradiction"] { border-left-color: var(--contradiction); }
+.block[data-kind="egress"] { border-left-color: var(--contradiction); }
+.block[data-kind="error"] { border-left-color: var(--contradiction); }
+
+.reason {
+  color: var(--muted);
+  font-size: 12.5px;
+  margin-top: 2px;
+}
