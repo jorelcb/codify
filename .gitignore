@@ -1,0 +1,25 @@
+# Rust
+target/
+**/*.rs.bk
+*.pdb
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# AI agent local config (skills y permisos por workstation)
+.claude/
+
+# Spec-Kit local scaffolding (se materializa por workstation)
+.specify/
+
+# ADRs local-only por convención del proyecto
+docs/adr/
+
+# Entorno
+.env
+.env.*
