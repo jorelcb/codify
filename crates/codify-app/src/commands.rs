@@ -1,0 +1,358 @@
+//! Comandos Tauri (T029) — el **driving adapter** de la piel.
+//!
+//! Superficie definida en `specs/001-context-authoring/contracts/tauri-commands.md`.
+//! Cada comando delega en el Application Service del núcleo y traduce sus tipos a DTOs
+//! serializables: los tipos de dominio no cruzan hacia la ventana.
+
+use crate::adapters::{EventAuditSink, StatePayload, SystemClock, UnavailablePrompter};
+use codify_core::application::service::{
+    AuthoringService, ContextAuthoring, SessionSnapshot, StartSession,
+};
+use codify_core::domain::context::{ContextArtifact, Groundedness};
+use codify_core::domain::session::{Mode, SessionId};
+use codify_core::infrastructure::composition::CoreBuilder;
+use codify_core::infrastructure::providers::local::LocalOpenAiCompatProvider;
+use codify_core::infrastructure::repo::locale::HeuristicLocaleDetector;
+use codify_core::infrastructure::repo::navigator::FsRepoNavigator;
+use codify_core::infrastructure::repo::reference_resolver::FsHttpReferenceResolver;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use tauri::{AppHandle, Emitter, State};
+
+const DEFAULT_ENDPOINT: &str = "http://localhost:11434";
+const DEFAULT_MODEL: &str = "qwen2.5-coder";
+
+// ---------------------------------------------------------------------------
+// Estado de la aplicación
+// ---------------------------------------------------------------------------
+
+/// Un servicio por sesión: el núcleo se cablea contra un repositorio concreto, así que no
+/// puede existir un único servicio global.
+#[derive(Default)]
+pub struct AppState {
+    services: Mutex<HashMap<String, Arc<ContextAuthoring>>>,
+}
+
+impl AppState {
+    fn remember(&self, id: &str, service: Arc<ContextAuthoring>) {
+        if let Ok(mut map) = self.services.lock() {
+            map.insert(id.to_string(), service);
+        }
+    }
+
+    fn lookup(&self, id: &str) -> Option<Arc<ContextAuthoring>> {
+        self.services.lock().ok()?.get(id).cloned()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// DTOs (la ventana nunca ve tipos de dominio)
+// ---------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartSessionRequest {
+    pub repo_root: String,
+    /// `true` ⇒ modo local con cero-egress garantizado por construcción.
+    pub local: bool,
+    pub locale: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnresolvedDto {
+    pub origin: String,
+    pub state: String,
+}
+
+/// Fragmento con su fundamento explícito. Es lo que permite a la UI distinguir sin
+/// ambigüedad qué está verificado y qué no (FR-011 de `002-authoring-experience`).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SegmentDto {
+    pub text: String,
+    /// `grounded` | `tentative` | `contradiction`
+    pub kind: String,
+    pub sources: Vec<String>,
+    pub reason: Option<String>,
+    pub acknowledged: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArtifactDto {
+    pub path: String,
+    pub locale: String,
+    pub segments: Vec<SegmentDto>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionSnapshotDto {
+    pub id: String,
+    pub state: String,
+    pub locale: Option<String>,
+    pub artifacts: Vec<ArtifactDto>,
+    pub unresolved: Vec<UnresolvedDto>,
+    pub omitted: Vec<String>,
+    pub budget_exhausted: bool,
+    pub interview_mode: bool,
+    pub unattended_tentative: usize,
+}
+
+fn to_segment_dto(segment: &codify_core::domain::context::Segment) -> SegmentDto {
+    match &segment.groundedness {
+        Groundedness::Grounded { sources } => SegmentDto {
+            text: segment.text.clone(),
+            kind: "grounded".into(),
+            sources: sources.clone(),
+            reason: None,
+            acknowledged: true,
+        },
+        Groundedness::Tentative {
+            reason,
+            acknowledged,
+        } => SegmentDto {
+            text: segment.text.clone(),
+            kind: "tentative".into(),
+            sources: Vec::new(),
+            reason: Some(reason.clone()),
+            acknowledged: *acknowledged,
+        },
+        Groundedness::Contradiction { sources, note } => SegmentDto {
+            text: segment.text.clone(),
+            kind: "contradiction".into(),
+            sources: sources.clone(),
+            reason: Some(note.clone()),
+            acknowledged: false,
+        },
+    }
+}
+
+fn to_artifact_dto(artifact: &ContextArtifact) -> ArtifactDto {
+    ArtifactDto {
+        path: artifact.kind.file_path().to_string(),
+        locale: artifact.locale.clone(),
+        segments: artifact.segments.iter().map(to_segment_dto).collect(),
+    }
+}
+
+fn to_snapshot_dto(snapshot: SessionSnapshot) -> SessionSnapshotDto {
+    SessionSnapshotDto {
+        id: snapshot.id.as_str().to_string(),
+        state: format!("{:?}", snapshot.state).to_lowercase(),
+        locale: snapshot.locale,
+        artifacts: snapshot.artifacts.iter().map(to_artifact_dto).collect(),
+        unresolved: snapshot
+            .unresolved
+            .iter()
+            .map(|u| UnresolvedDto {
+                origin: u.origin.clone(),
+                state: format!("{:?}", u.state).to_lowercase(),
+            })
+            .collect(),
+        omitted: snapshot.omitted,
+        budget_exhausted: snapshot.budget_exhausted,
+        interview_mode: snapshot.interview_mode,
+        unattended_tentative: snapshot.unattended_tentative,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Composition root de la piel
+// ---------------------------------------------------------------------------
+
+fn env_or(key: &str, fallback: &str) -> String {
+    std::env::var(key).unwrap_or_else(|_| fallback.to_string())
+}
+
+/// Ensambla el núcleo para un repositorio y un modo concretos.
+///
+/// En modo local el resolver se construye **sin cliente HTTP** y el registro de proveedores
+/// rechaza cualquier backend no local: la garantía de cero-egress es del cableado, no de un
+/// flag que se consulte más tarde.
+fn build_service(app: &AppHandle, repo_root: &str, mode: Mode) -> Result<ContextAuthoring, String> {
+    let provider = LocalOpenAiCompatProvider::new(
+        "local",
+        env_or("CODIFY_LOCAL_ENDPOINT", DEFAULT_ENDPOINT),
+        env_or("CODIFY_LOCAL_MODEL", DEFAULT_MODEL),
+    )
+    .map_err(|e| format!("no se pudo preparar el proveedor local: {e}"))?;
+
+    let resolver = if mode.is_local() {
+        FsHttpReferenceResolver::local_only(repo_root)
+    } else {
+        FsHttpReferenceResolver::with_public_web(repo_root)
+    };
+
+    let deps = CoreBuilder::new(mode)
+        .provider(Arc::new(provider))
+        .navigator(Arc::new(FsRepoNavigator::new(repo_root)))
+        .resolver(Arc::new(resolver))
+        .diff(Arc::new(NoDiffYet))
+        .risk(Arc::new(ConservativeRisk))
+        .prompter(Arc::new(UnavailablePrompter))
+        .audit(Arc::new(EventAuditSink::new(app.clone())))
+        .locale(Arc::new(HeuristicLocaleDetector::new(String::new())))
+        .clock(Arc::new(SystemClock))
+        .build()
+        .map_err(|e| format!("no se pudo cablear el núcleo: {e}"))?;
+
+    Ok(ContextAuthoring::new(deps))
+}
+
+/// El motor de diffs entra en US2. Declararlo ausente es más honesto que cablear uno que
+/// nadie ejercita todavía.
+struct NoDiffYet;
+
+impl codify_core::application::ports::DiffEngine for NoDiffYet {
+    fn make(&self, before: &str, after: &str) -> codify_core::domain::change::Diff {
+        codify_core::domain::change::Diff {
+            unified: String::new(),
+            before: before.into(),
+            after: after.into(),
+        }
+    }
+    fn apply(
+        &self,
+        _before: &str,
+        diff: &codify_core::domain::change::Diff,
+    ) -> codify_core::domain::error::Result<String> {
+        Ok(diff.after.clone())
+    }
+    fn revert(
+        &self,
+        _after: &str,
+        diff: &codify_core::domain::change::Diff,
+    ) -> codify_core::domain::error::Result<String> {
+        Ok(diff.before.clone())
+    }
+}
+
+/// Política conservadora: mientras no exista el criterio afinado (spec derivado de FR-012),
+/// todo cambio no trivial exige aprobación.
+struct ConservativeRisk;
+
+impl codify_core::domain::ports::RiskClassifier for ConservativeRisk {
+    fn classify(
+        &self,
+        proposal: &codify_core::domain::change::ChangeProposal,
+    ) -> codify_core::domain::change::RiskLevel {
+        if proposal.diff.is_empty() {
+            codify_core::domain::change::RiskLevel::Low
+        } else {
+            codify_core::domain::change::RiskLevel::HighImpact
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Comandos
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn start_session(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: StartSessionRequest,
+) -> Result<String, String> {
+    let mode = if request.local {
+        Mode::Local
+    } else {
+        Mode::Hybrid
+    };
+    let _ = app.emit(
+        "session.state_changed",
+        StatePayload {
+            state: "ingesting".into(),
+        },
+    );
+
+    let service = Arc::new(build_service(&app, &request.repo_root, mode)?);
+
+    let id = service
+        .start_session(StartSession {
+            repo_root: request.repo_root.into(),
+            mode,
+            locale: request.locale,
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+
+    state.remember(id.as_str(), service);
+    let _ = app.emit(
+        "session.state_changed",
+        StatePayload {
+            state: "generating".into(),
+        },
+    );
+    Ok(id.as_str().to_string())
+}
+
+#[tauri::command]
+pub async fn session_state(
+    state: State<'_, AppState>,
+    session_id: String,
+) -> Result<SessionSnapshotDto, String> {
+    let service = state
+        .lookup(&session_id)
+        .ok_or_else(|| format!("sesión desconocida: {session_id}"))?;
+
+    let snapshot = service
+        .session_state(&SessionId::new(session_id))
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(to_snapshot_dto(snapshot))
+}
+
+#[tauri::command]
+pub async fn set_locale(
+    state: State<'_, AppState>,
+    session_id: String,
+    locale: String,
+) -> Result<(), String> {
+    let service = state
+        .lookup(&session_id)
+        .ok_or_else(|| format!("sesión desconocida: {session_id}"))?;
+
+    service
+        .set_locale(&SessionId::new(session_id), locale)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use codify_core::domain::context::{ArtifactKind, Segment};
+
+    #[test]
+    fn maps_each_groundedness_to_its_own_kind() {
+        let artifact = ContextArtifact::new(ArtifactKind::Context, "es").with_segments(vec![
+            Segment::grounded("Motor: Temporal", vec!["SPEC-30.md".into()]),
+            Segment::tentative("Métricas por definir", "sin fuente"),
+            Segment::contradiction("Persistencia", vec!["PRD".into(), "SPEC".into()], "chocan"),
+        ]);
+
+        let dto = to_artifact_dto(&artifact);
+        assert_eq!(dto.path, "context/CONTEXT.md");
+        assert_eq!(dto.segments[0].kind, "grounded");
+        assert_eq!(dto.segments[0].sources, vec!["SPEC-30.md"]);
+        assert_eq!(dto.segments[1].kind, "tentative");
+        assert_eq!(dto.segments[1].reason.as_deref(), Some("sin fuente"));
+        assert!(
+            !dto.segments[1].acknowledged,
+            "lo tentativo nace sin atender"
+        );
+        assert_eq!(dto.segments[2].kind, "contradiction");
+        assert_eq!(dto.segments[2].sources.len(), 2);
+    }
+
+    #[test]
+    fn a_local_session_cannot_be_wired_against_a_remote_endpoint() {
+        // El proveedor local rechaza endpoints no loopback en su constructor.
+        assert!(LocalOpenAiCompatProvider::new("x", "https://api.remoto.test", "m").is_err());
+    }
+}

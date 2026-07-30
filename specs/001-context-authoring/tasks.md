@@ -28,7 +28,7 @@ Workspace Cargo (plan.md): `crates/codify-core/` (biblioteca hexagonal) + `crate
 
 - [X] T001 Crear workspace Cargo con miembros `codify-core` y `codify-app` en `Cargo.toml` (raíz) y esqueleto de crates
 - [X] T002 [P] Declarar dependencias del core (tokio, serde/serde_json, reqwest, similar, oauth2, keyring, async-trait, thiserror) en `crates/codify-core/Cargo.toml`
-- [ ] T003 [P] Inicializar Tauri v2 (tauri, tauri-build) + scaffold del frontend web en `crates/codify-app/` y `crates/codify-app/ui/`
+- [X] T003 [P] Inicializar Tauri v2 (tauri, tauri-build) + scaffold del frontend web en `crates/codify-app/` y `crates/codify-app/ui/`
 - [X] T004 [P] Configurar `rustfmt.toml` y clippy (`deny(warnings)`) en la raíz del repo
 - [X] T005 [P] Esqueleto de CI (fmt + clippy + test) en `.github/workflows/ci.yml`
 
@@ -77,7 +77,7 @@ Workspace Cargo (plan.md): `crates/codify-core/` (biblioteca hexagonal) + `crate
 - [X] T027 [US1] Loop de authoring: pase ingest+generate → `ContextArtifact` con segmentos grounded/tentative en `crates/codify-core/src/application/authoring_loop.rs` (depende de T026, T012)
 - [X] T054 [US1] Detección y señalización de contradicción entre fuentes (evento/segmento de contradicción) en `crates/codify-core/src/application/authoring_loop.rs` (depende de T027) [FR-008]
 - [X] T028 [US1] `AuthoringService::start_session`/`session_state` (resultado US1) en `crates/codify-core/src/application/service.rs`
-- [ ] T029 [US1] Comandos Tauri `start_session`/`session_state` + eventos `agent.activity`/`reference.unresolved` en `crates/codify-app/src/commands.rs`
+- [X] T029 [US1] Comandos Tauri `start_session`/`session_state` + eventos `agent.activity`/`reference.unresolved` en `crates/codify-app/src/commands.rs`
 - [ ] T030 [US1] UI mínima: iniciar sesión, stream de actividad, render de artefactos (grounded vs tentative) en `crates/codify-app/ui/`
 
 **Checkpoint**: US1 funcional e independiente — **MVP** entregable.

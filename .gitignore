@@ -3,6 +3,9 @@ target/
 **/*.rs.bk
 *.pdb
 
+# Tauri: schemas de capacidades regenerados en cada build
+crates/codify-app/gen/schemas/
+
 # OS
 .DS_Store
 Thumbs.db
