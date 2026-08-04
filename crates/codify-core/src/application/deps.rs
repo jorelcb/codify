@@ -7,8 +7,8 @@
 //! composition root.
 
 use crate::application::ports::{
-    AuditSink, DiffEngine, LocaleDetector, ModelProvider, Prompter, ReferenceResolver,
-    RepoNavigator, Tier,
+    ArtifactWriter, AuditSink, CancellationFactory, DiffEngine, LocaleDetector, ModelProvider,
+    Prompter, ProviderDiscovery, ReferenceResolver, RepoNavigator, Tier,
 };
 use crate::domain::error::{CoreError, Result};
 use crate::domain::ports::{Clock, RiskClassifier};
@@ -79,5 +79,11 @@ pub struct AuthoringDeps {
     pub audit: Arc<dyn AuditSink>,
     pub locale: Arc<dyn LocaleDetector>,
     pub clock: Arc<dyn Clock>,
+    /// Escribe los artefactos al repositorio. Sin él, el contexto no sale de la memoria.
+    pub writer: Arc<dyn ArtifactWriter>,
+    /// Sondea el backend de modelo para poder guiar en vez de fallar en silencio.
+    pub discovery: Arc<dyn ProviderDiscovery>,
+    /// Crea una señal de cancelación **por sesión**.
+    pub cancellations: Arc<dyn CancellationFactory>,
     pub mode: Mode,
 }

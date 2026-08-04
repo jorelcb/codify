@@ -94,6 +94,14 @@ fn service(
         .audit(audit.clone())
         .locale(Arc::new(FixedLocale("es")))
         .clock(Arc::new(FixedClock))
+        .writer(Arc::new(FakeArtifactWriter::new()))
+        .discovery(Arc::new(FakeProviderDiscovery(
+            codify_core::application::ports::ProviderStatus::reachable(
+                "http://localhost:11434",
+                vec!["fake-model".into()],
+            ),
+        )))
+        .cancellations(Arc::new(FakeCancellationFactory::new()))
         .build()
         .expect("grafo local válido");
 
@@ -115,6 +123,8 @@ async fn follows_the_reference_and_grounds_generation_in_the_spec() {
         })
         .await
         .expect("la sesión debe completarse");
+    // start_session ya no bloquea (FR-022): esperar el trabajo es explícito.
+    svc.join_session(&id).await.unwrap();
 
     let snapshot = svc.session_state(&id).await.unwrap();
     assert_eq!(snapshot.state, SessionState::Generating);
@@ -153,6 +163,8 @@ async fn generated_context_carries_grounded_and_tentative_segments() {
         })
         .await
         .unwrap();
+    // start_session ya no bloquea (FR-022): esperar el trabajo es explícito.
+    svc.join_session(&id).await.unwrap();
 
     let snapshot = svc.session_state(&id).await.unwrap();
     let artifact = &snapshot.artifacts[0];
@@ -190,6 +202,8 @@ async fn unresolved_private_reference_is_reported_never_fabricated() {
         })
         .await
         .unwrap();
+    // start_session ya no bloquea (FR-022): esperar el trabajo es explícito.
+    svc.join_session(&id).await.unwrap();
 
     let snapshot = svc.session_state(&id).await.unwrap();
     // En modo local la salida está bloqueada: la referencia remota no se resuelve.
@@ -215,13 +229,16 @@ async fn unresolved_private_reference_is_reported_never_fabricated() {
 #[tokio::test]
 async fn local_mode_does_not_offer_the_network_tool() {
     let (svc, _audit, provider) = service(scripted_model());
-    svc.start_session(StartSession {
-        repo_root: "/fake/repo".into(),
-        mode: Mode::Local,
-        locale: None,
-    })
-    .await
-    .unwrap();
+    let id = svc
+        .start_session(StartSession {
+            repo_root: "/fake/repo".into(),
+            mode: Mode::Local,
+            locale: None,
+        })
+        .await
+        .unwrap();
+    // start_session ya no bloquea (FR-022): esperar el trabajo es explícito.
+    svc.join_session(&id).await.unwrap();
 
     let seen = provider.seen.lock().unwrap();
     let ingest_request = seen
@@ -246,6 +263,8 @@ async fn locale_is_autodetected_and_can_be_overridden() {
         })
         .await
         .unwrap();
+    // start_session ya no bloquea (FR-022): esperar el trabajo es explícito.
+    svc.join_session(&id).await.unwrap();
 
     assert_eq!(
         svc.session_state(&id).await.unwrap().locale.as_deref(),
@@ -273,6 +292,14 @@ async fn empty_repository_switches_to_interview_mode() {
         .audit(Arc::new(RecordingAudit::default()))
         .locale(Arc::new(FixedLocale("es")))
         .clock(Arc::new(FixedClock))
+        .writer(Arc::new(FakeArtifactWriter::new()))
+        .discovery(Arc::new(FakeProviderDiscovery(
+            codify_core::application::ports::ProviderStatus::reachable(
+                "http://localhost:11434",
+                vec!["fake-model".into()],
+            ),
+        )))
+        .cancellations(Arc::new(FakeCancellationFactory::new()))
         .build()
         .unwrap();
 
@@ -285,6 +312,8 @@ async fn empty_repository_switches_to_interview_mode() {
         })
         .await
         .unwrap();
+    // start_session ya no bloquea (FR-022): esperar el trabajo es explícito.
+    svc.join_session(&id).await.unwrap();
 
     assert!(svc.session_state(&id).await.unwrap().interview_mode);
 }
@@ -319,6 +348,14 @@ async fn exhausted_budget_is_declared_not_silent() {
         .audit(Arc::new(RecordingAudit::default()))
         .locale(Arc::new(FixedLocale("es")))
         .clock(Arc::new(FixedClock))
+        .writer(Arc::new(FakeArtifactWriter::new()))
+        .discovery(Arc::new(FakeProviderDiscovery(
+            codify_core::application::ports::ProviderStatus::reachable(
+                "http://localhost:11434",
+                vec!["fake-model".into()],
+            ),
+        )))
+        .cancellations(Arc::new(FakeCancellationFactory::new()))
         .build()
         .unwrap();
 
@@ -332,6 +369,8 @@ async fn exhausted_budget_is_declared_not_silent() {
         })
         .await
         .unwrap();
+    // start_session ya no bloquea (FR-022): esperar el trabajo es explícito.
+    svc.join_session(&id).await.unwrap();
 
     let snapshot = svc.session_state(&id).await.unwrap();
     assert!(snapshot.budget_exhausted);

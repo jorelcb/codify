@@ -18,7 +18,7 @@ use codify_core::domain::error::{CoreError, Result};
 use codify_core::domain::ports::{Clock, RiskClassifier};
 use codify_core::domain::reference::{Reference, ReferenceOrigin, ReferenceState, Repository};
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 // ---------------------------------------------------------------------------
 // ModelProvider
@@ -28,6 +28,8 @@ pub struct FakeModelProvider {
     name: String,
     local: bool,
     tier: Tier,
+    /// Retardo por llamada: permite probar que cancelar **aborta la petición en vuelo**.
+    delay: std::time::Duration,
     scripted: Mutex<Vec<CompletionOutput>>,
     pub seen: Mutex<Vec<CompletionRequest>>,
 }
@@ -38,9 +40,16 @@ impl FakeModelProvider {
             name: name.into(),
             local: true,
             tier: Tier::Cheap,
+            delay: std::time::Duration::ZERO,
             scripted: Mutex::new(scripted),
             seen: Mutex::new(Vec::new()),
         }
+    }
+
+    /// Cada llamada tarda `d`. Con esto se puede cancelar "a mitad" de una generación.
+    pub fn with_delay(mut self, d: std::time::Duration) -> Self {
+        self.delay = d;
+        self
     }
 
     pub fn remote(name: &str) -> Self {
@@ -48,6 +57,7 @@ impl FakeModelProvider {
             name: name.into(),
             local: false,
             tier: Tier::Heavy,
+            delay: std::time::Duration::ZERO,
             scripted: Mutex::new(Vec::new()),
             seen: Mutex::new(Vec::new()),
         }
@@ -63,6 +73,9 @@ impl FakeModelProvider {
 impl ModelProvider for FakeModelProvider {
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionOutput> {
         self.seen.lock().unwrap().push(request);
+        if !self.delay.is_zero() {
+            tokio::time::sleep(self.delay).await;
+        }
         let mut q = self.scripted.lock().unwrap();
         if q.is_empty() {
             return Ok(CompletionOutput::Text(String::new()));
@@ -300,5 +313,124 @@ pub struct FixedClock;
 impl Clock for FixedClock {
     fn now_iso(&self) -> String {
         "2026-07-27T00:00:00Z".into()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Cancelación / escritura / sonda de proveedor (spec 002)
+// ---------------------------------------------------------------------------
+
+use codify_core::application::ports::{
+    ArtifactWriter, Cancellation, ProviderDiscovery, ProviderStatus,
+};
+use codify_core::domain::write::WriteRecord;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// Cancelación en memoria: determinista y sin depender del runtime real.
+#[derive(Default)]
+pub struct FakeCancellation {
+    flag: AtomicBool,
+    notify: tokio::sync::Notify,
+}
+
+impl FakeCancellation {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+#[async_trait::async_trait]
+impl Cancellation for FakeCancellation {
+    fn is_cancelled(&self) -> bool {
+        self.flag.load(Ordering::SeqCst)
+    }
+
+    async fn cancelled(&self) {
+        if self.is_cancelled() {
+            return;
+        }
+        self.notify.notified().await;
+    }
+
+    fn cancel(&self) {
+        self.flag.store(true, Ordering::SeqCst);
+        self.notify.notify_waiters();
+    }
+}
+
+/// Escritor en memoria. Registra el orden de escritura para poder asertarlo.
+#[derive(Default)]
+pub struct FakeArtifactWriter {
+    pub files: Mutex<HashMap<String, String>>,
+    pub order: Mutex<Vec<String>>,
+    /// Rutas que deben fallar, para probar que un fallo aislado no arrastra al resto.
+    failing: Mutex<Vec<String>>,
+}
+
+impl FakeArtifactWriter {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn failing_on(self, path: &str) -> Self {
+        self.failing.lock().unwrap().push(path.to_string());
+        self
+    }
+}
+
+#[async_trait::async_trait]
+impl ArtifactWriter for FakeArtifactWriter {
+    async fn write(&self, path: &str, content: &str) -> WriteRecord {
+        self.order.lock().unwrap().push(path.to_string());
+        if self.failing.lock().unwrap().iter().any(|p| p == path) {
+            return WriteRecord::failed(path, "t0", "fallo simulado");
+        }
+        self.files
+            .lock()
+            .unwrap()
+            .insert(path.to_string(), content.to_string());
+        WriteRecord::written(path, content.len(), "t0")
+    }
+
+    async fn read_existing(&self, path: &str) -> Result<Option<String>> {
+        Ok(self.files.lock().unwrap().get(path).cloned())
+    }
+}
+
+/// Sonda con respuesta guionizada.
+pub struct FakeProviderDiscovery(pub ProviderStatus);
+
+#[async_trait::async_trait]
+impl ProviderDiscovery for FakeProviderDiscovery {
+    async fn probe(&self) -> ProviderStatus {
+        self.0.clone()
+    }
+}
+
+/// Factoría que entrega una señal nueva por sesión, y **recuerda la última** para poder
+/// cancelarla desde el test.
+#[derive(Default)]
+pub struct FakeCancellationFactory {
+    pub last: Mutex<Option<Arc<FakeCancellation>>>,
+}
+
+impl FakeCancellationFactory {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Cancela la sesión más reciente creada por esta factoría.
+    pub fn cancel_latest(&self) {
+        if let Some(c) = self.last.lock().unwrap().as_ref() {
+            c.cancel();
+        }
+    }
+}
+
+impl codify_core::application::ports::CancellationFactory for FakeCancellationFactory {
+    fn create(&self) -> Arc<dyn Cancellation> {
+        let signal = Arc::new(FakeCancellation::new());
+        *self.last.lock().unwrap() = Some(signal.clone());
+        signal
     }
 }

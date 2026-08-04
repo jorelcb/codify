@@ -8,7 +8,10 @@ license.workspace = true
 
 [lib]
 name = "codify_app"
-crate-type = ["staticlib", "cdylib", "rlib"]
+# Solo `rlib`: el binario enlaza la biblioteca en el mismo proceso. `staticlib` y `cdylib`
+# son el default de la plantilla de Tauri **para móvil** y aquí solo generan artefactos
+# gigantes que nadie consume.
+crate-type = ["rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

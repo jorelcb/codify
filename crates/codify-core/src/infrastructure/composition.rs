@@ -10,8 +10,8 @@
 
 use crate::application::deps::{AuthoringDeps, ProviderRegistry};
 use crate::application::ports::{
-    AuditSink, DiffEngine, LocaleDetector, ModelProvider, Prompter, ReferenceResolver,
-    RepoNavigator,
+    ArtifactWriter, AuditSink, CancellationFactory, DiffEngine, LocaleDetector, ModelProvider,
+    Prompter, ProviderDiscovery, ReferenceResolver, RepoNavigator,
 };
 use crate::domain::error::{CoreError, Result};
 use crate::domain::ports::{Clock, RiskClassifier};
@@ -31,6 +31,9 @@ pub struct CoreBuilder {
     audit: Option<Arc<dyn AuditSink>>,
     locale: Option<Arc<dyn LocaleDetector>>,
     clock: Option<Arc<dyn Clock>>,
+    writer: Option<Arc<dyn ArtifactWriter>>,
+    discovery: Option<Arc<dyn ProviderDiscovery>>,
+    cancellations: Option<Arc<dyn CancellationFactory>>,
 }
 
 impl CoreBuilder {
@@ -46,6 +49,9 @@ impl CoreBuilder {
             audit: None,
             locale: None,
             clock: None,
+            writer: None,
+            discovery: None,
+            cancellations: None,
         }
     }
 
@@ -85,6 +91,18 @@ impl CoreBuilder {
         self.clock = Some(v);
         self
     }
+    pub fn writer(mut self, v: Arc<dyn ArtifactWriter>) -> Self {
+        self.writer = Some(v);
+        self
+    }
+    pub fn discovery(mut self, v: Arc<dyn ProviderDiscovery>) -> Self {
+        self.discovery = Some(v);
+        self
+    }
+    pub fn cancellations(mut self, v: Arc<dyn CancellationFactory>) -> Self {
+        self.cancellations = Some(v);
+        self
+    }
 
     pub fn build(self) -> Result<AuthoringDeps> {
         let missing = |what: &str| CoreError::Invalid(format!("falta cablear el port '{what}'"));
@@ -99,6 +117,11 @@ impl CoreBuilder {
             audit: self.audit.ok_or_else(|| missing("AuditSink"))?,
             locale: self.locale.ok_or_else(|| missing("LocaleDetector"))?,
             clock: self.clock.ok_or_else(|| missing("Clock"))?,
+            writer: self.writer.ok_or_else(|| missing("ArtifactWriter"))?,
+            discovery: self.discovery.ok_or_else(|| missing("ProviderDiscovery"))?,
+            cancellations: self
+                .cancellations
+                .ok_or_else(|| missing("CancellationFactory"))?,
             mode: self.mode,
         })
     }

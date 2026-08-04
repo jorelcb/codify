@@ -31,7 +31,7 @@ Por eso el orden de entrega **se aparta del orden de prioridad**, y es deliberad
 
 **Purpose**: preparar el terreno. El workspace ya existe; esto es mínimo.
 
-- [ ] T001 Añadir `tokio-util` (feature `rt`) a `[workspace.dependencies]` en `Cargo.toml` y a `crates/codify-core/Cargo.toml`
+- [X] T001 Añadir `tokio-util` (feature `rt`) a `[workspace.dependencies]` en `Cargo.toml` y a `crates/codify-core/Cargo.toml`
 
 ---
 
@@ -43,33 +43,33 @@ Por eso el orden de entrega **se aparta del orden de prioridad**, y es deliberad
 
 ### Definición de ports y tipos
 
-- [ ] T002 [P] Tipo de dominio `WriteRecord` (path, bytes, at, outcome Written/Skipped/Failed) en `crates/codify-core/src/domain/write.rs` y registrarlo en `domain/mod.rs`
-- [ ] T003 [P] Ampliar `AuditKind` con `ArtifactWritten` y `SessionCancelled` en `crates/codify-core/src/domain/audit.rs` (cambio aditivo)
-- [ ] T004 Ports `Cancellation`, `ArtifactWriter` y `ProviderDiscovery` (+ `ProviderStatus`) en `crates/codify-core/src/application/ports.rs`, según `contracts/core-ports.md` (depende de T002)
+- [X] T002 [P] Tipo de dominio `WriteRecord` (path, bytes, at, outcome Written/Skipped/Failed) en `crates/codify-core/src/domain/write.rs` y registrarlo en `domain/mod.rs`
+- [X] T003 [P] Ampliar `AuditKind` con `ArtifactWritten` y `SessionCancelled` en `crates/codify-core/src/domain/audit.rs` (cambio aditivo)
+- [X] T004 Ports `Cancellation`, `ArtifactWriter` y `ProviderDiscovery` (+ `ProviderStatus`) en `crates/codify-core/src/application/ports.rs`, según `contracts/core-ports.md` (depende de T002)
 
 ### Tests de contrato (deben fallar antes de implementar) ⚠️
 
-- [ ] T005 [P] Fakes de los tres ports nuevos en `crates/codify-core/tests/fakes/mod.rs` (bandera en memoria para cancelación; writer en mapa; sonda scriptable)
-- [ ] T006 [P] Contract test `Cancellation`: una vez cancelado no se "descancela"; varios esperadores de `cancelled()` despiertan — en `crates/codify-core/tests/contract_cancellation.rs`
-- [ ] T007 [P] Contract test `ArtifactWriter` (real fs + fake): escribe y relee; **rechaza rutas absolutas y con `..`**; crea directorios intermedios; un fallo aislado no arrastra al resto — en `crates/codify-core/tests/contract_artifact_writer.rs`
-- [ ] T008 [P] Contract test `ProviderDiscovery`: sin backend devuelve `reachable:false` **con `detail` no vacío** y **nunca `Err`** — en `crates/codify-core/tests/contract_provider_discovery.rs`
+- [X] T005 [P] Fakes de los tres ports nuevos en `crates/codify-core/tests/fakes/mod.rs` (bandera en memoria para cancelación; writer en mapa; sonda scriptable)
+- [X] T006 [P] Contract test `Cancellation`: una vez cancelado no se "descancela"; varios esperadores de `cancelled()` despiertan — en `crates/codify-core/tests/contract_cancellation.rs`
+- [X] T007 [P] Contract test `ArtifactWriter` (real fs + fake): escribe y relee; **rechaza rutas absolutas y con `..`**; crea directorios intermedios; un fallo aislado no arrastra al resto — en `crates/codify-core/tests/contract_artifact_writer.rs`
+- [X] T008 [P] Contract test `ProviderDiscovery`: sin backend devuelve `reachable:false` **con `detail` no vacío** y **nunca `Err`** — en `crates/codify-core/tests/contract_provider_discovery.rs`
 
 ### Adapters
 
-- [ ] T009 [P] `TokenCancellation` (envuelve `tokio_util::sync::CancellationToken`) en `crates/codify-core/src/infrastructure/cancel.rs`
-- [ ] T010 [P] `FsArtifactWriter` con las mismas defensas de ruta que el navegador, en `crates/codify-core/src/infrastructure/repo/writer.rs`
-- [ ] T011 [P] Sonda del backend (endpoint OpenAI-compatible, respaldo en API de Ollama; solo loopback en modo local) en `crates/codify-core/src/infrastructure/providers/probe.rs`
+- [X] T009 [P] `TokenCancellation` (envuelve `tokio_util::sync::CancellationToken`) en `crates/codify-core/src/infrastructure/cancel.rs`
+- [X] T010 [P] `FsArtifactWriter` con las mismas defensas de ruta que el navegador, en `crates/codify-core/src/infrastructure/repo/writer.rs`
+- [X] T011 [P] Sonda del backend (endpoint OpenAI-compatible, respaldo en API de Ollama; solo loopback en modo local) en `crates/codify-core/src/infrastructure/providers/probe.rs`
 
 ### Integración en el loop y el servicio
 
-- [ ] T012 Añadir los tres ports a `AuthoringDeps` en `crates/codify-core/src/application/deps.rs` y cablearlos en `CoreBuilder` (`infrastructure/composition.rs`) (depende de T004, T009-T011)
-- [ ] T013 Test: cancelar durante la ingesta detiene el loop y la sesión queda en `Cancelled`, reportando sus escrituras — en `crates/codify-core/tests/us1_cancellation.rs`
-- [ ] T014 Test: cancelar **durante la llamada al modelo** la aborta sin esperar a que termine — en `crates/codify-core/tests/us1_cancellation.rs` (proveedor fake con retardo)
-- [ ] T015 El loop respeta la cancelación: comprueba en cada punto de control y compone `tokio::select!` alrededor de la llamada al modelo, en `crates/codify-core/src/application/authoring_loop.rs` (depende de T013, T014)
-- [ ] T016 Test: al terminar la generación los artefactos **están en disco** y cada escritura queda auditada — en `crates/codify-core/tests/us1_artifact_writing.rs`
-- [ ] T017 El loop escribe los artefactos vía `ArtifactWriter` y acumula `WriteRecord`, emitiendo `AuditKind::ArtifactWritten` por cada uno, en `crates/codify-core/src/application/authoring_loop.rs` (depende de T016)
-- [ ] T018 `start_session` **deja de bloquear** (arranca el loop en una tarea y retorna el `SessionId`) y se añade `cancel_session` **que devuelve `CancelOutcome` (fase + escrituras acumuladas)**; `SessionSnapshot` gana `writes` — en `crates/codify-core/src/application/service.rs`
-- [ ] T019 Test: `start_session` retorna antes de que el trabajo termine y `session_state` refleja el avance — en `crates/codify-core/tests/us1_nonblocking.rs`
+- [X] T012 Añadir los tres ports a `AuthoringDeps` en `crates/codify-core/src/application/deps.rs` y cablearlos en `CoreBuilder` (`infrastructure/composition.rs`) (depende de T004, T009-T011)
+- [X] T013 Test: cancelar durante la ingesta detiene el loop y la sesión queda en `Cancelled`, reportando sus escrituras — en `crates/codify-core/tests/us1_cancellation.rs`
+- [X] T014 Test: cancelar **durante la llamada al modelo** la aborta sin esperar a que termine — en `crates/codify-core/tests/us1_cancellation.rs` (proveedor fake con retardo)
+- [X] T015 El loop respeta la cancelación: comprueba en cada punto de control y compone `tokio::select!` alrededor de la llamada al modelo, en `crates/codify-core/src/application/authoring_loop.rs` (depende de T013, T014)
+- [X] T016 Test: al terminar la generación los artefactos **están en disco** y cada escritura queda auditada — en `crates/codify-core/tests/us1_artifact_writing.rs`
+- [X] T017 El loop escribe los artefactos vía `ArtifactWriter` y acumula `WriteRecord`, emitiendo `AuditKind::ArtifactWritten` por cada uno, en `crates/codify-core/src/application/authoring_loop.rs` (depende de T016)
+- [X] T018 `start_session` **deja de bloquear** (arranca el loop en una tarea y retorna el `SessionId`) y se añade `cancel_session` **que devuelve `CancelOutcome` (fase + escrituras acumuladas)**; `SessionSnapshot` gana `writes` — en `crates/codify-core/src/application/service.rs`
+- [X] T019 Test: `start_session` retorna antes de que el trabajo termine y `session_state` refleja el avance — en `crates/codify-core/tests/us1_nonblocking.rs`
 
 **Checkpoint**: el núcleo escribe, se puede cancelar y no bloquea. Las user stories pueden empezar.
 

@@ -3,3 +3,4 @@
 pub mod locale;
 pub mod navigator;
 pub mod reference_resolver;
+pub mod writer;

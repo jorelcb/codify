@@ -52,6 +52,14 @@ async fn contradiction_between_sources_is_surfaced_and_audited() {
         .audit(audit.clone())
         .locale(Arc::new(FixedLocale("es")))
         .clock(Arc::new(FixedClock))
+        .writer(Arc::new(FakeArtifactWriter::new()))
+        .discovery(Arc::new(FakeProviderDiscovery(
+            codify_core::application::ports::ProviderStatus::reachable(
+                "http://localhost:11434",
+                vec!["fake-model".into()],
+            ),
+        )))
+        .cancellations(Arc::new(FakeCancellationFactory::new()))
         .build()
         .unwrap();
 
@@ -64,6 +72,8 @@ async fn contradiction_between_sources_is_surfaced_and_audited() {
         })
         .await
         .unwrap();
+    // start_session ya no bloquea (FR-022): esperar el trabajo es explícito.
+    svc.join_session(&id).await.unwrap();
 
     let snapshot = svc.session_state(&id).await.unwrap();
     let artifact = &snapshot.artifacts[0];

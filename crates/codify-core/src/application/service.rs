@@ -1,22 +1,27 @@
 //! Application Service: el punto de entrada del caso de uso.
 //!
 //! Es lo que consumen las pieles (Tauri hoy; MCP/CLI mañana). El trait existe porque hay
-//! **más de un adaptador primario** previsto — que es la única razón que justifica una
-//! interfaz driving (constitución, Principio I).
+//! **más de un adaptador primario** previsto — la única razón que justifica una interfaz
+//! driving (constitución, Principio I).
 //!
 //! Nombre sin decoración: `ContextAuthoring` nombra la capacidad, no el patrón.
 
 use crate::application::authoring_loop::{AuthoringLoop, IngestOutcome};
 use crate::application::deps::AuthoringDeps;
+use crate::application::ports::Cancellation;
+use crate::domain::audit::{AuditEvent, AuditKind};
 use crate::domain::context::ContextArtifact;
 use crate::domain::error::{CoreError, Result};
 use crate::domain::reference::ReferenceState;
 use crate::domain::session::{AuthoringSession, Mode, SessionId, SessionState};
+use crate::domain::write::WriteRecord;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
 
 #[derive(Debug, Clone)]
 pub struct StartSession {
@@ -43,27 +48,50 @@ pub struct SessionSnapshot {
     pub unresolved: Vec<UnresolvedReport>,
     /// Lo que quedó fuera del presupuesto: se declara, nunca se trunca en silencio.
     pub omitted: Vec<String>,
+    /// Qué llegó (o no) al repositorio. Es la respuesta a FR-017.
+    pub writes: Vec<WriteRecord>,
     pub budget_exhausted: bool,
     pub interview_mode: bool,
     pub unattended_tentative: usize,
 }
 
+/// Balance de una cancelación: en qué fase se cortó y qué alcanzó a escribirse (FR-023).
+#[derive(Debug, Clone)]
+pub struct CancelOutcome {
+    pub session_id: SessionId,
+    pub phase: SessionState,
+    pub writes: Vec<WriteRecord>,
+}
+
 #[async_trait]
 pub trait AuthoringService: Send + Sync {
-    /// Arranca la sesión y ejecuta el pase de US1 (ingesta dirigida + generación grounded).
+    /// Arranca la sesión y **retorna de inmediato**: el trabajo sigue en segundo plano.
+    ///
+    /// Es lo que permite que la interfaz siga viva durante una sesión de minutos (FR-022).
+    /// El avance se observa por los eventos de auditoría; el resultado, con `session_state`.
     async fn start_session(&self, request: StartSession) -> Result<SessionId>;
+
     async fn session_state(&self, id: &SessionId) -> Result<SessionSnapshot>;
+
+    /// Cancela la sesión y devuelve el balance de lo que alcanzó a escribirse (FR-023).
+    async fn cancel_session(&self, id: &SessionId) -> Result<CancelOutcome>;
+
+    /// Espera a que la sesión termine. Útil para pieles que quieran bloquear (CLI) y para
+    /// los tests; la piel de escritorio no la necesita porque escucha los eventos.
+    async fn join_session(&self, id: &SessionId) -> Result<()>;
+
     async fn set_locale(&self, id: &SessionId, locale: String) -> Result<()>;
 }
 
 struct SessionEntry {
-    session: AuthoringSession,
-    outcome: IngestOutcome,
+    view: Arc<Mutex<SessionSnapshot>>,
+    cancel: Arc<dyn Cancellation>,
+    handle: Mutex<Option<JoinHandle<()>>>,
 }
 
 pub struct ContextAuthoring {
     deps: AuthoringDeps,
-    sessions: Mutex<HashMap<String, SessionEntry>>,
+    sessions: Mutex<HashMap<String, Arc<SessionEntry>>>,
     counter: AtomicU64,
     budget: Option<crate::application::ingest::IngestBudget>,
 }
@@ -98,14 +126,23 @@ impl ContextAuthoring {
         }
     }
 
-    fn snapshot(entry: &SessionEntry) -> SessionSnapshot {
+    async fn entry(&self, id: &SessionId) -> Result<Arc<SessionEntry>> {
+        self.sessions
+            .lock()
+            .await
+            .get(id.as_str())
+            .cloned()
+            .ok_or_else(|| CoreError::NotFound(format!("sesión {}", id.as_str())))
+    }
+
+    /// Proyecta la sesión y el resultado de la ingesta a la vista que consume la piel.
+    fn project(session: &AuthoringSession, outcome: &IngestOutcome) -> SessionSnapshot {
         SessionSnapshot {
-            id: entry.session.id().clone(),
-            state: entry.session.state(),
-            locale: entry.session.locale().map(|s| s.to_string()),
-            artifacts: entry.session.artifacts().to_vec(),
-            unresolved: entry
-                .session
+            id: session.id().clone(),
+            state: session.state(),
+            locale: session.locale().map(|s| s.to_string()),
+            artifacts: session.artifacts().to_vec(),
+            unresolved: session
                 .unresolved_references()
                 .iter()
                 .map(|r| UnresolvedReport {
@@ -113,11 +150,18 @@ impl ContextAuthoring {
                     state: r.state(),
                 })
                 .collect(),
-            omitted: entry.outcome.omitted.clone(),
-            budget_exhausted: entry.outcome.budget_exhausted,
-            interview_mode: entry.outcome.interview_mode,
-            unattended_tentative: entry.session.unattended_tentative_count(),
+            omitted: outcome.omitted.clone(),
+            writes: session.writes().to_vec(),
+            budget_exhausted: outcome.budget_exhausted,
+            interview_mode: outcome.interview_mode,
+            unattended_tentative: session.unattended_tentative_count(),
         }
+    }
+
+    fn audit(&self, kind: AuditKind, payload: impl Into<String>) {
+        self.deps
+            .audit
+            .record(AuditEvent::new(self.deps.clock.now_iso(), kind, payload));
     }
 }
 
@@ -139,29 +183,113 @@ impl AuthoringService for ContextAuthoring {
             session.set_locale(locale);
         }
 
-        let outcome = self.build_loop().run(&mut session).await?;
+        // Vista inicial publicada antes de arrancar: la piel puede consultarla enseguida.
+        let view = Arc::new(Mutex::new(Self::project(
+            &session,
+            &IngestOutcome::default(),
+        )));
+        let cancel = self.deps.cancellations.create();
 
-        self.sessions
-            .lock()
-            .await
-            .insert(id.as_str().to_string(), SessionEntry { session, outcome });
+        let authoring = self.build_loop();
+        let task_view = view.clone();
+        let task_cancel = cancel.clone();
+        let audit = self.deps.audit.clone();
+        let clock = self.deps.clock.clone();
+
+        // El trabajo se va a segundo plano: `start_session` no puede quedarse esperando
+        // minutos o la interfaz se congela (FR-022).
+        let handle = tokio::spawn(async move {
+            let result = authoring.run(&mut session, task_cancel).await;
+
+            let outcome = match result {
+                Ok(outcome) => outcome,
+                Err(CoreError::Cancelled) => {
+                    let phase = session.state();
+                    let _ = session.advance_to(SessionState::Cancelled);
+                    let balance: Vec<String> =
+                        session.writes().iter().map(|w| w.summary()).collect();
+                    audit.record(AuditEvent::new(
+                        clock.now_iso(),
+                        AuditKind::SessionCancelled,
+                        format!("en {phase:?}; escrituras: [{}]", balance.join(", ")),
+                    ));
+                    IngestOutcome::default()
+                }
+                Err(_) => {
+                    let _ = session.advance_to(SessionState::Failed);
+                    IngestOutcome::default()
+                }
+            };
+
+            *task_view.lock().await = Self::project(&session, &outcome);
+        });
+
+        self.sessions.lock().await.insert(
+            id.as_str().to_string(),
+            Arc::new(SessionEntry {
+                view,
+                cancel,
+                handle: Mutex::new(Some(handle)),
+            }),
+        );
+
         Ok(id)
     }
 
     async fn session_state(&self, id: &SessionId) -> Result<SessionSnapshot> {
-        let sessions = self.sessions.lock().await;
-        sessions
-            .get(id.as_str())
-            .map(Self::snapshot)
-            .ok_or_else(|| CoreError::NotFound(format!("sesión {}", id.as_str())))
+        let entry = self.entry(id).await?;
+        let view = entry.view.lock().await;
+        Ok(view.clone())
+    }
+
+    async fn cancel_session(&self, id: &SessionId) -> Result<CancelOutcome> {
+        let entry = self.entry(id).await?;
+        let phase = entry.view.lock().await.state;
+
+        entry.cancel.cancel();
+
+        // Esperar a que el loop desenrolle es lo que permite reportar un balance **cierto**:
+        // decir "no sé qué se escribió" sería justo lo que FR-023 viene a evitar.
+        let handle = entry.handle.lock().await.take();
+        if let Some(h) = handle {
+            let _ = h.await;
+        }
+
+        let view = entry.view.lock().await;
+        Ok(CancelOutcome {
+            session_id: id.clone(),
+            phase,
+            writes: view.writes.clone(),
+        })
+    }
+
+    async fn join_session(&self, id: &SessionId) -> Result<()> {
+        let entry = self.entry(id).await?;
+        let handle = entry.handle.lock().await.take();
+        if let Some(h) = handle {
+            let _ = h.await;
+        }
+        Ok(())
     }
 
     async fn set_locale(&self, id: &SessionId, locale: String) -> Result<()> {
-        let mut sessions = self.sessions.lock().await;
-        let entry = sessions
-            .get_mut(id.as_str())
-            .ok_or_else(|| CoreError::NotFound(format!("sesión {}", id.as_str())))?;
-        entry.session.set_locale(locale);
+        let entry = self.entry(id).await?;
+        let mut view = entry.view.lock().await;
+        view.locale = Some(locale);
         Ok(())
+    }
+}
+
+impl ContextAuthoring {
+    /// Sondea el backend de modelo configurado (FR-019). No falla: informa.
+    pub async fn probe_provider(&self) -> crate::application::ports::ProviderStatus {
+        let status = self.deps.discovery.probe().await;
+        if !status.reachable {
+            self.audit(
+                AuditKind::IngestBudgetExhausted,
+                format!("proveedor no disponible: {}", status.endpoint),
+            );
+        }
+        status
     }
 }

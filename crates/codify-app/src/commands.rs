@@ -10,11 +10,14 @@ use codify_core::application::service::{
 };
 use codify_core::domain::context::{ContextArtifact, Groundedness};
 use codify_core::domain::session::{Mode, SessionId};
+use codify_core::infrastructure::cancel::TokenCancellationFactory;
 use codify_core::infrastructure::composition::CoreBuilder;
 use codify_core::infrastructure::providers::local::LocalOpenAiCompatProvider;
+use codify_core::infrastructure::providers::probe::LocalProviderProbe;
 use codify_core::infrastructure::repo::locale::HeuristicLocaleDetector;
 use codify_core::infrastructure::repo::navigator::FsRepoNavigator;
 use codify_core::infrastructure::repo::reference_resolver::FsHttpReferenceResolver;
+use codify_core::infrastructure::repo::writer::FsArtifactWriter;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -196,6 +199,12 @@ fn build_service(app: &AppHandle, repo_root: &str, mode: Mode) -> Result<Context
         .audit(Arc::new(EventAuditSink::new(app.clone())))
         .locale(Arc::new(HeuristicLocaleDetector::new(String::new())))
         .clock(Arc::new(SystemClock))
+        .writer(Arc::new(FsArtifactWriter::new(repo_root)))
+        .discovery(Arc::new(
+            LocalProviderProbe::new(env_or("CODIFY_LOCAL_ENDPOINT", DEFAULT_ENDPOINT))
+                .map_err(|e| format!("no se pudo preparar la sonda: {e}"))?,
+        ))
+        .cancellations(Arc::new(TokenCancellationFactory))
         .build()
         .map_err(|e| format!("no se pudo cablear el núcleo: {e}"))?;
 
