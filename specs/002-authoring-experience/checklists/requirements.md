@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [x] No [NEEDS CLARIFICATION] markers remain — resueltos: FR-020 bloques cronológicos, FR-018 revisor, FR-019 onboarding guiado
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic
@@ -31,6 +31,7 @@
 
 ## Notes
 
-- Las tres aclaraciones fueron resueltas por el usuario (Q1: A, Q2: A, Q3: A). Todos los ítems pasan.
-- La elección de bloques cronológicos abre una tensión conocida con la User Story 3; se cierra con **FR-021** (ver un artefacto completo en cualquier momento) y queda registrada en «Alternativas de experiencia descartadas».
-- Las alternativas descartadas se documentaron con su razón y con la señal que justificaría revisitarlas.
+- **Sesión `/speckit-specify`** (3 decisiones): flujo cronológico de bloques, la app es revisor y no editor, onboarding guiado del proveedor. La elección de bloques abre una tensión con la User Story 3, cerrada con **FR-021**.
+- **Sesión `/speckit-clarify`** (4 decisiones): interfaz utilizable y sesión cancelable durante el trabajo del agente; sin persistencia de sesión (marcada como revisitable en US2); interfaz localizable es/en independiente del idioma de los artefactos; accesibilidad con teclado y marcado semántico, sin conformidad formal.
+- El spec creció de 21 a **29 FR** y de 7 a **9 SC**. Los huecos que cerró el clarify eran todos **no-funcionales** (responsividad, ciclo de vida de la sesión, localización, accesibilidad) — el tipo de cosa que no aparece leyendo las user stories y sí cuesta caro descubrir en implementación.
+- Las alternativas descartadas se documentan con la **señal que justificaría revisitarlas**.
