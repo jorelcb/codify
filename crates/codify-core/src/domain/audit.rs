@@ -11,6 +11,8 @@ pub enum AuditKind {
     ReferenceResolved,
     ReferenceUnresolved,
     ArtifactGenerated,
+    /// Un artefacto llegó al repositorio (o se intentó): la base de FR-017.
+    ArtifactWritten,
     ContradictionDetected,
     IngestBudgetExhausted,
     ProposalMade,
@@ -18,6 +20,8 @@ pub enum AuditKind {
     ProposalReverted,
     ApprovalCaptured,
     EgressBlocked,
+    /// La sesión se canceló; el payload lleva el balance de escrituras.
+    SessionCancelled,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

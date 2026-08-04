@@ -100,6 +100,14 @@ fn composition_root_cannot_be_wired_with_remote_provider_in_local_mode() {
         .audit(Arc::new(RecordingAudit::default()))
         .locale(Arc::new(FixedLocale("es")))
         .clock(Arc::new(FixedClock))
+        .writer(Arc::new(FakeArtifactWriter::new()))
+        .discovery(Arc::new(FakeProviderDiscovery(
+            codify_core::application::ports::ProviderStatus::reachable(
+                "http://localhost:11434",
+                vec!["fake-model".into()],
+            ),
+        )))
+        .cancellations(Arc::new(FakeCancellationFactory::new()))
         .build();
 
     assert!(
@@ -123,6 +131,14 @@ fn composition_root_wires_a_fully_local_graph() {
         .audit(Arc::new(RecordingAudit::default()))
         .locale(Arc::new(FixedLocale("es")))
         .clock(Arc::new(FixedClock))
+        .writer(Arc::new(FakeArtifactWriter::new()))
+        .discovery(Arc::new(FakeProviderDiscovery(
+            codify_core::application::ports::ProviderStatus::reachable(
+                "http://localhost:11434",
+                vec!["fake-model".into()],
+            ),
+        )))
+        .cancellations(Arc::new(FakeCancellationFactory::new()))
         .build()
         .expect("el grafo totalmente local debe ensamblarse");
 

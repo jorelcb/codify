@@ -88,6 +88,25 @@ impl AuditSink for EventAuditSink {
                 );
             }
             AuditKind::ArtifactGenerated => self.activity("generado", &event.payload),
+            AuditKind::ArtifactWritten => {
+                let (target, reason) = Self::split_reason(&event.payload);
+                let _ = self.app.emit(
+                    "artifact.written",
+                    UnresolvedPayload {
+                        target,
+                        reason, // detalle del registro: bytes, u omitido/falló con su motivo
+                    },
+                );
+            }
+            AuditKind::SessionCancelled => {
+                let _ = self.app.emit(
+                    "session.cancelled",
+                    ActivityPayload {
+                        action: "cancelada".into(),
+                        target: event.payload,
+                    },
+                );
+            }
             AuditKind::ContradictionDetected => {
                 self.activity("contradicción entre fuentes", &event.payload)
             }

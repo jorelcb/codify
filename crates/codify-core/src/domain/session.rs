@@ -7,6 +7,7 @@
 
 use crate::domain::context::ContextArtifact;
 use crate::domain::reference::Reference;
+use crate::domain::write::WriteRecord;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -77,6 +78,7 @@ pub struct AuthoringSession {
     state: SessionState,
     artifacts: Vec<ContextArtifact>,
     references: Vec<Reference>,
+    writes: Vec<WriteRecord>,
 }
 
 impl AuthoringSession {
@@ -89,6 +91,7 @@ impl AuthoringSession {
             state: SessionState::Ingesting,
             artifacts: Vec::new(),
             references: Vec::new(),
+            writes: Vec::new(),
         }
     }
 
@@ -117,6 +120,16 @@ impl AuthoringSession {
     /// Fija el idioma (auto-detectado u override explícito del usuario — FR-019).
     pub fn set_locale(&mut self, locale: impl Into<String>) {
         self.locale = Some(locale.into());
+    }
+
+    /// Registra lo ocurrido con un artefacto. Es lo que la sesión reporta al cerrar,
+    /// se haya completado o cancelado (FR-017/FR-023).
+    pub fn record_write(&mut self, record: WriteRecord) {
+        self.writes.push(record);
+    }
+
+    pub fn writes(&self) -> &[WriteRecord] {
+        &self.writes
     }
 
     pub fn record_reference(&mut self, reference: Reference) {

@@ -7,6 +7,7 @@
 use crate::domain::change::{ApprovalDecision, ChangeProposal, Diff};
 use crate::domain::error::Result;
 use crate::domain::reference::{Reference, ReferenceOrigin, Repository};
+use crate::domain::write::WriteRecord;
 use async_trait::async_trait;
 
 // ---------------------------------------------------------------------------
@@ -172,4 +173,85 @@ pub trait AuditSink: Send + Sync {
 #[async_trait]
 pub trait LocaleDetector: Send + Sync {
     async fn detect(&self, repo: &Repository) -> String;
+}
+
+// ---------------------------------------------------------------------------
+// Cancelación, escritura y descubrimiento de proveedor (spec 002)
+// ---------------------------------------------------------------------------
+
+/// Señal de cancelación de una sesión en curso.
+///
+/// Se expresa como trait propio para que el token concreto (`tokio-util`) no cruce hacia el
+/// núcleo. Los dos métodos cubren usos distintos: `is_cancelled` para los puntos de control
+/// del loop, y `cancelled` para componer con `select!` y **abortar la petición al modelo en
+/// vuelo** en vez de esperar a que termine.
+#[async_trait]
+pub trait Cancellation: Send + Sync {
+    fn is_cancelled(&self) -> bool;
+
+    /// Resuelve cuando se cancela. Puede esperarse desde varios sitios a la vez.
+    async fn cancelled(&self);
+
+    /// Dispara la cancelación. La señal es un objeto compartido entre quien cancela
+    /// (el servicio, a petición de la piel) y quien la observa (el loop).
+    fn cancel(&self);
+}
+
+/// Crea una señal de cancelación **por sesión**.
+///
+/// Hace falta una factoría porque la señal no puede compartirse entre sesiones —cancelar
+/// una abortaría todas— y solo la infraestructura sabe construir la señal concreta.
+pub trait CancellationFactory: Send + Sync {
+    fn create(&self) -> std::sync::Arc<dyn Cancellation>;
+}
+
+/// Lleva los artefactos generados al repositorio.
+///
+/// Sin este port el núcleo produce contexto que nunca sale de la memoria — el producto no
+/// entregaría su resultado.
+#[async_trait]
+pub trait ArtifactWriter: Send + Sync {
+    /// Escribe el contenido. Devuelve el registro de lo ocurrido, incluso si falló:
+    /// un fallo aislado **no** debe abortar el resto de la sesión.
+    async fn write(&self, path: &str, content: &str) -> WriteRecord;
+
+    /// Contenido actual del archivo, si existe. Es lo que hará posible "no sobrescribir sin
+    /// diff y aprobación" cuando llegue esa historia.
+    async fn read_existing(&self, path: &str) -> Result<Option<String>>;
+}
+
+/// Estado del backend de modelo, para poder guiar al usuario en vez de fallar en silencio.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProviderStatus {
+    pub reachable: bool,
+    pub endpoint: String,
+    pub models: Vec<String>,
+    /// Motivo accionable cuando no responde. **Nunca vacío** si `reachable == false`.
+    pub detail: Option<String>,
+}
+
+impl ProviderStatus {
+    pub fn reachable(endpoint: impl Into<String>, models: Vec<String>) -> Self {
+        Self {
+            reachable: true,
+            endpoint: endpoint.into(),
+            models,
+            detail: None,
+        }
+    }
+
+    pub fn unreachable(endpoint: impl Into<String>, detail: impl Into<String>) -> Self {
+        Self {
+            reachable: false,
+            endpoint: endpoint.into(),
+            models: Vec::new(),
+            detail: Some(detail.into()),
+        }
+    }
+}
+
+/// Sondea el backend de modelo. **No falla**: un error opaco es justo lo que hay que evitar.
+#[async_trait]
+pub trait ProviderDiscovery: Send + Sync {
+    async fn probe(&self) -> ProviderStatus;
 }

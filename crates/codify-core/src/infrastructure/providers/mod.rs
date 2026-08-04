@@ -4,3 +4,4 @@
 //! Los remotos con OAuth llegan en la fase de Polish (T045).
 
 pub mod local;
+pub mod probe;

@@ -11,7 +11,7 @@ use crate::application::ingest::{
     ingest_tools, parse_action, AgentAction, IngestBudget, TOOL_FINALIZE,
 };
 use crate::application::ports::{
-    CompletionOutput, CompletionRequest, EntryKind, Message, Tier, ToolSpec,
+    Cancellation, CompletionOutput, CompletionRequest, EntryKind, Message, Tier, ToolSpec,
 };
 use crate::domain::audit::{AuditEvent, AuditKind};
 use crate::domain::context::{ArtifactKind, ContextArtifact, Groundedness, Segment};
@@ -19,6 +19,7 @@ use crate::domain::error::{CoreError, Result};
 use crate::domain::reference::{Reference, ReferenceOrigin};
 use crate::domain::session::{AuthoringSession, SessionState};
 use serde::Deserialize;
+use std::sync::Arc;
 
 const INGEST_SYSTEM_PROMPT: &str = "\
 Eres un agente que reúne material para documentar un proyecto de software.
@@ -177,8 +178,12 @@ impl AuthoringLoop {
     }
 
     /// Pase completo de US1: ingesta dirigida por el agente + generación grounded.
-    pub async fn run(&self, session: &mut AuthoringSession) -> Result<IngestOutcome> {
-        let outcome = self.ingest(session).await?;
+    pub async fn run(
+        &self,
+        session: &mut AuthoringSession,
+        cancel: Arc<dyn Cancellation>,
+    ) -> Result<IngestOutcome> {
+        let outcome = self.ingest(session, cancel.clone()).await?;
 
         // Sin material no se genera nada: la piel abre la entrevista. Generar aquí sería
         // exactamente el pecado que este producto viene a corregir (inventar sin fuentes).
@@ -186,15 +191,41 @@ impl AuthoringLoop {
             return Ok(outcome);
         }
 
+        if cancel.is_cancelled() {
+            return Err(CoreError::Cancelled);
+        }
+
         session
             .advance_to(SessionState::Generating)
             .map_err(|e| CoreError::Invalid(e.to_string()))?;
-        self.generate(session, &outcome).await?;
+        self.generate(session, &outcome, cancel).await?;
         Ok(outcome)
     }
 
+    /// Llamada al modelo compuesta con la señal de cancelación.
+    ///
+    /// Es el punto que hace cierta la promesa de FR-023: cancelar **aborta la petición en
+    /// vuelo** en vez de esperar a que termine. Con una simple consulta en puntos de control
+    /// habría que aguantar la llamada entera, que puede durar decenas de segundos.
+    async fn complete_or_cancel(
+        &self,
+        tier: Tier,
+        request: CompletionRequest,
+        cancel: &Arc<dyn Cancellation>,
+    ) -> Result<CompletionOutput> {
+        let provider = self.deps.providers.pick(tier);
+        tokio::select! {
+            result = provider.complete(request) => result,
+            _ = cancel.cancelled() => Err(CoreError::Cancelled),
+        }
+    }
+
     /// Fase 1: el agente navega el repo y sigue referencias hasta `finalize` o presupuesto.
-    pub async fn ingest(&self, session: &mut AuthoringSession) -> Result<IngestOutcome> {
+    pub async fn ingest(
+        &self,
+        session: &mut AuthoringSession,
+        cancel: Arc<dyn Cancellation>,
+    ) -> Result<IngestOutcome> {
         let mut budget = self.budget.clone();
         let mut outcome = IngestOutcome::default();
 
@@ -223,6 +254,10 @@ impl AuthoringLoop {
         ))];
 
         loop {
+            // Punto de control: cancelar entre pasos no espera a nada.
+            if cancel.is_cancelled() {
+                return Err(CoreError::Cancelled);
+            }
             if !budget.tick_step() {
                 outcome.budget_exhausted = true;
                 self.audit(
@@ -233,14 +268,15 @@ impl AuthoringLoop {
             }
 
             let response = self
-                .deps
-                .providers
-                .pick(Tier::Cheap)
-                .complete(CompletionRequest {
-                    system: INGEST_SYSTEM_PROMPT.to_string(),
-                    messages: messages.clone(),
-                    tools: tools.clone(),
-                })
+                .complete_or_cancel(
+                    Tier::Cheap,
+                    CompletionRequest {
+                        system: INGEST_SYSTEM_PROMPT.to_string(),
+                        messages: messages.clone(),
+                        tools: tools.clone(),
+                    },
+                    &cancel,
+                )
                 .await?;
 
             let calls = match response {
@@ -400,22 +436,29 @@ impl AuthoringLoop {
         &self,
         session: &mut AuthoringSession,
         outcome: &IngestOutcome,
+        cancel: Arc<dyn Cancellation>,
     ) -> Result<()> {
         let locale = session.locale().unwrap_or("en").to_string();
         let material = self.render_material(outcome);
-        let provider = self.deps.providers.pick(Tier::Heavy);
 
         for kind in ArtifactKind::default_set() {
-            let response = provider
-                .complete(CompletionRequest {
-                    system: GENERATE_SYSTEM_PROMPT.to_string(),
-                    messages: vec![Message::user(format!(
-                        "Archivo a redactar: {}\nIdioma de salida: {locale}\n\n\
-                         === MATERIAL REUNIDO ===\n{material}",
-                        kind.file_path()
-                    ))],
-                    tools: Vec::new(),
-                })
+            if cancel.is_cancelled() {
+                return Err(CoreError::Cancelled);
+            }
+            let response = self
+                .complete_or_cancel(
+                    Tier::Heavy,
+                    CompletionRequest {
+                        system: GENERATE_SYSTEM_PROMPT.to_string(),
+                        messages: vec![Message::user(format!(
+                            "Archivo a redactar: {}\nIdioma de salida: {locale}\n\n\
+                             === MATERIAL REUNIDO ===\n{material}",
+                            kind.file_path()
+                        ))],
+                        tools: Vec::new(),
+                    },
+                    &cancel,
+                )
                 .await?;
 
             let raw = match response {
@@ -442,6 +485,17 @@ impl AuthoringLoop {
             }
 
             self.audit(AuditKind::ArtifactGenerated, kind.file_path());
+
+            // El contexto no sirve de nada si no sale de la memoria: se escribe y se declara
+            // lo ocurrido, incluso si falló (un fallo aislado no aborta el resto).
+            let record = self
+                .deps
+                .writer
+                .write(kind.file_path(), &artifact.render())
+                .await;
+            self.audit(AuditKind::ArtifactWritten, record.summary());
+            session.record_write(record);
+
             session.put_artifact(artifact);
         }
 

@@ -25,6 +25,9 @@ pub enum CoreError {
 
     #[error("fallo de almacenamiento: {0}")]
     Storage(String),
+
+    #[error("la sesión fue cancelada")]
+    Cancelled,
 }
 
 pub type Result<T> = std::result::Result<T, CoreError>;
