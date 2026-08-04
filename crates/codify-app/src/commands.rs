@@ -5,6 +5,7 @@
 //! serializables: los tipos de dominio no cruzan hacia la ventana.
 
 use crate::adapters::{EventAuditSink, StatePayload, SystemClock, UnavailablePrompter};
+use codify_core::application::ports::ProviderDiscovery;
 use codify_core::application::service::{
     AuthoringService, ContextAuthoring, SessionSnapshot, StartSession,
 };
@@ -102,6 +103,8 @@ pub struct SessionSnapshotDto {
     pub budget_exhausted: bool,
     pub interview_mode: bool,
     pub unattended_tentative: usize,
+    /// Qué llegó (o no) al repositorio (FR-017).
+    pub writes: Vec<WriteRecordDto>,
 }
 
 fn to_segment_dto(segment: &codify_core::domain::context::Segment) -> SegmentDto {
@@ -159,6 +162,7 @@ fn to_snapshot_dto(snapshot: SessionSnapshot) -> SessionSnapshotDto {
         budget_exhausted: snapshot.budget_exhausted,
         interview_mode: snapshot.interview_mode,
         unattended_tentative: snapshot.unattended_tentative,
+        writes: snapshot.writes.iter().map(to_write_dto).collect(),
     }
 }
 
@@ -364,4 +368,139 @@ mod tests {
         // El proveedor local rechaza endpoints no loopback en su constructor.
         assert!(LocalOpenAiCompatProvider::new("x", "https://api.remoto.test", "m").is_err());
     }
+}
+
+// ---------------------------------------------------------------------------
+// Comandos de la Fase 3 (spec 002): cancelación, sonda, cadenas e idioma
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WriteRecordDto {
+    pub path: String,
+    pub bytes: usize,
+    /// `written` | `skipped` | `failed`
+    pub outcome: String,
+    /// Motivo cuando no llegó al disco. Nunca vacío si `outcome != "written"`.
+    pub detail: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CancelOutcomeDto {
+    pub session_id: String,
+    /// Fase en la que se cortó: el usuario sabe hasta dónde llegó.
+    pub phase: String,
+    pub writes: Vec<WriteRecordDto>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderStatusDto {
+    pub reachable: bool,
+    pub endpoint: String,
+    pub models: Vec<String>,
+    /// Qué hacer cuando falta algo. Es lo que separa "guiado" de "silencioso" (FR-019).
+    pub detail: Option<String>,
+}
+
+fn to_write_dto(record: &codify_core::domain::write::WriteRecord) -> WriteRecordDto {
+    use codify_core::domain::write::WriteOutcome;
+    let (outcome, detail) = match &record.outcome {
+        WriteOutcome::Written => ("written", None),
+        WriteOutcome::Skipped(why) => ("skipped", Some(why.clone())),
+        WriteOutcome::Failed(why) => ("failed", Some(why.clone())),
+    };
+    WriteRecordDto {
+        path: record.path.clone(),
+        bytes: record.bytes,
+        outcome: outcome.into(),
+        detail,
+    }
+}
+
+/// Cancela la sesión y devuelve el balance de lo que alcanzó a escribirse (FR-023).
+#[tauri::command]
+pub async fn cancel_session(
+    state: State<'_, AppState>,
+    session_id: String,
+) -> Result<CancelOutcomeDto, String> {
+    let service = state
+        .lookup(&session_id)
+        .ok_or_else(|| format!("sesión desconocida: {session_id}"))?;
+
+    let outcome = service
+        .cancel_session(&SessionId::new(session_id))
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(CancelOutcomeDto {
+        session_id: outcome.session_id.as_str().to_string(),
+        phase: format!("{:?}", outcome.phase).to_lowercase(),
+        writes: outcome.writes.iter().map(to_write_dto).collect(),
+    })
+}
+
+/// Sondea el backend de modelo. No falla: informa con un motivo accionable (FR-019/FR-028).
+#[tauri::command]
+pub async fn probe_provider(local: bool) -> Result<ProviderStatusDto, String> {
+    let endpoint = env_or("CODIFY_LOCAL_ENDPOINT", DEFAULT_ENDPOINT);
+
+    let probe = match LocalProviderProbe::new(&endpoint) {
+        Ok(p) => p,
+        // Un endpoint no loopback en modo local no es un fallo opaco: es algo que explicar.
+        Err(e) => {
+            return Ok(ProviderStatusDto {
+                reachable: false,
+                endpoint,
+                models: Vec::new(),
+                detail: Some(format!("{e}")),
+            })
+        }
+    };
+
+    let status = probe.probe().await;
+    let _ = local; // el modo condiciona el cableado, no la forma de sondear
+    Ok(ProviderStatusDto {
+        reachable: status.reachable,
+        endpoint: status.endpoint,
+        models: status.models,
+        detail: status.detail,
+    })
+}
+
+/// Catálogo de cadenas del idioma pedido (FR-016b).
+#[tauri::command]
+pub fn ui_strings(locale: String) -> crate::strings::UiStrings {
+    crate::strings::strings_for(crate::strings::Locale::parse(&locale))
+}
+
+/// Idioma del sistema, con caída a inglés (FR-016b).
+#[tauri::command]
+pub fn system_locale() -> String {
+    crate::strings::system_locale().code().to_string()
+}
+
+/// Un artefacto completo, alcanzable en cualquier momento (FR-021).
+#[tauri::command]
+pub async fn artifact(
+    state: State<'_, AppState>,
+    session_id: String,
+    path: String,
+) -> Result<ArtifactDto, String> {
+    let service = state
+        .lookup(&session_id)
+        .ok_or_else(|| format!("sesión desconocida: {session_id}"))?;
+
+    let snapshot = service
+        .session_state(&SessionId::new(session_id))
+        .await
+        .map_err(|e| e.to_string())?;
+
+    snapshot
+        .artifacts
+        .iter()
+        .find(|a| a.kind.file_path() == path)
+        .map(to_artifact_dto)
+        .ok_or_else(|| format!("artefacto desconocido: {path}"))
 }

@@ -7,29 +7,72 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header class="bar">
+    <!-- Controles de la sesión. Región con nombre para lectores de pantalla (FR-027). -->
+    <header class="bar" role="region" aria-label="" data-i18n-aria="a11y.toolbar_region">
       <span class="brand">codify</span>
-      <input
-        id="repo"
-        type="text"
-        placeholder="Ruta del repositorio a documentar"
-        spellcheck="false"
-      />
-      <label class="mode">
-        <input id="local" type="checkbox" checked />
-        <span>modo local</span>
-      </label>
-      <button id="start">Iniciar</button>
-      <span id="state" class="state" data-state="idle">sin sesión</span>
+
+      <input id="repo" type="text" spellcheck="false" data-i18n-attr="placeholder:session.repo_placeholder" />
+
+      <button id="action" class="primary" data-i18n="session.start"></button>
+
+      <output id="state" class="state" data-state="idle" aria-live="polite"></output>
+
+      <!-- Indicador PERSISTENTE de modo: no depende del color, lleva texto (FR-005/FR-026). -->
+      <span id="mode" class="mode-badge" data-mode="local" title="">
+        <span class="glyph" aria-hidden="true">■</span>
+        <span id="mode-label" data-i18n="mode.local"></span>
+      </span>
     </header>
 
-    <main id="stream" class="stream" aria-live="polite">
-      <p class="hint">
-        Elige un repositorio y pulsa <strong>Iniciar</strong>. Verás aquí, en orden, lo que el
-        agente va leyendo y lo que no logra resolver.
-      </p>
+    <!-- Estado del proveedor de modelo: guía en vez de callar (FR-019). -->
+    <section id="provider" class="provider" role="region" aria-label="" data-i18n-aria="a11y.provider_region">
+      <h2 class="visually-hidden" data-i18n="provider.title"></h2>
+      <span class="glyph" id="provider-glyph" aria-hidden="true">…</span>
+      <span id="provider-status" data-i18n="provider.checking"></span>
+      <label class="inline">
+        <span class="label" data-i18n="provider.model_label"></span>
+        <select id="model" disabled></select>
+      </label>
+      <button id="provider-retry" class="ghost" data-i18n="provider.retry"></button>
+      <p id="provider-next" class="next-step" hidden></p>
+    </section>
+
+    <!-- La corriente cronológica de bloques (FR-020). aria-live para que un lector de
+         pantalla anuncie lo que va llegando sin que el usuario tenga que ir a buscarlo. -->
+    <main id="stream" class="stream" role="log" aria-live="polite" aria-label="" data-i18n-aria="a11y.stream_region">
+      <p class="hint" data-i18n="stream.hint"></p>
     </main>
 
-    <script src="main.js"></script>
+    <!-- Preferencias: los dos idiomas son independientes y se ve que lo son (FR-016/016b). -->
+    <footer class="prefs" role="region" aria-label="" data-i18n-aria="a11y.toolbar_region">
+      <label class="inline">
+        <span class="label" data-i18n="locale.ui_label"></span>
+        <select id="ui-locale">
+          <option value="es">Español</option>
+          <option value="en">English</option>
+        </select>
+      </label>
+      <label class="inline">
+        <span class="label" data-i18n="locale.artifacts_label"></span>
+        <select id="artifact-locale">
+          <option value="es">Español</option>
+          <option value="en">English</option>
+        </select>
+      </label>
+      <span class="hint-inline" data-i18n="locale.independent_hint"></span>
+      <span class="hint-inline shortcuts" data-i18n="a11y.shortcuts"></span>
+    </footer>
+
+    <!-- Confirmación antes de cerrar con trabajo en curso (FR-024). -->
+    <dialog id="close-dialog" aria-labelledby="close-title">
+      <h2 id="close-title" data-i18n="close.title"></h2>
+      <p data-i18n="close.warning"></p>
+      <div class="dialog-actions">
+        <button id="close-cancel" class="ghost" data-i18n="close.cancel"></button>
+        <button id="close-confirm" class="primary" data-i18n="close.confirm"></button>
+      </div>
+    </dialog>
+
+    <script type="module" src="main.js"></script>
   </body>
 </html>

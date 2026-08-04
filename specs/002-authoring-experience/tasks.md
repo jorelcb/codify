@@ -83,26 +83,26 @@ Por eso el orden de entrega **se aparta del orden de prioridad**, y es deliberad
 
 ### Catálogo de cadenas y comandos
 
-- [ ] T020 [P] [US1] Test de paridad del catálogo: mismas claves en `es` y `en`, ningún valor vacío — en `crates/codify-app/src/strings.rs` (módulo `tests`)
-- [ ] T021 [US1] Catálogo de cadenas `es`/`en` con espacios `session.*`, `stream.*`, `provider.*`, `error.*`, `a11y.*`, **`locale.*`** (idioma de interfaz vs. de artefactos) y **`mode.*`** (local/híbrido), y `system_locale()` con caída a `en` — en `crates/codify-app/src/strings.rs` (depende de T020)
-- [ ] T022 [P] [US1] Comandos `cancel_session` (**devuelve `CancelOutcomeDto`**) y `probe_provider` en `crates/codify-app/src/commands.rs`, según `contracts/skin-commands.md`
-- [ ] T023 [P] [US1] Comandos `ui_strings` y `system_locale` en `crates/codify-app/src/commands.rs`
-- [ ] T024 [US1] Emitir los eventos nuevos `artifact.written` y `session.cancelled` desde `EventAuditSink` en `crates/codify-app/src/adapters.rs`
+- [X] T020 [P] [US1] Test de paridad del catálogo: mismas claves en `es` y `en`, ningún valor vacío — en `crates/codify-app/src/strings.rs` (módulo `tests`)
+- [X] T021 [US1] Catálogo de cadenas `es`/`en` con espacios `session.*`, `stream.*`, `provider.*`, `error.*`, `a11y.*`, **`locale.*`** (idioma de interfaz vs. de artefactos) y **`mode.*`** (local/híbrido), y `system_locale()` con caída a `en` — en `crates/codify-app/src/strings.rs` (depende de T020)
+- [X] T022 [P] [US1] Comandos `cancel_session` (**devuelve `CancelOutcomeDto`**) y `probe_provider` en `crates/codify-app/src/commands.rs`, según `contracts/skin-commands.md`
+- [X] T023 [P] [US1] Comandos `ui_strings` y `system_locale` en `crates/codify-app/src/commands.rs`
+- [X] T024 [US1] Emitir los eventos nuevos `artifact.written` y `session.cancelled` desde `EventAuditSink` en `crates/codify-app/src/adapters.rs`
 
 ### Interfaz
 
-- [ ] T025 [P] [US1] Estructura semántica y regiones (`<main>`, `<article>`, `aria-live` para la corriente) en `crates/codify-app/ui/index.html`
-- [ ] T026 [P] [US1] Consumo del catálogo de cadenas (sin texto incrustado en la vista) en `crates/codify-app/ui/i18n.js`
-- [ ] T027 [US1] La corriente cronológica de bloques append-only, con **etiqueta + forma + color** por tipo, en `crates/codify-app/ui/stream.js` (depende de T026)
-- [ ] T028 [US1] Onboarding guiado del proveedor: estado, elección de modelo y **qué hacer cuando falta algo**, en `crates/codify-app/ui/provider.js`
-- [ ] T029 [US1] Orquestación: iniciar, **cancelar**, suscripción a eventos y presentación accionable de fallos (FR-028), en `crates/codify-app/ui/main.js` (depende de T027, T028)
-- [ ] T051 [US1] Indicador **persistente** de modo local en la barra + render del bloque `egress.blocked` cuando se intenta una salida, en `crates/codify-app/ui/main.js` y `crates/codify-app/ui/stream.js` [FR-005, SC-006]
-- [ ] T030 [US1] Estilos de los estados con señal redundante y foco visible, en `crates/codify-app/ui/styles.css`
-- [ ] T031 [US1] Atajos y orden de tabulación para iniciar, cancelar y recorrer la corriente, en `crates/codify-app/ui/main.js`
-- [ ] T032 [US1] Mostrar el **balance de escrituras** al terminar o cancelar (FR-017/FR-023), en `crates/codify-app/ui/main.js`
-- [ ] T052 [US1] Presentar lo que quedó **sin leer** al terminar la ingesta (`omitted` + `budgetExhausted` del snapshot), de modo que el resultado nunca aparente ser completo, en `crates/codify-app/ui/main.js` [FR-004]
-- [ ] T053 [US1] Confirmación al cerrar la aplicación con una sesión en curso, declarando **qué se perderá** y qué ya está en el repositorio, en `crates/codify-app/ui/main.js` (usa el evento de cierre de ventana de Tauri) [FR-024]
-- [ ] T054 [US1] Control para cambiar el **idioma de los artefactos** (comando `set_locale`), visiblemente distinto del selector de idioma de la interfaz, en `crates/codify-app/ui/main.js` [FR-016]
+- [X] T025 [P] [US1] Estructura semántica y regiones (`<main>`, `<article>`, `aria-live` para la corriente) en `crates/codify-app/ui/index.html`
+- [X] T026 [P] [US1] Consumo del catálogo de cadenas (sin texto incrustado en la vista) en `crates/codify-app/ui/i18n.js`
+- [X] T027 [US1] La corriente cronológica de bloques append-only, con **etiqueta + forma + color** por tipo, en `crates/codify-app/ui/stream.js` (depende de T026)
+- [X] T028 [US1] Onboarding guiado del proveedor: estado, elección de modelo y **qué hacer cuando falta algo**, en `crates/codify-app/ui/provider.js`
+- [X] T029 [US1] Orquestación: iniciar, **cancelar**, suscripción a eventos y presentación accionable de fallos (FR-028), en `crates/codify-app/ui/main.js` (depende de T027, T028)
+- [X] T051 [US1] Indicador **persistente** de modo local en la barra + render del bloque `egress.blocked` cuando se intenta una salida, en `crates/codify-app/ui/main.js` y `crates/codify-app/ui/stream.js` [FR-005, SC-006]
+- [X] T030 [US1] Estilos de los estados con señal redundante y foco visible, en `crates/codify-app/ui/styles.css`
+- [X] T031 [US1] Atajos y orden de tabulación para iniciar, cancelar y recorrer la corriente, en `crates/codify-app/ui/main.js`
+- [X] T032 [US1] Mostrar el **balance de escrituras** al terminar o cancelar (FR-017/FR-023), en `crates/codify-app/ui/main.js`
+- [X] T052 [US1] Presentar lo que quedó **sin leer** al terminar la ingesta (`omitted` + `budgetExhausted` del snapshot), de modo que el resultado nunca aparente ser completo, en `crates/codify-app/ui/main.js` [FR-004]
+- [X] T053 [US1] Confirmación al cerrar la aplicación con una sesión en curso, declarando **qué se perderá** y qué ya está en el repositorio, en `crates/codify-app/ui/main.js` (usa el evento de cierre de ventana de Tauri) [FR-024]
+- [X] T054 [US1] Control para cambiar el **idioma de los artefactos** (comando `set_locale`), visiblemente distinto del selector de idioma de la interfaz, en `crates/codify-app/ui/main.js` [FR-016]
 
 **Checkpoint**: US1 completa — **MVP de la experiencia**. Validar con quickstart S1, S2, S4, S6.
 
