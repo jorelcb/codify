@@ -1,5 +1,9 @@
-/* Scaffold de la piel (T003). El diseño de la experiencia se aborda en T030,
-   guiado por specs/002-authoring-experience. */
+/* Estilos de la piel.
+ *
+ * Regla que gobierna la paleta: **el color nunca es la única señal** (FR-026). Cada estado
+ * lleva etiqueta textual + glifo + color. Quitar el color —daltonismo, escala de grises— no
+ * puede volver la interfaz ambigua.
+ */
 
 :root {
   --bg: #0f1115;
@@ -8,9 +12,10 @@
   --fg: #e6e8ee;
   --muted: #9aa3b2;
   --accent: #6ea8fe;
-  --grounded: #4ec9a5;
-  --tentative: #e2b341;
-  --contradiction: #e2685f;
+  --ok: #4ec9a5;
+  --warn: #e2b341;
+  --bad: #e2685f;
+  --focus: #8ab4ff;
 }
 
 @media (prefers-color-scheme: light) {
@@ -20,39 +25,62 @@
     --line: #e3e6ec;
     --fg: #1a1d24;
     --muted: #5c6675;
+    --accent: #2563eb;
+    --ok: #0f8a63;
+    --warn: #a86a00;
+    --bad: #c0392b;
+    --focus: #2563eb;
   }
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   background: var(--bg);
   color: var(--fg);
   font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* El foco SIEMPRE se ve: es lo que hace usable la navegación por teclado (FR-025). */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* --- Barra de controles ------------------------------------------------- */
+
 .bar {
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
   padding: 10px 14px;
   background: var(--panel);
   border-bottom: 1px solid var(--line);
   position: sticky;
   top: 0;
+  z-index: 2;
 }
 
-.brand {
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
+.brand { font-weight: 600; letter-spacing: 0.02em; }
 
 #repo {
   flex: 1;
-  min-width: 0;
+  min-width: 12rem;
   padding: 7px 10px;
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -62,49 +90,93 @@ body {
   font-size: 13px;
 }
 
-.mode {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
 button {
   padding: 7px 14px;
   border: 1px solid var(--line);
   border-radius: 7px;
-  background: var(--accent);
-  color: #0b0d12;
+  font: inherit;
   font-weight: 600;
   cursor: pointer;
+  background: var(--panel);
+  color: var(--fg);
 }
 
-button:disabled {
-  opacity: 0.5;
-  cursor: progress;
-}
+button.primary { background: var(--accent); color: #fff; border-color: transparent; }
+button.ghost { background: transparent; color: var(--muted); font-weight: 500; }
+button[data-role="cancel"] { background: var(--bad); color: #fff; }
+button:disabled { opacity: 0.55; cursor: default; }
 
-.state {
-  color: var(--muted);
+.state { color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+/* Indicador de modo: glifo + texto + color. Persistente (FR-005). */
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
   font-size: 12px;
   white-space: nowrap;
 }
+.mode-badge[data-mode="local"] { color: var(--ok); border-color: currentColor; }
+.mode-badge[data-mode="hybrid"] { color: var(--warn); border-color: currentColor; }
+
+/* --- Panel del proveedor ------------------------------------------------ */
+
+.provider {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.provider[data-state="ready"] .glyph { color: var(--ok); }
+.provider[data-state="down"] .glyph { color: var(--bad); }
+.provider[data-state="checking"] .glyph { color: var(--muted); }
+
+.inline { display: inline-flex; align-items: center; gap: 6px; }
+.label { color: var(--muted); font-size: 12px; }
+
+select {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 12.5px;
+}
+
+/* El "qué hacer" nunca es decorativo: ocupa su propia línea y se lee (FR-019). */
+.next-step {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+  padding: 7px 10px;
+  border-left: 3px solid var(--bad);
+  background: color-mix(in srgb, var(--bad) 10%, transparent);
+  color: var(--fg);
+  font-size: 12.5px;
+}
+
+/* --- La corriente ------------------------------------------------------- */
 
 .stream {
-  max-width: 900px;
+  flex: 1;
+  width: 100%;
+  max-width: 920px;
   margin: 0 auto;
-  padding: 18px 14px 40px;
+  padding: 16px 14px 32px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.hint {
-  color: var(--muted);
-}
+.hint { color: var(--muted); }
 
-/* Un bloque por acción: el relato cronológico de lo que pasó (FR-020). */
 .block {
   border: 1px solid var(--line);
   border-left-width: 3px;
@@ -115,27 +187,69 @@ button:disabled {
 }
 
 .block .what {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 0;
   color: var(--muted);
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
+.block .glyph { font-weight: 700; font-size: 13px; }
 .block .target {
+  margin: 3px 0 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 13px;
 }
+.block .detail { margin: 3px 0 0; color: var(--muted); font-size: 12.5px; }
+.block .items { margin: 6px 0 0; padding-left: 1.1rem; font-size: 12.5px; }
+.block .items li { margin: 2px 0; }
 
-/* La distinción NO depende solo del color: cada estado lleva su etiqueta. */
+/* Color como TERCERA señal: la etiqueta y el glifo ya distinguen sin él. */
 .block[data-kind="activity"] { border-left-color: var(--muted); }
-.block[data-kind="resolved"] { border-left-color: var(--grounded); }
-.block[data-kind="unresolved"] { border-left-color: var(--tentative); }
-.block[data-kind="contradiction"] { border-left-color: var(--contradiction); }
-.block[data-kind="egress"] { border-left-color: var(--contradiction); }
-.block[data-kind="error"] { border-left-color: var(--contradiction); }
+.block[data-kind="read"] { border-left-color: var(--ok); }
+.block[data-kind="written"] { border-left-color: var(--accent); }
+.block[data-kind="unresolved"] { border-left-color: var(--warn); }
+.block[data-kind="contradiction"] { border-left-color: var(--bad); }
+.block[data-kind="egress"] { border-left-color: var(--bad); }
+.block[data-kind="cancelled"] { border-left-color: var(--warn); }
+.block[data-kind="error"] { border-left-color: var(--bad); }
 
-.reason {
-  color: var(--muted);
-  font-size: 12.5px;
-  margin-top: 2px;
+/* --- Preferencias ------------------------------------------------------- */
+
+.prefs {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+.hint-inline { color: var(--muted); }
+.shortcuts { margin-left: auto; }
+
+/* --- Diálogo de cierre -------------------------------------------------- */
+
+dialog {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--fg);
+  max-width: 30rem;
+  padding: 18px;
+}
+dialog::backdrop { background: rgb(0 0 0 / 0.5); }
+dialog h2 { margin: 0 0 8px; font-size: 16px; }
+.dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+
+/* --- Ventana pequeña: nada se recorta ni desborda (SC-007) --------------- */
+
+@media (max-width: 720px) {
+  .bar, .provider, .prefs { padding: 8px 10px; }
+  .shortcuts { display: none; }
+  #repo { flex-basis: 100%; order: 10; }
 }

@@ -6,6 +6,7 @@
 
 pub mod adapters;
 pub mod commands;
+pub mod strings;
 
 pub fn run() {
     tauri::Builder::default()
@@ -14,6 +15,11 @@ pub fn run() {
             commands::start_session,
             commands::session_state,
             commands::set_locale,
+            commands::cancel_session,
+            commands::probe_provider,
+            commands::ui_strings,
+            commands::system_locale,
+            commands::artifact,
         ])
         .run(tauri::generate_context!())
         .expect("no se pudo arrancar la aplicación");
