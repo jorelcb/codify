@@ -17,6 +17,10 @@
 - Q: ¿Modelo de presentación: bloques cronológicos o documento + chat? → A: **Bloques cronológicos** (corriente estilo terminal moderna). Se acepta la tensión que abre con US3 y se cierra con FR-021.
 - Q: ¿La aplicación es editor o revisor? → A: **Revisor**: el usuario aprueba, edita la propuesta o rechaza; no escribe directamente sobre los artefactos.
 - Q: ¿La aplicación guía la conexión del proveedor de modelo? → A: **Guiado**: detecta el backend local, ayuda a elegir modelo y avisa si falta algo.
+- Q: ¿Qué puede hacer el usuario mientras el agente trabaja? → A: La interfaz **sigue siendo utilizable y la sesión es cancelable** en cualquier momento, declarando qué alcanzó a escribirse.
+- Q: ¿La sesión sobrevive al cierre de la aplicación? → A: **No hay persistencia** en esta etapa; lo escrito permanece en el repositorio. Marcado como **revisitable** cuando US2 traiga propuestas pendientes de aprobación.
+- Q: ¿En qué idioma está la interfaz? → A: **Localizable español/inglés desde v1**, siguiendo el idioma del sistema por defecto. Es independiente del idioma de los artefactos.
+- Q: ¿Qué alcance de accesibilidad? → A: **Operable por teclado + marcado semántico**, sin depender del color. Un programa formal de conformidad (WCAG) queda fuera de esta etapa.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -77,7 +81,7 @@ Al leer el contexto generado, el usuario distingue **sin esfuerzo y sin ambigüe
 - **Sesión larga**: la exploración puede producir muchas acciones; el usuario debe poder seguir el hilo sin ahogarse en ruido ni perder lo importante entre lo trivial.
 - **Muchas propuestas pendientes**: la revisión no puede degradar a una cola interminable de decisiones (el fallo que este producto viene a corregir).
 - **El proveedor de modelo falla o no está disponible**: el usuario entiende qué pasó y qué puede hacer, sin mensajes técnicos crudos ni una pantalla congelada.
-- **El usuario cierra la aplicación a mitad de sesión**: debe quedar claro qué se escribió al repositorio y qué no.
+- **El usuario cierra la aplicación a mitad de sesión**: la sesión termina (no se reanuda, FR-024); debe quedar claro **antes de cerrar** qué se escribió al repositorio y qué se perderá.
 - **Ventana pequeña**: el diff y la conversación siguen siendo utilizables.
 
 ## Requirements *(mandatory)*
@@ -106,7 +110,8 @@ Al leer el contexto generado, el usuario distingue **sin esfuerzo y sin ambigüe
 
 **Alcance y control del usuario**
 - **FR-015**: La aplicación MUST permitir al usuario elegir el repositorio objetivo y el modo de la sesión antes de comenzar.
-- **FR-016**: La aplicación MUST permitir cambiar el **idioma** de los artefactos, sobrescribiendo el detectado automáticamente.
+- **FR-016**: La aplicación MUST permitir cambiar el **idioma de los artefactos**, sobrescribiendo el detectado automáticamente.
+- **FR-016b**: La **interfaz** MUST estar disponible en **español e inglés**, tomando por defecto el idioma del sistema operativo y permitiendo cambiarlo. Su idioma es **independiente** del de los artefactos: un usuario con el sistema en inglés puede generar contexto en español. Todo texto visible MUST provenir de un catálogo de cadenas, no estar incrustado en la vista.
 - **FR-017**: La aplicación MUST dejar claro, en todo momento, **qué se escribió al repositorio** y qué sigue siendo una propuesta.
 - **FR-018**: La aplicación es un **revisor, no un editor**: el usuario MUST poder aprobar, **editar la propuesta** del agente o rechazarla, pero NO escribe directamente sobre los artefactos. Cuando quiera aportar contenido propio, lo hace **conversando** y el agente lo convierte en una propuesta revisable. Así todo cambio conserva su rastro y su fundamento declarado.
 - **FR-019**: La aplicación MUST **guiar la conexión de un proveedor de modelo**: detectar si hay un backend local disponible, permitir elegir el modelo, y explicar en términos accionables qué falta cuando no hay ninguno — nunca quedarse en silencio sin explicar por qué no ocurre nada.
@@ -114,6 +119,17 @@ Al leer el contexto generado, el usuario distingue **sin esfuerzo y sin ambigüe
 **Modelo de presentación**
 - **FR-020**: La experiencia MUST organizarse como un **flujo cronológico de bloques**: cada acción del agente, cada respuesta y cada propuesta de cambio es un bloque en una corriente que avanza, legible de arriba abajo como el relato de lo que pasó.
 - **FR-021**: Como contrapeso del flujo cronológico, la aplicación MUST permitir **ver un artefacto completo en cualquier momento**, con su fundamento visible, sin obligar al usuario a reconstruirlo recorriendo la corriente hacia atrás. *(Cierra la tensión conocida entre FR-020 y la User Story 3.)*
+
+**Trabajo en curso**
+- **FR-022**: La interfaz MUST permanecer **utilizable mientras el agente trabaja**: el usuario puede leer la corriente, desplazarse y consultar lo ya producido. La aplicación no se congela durante una sesión que puede durar minutos.
+- **FR-023**: El usuario MUST poder **cancelar la sesión en curso** en cualquier momento, y la aplicación MUST declarar entonces **qué alcanzó a escribirse** al repositorio y qué no.
+- **FR-024**: La sesión **no persiste** entre ejecuciones: cerrar la aplicación la termina. Lo ya escrito permanece en el repositorio, y al reabrir se inicia una sesión nueva. La aplicación MUST dejar claro, antes de cerrarse con trabajo en curso, **qué se perderá**.
+
+**Accesibilidad y manejo de fallos**
+- **FR-025**: Toda acción MUST ser alcanzable **con el teclado**, sin ratón: iniciar y cancelar una sesión, recorrer la corriente, abrir un artefacto y decidir sobre una propuesta.
+- **FR-026**: La distinción entre estados de fundamento (grounded / tentativo / contradicción) MUST NOT depender **únicamente del color**: debe sobrevivir a daltonismo y a una captura en escala de grises.
+- **FR-027**: La interfaz MUST usar **estructura semántica** (encabezados, listas, regiones, etiquetas de control), de modo que un lector de pantalla obtenga soporte base sin un programa de accesibilidad dedicado.
+- **FR-028**: Ante un fallo del proveedor de modelo o de la lectura del repositorio, la aplicación MUST explicar **qué ocurrió y qué puede hacer el usuario**, sin exponer mensajes técnicos crudos ni dejar la interfaz en un estado indeterminado.
 
 ### Key Entities
 
@@ -136,6 +152,8 @@ Al leer el contexto generado, el usuario distingue **sin esfuerzo y sin ambigüe
 - **SC-005**: **Cero** escrituras al repositorio sin que el usuario pueda saber que ocurrieron: todo cambio aplicado es visible y revertible.
 - **SC-006**: Un usuario en modo local puede confirmar, **solo mirando la interfaz**, que la sesión no envió nada a la nube.
 - **SC-007**: Con la ventana en su tamaño mínimo soportado, el diff y la conversación **siguen siendo utilizables** (sin recorte de contenido ni desplazamiento horizontal).
+- **SC-008**: Cancelar una sesión en curso deja el repositorio en un estado que el usuario **puede describir con exactitud** a partir de lo que la aplicación le muestra — nunca en un estado que deba averiguar inspeccionando archivos.
+- **SC-009**: La interfaz se muestra íntegramente en el idioma activo: **cero** cadenas sin traducir en español o inglés, verificable recorriendo la aplicación con cada idioma.
 
 ## Assumptions
 
@@ -144,7 +162,7 @@ Al leer el contexto generado, el usuario distingue **sin esfuerzo y sin ambigüe
 - **Comportamientos ya decididos en 001** que esta experiencia debe reflejar, no redefinir: loop curado (bajo riesgo se auto-aplica, alto impacto requiere aprobación, todo revertible), cero-egress en modo local, idioma auto-detectado con override, y que lo no verificable se marca en vez de afirmarse.
 - **Un solo usuario, un solo repositorio por sesión**; no hay colaboración concurrente ni multi-proyecto simultáneo en esta etapa.
 - **Escritorio**: la experiencia se diseña para pantalla de computador con teclado y ratón; no hay soporte táctil ni móvil.
-- **Accesibilidad**: la distinción entre estados de fundamento **no puede depender únicamente del color** (debe sobrevivir a daltonismo y a captura en escala de grises).
+- **Accesibilidad**: alcance fijado en FR-025 a FR-027 (operable por teclado, sin depender del color, marcado semántico). Un programa formal de conformidad (auditoría con lectores de pantalla, WCAG) queda **fuera** de esta etapa.
 
 ### Dependencies
 
@@ -173,6 +191,13 @@ ser mala: se descartaron por no ser la apuesta de esta etapa.
 | Alternativa | Qué ofrecía | Por qué no ahora | Qué la haría revisitable |
 |---|---|---|---|
 | **Editor**: escribir directamente sobre los artefactos | Más libertad y sensación de control inmediato | Rompe la trazabilidad que sostiene la promesa del producto: el contenido escrito a mano **no tiene fundamento declarado** y habría que reconciliarlo con las propuestas del agente. Se convertiría en un editor de Markdown con un agente al lado, que es otro producto | Si los usuarios terminan copiando el contexto a su editor para retocarlo, la fricción de "todo pasa por una propuesta" está siendo demasiado alta y hay que abrir la edición directa — con una respuesta explícita a qué *groundedness* tiene lo que el humano escribe |
+
+### En lugar de sesión efímera (FR-024)
+
+| Alternativa | Qué ofrecía | Por qué no ahora | Qué la haría revisitable |
+|---|---|---|---|
+| **Sesión reanudable** (se guarda y continúa al reabrir) | Nada del trabajo se pierde al cerrar | El valor durable ya vive en el **repositorio**: los artefactos escritos permanecen. La sesión es el andamio para producirlos, y persistirla añade estado que hay que versionar y migrar | **US2**: en cuanto existan propuestas pendientes de aprobación, cerrar la aplicación destruiría decisiones del usuario todavía no aplicadas. Ese es el momento de revisitarlo — está marcado explícitamente |
+| **Solo historial** (se conserva la auditoría, no se reanuda) | Permite consultar qué pasó en sesiones anteriores | No resuelve la pérdida de trabajo y sí introduce almacenamiento | Si aparece una necesidad real de auditoría entre sesiones (p. ej. justificar ante terceros cómo se generó un contexto) |
 
 ### En lugar de onboarding guiado (FR-019)
 
