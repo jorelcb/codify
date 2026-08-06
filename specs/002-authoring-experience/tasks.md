@@ -67,7 +67,7 @@ El detalle está documentado en `001/tasks.md`, sección «Dependencias con el s
 - [X] T005 [P] Fakes de los tres ports nuevos en `crates/codify-core/tests/fakes/mod.rs` (bandera en memoria para cancelación; writer en mapa; sonda scriptable)
 - [X] T006 [P] Contract test `Cancellation`: una vez cancelado no se "descancela"; varios esperadores de `cancelled()` despiertan — en `crates/codify-core/tests/contract_cancellation.rs`
 - [X] T007 [P] Contract test `ArtifactWriter` (real fs + fake): escribe y relee; **rechaza rutas absolutas y con `..`**; crea directorios intermedios; un fallo aislado no arrastra al resto — en `crates/codify-core/tests/contract_artifact_writer.rs`
-- [X] T008 [P] Contract test `ProviderDiscovery`: sin backend devuelve `reachable:false` **con `detail` no vacío** y **nunca `Err`** — en `crates/codify-core/tests/contract_provider_discovery.rs`
+- [X] T008 [P] Contract test `ProviderDiscovery`: sin backend devuelve `reachable:false` **con `issue` presente** y **nunca `Err`** — en `crates/codify-core/tests/contract_provider_discovery.rs` (el campo pasó de `detail` a `issue` en T048: el núcleo ya no redacta la frase, nombra el motivo)
 
 ### Adapters
 

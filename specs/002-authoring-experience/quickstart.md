@@ -11,9 +11,19 @@ Escenarios que prueban la experiencia de punta a punta. Complementan los tests a
 ## Comandos
 
 ```bash
-cargo test --workspace     # unit, contract y paridad del catálogo de cadenas
+cargo test --workspace     # unit, contract, paridad del catálogo y contrato de interfaz
 cargo run -p codify-app    # levanta la aplicación
 ```
+
+> **Qué de esto ya no depende de mirar.** S5–S8 estaban escritos como inspección manual. Sus
+> propiedades **mecánicas** están hoy fijadas en `crates/codify-app/tests/ui_contract.rs` y las
+> verifica el build: orden de tabulación, indicador de foco, alcanzabilidad del punto de quiebre
+> responsivo, texto fuera del catálogo, elementos con dos dueños de su texto, y motivos del
+> proveedor sin traducir.
+>
+> El recorrido humano **sigue valiendo** —nadie automatiza «se entiende»— pero ya no es la única
+> red. La primera pasada real, midiendo la interfaz en un navegador en vez de leyéndola, encontró
+> cuatro defectos; los tests existen para que no vuelvan.
 
 ## Escenarios
 

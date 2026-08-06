@@ -52,13 +52,26 @@ pub struct ProviderStatus {
     pub reachable: bool,
     pub endpoint: String,
     pub models: Vec<String>,
-    /// Motivo accionable cuando no responde. Nunca vacío si `reachable == false`.
-    pub detail: Option<String>,
+    /// Motivo accionable cuando no sirve. Nunca vacío si `reachable == false`.
+    pub issue: Option<ProviderIssue>,
+}
+
+/// El motivo como **dato**, no como prosa.
+pub enum ProviderIssue {
+    NoModels,          // responde, pero no hay ningún modelo instalado
+    NotListening,      // no hay nada escuchando en el endpoint
+    EndpointNotLocal,  // el endpoint sale de la máquina y el modo local no lo admite
+}
+
+impl ProviderIssue {
+    /// Identificador estable con el que la piel elige el texto. Es parte del contrato.
+    pub fn code(&self) -> &'static str;
 }
 ```
 
 **Reglas de contrato**
-- `probe()` **no falla**: devuelve `reachable: false` con un `detail` que explica qué hacer. Un error opaco es exactamente lo que FR-019 viene a evitar.
+- `probe()` **no falla**: devuelve `reachable: false` con un `issue` que la piel traduce a qué hacer. Un error opaco es exactamente lo que FR-019 viene a evitar.
+- El núcleo **no redacta prosa para humanos**. Devolver la frase ya escrita le fijaría un idioma y volvería SC-009 —cero cadenas sin traducir— indemostrable; además sería presentación colándose en la aplicación. El núcleo nombra el motivo con un código estable y la piel elige el texto en `provider.issue.<code>`.
 - En modo local el `endpoint` debe ser loopback; el adapter reutiliza la validación existente del proveedor local.
 - No produce efectos: no genera, no descarga, no modifica nada.
 
@@ -78,4 +91,4 @@ pub struct ProviderStatus {
 
 - `Cancellation`: cancelar durante la ingesta detiene el loop y la sesión queda en `Cancelled` reportando sus escrituras; cancelar **durante una llamada al modelo** la aborta sin esperar a que termine.
 - `ArtifactWriter`: escribe y relee lo escrito; rechaza rutas fuera del repositorio; crea directorios intermedios; un fallo aislado no arrastra al resto.
-- `ProviderDiscovery`: con backend ausente devuelve `reachable: false` **con `detail` no vacío**; nunca devuelve `Err`.
+- `ProviderDiscovery`: con backend ausente devuelve `reachable: false` **con `issue` presente**; nunca devuelve `Err`. Los códigos de `ProviderIssue` son distintos entre sí —dos que colisionaran se presentarían como el mismo problema— y **cada uno tiene texto en ambos idiomas**, verificado recorriendo el catálogo.
