@@ -220,14 +220,41 @@ pub trait ArtifactWriter: Send + Sync {
     async fn read_existing(&self, path: &str) -> Result<Option<String>>;
 }
 
+/// Por qué el backend no sirve, como **dato** y no como prosa.
+///
+/// El núcleo no redacta texto para humanos: si devolviera la frase ya escrita, esa frase
+/// tendría un idioma fijo y SC-009 —cero cadenas sin traducir— dejaría de ser demostrable.
+/// Nombrar el motivo y dejar que la piel lo redacte mantiene la presentación donde va y hace
+/// que un test pueda recorrer el catálogo y comprobar que ningún motivo se quedó sin texto.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProviderIssue {
+    /// Responde, pero no tiene ningún modelo instalado.
+    NoModels,
+    /// No hay nada escuchando en el endpoint.
+    NotListening,
+    /// El endpoint apunta fuera de la máquina y el modo local no lo admite.
+    EndpointNotLocal,
+}
+
+impl ProviderIssue {
+    /// Identificador estable para que la piel elija el texto. Es parte del contrato.
+    pub fn code(&self) -> &'static str {
+        match self {
+            ProviderIssue::NoModels => "no_models",
+            ProviderIssue::NotListening => "not_listening",
+            ProviderIssue::EndpointNotLocal => "endpoint_not_local",
+        }
+    }
+}
+
 /// Estado del backend de modelo, para poder guiar al usuario en vez de fallar en silencio.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProviderStatus {
     pub reachable: bool,
     pub endpoint: String,
     pub models: Vec<String>,
-    /// Motivo accionable cuando no responde. **Nunca vacío** si `reachable == false`.
-    pub detail: Option<String>,
+    /// Motivo accionable cuando no sirve. **Nunca vacío** si `reachable == false`.
+    pub issue: Option<ProviderIssue>,
 }
 
 impl ProviderStatus {
@@ -236,16 +263,16 @@ impl ProviderStatus {
             reachable: true,
             endpoint: endpoint.into(),
             models,
-            detail: None,
+            issue: None,
         }
     }
 
-    pub fn unreachable(endpoint: impl Into<String>, detail: impl Into<String>) -> Self {
+    pub fn unreachable(endpoint: impl Into<String>, issue: ProviderIssue) -> Self {
         Self {
             reachable: false,
             endpoint: endpoint.into(),
             models: Vec::new(),
-            detail: Some(detail.into()),
+            issue: Some(issue),
         }
     }
 }
