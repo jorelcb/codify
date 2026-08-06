@@ -10,7 +10,8 @@ Extiende la superficie ya implementada en T029 (`001/contracts/tauri-commands.md
 | `session_state` | `{ sessionId }` | `SessionSnapshotDto` (**+ `writes`**) | ⚠️ crece |
 | `set_locale` | `{ sessionId, locale }` | `ack` | ya existe |
 | `cancel_session` | `{ sessionId }` | `CancelOutcomeDto` | 🆕 FR-023 |
-| `artifact` | `{ sessionId, path }` | `ArtifactViewDto` | 🆕 FR-021 |
+| `artifact` | `{ sessionId, path }` | `ArtifactDto` (**+ `writeState`**) | 🆕 FR-021 |
+| `defer_tentative` | `{ sessionId, path, index }` | `number` (cuántos quedan) | 🆕 FR-014 |
 | `probe_provider` | `{ local }` | `ProviderStatusDto` | 🆕 FR-019 |
 | `ui_strings` | `{ locale }` | `{ locale, entries }` | 🆕 FR-016b |
 | `system_locale` | — | `{ locale }` (`es`\|`en`, cae a `en`) | 🆕 FR-016b |
@@ -37,6 +38,8 @@ Los cuatro primeros **ya existen**; se añaden dos.
 - **Toda acción tiene camino de teclado** (FR-025): iniciar, cancelar, recorrer la corriente, abrir un artefacto, cerrar la vista.
 - **Ningún texto va incrustado en la vista**: todo sale del catálogo de `ui_strings` (FR-016b).
 - **Ningún fallo se muestra crudo** (FR-028): se traduce a qué pasó y qué hacer.
+- **Diferir es por fragmento**: `defer_tentative` exige un índice concreto. No existe «diferir todo» — despachar sin leer es el hábito que el producto corrige, no uno que facilite.
+- **Un archivo en pantalla no es un archivo en el repositorio**: `writeState` (`written` | `pending` | `failed` | `skipped`) viaja con el artefacto, y la vista lo declara.
 
 ## Contrato de estados de la interfaz
 

@@ -84,6 +84,7 @@ impl ProviderIssue {
 | `SessionSnapshot` | **+ `writes: Vec<WriteRecord>`** | FR-017: declarar qué llegó al repositorio |
 | `AuthoringDeps` | **+ los tres ports nuevos** | Inyección por constructor en el composition root |
 | `AuditKind` | **+ `ArtifactWritten`, `SessionCancelled`** | La piel se entera por el canal que ya existe |
+| `AuthoringService::defer_tentative(id, path, index)` | **Nuevo** | FR-014: diferir un punto sin verificar, **por fragmento**. Devuelve cuántos quedan sin atender |
 
 > Todos los cambios son **aditivos** salvo la semántica de `start_session`, que cambia de bloqueante a no bloqueante. Es greenfield y la única consumidora es nuestra propia piel.
 

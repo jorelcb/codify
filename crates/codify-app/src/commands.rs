@@ -89,6 +89,12 @@ pub struct ArtifactDto {
     pub path: String,
     pub locale: String,
     pub segments: Vec<SegmentDto>,
+    /// `written` | `skipped` | `failed` | `pending`.
+    ///
+    /// Sin esto, la vista no puede distinguir un archivo que ya está en el repositorio de uno
+    /// que solo existe en pantalla — y dar por escrito lo que no lo está es justo la clase de
+    /// afirmación sin respaldo que el producto se niega a hacer (FR-017).
+    pub write_state: String,
 }
 
 #[derive(Serialize)]
@@ -136,11 +142,31 @@ fn to_segment_dto(segment: &codify_core::domain::context::Segment) -> SegmentDto
     }
 }
 
-fn to_artifact_dto(artifact: &ContextArtifact) -> ArtifactDto {
+fn to_artifact_dto(
+    artifact: &ContextArtifact,
+    writes: &[codify_core::domain::write::WriteRecord],
+) -> ArtifactDto {
+    use codify_core::domain::write::WriteOutcome;
+
+    let path = artifact.kind.file_path().to_string();
+    // La última escritura manda: una sesión puede reintentar sobre el mismo archivo.
+    let write_state = writes
+        .iter()
+        .rev()
+        .find(|w| w.path == path)
+        .map(|w| match &w.outcome {
+            WriteOutcome::Written => "written",
+            WriteOutcome::Skipped(_) => "skipped",
+            WriteOutcome::Failed(_) => "failed",
+        })
+        .unwrap_or("pending")
+        .to_string();
+
     ArtifactDto {
-        path: artifact.kind.file_path().to_string(),
+        path,
         locale: artifact.locale.clone(),
         segments: artifact.segments.iter().map(to_segment_dto).collect(),
+        write_state,
     }
 }
 
@@ -149,7 +175,11 @@ fn to_snapshot_dto(snapshot: SessionSnapshot) -> SessionSnapshotDto {
         id: snapshot.id.as_str().to_string(),
         state: format!("{:?}", snapshot.state).to_lowercase(),
         locale: snapshot.locale,
-        artifacts: snapshot.artifacts.iter().map(to_artifact_dto).collect(),
+        artifacts: snapshot
+            .artifacts
+            .iter()
+            .map(|a| to_artifact_dto(a, &snapshot.writes))
+            .collect(),
         unresolved: snapshot
             .unresolved
             .iter()
@@ -341,15 +371,19 @@ mod tests {
     use super::*;
     use codify_core::domain::context::{ArtifactKind, Segment};
 
-    #[test]
-    fn maps_each_groundedness_to_its_own_kind() {
-        let artifact = ContextArtifact::new(ArtifactKind::Context, "es").with_segments(vec![
+    fn tres_estados() -> ContextArtifact {
+        ContextArtifact::new(ArtifactKind::Context, "es").with_segments(vec![
             Segment::grounded("Motor: Temporal", vec!["SPEC-30.md".into()]),
             Segment::tentative("Métricas por definir", "sin fuente"),
             Segment::contradiction("Persistencia", vec!["PRD".into(), "SPEC".into()], "chocan"),
-        ]);
+        ])
+    }
 
-        let dto = to_artifact_dto(&artifact);
+    #[test]
+    fn maps_each_groundedness_to_its_own_kind() {
+        let artifact = tres_estados();
+
+        let dto = to_artifact_dto(&artifact, &[]);
         assert_eq!(dto.path, "context/CONTEXT.md");
         assert_eq!(dto.segments[0].kind, "grounded");
         assert_eq!(dto.segments[0].sources, vec!["SPEC-30.md"]);
@@ -361,6 +395,87 @@ mod tests {
         );
         assert_eq!(dto.segments[2].kind, "contradiction");
         assert_eq!(dto.segments[2].sources.len(), 2);
+    }
+
+    /// **T033** — la vista de artefacto necesita saber si lo que muestra **está en el
+    /// repositorio**. Sin esto no puede distinguir un archivo escrito de uno que solo existe
+    /// en pantalla, y presentarlos igual sería afirmar algo que no consta.
+    #[test]
+    fn the_artifact_declares_whether_it_reached_the_repository() {
+        use codify_core::domain::write::{WriteOutcome, WriteRecord};
+
+        let artifact = tres_estados();
+        let path = artifact.kind.file_path().to_string();
+
+        let sin_escribir = to_artifact_dto(&artifact, &[]);
+        assert_eq!(
+            sin_escribir.write_state, "pending",
+            "sin registro de escritura, el artefacto NO puede darse por escrito"
+        );
+
+        let escrito = to_artifact_dto(
+            &artifact,
+            &[WriteRecord {
+                path: path.clone(),
+                bytes: 120,
+                at: "2026-01-01T00:00:00Z".into(),
+                outcome: WriteOutcome::Written,
+            }],
+        );
+        assert_eq!(escrito.write_state, "written");
+
+        let fallido = to_artifact_dto(
+            &artifact,
+            &[WriteRecord {
+                path: path.clone(),
+                bytes: 0,
+                at: "2026-01-01T00:00:00Z".into(),
+                outcome: WriteOutcome::Failed("permiso denegado".into()),
+            }],
+        );
+        assert_eq!(
+            fallido.write_state, "failed",
+            "un fallo de escritura tiene que verse: silenciarlo haría creer que el archivo está"
+        );
+
+        // Un registro de OTRO archivo no puede teñir a este.
+        let ajeno = to_artifact_dto(
+            &artifact,
+            &[WriteRecord {
+                path: "otro/ARCHIVO.md".into(),
+                bytes: 10,
+                at: "2026-01-01T00:00:00Z".into(),
+                outcome: WriteOutcome::Written,
+            }],
+        );
+        assert_eq!(ajeno.write_state, "pending");
+    }
+
+    /// Una sesión puede reintentar sobre el mismo archivo: manda el **último** resultado.
+    #[test]
+    fn the_latest_write_wins() {
+        use codify_core::domain::write::{WriteOutcome, WriteRecord};
+
+        let artifact = tres_estados();
+        let path = artifact.kind.file_path().to_string();
+        let record = |outcome| WriteRecord {
+            path: path.clone(),
+            bytes: 1,
+            at: "2026-01-01T00:00:00Z".into(),
+            outcome,
+        };
+
+        let dto = to_artifact_dto(
+            &artifact,
+            &[
+                record(WriteOutcome::Failed("disco lleno".into())),
+                record(WriteOutcome::Written),
+            ],
+        );
+        assert_eq!(
+            dto.write_state, "written",
+            "el reintento que funcionó manda"
+        );
     }
 
     #[test]
@@ -503,6 +618,27 @@ pub async fn artifact(
         .artifacts
         .iter()
         .find(|a| a.kind.file_path() == path)
-        .map(to_artifact_dto)
+        .map(|a| to_artifact_dto(a, &snapshot.writes))
         .ok_or_else(|| format!("artefacto desconocido: {path}"))
+}
+
+/// Difiere un fragmento tentativo concreto y devuelve cuántos quedan sin atender (FR-014).
+///
+/// Es por fragmento: no existe un «diferir todo». Lo que no está verificado se difiere
+/// mirándolo, que es la diferencia entre decidir y despachar.
+#[tauri::command]
+pub async fn defer_tentative(
+    state: State<'_, AppState>,
+    session_id: String,
+    path: String,
+    index: usize,
+) -> Result<usize, String> {
+    let service = state
+        .lookup(&session_id)
+        .ok_or_else(|| format!("sesión desconocida: {session_id}"))?;
+
+    service
+        .defer_tentative(&SessionId::new(session_id), &path, index)
+        .await
+        .map_err(|e| e.to_string())
 }

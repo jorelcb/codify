@@ -32,6 +32,7 @@ Se expone al frontend con el comando `ui_strings(locale)`.
 6. Los textos de accesibilidad (`a11y.*`: etiquetas de región, anuncios de la corriente) son parte del catálogo, no un añadido posterior.
 7. **El núcleo no redacta**: cuando el núcleo tiene que explicar algo, devuelve un **código** y la piel elige la frase (`provider.issue.<code>`). Una frase ya escrita en el núcleo tendría idioma fijo y volvería la regla 2 indemostrable — además de ser presentación colándose en la aplicación.
 8. **Un solo dueño por texto**: si el JavaScript le escribe el `textContent` a un elemento, ese elemento **no lleva `data-i18n`**. Con dos dueños, `apply()` y el código se pisan al cambiar de idioma; quien pinta a mano es responsable de repintar.
+9. **Quien pinta a mano expone `render()`** y el manejador de cambio de idioma lo llama. `apply()` solo alcanza al DOM marcado: sin esto, todo lo pintado con `textContent` se queda en el idioma en que se pintó. Única excepción, `stream.js`: sus bloques son **append-only** porque espejan el log de auditoría, y reescribir uno ya emitido sería falsificar lo que pasó.
 
 ## Claves mínimas por superficie
 

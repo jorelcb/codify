@@ -81,6 +81,16 @@ pub trait AuthoringService: Send + Sync {
     async fn join_session(&self, id: &SessionId) -> Result<()>;
 
     async fn set_locale(&self, id: &SessionId, locale: String) -> Result<()>;
+
+    /// Difiere un fragmento tentativo: el usuario lo ha **visto** y decide dejarlo declarado
+    /// como pendiente en vez de resolverlo (FR-014 de `002-authoring-experience`).
+    ///
+    /// Es por fragmento y no en bloque a propósito. Un botón de «diferir todo» permitiría
+    /// despachar sin leer lo que no está verificado, que es exactamente el hábito que este
+    /// producto viene a corregir: lo tentativo se difiere **mirándolo**.
+    ///
+    /// Devuelve cuántos tentativos siguen sin atender.
+    async fn defer_tentative(&self, id: &SessionId, path: &str, index: usize) -> Result<usize>;
 }
 
 struct SessionEntry {
@@ -277,6 +287,47 @@ impl AuthoringService for ContextAuthoring {
         let mut view = entry.view.lock().await;
         view.locale = Some(locale);
         Ok(())
+    }
+
+    async fn defer_tentative(&self, id: &SessionId, path: &str, index: usize) -> Result<usize> {
+        let entry = self.entry(id).await?;
+        let mut view = entry.view.lock().await;
+
+        {
+            let artifact = view
+                .artifacts
+                .iter_mut()
+                .find(|a| a.kind.file_path() == path)
+                .ok_or_else(|| CoreError::NotFound(format!("artefacto {path}")))?;
+
+            let segment = artifact.segments.get_mut(index).ok_or_else(|| {
+                CoreError::NotFound(format!("fragmento {index} del artefacto {path}"))
+            })?;
+
+            // Diferir solo tiene sentido sobre lo tentativo. Aceptarlo sobre un fragmento
+            // fundamentado dejaría pasar en silencio un error de la piel — y peor, sugeriría
+            // que hay algo que atender donde no lo hay.
+            if !matches!(
+                segment.groundedness,
+                crate::domain::context::Groundedness::Tentative { .. }
+            ) {
+                return Err(CoreError::Invalid(format!(
+                    "el fragmento {index} de {path} no es tentativo: no hay nada que diferir"
+                )));
+            }
+
+            segment.acknowledge();
+        }
+
+        // El contador se recalcula desde los artefactos, no se decrementa: así no puede
+        // desincronizarse si alguien difiere dos veces el mismo fragmento.
+        view.unattended_tentative = view
+            .artifacts
+            .iter()
+            .map(|a| a.unattended_tentative_count())
+            .sum();
+
+        Ok(view.unattended_tentative)
     }
 }
 
