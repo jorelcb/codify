@@ -25,6 +25,21 @@ Por eso el orden de entrega **se aparta del orden de prioridad**, y es deliberad
 
 **US1 (P1) → US3 (P3) → US2 (P2, cuando 001-US2 esté hecho)**
 
+### Lo que este spec le entregó a `001`
+
+La relación no es solo de bloqueo: la **Fase 2 de aquí** añadió al núcleo capacidades que
+tareas de `001` pueden dar por hechas — port `ArtifactWriter` con `read_existing` (que su US3
+necesitaba construir), la escritura real de artefactos a disco, y `start_session` no
+bloqueante con `cancel_session`/`join_session`.
+
+Además, la **US1 de aquí superó varias tareas de `001`** (su T030, T047, T048 parcial, T049).
+El detalle está documentado en `001/tasks.md`, sección «Dependencias con el spec 002».
+
+> **Estado de alto nivel y dependencias vivas**: [issue #9 · Roadmap](https://github.com/jorelcb/codify/issues/9).
+> Este archivo sigue siendo la fuente de verdad de la **ejecución tarea a tarea**; los issues lo
+> son de las **dependencias entre épicas**, porque allí se ven desde los dos lados a la vez.
+> Épicas de este spec: **US3 → #6** · **US2 → #5** (bloqueada por #4). Solapes de pulido: #8.
+
 ---
 
 ## Phase 1: Setup
