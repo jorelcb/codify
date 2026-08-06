@@ -226,6 +226,62 @@ fn ningun_elemento_tiene_dos_duenos_de_su_texto() {
     );
 }
 
+/// Módulos cuyo texto **no** se repinta al cambiar de idioma, y por qué está bien.
+///
+/// `stream.js` es append-only: sus bloques espejan el log de auditoría del núcleo. Reescribir
+/// un bloque ya emitido sería falsificar lo que pasó, así que se queda en el idioma en que
+/// ocurrió — a propósito.
+const NO_SE_REPINTAN: &[&str] = &["stream.js"];
+
+/// Quien pinta texto a mano tiene que **repintarlo** al cambiar de idioma.
+///
+/// Este test nace del tercer defecto de esta familia. `i18n.apply()` solo alcanza al DOM
+/// marcado con `data-i18n`; todo lo que un módulo escriba con `textContent` se queda en el
+/// idioma en que se pintó. Pasó con «sin sesión», pasó con el panel del proveedor, y volvió a
+/// pasar con las etiquetas de fundamento de la vista de artefacto — que son justo lo que esa
+/// vista existe para comunicar.
+///
+/// La regla: si un módulo usa el catálogo, expone `render()` y el manejador de cambio de
+/// idioma lo llama.
+#[test]
+fn quien_pinta_a_mano_repinta_al_cambiar_de_idioma() {
+    let main_js = read(ui_dir().join("main.js"));
+
+    // Cuerpo del manejador de cambio de idioma de la interfaz.
+    let handler = main_js
+        .split_once("el.uiLocale.addEventListener")
+        .map(|(_, rest)| rest.split("\n});").next().unwrap_or(rest))
+        .expect("main.js debe reaccionar al cambio de idioma de la interfaz");
+
+    let mut sin_repintar = Vec::new();
+    for (name, content) in ui_files() {
+        if !name.ends_with(".js") || matches!(name.as_str(), "main.js" | "i18n.js") {
+            continue;
+        }
+        if NO_SE_REPINTAN.contains(&name.as_str()) {
+            continue;
+        }
+        // ¿Consume el catálogo? Entonces pinta texto que hay que repintar.
+        if !content.contains("t(\"") {
+            continue;
+        }
+        let module = name.trim_end_matches(".js");
+        if !content.contains("export function render") {
+            sin_repintar.push(format!("{name}: no expone `render()`"));
+        } else if !handler.contains(&format!("{module}.render(")) {
+            sin_repintar.push(format!(
+                "{name}: expone `render()` pero el cambio de idioma no lo llama"
+            ));
+        }
+    }
+
+    assert!(
+        sin_repintar.is_empty(),
+        "texto que se quedaría en el idioma anterior al cambiar de idioma (SC-009).\n{}",
+        sin_repintar.join("\n")
+    );
+}
+
 /// Todas las etiquetas de apertura del HTML, ya sin comentarios ni scripts.
 fn text_runs_tags(html: &str) -> Vec<String> {
     let clean = strip_between(html, "<!--", "-->");
@@ -250,20 +306,14 @@ fn between(source: &str, open: &str, close: &str) -> Option<String> {
 
 /// Claves del catálogo que **nadie usa**: o falta cablearlas, o sobran.
 ///
-/// Las de `artifact.` están puestas de antemano para la vista de artefacto completo, que es
-/// trabajo de la US3 de este spec (issue #6). Cuando aterrice, esta lista debe **encogerse**
-/// —si no, es que la vista no está consumiendo el catálogo.
-const RESERVADAS_PARA_LA_VISTA_DE_ARTEFACTO: &[&str] = &[
-    "artifact.open",
-    "artifact.close",
-    "artifact.grounded",
-    "artifact.tentative",
-    "artifact.contradiction",
-    "artifact.sources",
-    "artifact.reason",
-    "artifact.not_written",
-    "a11y.artifact_region",
-];
+/// Aquí vivían las nueve claves `artifact.*` reservadas de antemano para la vista de artefacto
+/// completo (US3, issue #6). La lista quedó **vacía** cuando esa vista aterrizó, que era
+/// exactamente lo que debía pasar: si hubiera sobrevivido, habría significado que la vista se
+/// escribió con texto propio en lugar de consumir el catálogo.
+///
+/// Mantenerla vacía es lo correcto. Volver a llenarla solo se justifica reservando claves para
+/// una superficie que todavía no existe — y con el issue que la va a consumir escrito al lado.
+const RESERVADAS: &[&str] = &[];
 
 #[test]
 fn toda_clave_del_catalogo_esta_cableada_o_declarada_como_reservada() {
@@ -272,7 +322,7 @@ fn toda_clave_del_catalogo_esta_cableada_o_declarada_como_reservada() {
     let mut huerfanas = Vec::new();
 
     for key in strings_for(Locale::Es).entries.keys() {
-        if RESERVADAS_PARA_LA_VISTA_DE_ARTEFACTO.contains(key) {
+        if RESERVADAS.contains(key) {
             continue;
         }
         // Las claves compuestas (`session.state.${state}`) se arman en tiempo de ejecución:

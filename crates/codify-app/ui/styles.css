@@ -233,6 +233,89 @@ select {
 .hint-inline { color: var(--muted); }
 .shortcuts { margin-left: auto; }
 
+/* --- Vista de artefacto -------------------------------------------------- */
+
+dialog.artifact {
+  width: min(46rem, 92vw);
+  max-width: none;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+dialog.artifact[open] { display: flex; }
+
+.artifact-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+}
+.artifact-head h2 { margin: 0; font-size: 15px; }
+.artifact-head .inline { margin-left: auto; }
+
+/* El estado de escritura lleva texto, no solo color: «está» y «no está» no pueden
+   distinguirse por un matiz. */
+.write-state {
+  padding: 3px 9px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.write-state[data-state="written"] { color: var(--ok); }
+.write-state[data-state="pending"] { color: var(--muted); }
+.write-state[data-state="failed"] { color: var(--bad); }
+.write-state[data-state="skipped"] { color: var(--warn); }
+
+.artifact-body {
+  overflow-y: auto;
+  padding: 14px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.segment {
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 8px;
+  padding: 9px 12px;
+  overflow-wrap: anywhere;
+}
+
+/* La ETIQUETA es la señal primaria y va primero en el orden de lectura. El glifo y el color
+   se apilan encima — nunca en su lugar (FR-026, SC-002). */
+.segment .mark {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.segment .glyph { font-size: 13px; }
+.segment .text { margin: 0; }
+.segment .meta { margin: 5px 0 0; color: var(--muted); font-size: 12.5px; }
+.segment .meta-label { font-weight: 600; }
+.segment .deferred { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--muted); }
+.segment .defer { margin-top: 8px; padding: 4px 10px; font-size: 12px; }
+
+.segment[data-kind="grounded"] { border-left-color: var(--ok); }
+.segment[data-kind="grounded"] .mark { color: var(--ok); }
+.segment[data-kind="tentative"] { border-left-color: var(--warn); }
+.segment[data-kind="tentative"] .mark { color: var(--warn); }
+.segment[data-kind="contradiction"] { border-left-color: var(--bad); }
+.segment[data-kind="contradiction"] .mark { color: var(--bad); }
+
 /* --- Diálogo de cierre -------------------------------------------------- */
 
 dialog {

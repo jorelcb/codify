@@ -131,12 +131,34 @@ El detalle está documentado en `001/tasks.md`, sección «Dependencias con el s
 
 > Se entrega **antes que la US2** porque aquella está bloqueada por el spec 001 (ver arriba). No es un cambio de prioridad: es la única secuencia posible.
 
-- [ ] T033 [P] [US3] Test: el DTO del artefacto expone los tres estados con sus fuentes/motivo y el estado de escritura — en `crates/codify-app/src/commands.rs` (módulo `tests`)
-- [ ] T034 [US3] Comando `artifact` que devuelve el artefacto completo (`ArtifactViewDto` con `writeState`) en `crates/codify-app/src/commands.rs` (depende de T033)
-- [ ] T035 [US3] Vista de artefacto completo, alcanzable **en cualquier momento** sin recorrer la corriente (FR-021), en `crates/codify-app/ui/artifact.js`
-- [ ] T036 [US3] Render de los tres estados con **etiqueta textual** como señal primaria, fuentes consultables y nota de contradicción, en `crates/codify-app/ui/artifact.js` (depende de T035)
-- [ ] T037 [US3] Aviso al intentar cerrar con tentativos sin atender, con opción de diferirlos explícitamente (FR-014 del spec 002), en `crates/codify-app/ui/main.js`
-- [ ] T038 [US3] Añadir las claves `artifact.*` al catálogo, incluidas las etiquetas de los tres estados, en `crates/codify-app/src/strings.rs`
+- [X] T033 [P] [US3] Test: el DTO del artefacto expone los tres estados con sus fuentes/motivo y el estado de escritura — en `crates/codify-app/src/commands.rs` (módulo `tests`)
+- [X] T034 [US3] Comando `artifact` que devuelve el artefacto completo (`ArtifactDto` con `writeState`) en `crates/codify-app/src/commands.rs` — **el comando ya existía** (entregado de refilón con T029); lo que faltaba era `writeState`, sin el cual la vista no puede distinguir un archivo escrito de uno que solo existe en pantalla
+- [X] T035 [US3] Vista de artefacto completo, alcanzable **en cualquier momento** sin recorrer la corriente (FR-021), en `crates/codify-app/ui/artifact.js` — se puede abrir **durante** la sesión: cada evento `artifact.written` lo añade a la lista, así FR-021 es un contrapeso real y no una consolación al final
+- [X] T036 [US3] Render de los tres estados con **etiqueta textual** como señal primaria, fuentes consultables y nota de contradicción, en `crates/codify-app/ui/artifact.js` (depende de T035)
+- [X] T037 [US3] Aviso al intentar cerrar con tentativos sin atender, con opción de diferirlos explícitamente (FR-014 del spec 002), en `crates/codify-app/ui/main.js` — requirió **caso de uso nuevo** en el núcleo: `AuthoringService::defer_tentative`, por fragmento y no en bloque (ver abajo)
+- [X] T038 [US3] Añadir las claves `artifact.*` al catálogo, incluidas las etiquetas de los tres estados, en `crates/codify-app/src/strings.rs` — **las nueve ya existían**, reservadas desde T048; se añadieron las de diferir, estado de escritura y aviso de cierre
+
+### Decisiones que salieron de la US3
+
+**Diferir es por fragmento, no en bloque.** FR-014 pide poder «resolverlos o diferirlos». Un
+botón de *diferir todo* habría sido más cómodo y exactamente el hábito que este producto viene a
+corregir: despachar sin leer. El caso de uso `defer_tentative(sesión, ruta, índice)` obliga a
+señalar **cuál**, y «Revisarlos» en el aviso de cierre lleva el foco al primero sin atender —
+donde está el control. Cuatro tests fijan que diferir uno atienda exactamente uno, que hacerlo
+dos veces no descuente dos, y que sobre algo verificado falle.
+
+**Un fragmento diferido sigue marcado como sin verificar.** No se le asciende: se le añade
+«pendiente, a sabiendas». Diferir es una decisión sobre qué hacer, no un cambio en lo que consta.
+
+**El estado de escritura es parte del artefacto.** `writeState` (`written` | `pending` |
+`failed` | `skipped`) se deriva de la última escritura registrada para esa ruta. Sin él, un
+archivo en pantalla y un archivo en el repositorio se veían igual — afirmar lo segundo sin
+respaldo es justo lo que el producto no hace (FR-017).
+
+**Un defecto propio, encontrado midiendo.** Al cambiar de idioma con la vista abierta, las
+etiquetas de fundamento se quedaban en el idioma anterior: `i18n.apply()` no alcanza al texto
+escrito a mano. Tercera vez que aparece esta familia. Ahora hay un test que la persigue como
+clase —`quien_pinta_a_mano_repinta_al_cambiar_de_idioma`— y no instancia a instancia.
 
 **Checkpoint**: US1 + US3 funcionando. Validar con quickstart S3 (incluida la prueba en **escala de grises**).
 

@@ -20,6 +20,7 @@ pub fn run() {
             commands::ui_strings,
             commands::system_locale,
             commands::artifact,
+            commands::defer_tentative,
         ])
         .run(tauri::generate_context!())
         .expect("no se pudo arrancar la aplicación");

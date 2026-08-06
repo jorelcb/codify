@@ -118,12 +118,24 @@ const CATALOG: &[(&str, &str, &str)] = &[
     // --- Artefactos (FR-011 a FR-013, FR-021) -----------------------------
     ("artifact.open", "Ver archivo completo", "View full file"),
     ("artifact.close", "Cerrar", "Close"),
+    ("artifact.title", "Archivo generado", "Generated file"),
+    ("artifact.select_label", "Archivo", "File"),
+    ("artifact.none", "Todavía no se ha generado ningún archivo.", "No file has been generated yet."),
+    ("artifact.empty", "Este archivo todavía no tiene contenido.", "This file has no content yet."),
     ("artifact.grounded", "verificado", "verified"),
     ("artifact.tentative", "sin verificar", "unverified"),
     ("artifact.contradiction", "fuentes en conflicto", "conflicting sources"),
     ("artifact.sources", "Fuente", "Source"),
     ("artifact.reason", "Motivo", "Reason"),
+    // Estado de escritura: un archivo en pantalla no es un archivo en el repositorio (FR-017).
     ("artifact.not_written", "todavía no está en el repositorio", "not in the repository yet"),
+    ("artifact.in_repository", "está en el repositorio", "in the repository"),
+    ("artifact.write_failed", "no se pudo escribir en el repositorio", "could not be written to the repository"),
+    ("artifact.write_skipped", "no se escribió", "not written"),
+    // Diferir (FR-014): decidir dejarlo pendiente, a la vista, no despacharlo.
+    ("artifact.defer", "Dejar pendiente", "Leave pending"),
+    ("artifact.deferred", "pendiente, a sabiendas", "pending, knowingly"),
+    ("artifact.defer_hint", "Dejarlo pendiente no lo borra ni lo da por bueno: queda declarado como sin verificar en el archivo.", "Leaving it pending neither deletes it nor accepts it: it stays declared as unverified in the file."),
     ("artifact.pending_tentative", "Hay puntos sin verificar. Puedes resolverlos o dejarlos declarados como pendientes.", "There are unverified points. You can resolve them or leave them declared as pending."),
     // --- Errores accionables (FR-028) -------------------------------------
     ("error.no_repo", "Elige un repositorio antes de iniciar.", "Choose a repository before starting."),
@@ -134,6 +146,10 @@ const CATALOG: &[(&str, &str, &str)] = &[
     ("close.warning", "Si cierras ahora, la sesión termina y no se reanuda. Lo ya escrito permanece en el repositorio.", "If you close now, the session ends and will not resume. What has already been written stays in the repository."),
     ("close.confirm", "Cerrar de todos modos", "Close anyway"),
     ("close.cancel", "Seguir trabajando", "Keep working"),
+    // Cierre con puntos sin verificar (FR-014). No se bloquea al usuario: se le hace decidir.
+    ("close.tentative_title", "Hay puntos sin verificar", "There are unverified points"),
+    ("close.tentative_warning", "Quedan puntos sin verificar y sin atender. Si cierras ahora se quedan declarados como pendientes en el archivo: no se pierden, pero nadie los ha mirado.", "Some points remain unverified and unattended. If you close now they stay declared as pending in the file: nothing is lost, but nobody has looked at them."),
+    ("close.review", "Revisarlos", "Review them"),
     // --- Accesibilidad (FR-025 a FR-027) ----------------------------------
     ("a11y.stream_region", "Actividad del agente", "Agent activity"),
     ("a11y.artifact_region", "Contenido del archivo", "File content"),

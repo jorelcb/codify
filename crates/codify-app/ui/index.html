@@ -20,6 +20,9 @@
 
       <output id="state" class="state" data-state="idle" aria-live="polite"></output>
 
+      <!-- Alcanzable en cualquier momento: es el contrapeso del flujo cronológico (FR-021). -->
+      <button id="open-artifact" class="ghost" data-i18n="artifact.open" disabled></button>
+
       <!-- Indicador PERSISTENTE de modo: no depende del color, lleva texto (FR-005/FR-026). -->
       <span id="mode" class="mode-badge" data-mode="local" title="">
         <span class="glyph" aria-hidden="true">■</span>
@@ -67,6 +70,35 @@
       <span class="hint-inline" data-i18n="locale.independent_hint"></span>
       <span class="hint-inline shortcuts" data-i18n="a11y.shortcuts"></span>
     </footer>
+
+    <!-- Artefacto completo, con su fundamento a la vista (FR-021, FR-011 a FR-013).
+         Es un diálogo modal para que el foco quede atrapado dentro y Escape lo cierre. -->
+    <dialog id="artifact-dialog" class="artifact" aria-labelledby="artifact-title"
+            role="region" aria-label="" data-i18n-aria="a11y.artifact_region">
+      <header class="artifact-head">
+        <h2 id="artifact-title" data-i18n="artifact.title"></h2>
+        <label class="inline">
+          <span class="label" data-i18n="artifact.select_label"></span>
+          <select id="artifact-path"></select>
+        </label>
+        <!-- Un archivo en pantalla no es un archivo en el repositorio (FR-017). -->
+        <span id="artifact-write-state" class="write-state"></span>
+        <button id="artifact-close" class="ghost" data-i18n="artifact.close"></button>
+      </header>
+      <p id="artifact-empty" class="hint" data-i18n="artifact.empty" hidden></p>
+      <div id="artifact-body" class="artifact-body"></div>
+    </dialog>
+
+    <!-- Cierre con puntos sin verificar y sin atender (FR-014). -->
+    <dialog id="tentative-dialog" aria-labelledby="tentative-title">
+      <h2 id="tentative-title" data-i18n="close.tentative_title"></h2>
+      <p><strong id="tentative-count"></strong> <span data-i18n="artifact.tentative"></span></p>
+      <p data-i18n="close.tentative_warning"></p>
+      <div class="dialog-actions">
+        <button id="tentative-review" class="primary" data-i18n="close.review"></button>
+        <button id="tentative-confirm" class="ghost" data-i18n="close.confirm"></button>
+      </div>
+    </dialog>
 
     <!-- Confirmación antes de cerrar con trabajo en curso (FR-024). -->
     <dialog id="close-dialog" aria-labelledby="close-title">

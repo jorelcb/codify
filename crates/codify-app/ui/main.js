@@ -7,6 +7,7 @@
 import * as i18n from "./i18n.js";
 import * as stream from "./stream.js";
 import * as provider from "./provider.js";
+import * as artifact from "./artifact.js";
 
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
@@ -24,6 +25,12 @@ const el = {
   closeDialog: document.getElementById("close-dialog"),
   closeConfirm: document.getElementById("close-confirm"),
   closeCancel: document.getElementById("close-cancel"),
+  openArtifact: document.getElementById("open-artifact"),
+  artifactClose: document.getElementById("artifact-close"),
+  tentativeDialog: document.getElementById("tentative-dialog"),
+  tentativeCount: document.getElementById("tentative-count"),
+  tentativeReview: document.getElementById("tentative-review"),
+  tentativeConfirm: document.getElementById("tentative-confirm"),
 };
 
 /** Estado de la piel. El estado real de la sesión vive en el núcleo. */
@@ -31,7 +38,18 @@ const ui = {
   sessionId: null,
   running: false,
   local: true,
+  /** Rutas de artefactos ya generados, para poder abrirlos **mientras** la sesión corre. */
+  artifacts: new Set(),
+  unattendedTentative: 0,
 };
+
+/** Refresca qué artefactos se pueden abrir. Sin ninguno, el control dice **por qué** no. */
+function refreshArtifactList() {
+  const paths = [...ui.artifacts];
+  artifact.setAvailable(paths);
+  el.openArtifact.disabled = paths.length === 0;
+  el.openArtifact.title = paths.length ? "" : i18n.t("artifact.none");
+}
 
 // ---------------------------------------------------------------------------
 // Presentación del estado
@@ -105,7 +123,13 @@ function renderOmitted(snapshot) {
 listen("agent.activity", (e) => stream.push("activity", e.payload.target, null, e.payload.action));
 listen("reference.resolved", (e) => stream.push("read", e.payload.target));
 listen("reference.unresolved", (e) => stream.push("unresolved", e.payload.target, e.payload.reason));
-listen("artifact.written", (e) => stream.push("written", e.payload.target, e.payload.reason));
+listen("artifact.written", (e) => {
+  stream.push("written", e.payload.target, e.payload.reason);
+  // Se puede abrir **ya**, sin esperar a que la sesión acabe: es lo que hace de FR-021 un
+  // contrapeso real del flujo cronológico y no una consolación al final.
+  ui.artifacts.add(e.payload.target);
+  refreshArtifactList();
+});
 listen("session.cancelled", (e) => stream.push("cancelled", null, e.payload.target));
 listen("session.state_changed", (e) => setSessionState(e.payload.state));
 
@@ -131,10 +155,16 @@ async function start() {
   stream.reset("session.state.ingesting");
   setRunning(true);
   setSessionState("ingesting");
+  ui.artifacts.clear();
+  ui.unattendedTentative = 0;
+  refreshArtifactList();
 
   try {
     ui.sessionId = await invoke("start_session", {
       request: { repoRoot, local: ui.local, locale: el.artifactLocale.value },
+    });
+    artifact.configure(ui.sessionId, (remaining) => {
+      ui.unattendedTentative = remaining;
     });
     await finish();
   } catch (err) {
@@ -177,7 +207,12 @@ async function finish() {
   renderOmitted(snapshot);
   renderBalance(snapshot.writes);
 
-  if (snapshot.unattendedTentative > 0) {
+  // Todo lo generado se puede abrir completo, esté escrito o no (FR-021).
+  for (const a of snapshot.artifacts ?? []) ui.artifacts.add(a.path);
+  refreshArtifactList();
+
+  ui.unattendedTentative = snapshot.unattendedTentative ?? 0;
+  if (ui.unattendedTentative > 0) {
     stream.push("unresolved", null, i18n.t("artifact.pending_tentative"));
   }
   setRunning(false);
@@ -189,11 +224,17 @@ async function finish() {
 
 el.action.addEventListener("click", () => (ui.running ? cancel() : start()));
 el.providerRetry.addEventListener("click", () => provider.refresh(ui.local));
+el.openArtifact.addEventListener("click", () => artifact.open());
+el.artifactClose.addEventListener("click", () => artifact.close());
 el.repo.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !ui.running) start();
 });
 
 document.addEventListener("keydown", (e) => {
+  // Con la vista de artefacto abierta, Escape la cierra y **no** cancela la sesión: el
+  // diálogo ya lo hace de forma nativa, y encadenar ambas cosas sería destructivo.
+  if (artifact.isOpen()) return;
+
   if (e.key === "Escape" && ui.running) {
     cancel();
     return;
@@ -222,6 +263,8 @@ el.uiLocale.addEventListener("change", async () => {
   setSessionState(el.state.dataset.state);
   // Todo lo que se escribe a mano hay que repintarlo: `apply()` solo alcanza al DOM marcado.
   provider.render();
+  artifact.render();
+  refreshArtifactList(); // el «por qué no» del control de apertura también es texto
 });
 
 el.artifactLocale.addEventListener("change", async () => {
@@ -232,22 +275,52 @@ el.artifactLocale.addEventListener("change", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// Cierre con trabajo en curso: declarar qué se pierde (FR-024)
+// Cierre: declarar qué se pierde (FR-024) y qué quedó sin mirar (FR-014)
 // ---------------------------------------------------------------------------
+
+/** Cierra la ventana de verdad, cancelando antes si algo seguía corriendo. */
+async function reallyClose() {
+  if (ui.running && ui.sessionId) {
+    await invoke("cancel_session", { sessionId: ui.sessionId }).catch(() => {});
+  }
+  appWindow?.destroy?.();
+}
 
 if (appWindow?.onCloseRequested) {
   appWindow.onCloseRequested(async (event) => {
-    if (!ui.running) return;
-    event.preventDefault();
-    el.closeDialog.showModal();
+    // Trabajo en curso manda: lo que se pierde es más urgente que lo que queda pendiente.
+    if (ui.running) {
+      event.preventDefault();
+      el.closeDialog.showModal();
+      return;
+    }
+    // Sin trabajo en curso pero con puntos sin verificar **y sin atender**: no se bloquea
+    // la salida, se obliga a decidir. Cerrar en silencio dejaría pasar por completo un
+    // contexto que nadie miró (FR-014).
+    if (ui.unattendedTentative > 0) {
+      event.preventDefault();
+      el.tentativeCount.textContent = String(ui.unattendedTentative);
+      el.tentativeDialog.showModal();
+    }
   });
 }
 
 el.closeCancel?.addEventListener("click", () => el.closeDialog.close());
 el.closeConfirm?.addEventListener("click", async () => {
   el.closeDialog.close();
-  if (ui.sessionId) await invoke("cancel_session", { sessionId: ui.sessionId }).catch(() => {});
-  appWindow?.destroy?.();
+  await reallyClose();
+});
+
+// «Revisarlos» tiene que llevar a algún sitio: abre el artefacto y planta el foco en el
+// primer punto sin atender, donde está el control para dejarlo pendiente a sabiendas.
+el.tentativeReview?.addEventListener("click", async () => {
+  el.tentativeDialog.close();
+  await artifact.open();
+  artifact.focusFirstUnattended();
+});
+el.tentativeConfirm?.addEventListener("click", async () => {
+  el.tentativeDialog.close();
+  await reallyClose();
 });
 
 // ---------------------------------------------------------------------------
