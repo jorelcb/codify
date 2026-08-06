@@ -30,6 +30,8 @@ Se expone al frontend con el comando `ui_strings(locale)`.
 4. **Independiente del idioma de los artefactos**: cambiar la interfaz a inglés **no** cambia el idioma en que se genera el contexto, ni al revés (FR-016b).
 5. **Cambiar de idioma no exige reiniciar**: la interfaz se vuelve a pintar con el catálogo nuevo.
 6. Los textos de accesibilidad (`a11y.*`: etiquetas de región, anuncios de la corriente) son parte del catálogo, no un añadido posterior.
+7. **El núcleo no redacta**: cuando el núcleo tiene que explicar algo, devuelve un **código** y la piel elige la frase (`provider.issue.<code>`). Una frase ya escrita en el núcleo tendría idioma fijo y volvería la regla 2 indemostrable — además de ser presentación colándose en la aplicación.
+8. **Un solo dueño por texto**: si el JavaScript le escribe el `textContent` a un elemento, ese elemento **no lleva `data-i18n`**. Con dos dueños, `apply()` y el código se pisan al cambiar de idioma; quien pinta a mano es responsable de repintar.
 
 ## Claves mínimas por superficie
 
@@ -48,4 +50,5 @@ Se expone al frontend con el comando `ui_strings(locale)`.
 
 - **Test de paridad**: `strings_for(Es).entries.keys() == strings_for(En).entries.keys()`. Falla el build si alguien añade una cadena en un solo idioma.
 - **Test de no vacías**: ningún valor es cadena vacía.
-- **Manual (quickstart)**: recorrer la aplicación en cada idioma y confirmar que no aparece ninguna clave cruda ni texto en el idioma equivocado.
+- **Tests del contrato de interfaz** (`crates/codify-app/tests/ui_contract.rs`): que ninguna clave usada falte del catálogo y que ninguna clave del catálogo sobre; que ningún texto visible esté escrito directamente en el HTML; que ningún elemento tenga dos dueños de su texto; y que **todo `ProviderIssue` tenga frase en ambos idiomas**.
+- **Manual (quickstart)**: recorrer la aplicación en cada idioma. Sigue teniendo valor —nadie automatiza «se entiende»— pero ya no es lo único: la primera pasada real encontró tres textos que se quedaban en el idioma equivocado, y los tests de arriba existen para que no vuelvan.

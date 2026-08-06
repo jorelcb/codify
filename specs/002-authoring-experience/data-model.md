@@ -12,8 +12,9 @@ Hace verificable FR-017 y FR-023 ("declarar qué alcanzó a escribirse").
 
 ### `ProviderStatus` — resultado de sondear el backend
 Alimenta el onboarding guiado (FR-019) y la presentación de fallos (FR-028).
-- **Campos**: `reachable` (bool), `endpoint`, `models` (lista, vacía si no alcanzable), `detail` (motivo accionable cuando no responde).
-- **Reglas**: en modo local el `endpoint` **debe** ser loopback; sondear no abre una vía de salida.
+- **Campos**: `reachable` (bool), `endpoint`, `models` (lista, vacía si no alcanzable), `issue` (`ProviderIssue?` — el motivo cuando no sirve).
+- **`ProviderIssue`**: `NoModels` | `NotListening` | `EndpointNotLocal`. Es un **motivo nombrado, no una frase**: el núcleo no redacta texto para humanos, así que expone un código estable (`code()`) y la piel elige la cadena en `provider.issue.<code>`.
+- **Reglas**: en modo local el `endpoint` **debe** ser loopback; sondear no abre una vía de salida. Si `reachable == false`, `issue` **nunca** falta — un fallo opaco es justo lo que FR-019 viene a evitar.
 
 ### `CancelOutcome` — cómo terminó una cancelación
 - **Campos**: `at`, `phase` (en qué estaba la sesión), `writes` (los `WriteRecord` acumulados).
