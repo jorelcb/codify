@@ -13,7 +13,7 @@
         "title": "codify",
         "width": 1180,
         "height": 780,
-        "minWidth": 820,
+        "minWidth": 720,
         "minHeight": 560,
         "resizable": true
       }

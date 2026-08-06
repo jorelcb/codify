@@ -7,7 +7,7 @@
 //! Cero-egress: el constructor **rechaza** cualquier endpoint que no sea loopback, igual que
 //! el proveedor local. Sondear no puede convertirse en una vía de salida.
 
-use crate::application::ports::{ProviderDiscovery, ProviderStatus};
+use crate::application::ports::{ProviderDiscovery, ProviderIssue, ProviderStatus};
 use crate::domain::error::{CoreError, Result};
 use crate::infrastructure::providers::local::LocalOpenAiCompatProvider;
 use async_trait::async_trait;
@@ -72,24 +72,13 @@ impl ProviderDiscovery for LocalProviderProbe {
         for path in ["/v1/models", "/api/tags"] {
             if let Some(models) = self.try_endpoint(path).await {
                 if models.is_empty() {
-                    return ProviderStatus::unreachable(
-                        &self.base_url,
-                        "el backend responde pero no tiene ningún modelo instalado; \
-                         descarga uno (por ejemplo `ollama pull qwen2.5-coder`)",
-                    );
+                    return ProviderStatus::unreachable(&self.base_url, ProviderIssue::NoModels);
                 }
                 return ProviderStatus::reachable(&self.base_url, models);
             }
         }
 
-        ProviderStatus::unreachable(
-            &self.base_url,
-            format!(
-                "no hay ningún backend escuchando en {}; arranca uno (por ejemplo `ollama serve`) \
-                 o cambia el endpoint",
-                self.base_url
-            ),
-        )
+        ProviderStatus::unreachable(&self.base_url, ProviderIssue::NotListening)
     }
 }
 

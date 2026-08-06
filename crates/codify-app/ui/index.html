@@ -13,14 +13,18 @@
 
       <input id="repo" type="text" spellcheck="false" data-i18n-attr="placeholder:session.repo_placeholder" />
 
-      <button id="action" class="primary" data-i18n="session.start"></button>
+      <!-- Sin `data-i18n`: alterna entre Iniciar y Cancelar, y lo decide `setRunning()`.
+           Con dos dueños, un repintado a destiempo lo dejaría diciendo «Iniciar» con la
+           sesión en curso — y pulsarlo la cancelaría. -->
+      <button id="action" class="primary"></button>
 
       <output id="state" class="state" data-state="idle" aria-live="polite"></output>
 
       <!-- Indicador PERSISTENTE de modo: no depende del color, lleva texto (FR-005/FR-026). -->
       <span id="mode" class="mode-badge" data-mode="local" title="">
         <span class="glyph" aria-hidden="true">■</span>
-        <span id="mode-label" data-i18n="mode.local"></span>
+        <!-- Sin `data-i18n`: lo pinta `renderMode()`, y dos dueños del mismo texto se pisan. -->
+        <span id="mode-label"></span>
       </span>
     </header>
 
@@ -28,7 +32,8 @@
     <section id="provider" class="provider" role="region" aria-label="" data-i18n-aria="a11y.provider_region">
       <h2 class="visually-hidden" data-i18n="provider.title"></h2>
       <span class="glyph" id="provider-glyph" aria-hidden="true">…</span>
-      <span id="provider-status" data-i18n="provider.checking"></span>
+      <!-- Sin `data-i18n`: lo pinta `provider.render()` a partir del último sondeo. -->
+      <span id="provider-status"></span>
       <label class="inline">
         <span class="label" data-i18n="provider.model_label"></span>
         <select id="model" disabled></select>

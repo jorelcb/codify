@@ -5,7 +5,7 @@
 //! serializables: los tipos de dominio no cruzan hacia la ventana.
 
 use crate::adapters::{EventAuditSink, StatePayload, SystemClock, UnavailablePrompter};
-use codify_core::application::ports::ProviderDiscovery;
+use codify_core::application::ports::{ProviderDiscovery, ProviderIssue};
 use codify_core::application::service::{
     AuthoringService, ContextAuthoring, SessionSnapshot, StartSession,
 };
@@ -400,8 +400,10 @@ pub struct ProviderStatusDto {
     pub reachable: bool,
     pub endpoint: String,
     pub models: Vec<String>,
-    /// Qué hacer cuando falta algo. Es lo que separa "guiado" de "silencioso" (FR-019).
-    pub detail: Option<String>,
+    /// Motivo como **código**, no como frase: la interfaz elige el texto en su idioma
+    /// (`provider.issue.<code>`). Es lo que separa "guiado" de "silencioso" (FR-019) sin
+    /// que el núcleo tenga que redactar en un idioma concreto (SC-009).
+    pub issue: Option<String>,
 }
 
 fn to_write_dto(record: &codify_core::domain::write::WriteRecord) -> WriteRecordDto {
@@ -449,12 +451,12 @@ pub async fn probe_provider(local: bool) -> Result<ProviderStatusDto, String> {
     let probe = match LocalProviderProbe::new(&endpoint) {
         Ok(p) => p,
         // Un endpoint no loopback en modo local no es un fallo opaco: es algo que explicar.
-        Err(e) => {
+        Err(_) => {
             return Ok(ProviderStatusDto {
                 reachable: false,
                 endpoint,
                 models: Vec::new(),
-                detail: Some(format!("{e}")),
+                issue: Some(ProviderIssue::EndpointNotLocal.code().to_string()),
             })
         }
     };
@@ -465,7 +467,7 @@ pub async fn probe_provider(local: bool) -> Result<ProviderStatusDto, String> {
         reachable: status.reachable,
         endpoint: status.endpoint,
         models: status.models,
-        detail: status.detail,
+        issue: status.issue.map(|i| i.code().to_string()),
     })
 }
 

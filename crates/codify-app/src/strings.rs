@@ -70,7 +70,9 @@ const CATALOG: &[(&str, &str, &str)] = &[
     ("session.state.approved", "terminada", "finished"),
     ("session.state.cancelled", "cancelada", "cancelled"),
     ("session.state.failed", "con error", "failed"),
+    ("session.state.interview", "sin material", "no material"),
     ("session.interview", "El repositorio está vacío: no hay nada que leer todavía.", "The repository is empty: there is nothing to read yet."),
+    ("session.interview_next", "No se escribió contexto: lo que no se puede verificar contra una fuente no se afirma. Elige un repositorio con contenido para empezar.", "No context was written: what cannot be verified against a source is not asserted. Choose a repository with content to begin."),
     // --- Balance de escrituras (FR-017 / FR-023) --------------------------
     ("session.balance.title", "Qué se escribió al repositorio", "What was written to the repository"),
     ("session.balance.none", "No se escribió ningún archivo.", "No file was written."),
@@ -87,6 +89,7 @@ const CATALOG: &[(&str, &str, &str)] = &[
     ("stream.egress_blocked", "salida bloqueada", "outbound request blocked"),
     ("stream.error", "error", "error"),
     ("stream.cancelled", "sesión cancelada", "session cancelled"),
+    ("stream.interview", "sin material que leer", "no material to read"),
     ("stream.omitted.title", "No leído", "Not read"),
     ("stream.omitted.hint", "Quedó fuera del presupuesto de exploración: el resultado no es completo.", "It fell outside the exploration budget: the result is not complete."),
     // --- Proveedor de modelo (FR-019) -------------------------------------
@@ -98,6 +101,11 @@ const CATALOG: &[(&str, &str, &str)] = &[
     ("provider.no_models", "El backend responde pero no tiene modelos instalados.", "The backend responds but has no models installed."),
     ("provider.retry", "Volver a comprobar", "Check again"),
     ("provider.next_step", "Qué hacer", "What to do"),
+    // Un texto por cada `ProviderIssue::code()`. El núcleo nombra el motivo; el idioma
+    // se decide aquí. Hay un test que comprueba que no falte ninguno.
+    ("provider.issue.no_models", "Descarga un modelo, por ejemplo `ollama pull qwen2.5-coder`.", "Download a model, for example `ollama pull qwen2.5-coder`."),
+    ("provider.issue.not_listening", "Arranca un backend local, por ejemplo con `ollama serve`, o apunta a otro endpoint.", "Start a local backend, for example with `ollama serve`, or point to another endpoint."),
+    ("provider.issue.endpoint_not_local", "En modo local el endpoint tiene que estar en esta máquina: usa una dirección de loopback.", "In local mode the endpoint must be on this machine: use a loopback address."),
     // --- Idioma (FR-016 / FR-016b) ----------------------------------------
     ("locale.ui_label", "Idioma de la interfaz", "Interface language"),
     ("locale.artifacts_label", "Idioma del contexto generado", "Generated context language"),

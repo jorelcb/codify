@@ -37,9 +37,16 @@ const ui = {
 // Presentación del estado
 // ---------------------------------------------------------------------------
 
+/**
+ * Presenta el estado de la sesión.
+ *
+ * `idle` no es una fase del núcleo sino la **ausencia** de sesión, así que tiene su propia
+ * cadena. Resolverla aquí y no en el arranque es lo que hace que sobreviva a un cambio de
+ * idioma: si la asignara `boot()` a mano, se quedaría congelada en el idioma inicial.
+ */
 function setSessionState(state) {
   el.state.dataset.state = state;
-  el.state.textContent = i18n.t(`session.state.${state}`);
+  el.state.textContent = i18n.t(state === "idle" ? "session.none" : `session.state.${state}`);
 }
 
 /** El indicador de modo es **persistente** y lleva texto, no solo color (FR-005/FR-026). */
@@ -159,8 +166,13 @@ async function finish() {
   const snapshot = await invoke("session_state", { sessionId: ui.sessionId });
   setSessionState(snapshot.state);
 
+  // Un repositorio vacío no es un error ni un logro: es que no hay material. Presentarlo con
+  // el mismo gris que la actividad rutinaria lo volvía indistinguible del ruido, y el estado
+  // «terminada» sugería un resultado que no existe (FR-004). Lleva su propio tipo de bloque
+  // y su propio estado, más el qué hacer (FR-019/FR-028).
   if (snapshot.interviewMode) {
-    stream.push("activity", null, i18n.t("session.interview"));
+    setSessionState("interview");
+    stream.push("interview", i18n.t("session.interview"), i18n.t("session.interview_next"));
   }
   renderOmitted(snapshot);
   renderBalance(snapshot.writes);
@@ -205,7 +217,11 @@ el.uiLocale.addEventListener("change", async () => {
   await i18n.setLocale(el.uiLocale.value);
   renderMode();
   setRunning(ui.running);
-  if (el.state.dataset.state !== "idle") setSessionState(el.state.dataset.state);
+  // Sin condición: el estado se repinta **siempre**, incluido `idle`. Excluirlo dejaba
+  // «sin sesión» congelado en el idioma de arranque (SC-009).
+  setSessionState(el.state.dataset.state);
+  // Todo lo que se escribe a mano hay que repintarlo: `apply()` solo alcanza al DOM marcado.
+  provider.render();
 });
 
 el.artifactLocale.addEventListener("change", async () => {
@@ -247,7 +263,6 @@ el.closeConfirm?.addEventListener("click", async () => {
   renderMode();
   setRunning(false);
   setSessionState("idle");
-  el.state.textContent = i18n.t("session.none");
 
   // Sondear al arrancar: si falta el backend, el usuario lo sabe antes de intentar nada.
   await provider.refresh(ui.local);

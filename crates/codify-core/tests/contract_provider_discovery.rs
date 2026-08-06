@@ -6,7 +6,7 @@
 
 mod fakes;
 
-use codify_core::application::ports::{ProviderDiscovery, ProviderStatus};
+use codify_core::application::ports::{ProviderDiscovery, ProviderIssue, ProviderStatus};
 use codify_core::infrastructure::providers::probe::LocalProviderProbe;
 use fakes::FakeProviderDiscovery;
 
@@ -17,20 +17,40 @@ fn provider_status_contract(status: &ProviderStatus, label: &str) {
     );
     if status.reachable {
         assert!(
-            status.detail.is_none(),
+            status.issue.is_none(),
             "[{label}] alcanzable no necesita motivo"
         );
     } else {
-        let detail = status.detail.as_deref().unwrap_or("");
+        let issue = status
+            .issue
+            .unwrap_or_else(|| panic!("[{label}] si no responde, el motivo NO puede faltar"));
         assert!(
-            !detail.trim().is_empty(),
-            "[{label}] si no responde, el motivo NO puede estar vacío"
+            !issue.code().trim().is_empty(),
+            "[{label}] el motivo se identifica con un código estable"
         );
         assert!(
             status.models.is_empty(),
             "[{label}] sin backend no hay modelos"
         );
     }
+}
+
+/// Cada motivo tiene un código **distinto**: la piel elige el texto a partir de él, así que
+/// dos motivos que colisionaran se presentarían como el mismo problema.
+#[test]
+fn every_issue_has_its_own_stable_code() {
+    let codes: Vec<&str> = [
+        ProviderIssue::NoModels,
+        ProviderIssue::NotListening,
+        ProviderIssue::EndpointNotLocal,
+    ]
+    .iter()
+    .map(|i| i.code())
+    .collect();
+
+    let unicos: std::collections::HashSet<_> = codes.iter().collect();
+    assert_eq!(unicos.len(), codes.len(), "códigos duplicados: {codes:?}");
+    assert!(codes.iter().all(|c| !c.trim().is_empty()));
 }
 
 /// Con un puerto donde no hay nada escuchando: no debe fallar, debe explicar.
@@ -53,7 +73,7 @@ async fn provider_status_contract_holds_for_the_fake() {
 
     let down = FakeProviderDiscovery(ProviderStatus::unreachable(
         "http://localhost:11434",
-        "no hay ningún backend escuchando; arranca Ollama con `ollama serve`",
+        ProviderIssue::NotListening,
     ));
     provider_status_contract(&down.probe().await, "fake-caído");
 }

@@ -25,12 +25,47 @@ export function selectedModel() {
   return modelEl.value || null;
 }
 
+/**
+ * Pinta el panel a partir del **último sondeo**, sin volver a sondear.
+ *
+ * Está separado de `refresh` porque este texto se escribe a mano y por tanto `i18n.apply()`
+ * no lo alcanza: al cambiar de idioma se quedaba en el anterior. Peor todavía, el `data-i18n`
+ * que llevaba el elemento lo devolvía a «comprobando…» mientras el glifo seguía en ✓ — el
+ * panel afirmaba dos cosas distintas a la vez.
+ */
+export function render() {
+  if (!lastStatus) {
+    panel.dataset.state = "checking";
+    glyphEl.textContent = "…";
+    statusEl.textContent = t("provider.checking");
+    nextEl.hidden = true;
+    return;
+  }
+
+  if (lastStatus.reachable && lastStatus.models.length) {
+    panel.dataset.state = "ready";
+    glyphEl.textContent = "✓";
+    statusEl.textContent = `${t("provider.reachable")} · ${lastStatus.endpoint}`;
+    nextEl.hidden = true;
+    return;
+  }
+
+  // Sin backend: el motivo es obligatorio y se muestra como algo accionable.
+  panel.dataset.state = "down";
+  glyphEl.textContent = "!";
+  statusEl.textContent = lastStatus.models.length
+    ? t("provider.no_models")
+    : `${t("provider.unreachable")} · ${lastStatus.endpoint}`;
+  // El núcleo nombra el motivo; el texto lo elige la piel, así que cambia con el idioma.
+  const queHacer = lastStatus.issue ? t(`provider.issue.${lastStatus.issue}`) : t("error.unknown");
+  nextEl.textContent = `${t("provider.next_step")}: ${queHacer}`;
+  nextEl.hidden = false;
+}
+
 /** Sondea el backend y refleja el resultado. No lanza: informar es su trabajo. */
 export async function refresh(local = true) {
-  panel.dataset.state = "checking";
-  glyphEl.textContent = "…";
-  statusEl.textContent = t("provider.checking");
-  nextEl.hidden = true;
+  lastStatus = null;
+  render(); // «comprobando…», para que el sondeo no transcurra en silencio
 
   let status;
   try {
@@ -40,32 +75,21 @@ export async function refresh(local = true) {
   }
   lastStatus = status;
 
-  if (status.reachable && status.models.length) {
-    panel.dataset.state = "ready";
-    glyphEl.textContent = "✓";
-    statusEl.textContent = `${t("provider.reachable")} · ${status.endpoint}`;
-    modelEl.replaceChildren(
-      ...status.models.map((m) => {
-        const opt = document.createElement("option");
-        opt.value = m;
-        opt.textContent = m;
-        return opt;
-      }),
-    );
-    modelEl.disabled = false;
-    return status;
-  }
+  // La lista de modelos solo se repuebla al sondear: hacerlo al repintar borraría la
+  // elección del usuario cada vez que cambia el idioma.
+  const usable = status.reachable && status.models.length;
+  modelEl.replaceChildren(
+    ...(usable
+      ? status.models.map((m) => {
+          const opt = document.createElement("option");
+          opt.value = m;
+          opt.textContent = m;
+          return opt;
+        })
+      : []),
+  );
+  modelEl.disabled = !usable;
 
-  // Sin backend: el motivo es obligatorio y se muestra como algo accionable.
-  panel.dataset.state = "down";
-  glyphEl.textContent = "!";
-  statusEl.textContent = status.models.length
-    ? t("provider.no_models")
-    : `${t("provider.unreachable")} · ${status.endpoint}`;
-  modelEl.replaceChildren();
-  modelEl.disabled = true;
-
-  nextEl.textContent = `${t("provider.next_step")}: ${status.detail ?? t("error.unknown")}`;
-  nextEl.hidden = false;
+  render();
   return status;
 }

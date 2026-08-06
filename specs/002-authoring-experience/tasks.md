@@ -159,10 +159,33 @@ El detalle está documentado en `001/tasks.md`, sección «Dependencias con el s
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T045 [P] Repaso de accesibilidad: recorrer un flujo completo **solo con teclado** y verificar foco y orden de tabulación (quickstart S6)
-- [ ] T046 [P] Verificar la ventana en tamaño mínimo: sin recorte ni desplazamiento horizontal (quickstart S7, SC-007)
-- [ ] T047 [P] Modo entrevista para repositorio vacío en la interfaz (quickstart S8)
-- [ ] T048 [P] Recorrer la aplicación en **ambos idiomas** buscando claves crudas (quickstart S5, SC-009)
+> **Cómo se verificaron S5–S8.** Estaban escritas como inspección manual. Marcarlas hechas por
+> haberlas mirado una vez es justo lo que la constitución rechaza: no se verifica contra una
+> fuente y se pudre al siguiente cambio de UI. Se hicieron dos cosas:
+>
+> 1. **Medición empírica**: la interfaz es HTML/CSS/módulos ES planos, así que se cargó en un
+>    navegador con el puente de Tauri simulado y se **midió** — orden de tabulación contra
+>    orden visual, desbordamiento a la anchura mínima real, recorrido del DOM en ambos idiomas.
+>    Eso encontró **cuatro defectos** que ninguna lectura del código habría dado por seguros.
+> 2. **Checks durables** en `crates/codify-app/tests/ui_contract.rs` (8 tests), cada uno
+>    verificado inyectando su violación. No sustituyen al recorrido humano —nadie automatiza
+>    «se entiende»— pero clavan lo que sí es mecánico, que es lo que se rompe solo.
+
+- [X] T045 [P] Repaso de accesibilidad: recorrer un flujo completo **solo con teclado** y verificar foco y orden de tabulación (quickstart S6) — **sin defectos**: orden de tabulación == orden visual, cero `tabindex` positivos, ninguna acción solo-ratón, y anillo de foco real (`2px solid`, offset 2px) confirmado con pulsación de tecla auténtica. Fijado por `no_hay_tabindex_positivo` y `el_foco_siempre_deja_rastro_visible`
+- [X] T046 [P] Verificar la ventana en tamaño mínimo: sin recorte ni desplazamiento horizontal (quickstart S7, SC-007) — **defecto**: `minWidth: 820` volvía **inalcanzable** la media query de `720px`; las reglas de «ventana pequeña» eran código muerto que aparentaba cubrir SC-007. Bajado a `720`, comprobado sin desbordamiento hasta 640px con contenido de peor caso. Fijado por `el_punto_de_quiebre_responsivo_es_alcanzable`
+- [~] T047 [P] Modo entrevista para repositorio vacío en la interfaz (quickstart S8) — **presentación hecha, entrevista pendiente**. Salía como un bloque gris indistinguible del ruido y con el estado «terminada», que sugiere un resultado inexistente (FR-004). Ahora tiene tipo de bloque propio, estado propio (`session.state.interview`) y dice **qué hacer**. La entrevista conversacional en sí necesita la entrada de texto de la **US2 (#5)**, bloqueada por `001`-US2 (#4). Fijado por `el_repositorio_vacio_tiene_presentacion_propia`
+- [X] T048 [P] Recorrer la aplicación en **ambos idiomas** buscando claves crudas (quickstart S5, SC-009) — **tres defectos**, todos de la misma familia: texto escrito a mano que `i18n.apply()` no alcanza. (a) «sin sesión» se congelaba en el idioma de arranque; (b) `#provider-status` tenía **dos dueños** —`data-i18n` y `provider.js`—, así que tras cambiar de idioma el panel decía «comprobando…» con el glifo en ✓, mintiendo sobre si había backend; el test destapó una tercera instancia en el botón `#action`, que habría podido decir «Iniciar» con la sesión en curso; (c) el «qué hacer» del proveedor venía **redactado en español desde el núcleo**. Fijado por `ningun_texto_visible_escapa_al_catalogo`, `ningun_elemento_tiene_dos_duenos_de_su_texto` y `todo_motivo_del_proveedor_tiene_texto_en_ambos_idiomas`
+
+### Cambio de diseño que salió de T048
+
+El núcleo **dejó de redactar prosa para humanos**. `ProviderStatus.detail: Option<String>` —una
+frase ya escrita, y por tanto en un idioma fijo— pasó a `issue: Option<ProviderIssue>`, un motivo
+nombrado con código estable que la piel traduce (`provider.issue.<code>`).
+
+No es solo i18n: el núcleo redactando texto de interfaz es presentación colándose en la
+aplicación. Con el motivo como dato, SC-009 vuelve a ser **demostrable** —un test recorre los
+motivos y comprueba que ninguno se quedó sin texto en ninguno de los dos idiomas— en vez de
+depender de que alguien mire la pantalla en inglés.
 - [ ] T049 Ejecutar la validación completa de `quickstart.md` (S1–S8)
 - [ ] T050 Verificar en CI que fmt, clippy y las fitness functions siguen verdes
 

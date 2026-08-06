@@ -211,6 +211,7 @@ select {
 .block[data-kind="activity"] { border-left-color: var(--muted); }
 .block[data-kind="read"] { border-left-color: var(--ok); }
 .block[data-kind="written"] { border-left-color: var(--accent); }
+.block[data-kind="interview"] { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
 .block[data-kind="unresolved"] { border-left-color: var(--warn); }
 .block[data-kind="contradiction"] { border-left-color: var(--bad); }
 .block[data-kind="egress"] { border-left-color: var(--bad); }
