@@ -8,6 +8,13 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Lanzar la verificación **a mano**, sobre cualquier rama o commit.
+  #
+  # Sin esto, un commit solo se verifica si el evento que lo trajo llegó a encolarse. Durante
+  # una caída de Actions eso no ocurre: el `push` a `main` se pierde, y ese commit ya no tiene
+  # forma de verificarse — se quedaría esperando a que otro cambio lo arrastre de rebote, que
+  # es justo cuando peor sirve para aislar un fallo. Pasó el 2026-08-06 con `71ac4bf`.
+  workflow_dispatch:
 
 jobs:
   check:
