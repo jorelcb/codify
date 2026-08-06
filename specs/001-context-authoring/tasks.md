@@ -22,6 +22,54 @@ Workspace Cargo (plan.md): `crates/codify-core/` (biblioteca hexagonal) + `crate
 
 ---
 
+## 🔗 Dependencias con el spec `002-authoring-experience`
+
+Este spec **no vive aislado**: parte de su trabajo desbloquea al otro, y parte del suyo ya
+resolvió tareas de aquí. Se documenta en ambos lados para que planificar uno solo no lleve a
+conclusiones falsas.
+
+> **Estado de alto nivel y dependencias vivas**: [issue #9 · Roadmap](https://github.com/jorelcb/codify/issues/9).
+> Este archivo sigue siendo la fuente de verdad de la **ejecución tarea a tarea**; los issues lo
+> son de las **dependencias entre épicas**, porque allí se ven desde los dos lados a la vez.
+> Épicas de este spec: **US2 → #4** · **US3 → #7**.
+
+### Lo que este spec BLOQUEA
+
+**La US2 de aquí (T031–T040 y T055–T057) bloquea la US2 de `002`** (revisar diffs, sus
+T039–T044): no se puede construir la interfaz de revisión de propuestas mientras no exista el
+loop de refinamiento que las genera.
+
+Evidencia en el código: no existen `application/refine.rs` ni `infrastructure/diff/`, el
+servicio no expone `submit_message`/`pending_proposals`/`decide`, y la piel lleva dos
+marcadores que **fallan a propósito** — `UnavailablePrompter` y `NoDiffYet`— para que la
+ausencia sea visible en vez de silenciosa.
+
+### Lo que `002` ya nos entregó
+
+La Fase 2 de `002` añadió al núcleo tres capacidades que **estas tareas pueden dar por hechas**:
+
+| Capacidad | Qué habilita aquí |
+|---|---|
+| Port `ArtifactWriter` con `read_existing` | **US3 (T042)**: detectar artefactos previos ya no requiere construir nada; el port existe y se diseñó justamente para esto |
+| Los artefactos se **escriben a disco** | Antes se quedaban en memoria. La US3 opera sobre archivos reales |
+| `start_session` **ya no bloquea** y hay `cancel_session`/`join_session` | Cualquier tarea que asuma la semántica bloqueante anterior está desactualizada |
+
+### ⚠️ Tareas de este spec que `002` ya resolvió
+
+Verificado contra el código, no contra la documentación. **Revisar antes de retomarlas**:
+
+- **T030** (UI mínima: stream de actividad + render grounded/tentative) — **superada** por la
+  US1 de `002` (su T025–T032 y T051–T054). La interfaz existe y va bastante más allá.
+- **T047** (comando `set_locale`) — **ya existe** en `codify-app/src/commands.rs`.
+- **T048** — la mitad de "evento `egress.blocked` en UI" **ya está** (`002`-T051); la
+  *persistencia del `AuditSink`* sigue pendiente.
+- **T049** (modo entrevista para repo vacío) — **hecho**: el núcleo lo devuelve y la interfaz
+  lo presenta.
+- **T050 / T052** (validación del quickstart y verificación de fitness functions en CI) —
+  **solapan** con T049/T050 de `002`. Conviene ejecutarlos una sola vez, no dos.
+
+---
+
 ## Phase 1: Setup (Shared Infrastructure)
 
 **Purpose**: Inicializar workspace y toolchain.
@@ -78,7 +126,7 @@ Workspace Cargo (plan.md): `crates/codify-core/` (biblioteca hexagonal) + `crate
 - [X] T054 [US1] Detección y señalización de contradicción entre fuentes (evento/segmento de contradicción) en `crates/codify-core/src/application/authoring_loop.rs` (depende de T027) [FR-008]
 - [X] T028 [US1] `AuthoringService::start_session`/`session_state` (resultado US1) en `crates/codify-core/src/application/service.rs`
 - [X] T029 [US1] Comandos Tauri `start_session`/`session_state` + eventos `agent.activity`/`reference.unresolved` en `crates/codify-app/src/commands.rs`
-- [ ] T030 [US1] UI mínima: iniciar sesión, stream de actividad, render de artefactos (grounded vs tentative) en `crates/codify-app/ui/`
+- [X] T030 [US1] ~~UI mínima: iniciar sesión, stream de actividad, render de artefactos~~ — **superada por la US1 de `002`** (su T025-T032, T051-T054), que entrega bastante más
 
 **Checkpoint**: US1 funcional e independiente — **MVP** entregable.
 
@@ -121,7 +169,7 @@ Workspace Cargo (plan.md): `crates/codify-core/` (biblioteca hexagonal) + `crate
 - [ ] T041 [P] [US3] Escenario de aceptación BDD (quickstart S3: no-clobber) en `tests/integration/us3_update.rs`
 
 ### Implementation for User Story 3
-- [ ] T042 [US3] Detectar artefactos de contexto existentes en `start_session` y derivar al flujo de actualización en `crates/codify-core/src/application/authoring_loop.rs`
+- [ ] T042 [US3] Detectar artefactos de contexto existentes en `start_session` y derivar al flujo de actualización en `crates/codify-core/src/application/authoring_loop.rs` — **usa `ArtifactWriter::read_existing`, que ya existe** (entregado por `002`-Fase 2)
 - [ ] T043 [US3] Producir `ChangeProposal` de actualización preservando contenido humano (reusa `DiffEngine`/aprobación de US2) en `crates/codify-core/src/application/refine.rs`
 - [ ] T044 [US3] Cablear el camino de contexto-previo en `start_session` + mensajería de UI en `crates/codify-app/`
 
@@ -135,12 +183,12 @@ Workspace Cargo (plan.md): `crates/codify-core/` (biblioteca hexagonal) + `crate
 
 - [ ] T045 [P] `ModelProvider` remoto + OAuth device-flow + keyring (`connect_provider`/`list_connections`) en `crates/codify-core/src/infrastructure/providers/remote.rs` y `crates/codify-core/src/infrastructure/secrets/keyring.rs`
 - [ ] T046 [P] Routing de tiers (cheap/heavy) + degradación transparente (FR-018) en `crates/codify-core/src/application/routing.rs`
-- [ ] T047 [P] Comando `set_locale` (override de idioma, FR-019) en `crates/codify-app/src/commands.rs`
-- [ ] T048 [P] Persistencia de `AuditSink` + evento `egress.blocked` en UI en `crates/codify-core/src/infrastructure/audit/sink.rs`
-- [ ] T049 Modo entrevista para repo vacío (edge case) en `crates/codify-core/src/application/ingest.rs`
-- [ ] T050 [P] Ejecutar validación quickstart.md (S1–S5) end-to-end
+- [X] T047 [P] Comando `set_locale` (override de idioma, FR-019) en `crates/codify-app/src/commands.rs` — **ya existe** (entregado con T029)
+- [ ] T048 [P] Persistencia de `AuditSink` en `crates/codify-core/src/infrastructure/audit/sink.rs` — el *evento `egress.blocked` en UI* **ya lo entregó `002`-T051**; queda solo la persistencia
+- [X] T049 Modo entrevista para repo vacío (edge case) — **hecho**: el núcleo lo devuelve (`interview_mode`) y la interfaz de `002` lo presenta
+- [ ] T050 [P] Ejecutar validación quickstart.md (S1–S5) end-to-end — **solapa con `002`-T049**: ejecutar una sola vez
 - [ ] T051 [P] Empaquetado Tauri (macOS/Linux/Windows) + docs en `docs/`
-- [ ] T052 Verificar en CI las fitness functions verdes (dependencias, cero-egress, Conventional Commits, sin atribución IA) — constitución (enforcement)
+- [ ] T052 Verificar en CI las fitness functions verdes — **solapa con `002`-T050**: ejecutar una sola vez
 
 ---
 
