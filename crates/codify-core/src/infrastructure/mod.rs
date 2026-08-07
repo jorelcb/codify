@@ -3,5 +3,6 @@
 
 pub mod cancel;
 pub mod composition;
+pub mod diff;
 pub mod providers;
 pub mod repo;

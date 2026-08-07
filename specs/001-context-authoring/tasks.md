@@ -146,14 +146,14 @@ Verificado contra el código, no contra la documentación. **Revisar antes de re
 
 ### Tests for User Story 2 (test-first) ⚠️
 - [ ] T031 [P] [US2] Escenario de aceptación BDD (quickstart S2) en `crates/codify-core/tests/us2_refine.rs`
-- [ ] T032 [P] [US2] Contract test `DiffEngine` (property: apply∘revert = identidad) en `crates/codify-core/tests/contract_diff_engine.rs`
-- [ ] T033 [P] [US2] Contract test `RiskClassifier` (default conservador: no-trivial ⇒ HighImpact) en `crates/codify-core/tests/contract_risk_classifier.rs`
-- [ ] T034 [P] [US2] Contract test `Prompter` (solo HighImpact bloquea) en `crates/codify-core/tests/contract_prompter.rs`
+- [X] T032 [P] [US2] Contract test `DiffEngine` (property: apply∘revert = identidad) en `crates/codify-core/tests/contract_diff_engine.rs` — el fake era **más permisivo** que el adapter real (aceptaba aplicar sobre cualquier texto); la suite compartida lo destapó y se subió al contrato
+- [X] T033 [P] [US2] Contract test `RiskClassifier` (default conservador: no-trivial ⇒ HighImpact) en `crates/codify-core/tests/contract_risk_classifier.rs`
+- [X] T034 [P] [US2] Contract test `Prompter` (solo HighImpact bloquea) en `crates/codify-core/tests/contract_prompter.rs` — nota: la regla «solo HighImpact bloquea» no la cumple el `Prompter` sino el loop, y se asserta en `us2_refine.rs`, donde vive
 - [ ] T055 [P] [US2] Escenario: al corregir un supuesto, el diff ajusta el andamiaje dependiente (nombres/secciones), no solo el marcador, en `crates/codify-core/tests/us2_scaffolding.rs` [FR-011]
 
 ### Implementation for User Story 2
-- [ ] T035 [P] [US2] Adapter `DiffEngine` (crate `similar`) make/apply/revert en `crates/codify-core/src/infrastructure/diff/engine.rs`
-- [ ] T036 [P] [US2] `RiskClassifier` conservador v1 en `crates/codify-core/src/infrastructure/diff/risk.rs`
+- [X] T035 [P] [US2] Adapter `DiffEngine` (crate `similar`) make/apply/revert en `crates/codify-core/src/infrastructure/diff/engine.rs`
+- [X] T036 [P] [US2] `RiskClassifier` conservador v1 en `crates/codify-core/src/infrastructure/diff/risk.rs`
 - [ ] T037 [US2] Loop curado en `refine.rs`: submit_message → propose_change → classify → auto-aplica Low / requiere aprobación HighImpact; tool `ask_user` en `crates/codify-core/src/application/refine.rs` (depende de T035, T036)
 - [ ] T038 [US2] Manejo de `ApprovalDecision` (approve/edit/reject; reject ⇒ no escribe) en `crates/codify-core/src/application/refine.rs`
 - [ ] T056 [US2] Propagación de la corrección al andamiaje dependiente (secciones/nombres afectados) en `crates/codify-core/src/application/refine.rs` (depende de T037) [FR-011]

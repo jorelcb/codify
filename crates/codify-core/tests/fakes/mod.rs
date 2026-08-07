@@ -209,10 +209,23 @@ impl DiffEngine for FakeDiffEngine {
             after: after.into(),
         }
     }
-    fn apply(&self, _before: &str, diff: &Diff) -> Result<String> {
+    // El fake **rechaza** aplicar sobre un texto que no es el suyo, igual que el adapter real.
+    // Antes lo aceptaba todo, y eso hacía que los tests que lo usan probaran una garantía más
+    // débil que la de producción — justo lo que el contract test compartido viene a impedir.
+    fn apply(&self, before: &str, diff: &Diff) -> Result<String> {
+        if before != diff.before {
+            return Err(CoreError::Invalid(
+                "el contenido actual no es el que este diff esperaba".into(),
+            ));
+        }
         Ok(diff.after.clone())
     }
-    fn revert(&self, _after: &str, diff: &Diff) -> Result<String> {
+    fn revert(&self, after: &str, diff: &Diff) -> Result<String> {
+        if after != diff.after {
+            return Err(CoreError::Invalid(
+                "el contenido actual no es el resultado que este diff produjo".into(),
+            ));
+        }
         Ok(diff.before.clone())
     }
 }
