@@ -18,7 +18,13 @@ description: "Task list — Context Authoring (codify-NG)"
 - Ruta de archivo exacta en cada tarea
 
 ## Path Conventions
-Workspace Cargo (plan.md): `crates/codify-core/` (biblioteca hexagonal) + `crates/codify-app/` (piel Tauri) + `tests/` en la raíz.
+Workspace Cargo (plan.md): `crates/codify-core/` (biblioteca hexagonal) + `crates/codify-app/` (piel Tauri).
+
+> **Los tests de integración van en la RAÍZ de `crates/<crate>/tests/`**, en archivos planos
+> (`contract_*.rs`, `us1_*.rs`). No en subdirectorios: **Cargo no descubre tests anidados**, así
+> que `tests/contract/foo.rs` no se ejecutaría nunca — y un test que no corre es peor que
+> ninguno, porque aparenta cobertura. Los tests unitarios viven en su propio archivo fuente,
+> en un `mod tests`.
 
 ---
 
@@ -96,7 +102,7 @@ Verificado contra el código, no contra la documentación. **Revisar antes de re
 - [X] T013 [P] Fakes in-memory de todos los driven ports en `crates/codify-core/tests/fakes/mod.rs`
 - [X] T014 Composition root + `ProviderRegistry` con cableado **solo-local** (cero-egress estructural) en `crates/codify-core/src/infrastructure/composition.rs` (depende de T012)
 - [X] T015 [P] **Fitness function de dependencias** (aserta: `domain`/`application` con cero imports de `infrastructure`) en `.github/workflows/ci.yml` + `crates/codify-core/tests/arch_deps.rs` (constitución I, [NN])
-- [X] T016 [P] **Harness de cero-egress** (falla si hay salida a host no-local en modo local) en `tests/integration/egress_guard.rs` (constitución proyecto, [NN])
+- [X] T016 [P] **Harness de cero-egress** (falla si hay salida a host no-local en modo local) en `crates/codify-core/tests/egress_guard.rs` (constitución proyecto, [NN])
 
 **Checkpoint**: Fundación lista — las user stories pueden comenzar.
 
@@ -109,12 +115,12 @@ Verificado contra el código, no contra la documentación. **Revisar antes de re
 **Independent Test**: Apuntar al fixture (README→SPEC "sin broker/event-sourced") en modo local; verificar contexto grounded, referencias declaradas, y cero-egress.
 
 ### Tests for User Story 1 (test-first) ⚠️
-- [X] T017 [P] [US1] Escenario de aceptación BDD (quickstart S1) en `tests/integration/us1_grounded.rs`
-- [X] T018 [P] [US1] Contract test `RepoNavigator` (real fs + fake) en `tests/contract/repo_navigator.rs`
-- [X] T019 [P] [US1] Contract test `ReferenceResolver` (local + URL pública; RequiresAuth reportado, no inventado) en `tests/contract/reference_resolver.rs`
-- [X] T020 [P] [US1] Contract test `ModelProvider` local (openai-compat/Ollama; `is_local`) en `tests/contract/model_provider.rs`
-- [X] T021 [P] [US1] Unit: presupuesto de ingesta + declarar-omitido + detección de idioma en `crates/codify-core/tests/ingest_unit.rs`
-- [X] T053 [P] [US1] Escenario: dos fuentes contradictorias ⇒ el sistema señala la contradicción (no elige en silencio) en `tests/integration/us1_contradiction.rs` [FR-008]
+- [X] T017 [P] [US1] Escenario de aceptación BDD (quickstart S1) en `crates/codify-core/tests/us1_grounded.rs`
+- [X] T018 [P] [US1] Contract test `RepoNavigator` (real fs + fake) en `crates/codify-core/tests/contract_ports.rs` (sección `repo_navigator`)
+- [X] T019 [P] [US1] Contract test `ReferenceResolver` (local + URL pública; RequiresAuth reportado, no inventado) en `crates/codify-core/tests/contract_ports.rs` (sección `reference_resolver`)
+- [X] T020 [P] [US1] Contract test `ModelProvider` local (openai-compat/Ollama; `is_local`) en `crates/codify-core/tests/contract_ports.rs` (sección `model_provider`)
+- [X] T021 [P] [US1] Unit: presupuesto de ingesta + declarar-omitido + detección de idioma en `crates/codify-core/src/application/ingest.rs` (módulo `tests`)
+- [X] T053 [P] [US1] Escenario: dos fuentes contradictorias ⇒ el sistema señala la contradicción (no elige en silencio) en `crates/codify-core/tests/us1_contradiction.rs` [FR-008]
 
 ### Implementation for User Story 1
 - [X] T022 [P] [US1] Adapter `RepoNavigator` (fs) en `crates/codify-core/src/infrastructure/repo/navigator.rs`
@@ -139,11 +145,11 @@ Verificado contra el código, no contra la documentación. **Revisar antes de re
 **Independent Test**: Desde un contexto con hueco/supuesto incorrecto, refinar y aprobar/rechazar diffs (quickstart S2).
 
 ### Tests for User Story 2 (test-first) ⚠️
-- [ ] T031 [P] [US2] Escenario de aceptación BDD (quickstart S2) en `tests/integration/us2_refine.rs`
-- [ ] T032 [P] [US2] Contract test `DiffEngine` (property: apply∘revert = identidad) en `tests/contract/diff_engine.rs`
-- [ ] T033 [P] [US2] Contract test `RiskClassifier` (default conservador: no-trivial ⇒ HighImpact) en `tests/contract/risk_classifier.rs`
-- [ ] T034 [P] [US2] Contract test `Prompter` (solo HighImpact bloquea) en `tests/contract/prompter.rs`
-- [ ] T055 [P] [US2] Escenario: al corregir un supuesto, el diff ajusta el andamiaje dependiente (nombres/secciones), no solo el marcador, en `tests/integration/us2_scaffolding.rs` [FR-011]
+- [ ] T031 [P] [US2] Escenario de aceptación BDD (quickstart S2) en `crates/codify-core/tests/us2_refine.rs`
+- [ ] T032 [P] [US2] Contract test `DiffEngine` (property: apply∘revert = identidad) en `crates/codify-core/tests/contract_diff_engine.rs`
+- [ ] T033 [P] [US2] Contract test `RiskClassifier` (default conservador: no-trivial ⇒ HighImpact) en `crates/codify-core/tests/contract_risk_classifier.rs`
+- [ ] T034 [P] [US2] Contract test `Prompter` (solo HighImpact bloquea) en `crates/codify-core/tests/contract_prompter.rs`
+- [ ] T055 [P] [US2] Escenario: al corregir un supuesto, el diff ajusta el andamiaje dependiente (nombres/secciones), no solo el marcador, en `crates/codify-core/tests/us2_scaffolding.rs` [FR-011]
 
 ### Implementation for User Story 2
 - [ ] T035 [P] [US2] Adapter `DiffEngine` (crate `similar`) make/apply/revert en `crates/codify-core/src/infrastructure/diff/engine.rs`
@@ -151,9 +157,9 @@ Verificado contra el código, no contra la documentación. **Revisar antes de re
 - [ ] T037 [US2] Loop curado en `refine.rs`: submit_message → propose_change → classify → auto-aplica Low / requiere aprobación HighImpact; tool `ask_user` en `crates/codify-core/src/application/refine.rs` (depende de T035, T036)
 - [ ] T038 [US2] Manejo de `ApprovalDecision` (approve/edit/reject; reject ⇒ no escribe) en `crates/codify-core/src/application/refine.rs`
 - [ ] T056 [US2] Propagación de la corrección al andamiaje dependiente (secciones/nombres afectados) en `crates/codify-core/src/application/refine.rs` (depende de T037) [FR-011]
-- [ ] T057 [US2] Aserto de cierre: transición a Approved deja 0 marcadores pendientes (resueltos o diferidos explícitos) en `tests/integration/us2_refine.rs` [FR-013]
+- [ ] T057 [US2] Aserto de cierre: transición a Approved deja 0 marcadores pendientes (resueltos o diferidos explícitos) en `crates/codify-core/tests/us2_refine.rs` [FR-013]
 - [ ] T039 [US2] `AuthoringService::submit_message`/`pending_proposals`/`decide` en `crates/codify-core/src/application/service.rs`
-- [ ] T040 [US2] Comandos Tauri `submit_message`/`pending_proposals`/`decide` + eventos `proposal.new`/`agent.token`; UI de diff + approve/edit/reject en `crates/codify-app/src/commands.rs` y `crates/codify-app/ui/`
+- [→] T040 [US2] ~~Comandos Tauri + UI de diff/approve/edit/reject~~ — **remitida a la Fase 5 de `002` (issue #5)**. Describía la misma piel que las T039–T044 de allí: comandos, `Prompter` real, bloque de diff, captura de decisión, contador de pendientes y conversación. Aquí se queda **solo el núcleo**; la interfaz es del spec que la tiene por objeto. El único detalle que `002` no nombraba, `submit_message`, se anotó en su T039
 
 **Checkpoint**: US1 + US2 funcionan de forma independiente.
 
@@ -166,7 +172,7 @@ Verificado contra el código, no contra la documentación. **Revisar antes de re
 **Independent Test**: Re-ejecutar sobre repo con `AGENTS.md` existente → diff de actualización + aprobación (quickstart S3).
 
 ### Tests for User Story 3 (test-first) ⚠️
-- [ ] T041 [P] [US3] Escenario de aceptación BDD (quickstart S3: no-clobber) en `tests/integration/us3_update.rs`
+- [ ] T041 [P] [US3] Escenario de aceptación BDD (quickstart S3: no-clobber) en `crates/codify-core/tests/us3_update.rs`
 
 ### Implementation for User Story 3
 - [ ] T042 [US3] Detectar artefactos de contexto existentes en `start_session` y derivar al flujo de actualización en `crates/codify-core/src/application/authoring_loop.rs` — **usa `ArtifactWriter::read_existing`, que ya existe** (entregado por `002`-Fase 2)
@@ -222,9 +228,9 @@ Verificado contra el código, no contra la documentación. **Revisar antes de re
 
 ```bash
 # Tests de US1 en paralelo (deben fallar primero):
-Task: "Contract test RepoNavigator en tests/contract/repo_navigator.rs"
-Task: "Contract test ReferenceResolver en tests/contract/reference_resolver.rs"
-Task: "Contract test ModelProvider local en tests/contract/model_provider.rs"
+Task: "Contract test RepoNavigator en crates/codify-core/tests/contract_ports.rs"
+Task: "Contract test ReferenceResolver en crates/codify-core/tests/contract_ports.rs"
+Task: "Contract test ModelProvider local en crates/codify-core/tests/contract_ports.rs"
 
 # Adapters de US1 en paralelo:
 Task: "RepoNavigator fs en crates/codify-core/src/infrastructure/repo/navigator.rs"
