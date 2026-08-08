@@ -17,13 +17,17 @@ description: "Task list — La experiencia de authoring (002)"
 - **[Story]**: US1/US2/US3 (solo en fases de user story)
 - Ruta de archivo exacta en cada tarea
 
-## ⚠️ Dependencia externa que condiciona el orden de entrega
+## ✅ La dependencia externa que condicionaba el orden — resuelta
 
-**La US2 de este spec (revisar diffs) está BLOQUEADA por la US2 del spec 001** (loop de refinamiento, tareas T031–T040 de aquel): no se puede construir la revisión de propuestas mientras no exista nada que las genere.
+**La US2 de este spec estuvo bloqueada por la US2 del spec `001`** (el loop de refinamiento): no
+se puede construir la revisión de propuestas mientras no exista nada que las genere. Por eso el
+orden de entrega se apartó del orden de prioridad, deliberadamente:
 
-Por eso el orden de entrega **se aparta del orden de prioridad**, y es deliberado:
+**US1 (P1) → US3 (P3) → US2 (P2)** ← se llegó aquí
 
-**US1 (P1) → US3 (P3) → US2 (P2, cuando 001-US2 esté hecho)**
+`001`-US2 **está entregada**: existen el motor de diffs, el clasificador de riesgo, el loop
+curado y los tres métodos del servicio (`submit_message`/`pending_proposals`/`decide`). La US2
+de aquí puede empezar.
 
 ### Lo que este spec le entregó a `001`
 
@@ -38,7 +42,7 @@ El detalle está documentado en `001/tasks.md`, sección «Dependencias con el s
 > **Estado de alto nivel y dependencias vivas**: [issue #9 · Roadmap](https://github.com/jorelcb/codify/issues/9).
 > Este archivo sigue siendo la fuente de verdad de la **ejecución tarea a tarea**; los issues lo
 > son de las **dependencias entre épicas**, porque allí se ven desde los dos lados a la vez.
-> Épicas de este spec: **US3 → #6** · **US2 → #5** (bloqueada por #4). Solapes de pulido: #8.
+> Épicas de este spec: **US3 → #6** ✅ · **US2 → #5** (desbloqueada: #4 entregada). Solapes de pulido: #8.
 
 ---
 
@@ -164,14 +168,14 @@ clase —`quien_pinta_a_mano_repinta_al_cambiar_de_idioma`— y no instancia a i
 
 ---
 
-## Phase 5: User Story 2 — Decidir sobre los cambios con el diff a la vista (Priority: P2) 🚧 BLOQUEADA
+## Phase 5: User Story 2 — Decidir sobre los cambios con el diff a la vista (Priority: P2) ✅ DESBLOQUEADA
 
 **Goal**: revisar propuestas como diffs y decidir: aprobar, editar o rechazar.
 
 **⚠️ Bloqueada por el spec 001**: requiere el loop de refinamiento (`001/tasks.md` T031–T040 y T055–T057), que genera las propuestas. **No empezar antes.**
 
-- [ ] T039 [US2] Comandos `submit_message`, `pending_proposals` y `decide` + eventos `proposal.new`/`agent.token`, en `crates/codify-app/src/commands.rs` (bloqueada por 001-US2) — `submit_message` y los eventos llegan aquí desde la T040 de `001`, que describía esta misma piel y quedó remitida a esta fase
-- [ ] T040 [US2] `Prompter` real de la piel que reemplaza a `UnavailablePrompter`, en `crates/codify-app/src/adapters.rs` (bloqueada por 001-US2)
+- [ ] T039 [US2] Comandos `submit_message`, `pending_proposals` y `decide` + eventos `proposal.new`/`agent.token`, en `crates/codify-app/src/commands.rs` (001-US2 **ya entregada**) — `submit_message` y los eventos llegan aquí desde la T040 de `001`, que describía esta misma piel y quedó remitida a esta fase
+- [ ] T040 [US2] `Prompter` real de la piel que reemplaza a `UnavailablePrompter`, en `crates/codify-app/src/adapters.rs` (001-US2 **ya entregada**)
 - [ ] T041 [US2] Bloque de propuesta con diff legible y razón del cambio, en `crates/codify-app/ui/stream.js`
 - [ ] T042 [US2] Captura de decisión (aprobar / editar / rechazar) y reversión de lo auto-aplicado, en `crates/codify-app/ui/main.js`
 - [ ] T043 [US2] Contador de decisiones pendientes y navegación entre ellas sin perder lo ya decidido, en `crates/codify-app/ui/main.js`

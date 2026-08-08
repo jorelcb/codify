@@ -56,6 +56,15 @@ fn risk_classifier_contract(clf: &dyn RiskClassifier, label: &str) {
         "[{label}] v1 es conservadora: lo no trivial bloquea (FR-012)"
     );
 
+    // Reformatear no cambia lo que el documento afirma: interrumpir por espacios en blanco
+    // gastaría la atención del usuario justo donde no hay nada que decidir.
+    let solo_espacios = propuesta("Motor:   Kafka.", "Motor: Kafka.", "reformateo");
+    assert_eq!(
+        clf.classify(&solo_espacios),
+        RiskLevel::Low,
+        "[{label}] un cambio de solo espacios no altera ninguna afirmación"
+    );
+
     // Y el sesgo es el que decide los casos dudosos.
     let dudosa = propuesta("una línea", "una línea distinta", "reformulación menor");
     assert_eq!(
