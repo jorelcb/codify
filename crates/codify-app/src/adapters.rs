@@ -8,7 +8,10 @@ use codify_core::domain::audit::{AuditEvent, AuditKind};
 use codify_core::domain::change::{ApprovalDecision, ChangeProposal};
 use codify_core::domain::error::{CoreError, Result};
 use serde::Serialize;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter};
+use tokio::sync::oneshot;
 
 #[derive(Serialize, Clone)]
 pub struct ActivityPayload {
@@ -121,23 +124,75 @@ impl AuditSink for EventAuditSink {
     }
 }
 
-/// Prompter provisional. El refinamiento conversacional es **US2**; hasta entonces el núcleo
-/// no debe poder pedir decisiones a través de una superficie que aún no existe: fallar
-/// explícitamente es preferible a aprobar algo en silencio.
-pub struct UnavailablePrompter;
+/// Puente entre el núcleo y la persona: **este es el adapter del port `Prompter`**.
+///
+/// El núcleo pide una decisión con `present()` y **espera**. La piel no puede responderle en
+/// el acto —la respuesta la da un humano mirando un diff—, así que aquí se parte en dos:
+/// se emite `proposal.new` a la ventana y se aguarda en un canal que el comando `decide`
+/// resuelve cuando el usuario pulsa.
+///
+/// Es lo que permite que el turno siga siendo una unidad: `submit_message` retorna cuando
+/// todo quedó decidido, no antes. Y es la razón de que el port sea `async`.
+pub struct WindowPrompter {
+    app: AppHandle,
+    pending: PendingDecisions,
+}
+
+/// Decisiones que el núcleo está esperando, por id de propuesta.
+pub type PendingDecisions = Arc<Mutex<HashMap<String, oneshot::Sender<ApprovalDecision>>>>;
+
+#[derive(Serialize, Clone)]
+pub struct ProposalPayload {
+    pub id: String,
+    pub target: String,
+    pub unified: String,
+    pub rationale: String,
+    pub risk: String,
+}
+
+impl WindowPrompter {
+    pub fn new(app: AppHandle, pending: PendingDecisions) -> Self {
+        Self { app, pending }
+    }
+}
 
 #[async_trait::async_trait]
-impl Prompter for UnavailablePrompter {
+impl Prompter for WindowPrompter {
     async fn ask(&self, _question: Question) -> Result<String> {
+        // El loop de refinamiento todavía no usa la herramienta `ask_user`: propone cambios,
+        // no hace preguntas. Declararlo ausente es más honesto que devolver una respuesta
+        // vacía que el agente tomaría por buena.
         Err(CoreError::Unavailable(
-            "el refinamiento conversacional llega en US2".into(),
+            "el agente todavía no formula preguntas: propone cambios".into(),
         ))
     }
 
-    async fn present(&self, _proposal: &ChangeProposal) -> Result<ApprovalDecision> {
-        Err(CoreError::Unavailable(
-            "la revisión de propuestas llega en US2".into(),
-        ))
+    async fn present(&self, proposal: &ChangeProposal) -> Result<ApprovalDecision> {
+        let (tx, rx) = oneshot::channel();
+        let id = proposal.id.as_str().to_string();
+        self.pending
+            .lock()
+            .map_err(|_| CoreError::Storage("el registro de decisiones se corrompió".into()))?
+            .insert(id.clone(), tx);
+
+        let target = match &proposal.target {
+            codify_core::domain::change::ChangeTarget::Artifact(k) => k.file_path().to_string(),
+            codify_core::domain::change::ChangeTarget::RepoFile(p) => p.clone(),
+        };
+        let _ = self.app.emit(
+            "proposal.new",
+            ProposalPayload {
+                id: id.clone(),
+                target,
+                unified: proposal.diff.unified.clone(),
+                rationale: proposal.rationale.clone(),
+                risk: format!("{:?}", proposal.risk).to_lowercase(),
+            },
+        );
+
+        // Si el canal se cierra sin respuesta —la ventana se cerró, la sesión se canceló— la
+        // propuesta NO se aplica. Ante la duda, no tocar el repositorio del usuario.
+        rx.await.map_err(|_| CoreError::Cancelled)
     }
 }
 

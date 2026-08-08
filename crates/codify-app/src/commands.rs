@@ -4,11 +4,14 @@
 //! Cada comando delega en el Application Service del núcleo y traduce sus tipos a DTOs
 //! serializables: los tipos de dominio no cruzan hacia la ventana.
 
-use crate::adapters::{EventAuditSink, StatePayload, SystemClock, UnavailablePrompter};
+use crate::adapters::{
+    EventAuditSink, PendingDecisions, StatePayload, SystemClock, WindowPrompter,
+};
 use codify_core::application::ports::{ProviderDiscovery, ProviderIssue};
 use codify_core::application::service::{
     AuthoringService, ContextAuthoring, SessionSnapshot, StartSession,
 };
+use codify_core::domain::change::{ApprovalDecision, ProposalId, Verdict};
 use codify_core::domain::context::{ContextArtifact, Groundedness};
 use codify_core::domain::session::{Mode, SessionId};
 use codify_core::infrastructure::cancel::TokenCancellationFactory;
@@ -38,6 +41,9 @@ const DEFAULT_MODEL: &str = "qwen2.5-coder";
 #[derive(Default)]
 pub struct AppState {
     services: Mutex<HashMap<String, Arc<ContextAuthoring>>>,
+    /// Decisiones que el núcleo está esperando ahora mismo. Es el otro extremo del canal
+    /// que `WindowPrompter::present` deja abierto: `decide` lo resuelve.
+    pending: PendingDecisions,
 }
 
 impl AppState {
@@ -49,6 +55,10 @@ impl AppState {
 
     fn lookup(&self, id: &str) -> Option<Arc<ContextAuthoring>> {
         self.services.lock().ok()?.get(id).cloned()
+    }
+
+    pub fn pending(&self) -> PendingDecisions {
+        self.pending.clone()
     }
 }
 
@@ -97,6 +107,34 @@ pub struct ArtifactDto {
     /// que solo existe en pantalla — y dar por escrito lo que no lo está es justo la clase de
     /// afirmación sin respaldo que el producto se niega a hacer (FR-017).
     pub write_state: String,
+}
+
+/// Una propuesta tal y como la ve la ventana: el diff que se lee y el motivo que lo explica.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProposalDto {
+    pub id: String,
+    pub target: String,
+    pub unified: String,
+    pub rationale: String,
+    /// `low` | `highimpact`. Solo el segundo bloquea.
+    pub risk: String,
+    pub applied: bool,
+}
+
+fn to_proposal_dto(p: &codify_core::domain::change::ChangeProposal) -> ProposalDto {
+    use codify_core::domain::change::ChangeTarget;
+    ProposalDto {
+        id: p.id.as_str().to_string(),
+        target: match &p.target {
+            ChangeTarget::Artifact(k) => k.file_path().to_string(),
+            ChangeTarget::RepoFile(path) => path.clone(),
+        },
+        unified: p.diff.unified.clone(),
+        rationale: p.rationale.clone(),
+        risk: format!("{:?}", p.risk).to_lowercase(),
+        applied: p.applied,
+    }
 }
 
 #[derive(Serialize)]
@@ -211,7 +249,12 @@ fn env_or(key: &str, fallback: &str) -> String {
 /// En modo local el resolver se construye **sin cliente HTTP** y el registro de proveedores
 /// rechaza cualquier backend no local: la garantía de cero-egress es del cableado, no de un
 /// flag que se consulte más tarde.
-fn build_service(app: &AppHandle, repo_root: &str, mode: Mode) -> Result<ContextAuthoring, String> {
+fn build_service(
+    app: &AppHandle,
+    repo_root: &str,
+    mode: Mode,
+    pending: PendingDecisions,
+) -> Result<ContextAuthoring, String> {
     let provider = LocalOpenAiCompatProvider::new(
         "local",
         env_or("CODIFY_LOCAL_ENDPOINT", DEFAULT_ENDPOINT),
@@ -231,7 +274,7 @@ fn build_service(app: &AppHandle, repo_root: &str, mode: Mode) -> Result<Context
         .resolver(Arc::new(resolver))
         .diff(Arc::new(SimilarDiffEngine))
         .risk(Arc::new(ConservativeRiskClassifier))
-        .prompter(Arc::new(UnavailablePrompter))
+        .prompter(Arc::new(WindowPrompter::new(app.clone(), pending)))
         .audit(Arc::new(EventAuditSink::new(app.clone())))
         .locale(Arc::new(HeuristicLocaleDetector::new(String::new())))
         .clock(Arc::new(SystemClock))
@@ -269,7 +312,12 @@ pub async fn start_session(
         },
     );
 
-    let service = Arc::new(build_service(&app, &request.repo_root, mode)?);
+    let service = Arc::new(build_service(
+        &app,
+        &request.repo_root,
+        mode,
+        state.pending(),
+    )?);
 
     let id = service
         .start_session(StartSession {
@@ -436,6 +484,38 @@ mod tests {
     }
 
     #[test]
+    fn the_three_verdicts_are_understood() {
+        assert!(matches!(
+            parse_verdict("approve", None).unwrap(),
+            Verdict::Approve
+        ));
+        assert!(matches!(
+            parse_verdict("reject", None).unwrap(),
+            Verdict::Reject
+        ));
+        match parse_verdict("edit", Some("mi texto".into())).unwrap() {
+            Verdict::Edit(t) => assert_eq!(t, "mi texto"),
+            otro => panic!("se esperaba una edición, llegó {otro:?}"),
+        }
+    }
+
+    /// Editar sin texto, o con texto vacío, **no** puede degradar a aprobar: se aplicaría el
+    /// contenido del agente haciendo creer al usuario que aplicó el suyo.
+    #[test]
+    fn editing_without_text_is_refused_not_downgraded() {
+        assert!(parse_verdict("edit", None).is_err());
+        assert!(parse_verdict("edit", Some("   ".into())).is_err());
+    }
+
+    /// Un veredicto desconocido falla. Interpretarlo como rechazo sería seguro pero silencioso;
+    /// como aprobación, escribiría sin permiso.
+    #[test]
+    fn an_unknown_verdict_is_refused() {
+        assert!(parse_verdict("quizá", None).is_err());
+        assert!(parse_verdict("", None).is_err());
+    }
+
+    #[test]
     fn a_local_session_cannot_be_wired_against_a_remote_endpoint() {
         // El proveedor local rechaza endpoints no loopback en su constructor.
         assert!(LocalOpenAiCompatProvider::new("x", "https://api.remoto.test", "m").is_err());
@@ -577,6 +657,92 @@ pub async fn artifact(
         .find(|a| a.kind.file_path() == path)
         .map(|a| to_artifact_dto(a, &snapshot.writes))
         .ok_or_else(|| format!("artefacto desconocido: {path}"))
+}
+
+/// Un turno de conversación: el usuario escribe, el agente propone.
+///
+/// **Retorna cuando el turno está resuelto**, no antes. Mientras tanto la ventana recibe un
+/// `proposal.new` por cada cambio de alto impacto y responde con `decide`; los de bajo riesgo
+/// ni aparecen aquí porque ya se aplicaron (FR-010).
+#[tauri::command]
+pub async fn submit_message(
+    state: State<'_, AppState>,
+    session_id: String,
+    message: String,
+) -> Result<Vec<ProposalDto>, String> {
+    let service = state
+        .lookup(&session_id)
+        .ok_or_else(|| format!("sesión desconocida: {session_id}"))?;
+
+    let proposals = service
+        .submit_message(&SessionId::new(session_id), &message)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(proposals.iter().map(to_proposal_dto).collect())
+}
+
+/// Las propuestas que el núcleo está esperando decidir **ahora mismo**.
+///
+/// Se lee del registro de canales abiertos, no de la sesión: es la única fuente que sabe qué
+/// está realmente bloqueado esperando a una persona.
+#[tauri::command]
+pub fn pending_proposals(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    Ok(state
+        .pending
+        .lock()
+        .map_err(|_| "el registro de decisiones se corrompió".to_string())?
+        .keys()
+        .cloned()
+        .collect())
+}
+
+/// Registra la decisión del usuario y **desbloquea** al núcleo (FR-014/FR-015).
+#[tauri::command]
+pub fn decide(
+    state: State<'_, AppState>,
+    proposal_id: String,
+    verdict: String,
+    edited: Option<String>,
+) -> Result<(), String> {
+    let sender = state
+        .pending
+        .lock()
+        .map_err(|_| "el registro de decisiones se corrompió".to_string())?
+        .remove(&proposal_id)
+        .ok_or_else(|| format!("nadie está esperando una decisión sobre {proposal_id}"))?;
+
+    let verdict = parse_verdict(&verdict, edited)?;
+
+    // Si el receptor ya no está, el núcleo dejó de esperar (cancelación o cierre). Decirlo es
+    // mejor que dar por registrada una decisión que nadie recibió.
+    sender
+        .send(ApprovalDecision {
+            proposal_id: ProposalId::new(proposal_id),
+            verdict,
+            actor: "usuario".into(),
+            at: codify_core::domain::ports::Clock::now_iso(&SystemClock),
+        })
+        .map_err(|_| "el núcleo dejó de esperar esta decisión".to_string())
+}
+
+/// Traduce el veredicto que llega de la ventana.
+///
+/// Un veredicto que no se reconoce **falla**: interpretarlo como "rechazar" sería seguro pero
+/// silencioso, y como "aprobar" escribiría sin permiso. Ninguna de las dos es aceptable ante
+/// una entrada que no se entiende.
+fn parse_verdict(verdict: &str, edited: Option<String>) -> Result<Verdict, String> {
+    match verdict {
+        "approve" => Ok(Verdict::Approve),
+        "reject" => Ok(Verdict::Reject),
+        // Editar SIN texto no es editar: aplicar el del agente convertiría "editar" en
+        // "aprobar con pasos de más".
+        "edit" => edited
+            .filter(|t| !t.trim().is_empty())
+            .map(Verdict::Edit)
+            .ok_or_else(|| "editar exige el texto del usuario".to_string()),
+        otro => Err(format!("veredicto desconocido: {otro}")),
+    }
 }
 
 /// Difiere un fragmento tentativo concreto y devuelve cuántos quedan sin atender (FR-014).
