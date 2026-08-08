@@ -13,6 +13,8 @@ use codify_core::domain::context::{ContextArtifact, Groundedness};
 use codify_core::domain::session::{Mode, SessionId};
 use codify_core::infrastructure::cancel::TokenCancellationFactory;
 use codify_core::infrastructure::composition::CoreBuilder;
+use codify_core::infrastructure::diff::engine::SimilarDiffEngine;
+use codify_core::infrastructure::diff::risk::ConservativeRiskClassifier;
 use codify_core::infrastructure::providers::local::LocalOpenAiCompatProvider;
 use codify_core::infrastructure::providers::probe::LocalProviderProbe;
 use codify_core::infrastructure::repo::locale::HeuristicLocaleDetector;
@@ -227,8 +229,8 @@ fn build_service(app: &AppHandle, repo_root: &str, mode: Mode) -> Result<Context
         .provider(Arc::new(provider))
         .navigator(Arc::new(FsRepoNavigator::new(repo_root)))
         .resolver(Arc::new(resolver))
-        .diff(Arc::new(NoDiffYet))
-        .risk(Arc::new(ConservativeRisk))
+        .diff(Arc::new(SimilarDiffEngine))
+        .risk(Arc::new(ConservativeRiskClassifier))
         .prompter(Arc::new(UnavailablePrompter))
         .audit(Arc::new(EventAuditSink::new(app.clone())))
         .locale(Arc::new(HeuristicLocaleDetector::new(String::new())))
@@ -243,51 +245,6 @@ fn build_service(app: &AppHandle, repo_root: &str, mode: Mode) -> Result<Context
         .map_err(|e| format!("no se pudo cablear el núcleo: {e}"))?;
 
     Ok(ContextAuthoring::new(deps))
-}
-
-/// El motor de diffs entra en US2. Declararlo ausente es más honesto que cablear uno que
-/// nadie ejercita todavía.
-struct NoDiffYet;
-
-impl codify_core::application::ports::DiffEngine for NoDiffYet {
-    fn make(&self, before: &str, after: &str) -> codify_core::domain::change::Diff {
-        codify_core::domain::change::Diff {
-            unified: String::new(),
-            before: before.into(),
-            after: after.into(),
-        }
-    }
-    fn apply(
-        &self,
-        _before: &str,
-        diff: &codify_core::domain::change::Diff,
-    ) -> codify_core::domain::error::Result<String> {
-        Ok(diff.after.clone())
-    }
-    fn revert(
-        &self,
-        _after: &str,
-        diff: &codify_core::domain::change::Diff,
-    ) -> codify_core::domain::error::Result<String> {
-        Ok(diff.before.clone())
-    }
-}
-
-/// Política conservadora: mientras no exista el criterio afinado (spec derivado de FR-012),
-/// todo cambio no trivial exige aprobación.
-struct ConservativeRisk;
-
-impl codify_core::domain::ports::RiskClassifier for ConservativeRisk {
-    fn classify(
-        &self,
-        proposal: &codify_core::domain::change::ChangeProposal,
-    ) -> codify_core::domain::change::RiskLevel {
-        if proposal.diff.is_empty() {
-            codify_core::domain::change::RiskLevel::Low
-        } else {
-            codify_core::domain::change::RiskLevel::HighImpact
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
