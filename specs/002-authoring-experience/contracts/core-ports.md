@@ -82,6 +82,7 @@ impl ProviderIssue {
 | `AuthoringService::start_session` | **Retorna el `SessionId` de inmediato**; el loop corre en segundo plano | FR-022: la interfaz no puede quedarse bloqueada minutos |
 | `AuthoringService::cancel_session(id)` | **Nuevo** | FR-023 |
 | `SessionSnapshot` | **+ `writes: Vec<WriteRecord>`** | FR-017: declarar qué llegó al repositorio |
+| `SessionSnapshot` | **+ `proposals: Vec<ChangeProposal>`** | Añadido por la US2 de `001`: las que siguen sin aplicar son las que esperan decisión, y es lo que la Fase 5 de aquí renderiza |
 | `AuthoringDeps` | **+ los tres ports nuevos** | Inyección por constructor en el composition root |
 | `AuditKind` | **+ `ArtifactWritten`, `SessionCancelled`** | La piel se entera por el canal que ya existe |
 | `AuthoringService::defer_tentative(id, path, index)` | **Nuevo** | FR-014: diferir un punto sin verificar, **por fragmento**. Devuelve cuántos quedan sin atender |
