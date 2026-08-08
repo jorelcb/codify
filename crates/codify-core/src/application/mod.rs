@@ -5,4 +5,5 @@ pub mod authoring_loop;
 pub mod deps;
 pub mod ingest;
 pub mod ports;
+pub mod refine;
 pub mod service;

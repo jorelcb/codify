@@ -39,16 +39,23 @@ conclusiones falsas.
 > son de las **dependencias entre épicas**, porque allí se ven desde los dos lados a la vez.
 > Épicas de este spec: **US2 → #4** · **US3 → #7**.
 
-### Lo que este spec BLOQUEA
+### ✅ Lo que este spec bloqueaba — ya no
 
-**La US2 de aquí (T031–T040 y T055–T057) bloquea la US2 de `002`** (revisar diffs, sus
-T039–T044): no se puede construir la interfaz de revisión de propuestas mientras no exista el
-loop de refinamiento que las genera.
+**La US2 de aquí está entregada**, así que la **US2 de `002` (issue #5) queda DESBLOQUEADA**, y
+con ella la **US3 de aquí (issue #7)**, que reusaba su `DiffEngine` y su flujo de aprobación.
 
-Evidencia en el código: no existen `application/refine.rs` ni `infrastructure/diff/`, el
-servicio no expone `submit_message`/`pending_proposals`/`decide`, y la piel lleva dos
-marcadores que **fallan a propósito** — `UnavailablePrompter` y `NoDiffYet`— para que la
-ausencia sea visible en vez de silenciosa.
+Lo que ahora existe y aquellas tareas pueden dar por hecho:
+
+| Pieza | Dónde |
+|---|---|
+| Motor de diffs con `apply∘revert = identidad` | `infrastructure/diff/engine.rs` |
+| Clasificador de riesgo conservador | `infrastructure/diff/risk.rs` |
+| Loop curado de refinamiento | `application/refine.rs` |
+| `submit_message` / `pending_proposals` / `decide` | `application/service.rs` |
+
+Queda **un marcador vivo** en la piel: `UnavailablePrompter` (`codify-app/src/adapters.rs`)
+sigue fallando a propósito. Es justamente lo que la T040 de `002` viene a reemplazar — el
+núcleo ya sabe pedir una decisión, pero nadie la puede tomar todavía desde la interfaz.
 
 ### Lo que `002` ya nos entregó
 
@@ -145,20 +152,20 @@ Verificado contra el código, no contra la documentación. **Revisar antes de re
 **Independent Test**: Desde un contexto con hueco/supuesto incorrecto, refinar y aprobar/rechazar diffs (quickstart S2).
 
 ### Tests for User Story 2 (test-first) ⚠️
-- [ ] T031 [P] [US2] Escenario de aceptación BDD (quickstart S2) en `crates/codify-core/tests/us2_refine.rs`
+- [X] T031 [P] [US2] Escenario de aceptación BDD (quickstart S2) en `crates/codify-core/tests/us2_refine.rs`
 - [X] T032 [P] [US2] Contract test `DiffEngine` (property: apply∘revert = identidad) en `crates/codify-core/tests/contract_diff_engine.rs` — el fake era **más permisivo** que el adapter real (aceptaba aplicar sobre cualquier texto); la suite compartida lo destapó y se subió al contrato
 - [X] T033 [P] [US2] Contract test `RiskClassifier` (default conservador: no-trivial ⇒ HighImpact) en `crates/codify-core/tests/contract_risk_classifier.rs`
 - [X] T034 [P] [US2] Contract test `Prompter` (solo HighImpact bloquea) en `crates/codify-core/tests/contract_prompter.rs` — nota: la regla «solo HighImpact bloquea» no la cumple el `Prompter` sino el loop, y se asserta en `us2_refine.rs`, donde vive
-- [ ] T055 [P] [US2] Escenario: al corregir un supuesto, el diff ajusta el andamiaje dependiente (nombres/secciones), no solo el marcador, en `crates/codify-core/tests/us2_scaffolding.rs` [FR-011]
+- [X] T055 [P] [US2] Escenario: al corregir un supuesto, el diff ajusta el andamiaje dependiente (nombres/secciones), no solo el marcador, en `crates/codify-core/tests/us2_scaffolding.rs` [FR-011]
 
 ### Implementation for User Story 2
 - [X] T035 [P] [US2] Adapter `DiffEngine` (crate `similar`) make/apply/revert en `crates/codify-core/src/infrastructure/diff/engine.rs`
 - [X] T036 [P] [US2] `RiskClassifier` conservador v1 en `crates/codify-core/src/infrastructure/diff/risk.rs`
-- [ ] T037 [US2] Loop curado en `refine.rs`: submit_message → propose_change → classify → auto-aplica Low / requiere aprobación HighImpact; tool `ask_user` en `crates/codify-core/src/application/refine.rs` (depende de T035, T036)
-- [ ] T038 [US2] Manejo de `ApprovalDecision` (approve/edit/reject; reject ⇒ no escribe) en `crates/codify-core/src/application/refine.rs`
-- [ ] T056 [US2] Propagación de la corrección al andamiaje dependiente (secciones/nombres afectados) en `crates/codify-core/src/application/refine.rs` (depende de T037) [FR-011]
-- [ ] T057 [US2] Aserto de cierre: transición a Approved deja 0 marcadores pendientes (resueltos o diferidos explícitos) en `crates/codify-core/tests/us2_refine.rs` [FR-013]
-- [ ] T039 [US2] `AuthoringService::submit_message`/`pending_proposals`/`decide` en `crates/codify-core/src/application/service.rs`
+- [X] T037 [US2] Loop curado en `refine.rs`: submit_message → propose_change → classify → auto-aplica Low / requiere aprobación HighImpact; tool `ask_user` en `crates/codify-core/src/application/refine.rs` (depende de T035, T036)
+- [X] T038 [US2] Manejo de `ApprovalDecision` (approve/edit/reject; reject ⇒ no escribe) en `crates/codify-core/src/application/refine.rs`
+- [X] T056 [US2] Propagación de la corrección al andamiaje dependiente (secciones/nombres afectados) en `crates/codify-core/src/application/refine.rs` (depende de T037) [FR-011]
+- [X] T057 [US2] Aserto de cierre: transición a Approved deja 0 marcadores pendientes (resueltos o diferidos explícitos) en `crates/codify-core/tests/us2_refine.rs` [FR-013]
+- [X] T039 [US2] `AuthoringService::submit_message`/`pending_proposals`/`decide` en `crates/codify-core/src/application/service.rs`
 - [→] T040 [US2] ~~Comandos Tauri + UI de diff/approve/edit/reject~~ — **remitida a la Fase 5 de `002` (issue #5)**. Describía la misma piel que las T039–T044 de allí: comandos, `Prompter` real, bloque de diff, captura de decisión, contador de pendientes y conversación. Aquí se queda **solo el núcleo**; la interfaz es del spec que la tiene por objeto. El único detalle que `002` no nombraba, `submit_message`, se anotó en su T039
 
 **Checkpoint**: US1 + US2 funcionan de forma independiente.

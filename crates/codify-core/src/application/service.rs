@@ -10,6 +10,7 @@ use crate::application::authoring_loop::{AuthoringLoop, IngestOutcome};
 use crate::application::deps::AuthoringDeps;
 use crate::application::ports::Cancellation;
 use crate::domain::audit::{AuditEvent, AuditKind};
+use crate::domain::change::{ApprovalDecision, ChangeProposal, ChangeTarget, Verdict};
 use crate::domain::context::ContextArtifact;
 use crate::domain::error::{CoreError, Result};
 use crate::domain::reference::ReferenceState;
@@ -53,6 +54,8 @@ pub struct SessionSnapshot {
     pub budget_exhausted: bool,
     pub interview_mode: bool,
     pub unattended_tentative: usize,
+    /// Propuestas del refinamiento. Las que siguen sin aplicar son las que esperan decisión.
+    pub proposals: Vec<ChangeProposal>,
 }
 
 /// Balance de una cancelación: en qué fase se cortó y qué alcanzó a escribirse (FR-023).
@@ -81,6 +84,18 @@ pub trait AuthoringService: Send + Sync {
     async fn join_session(&self, id: &SessionId) -> Result<()>;
 
     async fn set_locale(&self, id: &SessionId, locale: String) -> Result<()>;
+
+    /// Un turno de conversación de refinamiento: el usuario dice algo y salen propuestas.
+    ///
+    /// Lo de bajo riesgo ya viene aplicado; lo de alto impacto, decidido a través del
+    /// `Prompter` — cuyo adapter es la piel (FR-010/FR-012).
+    async fn submit_message(&self, id: &SessionId, message: &str) -> Result<Vec<ChangeProposal>>;
+
+    /// Las propuestas que **siguen esperando** decisión.
+    async fn pending_proposals(&self, id: &SessionId) -> Result<Vec<ChangeProposal>>;
+
+    /// Registra una decisión sobre una propuesta concreta (FR-014/FR-015).
+    async fn decide(&self, id: &SessionId, decision: ApprovalDecision) -> Result<()>;
 
     /// Difiere un fragmento tentativo: el usuario lo ha **visto** y decide dejarlo declarado
     /// como pendiente en vez de resolverlo (FR-014 de `002-authoring-experience`).
@@ -165,6 +180,7 @@ impl ContextAuthoring {
             budget_exhausted: outcome.budget_exhausted,
             interview_mode: outcome.interview_mode,
             unattended_tentative: session.unattended_tentative_count(),
+            proposals: Vec::new(),
         }
     }
 
@@ -286,6 +302,120 @@ impl AuthoringService for ContextAuthoring {
         let entry = self.entry(id).await?;
         let mut view = entry.view.lock().await;
         view.locale = Some(locale);
+        Ok(())
+    }
+
+    async fn submit_message(&self, id: &SessionId, message: &str) -> Result<Vec<ChangeProposal>> {
+        let entry = self.entry(id).await?;
+        let cancel = entry.cancel.clone();
+
+        // El agregado vivió dentro de la tarea del loop y ya no existe; se reconstruye desde
+        // la proyección, que es la que sigue siendo la verdad de la sesión. Es el mismo
+        // camino que sigue `set_locale`.
+        let (mut session, previas) = {
+            let view = entry.view.lock().await;
+            let mut s = AuthoringSession::start(view.id.clone(), ".", self.deps.mode);
+            if let Some(l) = &view.locale {
+                s.set_locale(l.clone());
+            }
+            for a in &view.artifacts {
+                s.put_artifact(a.clone());
+            }
+            (s, view.proposals.clone())
+        };
+
+        let refine = crate::application::refine::RefineLoop::new(self.deps.clone());
+        let outcome = refine.submit_message(&mut session, message, cancel).await?;
+
+        let mut view = entry.view.lock().await;
+        view.artifacts = session.artifacts().to_vec();
+        view.unattended_tentative = session.unattended_tentative_count();
+        view.proposals = previas
+            .into_iter()
+            .chain(outcome.proposals.iter().cloned())
+            .collect();
+
+        Ok(outcome.proposals)
+    }
+
+    async fn pending_proposals(&self, id: &SessionId) -> Result<Vec<ChangeProposal>> {
+        let entry = self.entry(id).await?;
+        let view = entry.view.lock().await;
+        Ok(view
+            .proposals
+            .iter()
+            .filter(|p| !p.applied)
+            .cloned()
+            .collect())
+    }
+
+    async fn decide(&self, id: &SessionId, decision: ApprovalDecision) -> Result<()> {
+        let entry = self.entry(id).await?;
+        let mut view = entry.view.lock().await;
+
+        let proposal = view
+            .proposals
+            .iter_mut()
+            .find(|p| p.id == decision.proposal_id)
+            .ok_or_else(|| {
+                CoreError::NotFound(format!("propuesta {}", decision.proposal_id.as_str()))
+            })?;
+
+        // Decidir dos veces sobre lo mismo no puede aplicar dos veces: si ya está aplicada,
+        // la decisión llega tarde y decirlo es mejor que fingir que surtió efecto.
+        if proposal.applied {
+            return Err(CoreError::Invalid(format!(
+                "la propuesta {} ya se aplicó: no se puede volver a decidir sobre ella",
+                decision.proposal_id.as_str()
+            )));
+        }
+
+        let ChangeTarget::Artifact(kind) = proposal.target.clone() else {
+            return Err(CoreError::Invalid(
+                "solo se decide sobre artefactos de contexto".into(),
+            ));
+        };
+
+        let contenido = match &decision.verdict {
+            Verdict::Approve => Some(proposal.diff.after.clone()),
+            Verdict::Edit(texto) => Some(texto.clone()),
+            // Rechazar NO toca el artefacto: es la garantía de FR-015.
+            Verdict::Reject => None,
+        };
+
+        if let Some(contenido) = contenido {
+            proposal.applied = true;
+            let locale = view.locale.clone().unwrap_or_else(|| "en".into());
+            let segments = crate::application::authoring_loop::parse_segments(&contenido)
+                .unwrap_or_else(|_| {
+                    vec![crate::domain::context::Segment::tentative(
+                        contenido.clone(),
+                        "proviene del refinamiento conversacional; no se ha verificado contra una fuente",
+                    )]
+                });
+            let artifact = ContextArtifact::new(kind, locale).with_segments(segments);
+            view.artifacts.retain(|a| a.kind != kind);
+            view.artifacts.push(artifact);
+            view.unattended_tentative = view
+                .artifacts
+                .iter()
+                .map(|a| a.unattended_tentative_count())
+                .sum();
+        }
+
+        self.audit(
+            AuditKind::ApprovalCaptured,
+            format!(
+                "{}: {} por {}",
+                decision.proposal_id.as_str(),
+                if decision.is_rejection() {
+                    "rechazada"
+                } else {
+                    "aplicada"
+                },
+                decision.actor
+            ),
+        );
         Ok(())
     }
 

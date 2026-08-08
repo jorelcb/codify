@@ -235,7 +235,13 @@ pub struct ConservativeRisk;
 
 impl RiskClassifier for ConservativeRisk {
     fn classify(&self, proposal: &ChangeProposal) -> RiskLevel {
-        if proposal.diff.is_empty() {
+        // Misma política que el adapter real: solo pasa sin aprobación lo que se puede
+        // demostrar que no cambia nada. Un fake más estricto haría que los tests que lo
+        // usan probaran una política distinta de la de producción.
+        let normalizar = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
+        if proposal.diff.is_empty()
+            || normalizar(&proposal.diff.before) == normalizar(&proposal.diff.after)
+        {
             RiskLevel::Low
         } else {
             RiskLevel::HighImpact
