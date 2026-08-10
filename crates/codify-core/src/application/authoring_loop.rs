@@ -14,10 +14,14 @@ use crate::application::ports::{
     Cancellation, CompletionOutput, CompletionRequest, EntryKind, Message, Tier, ToolSpec,
 };
 use crate::domain::audit::{AuditEvent, AuditKind};
+use crate::domain::change::{
+    ChangeProposal, ChangeTarget, ProposalId, ProposalOrigin, RiskLevel, Verdict,
+};
 use crate::domain::context::{ArtifactKind, ContextArtifact, Groundedness, Segment};
 use crate::domain::error::{CoreError, Result};
 use crate::domain::reference::{Reference, ReferenceOrigin};
 use crate::domain::session::{AuthoringSession, SessionState};
+use crate::domain::write::WriteRecord;
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -488,11 +492,27 @@ impl AuthoringLoop {
 
             // El contexto no sirve de nada si no sale de la memoria: se escribe y se declara
             // lo ocurrido, incluso si falló (un fallo aislado no aborta el resto).
-            let record = self
-                .deps
-                .writer
-                .write(kind.file_path(), &artifact.render())
-                .await;
+            //
+            // Pero **nunca a ciegas**: si ya había contexto, se propone la actualización y se
+            // espera decisión (US3). Un producto cuyo trabajo es custodiar el contexto de un
+            // proyecto no puede hacer que el uso repetido sea destructivo.
+            let contenido = match self.settle_update(session, kind, artifact.render()).await? {
+                Some(aprobado) => aprobado,
+                None => {
+                    // Rechazado: el archivo se queda como estaba, y consta que fue una
+                    // decisión, no un olvido.
+                    let record = WriteRecord::skipped(
+                        kind.file_path(),
+                        self.deps.clock.now_iso(),
+                        "el usuario rechazó la actualización: se conserva el contenido previo",
+                    );
+                    self.audit(AuditKind::ArtifactWritten, record.summary());
+                    session.record_write(record);
+                    continue;
+                }
+            };
+
+            let record = self.deps.writer.write(kind.file_path(), &contenido).await;
             self.audit(AuditKind::ArtifactWritten, record.summary());
             session.record_write(record);
 
@@ -500,6 +520,64 @@ impl AuthoringLoop {
         }
 
         Ok(())
+    }
+
+    /// Decide qué contenido se escribe cuando **ya había** contexto en el repositorio (US3).
+    ///
+    /// Devuelve `Some(contenido)` si hay que escribir, `None` si el usuario lo rechazó.
+    ///
+    /// No hay fusión automática, y es deliberado: el sistema **no puede saber** qué párrafo
+    /// escribió una persona y cuál generó él. Adivinarlo produciría pérdidas silenciosas justo
+    /// donde más duelen. Así que enseña el diff y pregunta — y si el usuario edita, se escribe
+    /// lo suyo.
+    async fn settle_update(
+        &self,
+        session: &mut AuthoringSession,
+        kind: ArtifactKind,
+        generado: String,
+    ) -> Result<Option<String>> {
+        let Some(previo) = self.deps.writer.read_existing(kind.file_path()).await? else {
+            return Ok(Some(generado)); // primera vez: nada que preservar
+        };
+
+        let diff = self.deps.diff.make(&previo, &generado);
+        if diff.is_empty() {
+            // Regenerar lo idéntico no es un cambio. Preguntar aquí sería ruido puro, y el
+            // ruido entrena a aprobar sin leer.
+            return Ok(Some(generado));
+        }
+
+        let mut proposal = ChangeProposal::new(
+            ProposalId::new(format!(
+                "{}-update-{}",
+                session.id().as_str(),
+                kind.file_path()
+            )),
+            ChangeTarget::Artifact(kind),
+            diff,
+            RiskLevel::Low, // provisional: lo decide el clasificador
+            "el repositorio ya tenía contexto: esto es lo que cambiaría",
+            ProposalOrigin::Generation,
+        );
+        proposal.risk = self.deps.risk.classify(&proposal);
+        self.audit(AuditKind::ProposalMade, proposal.id.as_str());
+
+        if !proposal.requires_approval() {
+            return Ok(Some(generado));
+        }
+
+        let decision = self.deps.prompter.present(&proposal).await?;
+        self.audit(
+            AuditKind::ApprovalCaptured,
+            format!("{}: por {}", proposal.id.as_str(), decision.actor),
+        );
+        Ok(match decision.verdict {
+            Verdict::Approve => Some(generado),
+            // Se escribe **lo del usuario**: es la vía por la que conserva lo que la
+            // regeneración se habría comido.
+            Verdict::Edit(texto) => Some(texto),
+            Verdict::Reject => None,
+        })
     }
 
     /// Material que ve la fase de generación. Incluye de forma explícita lo **no resuelto**
