@@ -37,6 +37,18 @@ pub enum ReferenceState {
     OutOfScope,
 }
 
+impl ReferenceState {
+    /// Identificador estable para la piel, por el mismo motivo que en `SessionState`.
+    pub fn code(&self) -> &'static str {
+        match self {
+            ReferenceState::Resolved => "resolved",
+            ReferenceState::Inaccessible => "inaccessible",
+            ReferenceState::RequiresAuth => "requires_auth",
+            ReferenceState::OutOfScope => "out_of_scope",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Reference {
     origin: ReferenceOrigin,

@@ -49,6 +49,23 @@ pub enum SessionState {
 }
 
 impl SessionState {
+    /// Identificador estable para la piel. Es **parte del contrato**: la ventana compone con
+    /// él la clave del catálogo (`session.state.<code>`).
+    ///
+    /// Derivarlo de `Debug` —como se hacía— ataba las claves al nombre de la variante:
+    /// renombrar `Approved` habría dejado la interfaz mostrando la clave cruda, sin que
+    /// ningún test avisara.
+    pub fn code(&self) -> &'static str {
+        match self {
+            SessionState::Ingesting => "ingesting",
+            SessionState::Generating => "generating",
+            SessionState::Refining => "refining",
+            SessionState::Approved => "approved",
+            SessionState::Failed => "failed",
+            SessionState::Cancelled => "cancelled",
+        }
+    }
+
     pub fn is_terminal(&self) -> bool {
         matches!(
             self,

@@ -52,5 +52,6 @@ Se expone al frontend con el comando `ui_strings(locale)`.
 
 - **Test de paridad**: `strings_for(Es).entries.keys() == strings_for(En).entries.keys()`. Falla el build si alguien añade una cadena en un solo idioma.
 - **Test de no vacías**: ningún valor es cadena vacía.
+- **Test de códigos de estado**: cada variante de `SessionState` tiene su `session.state.<code>` en ambos idiomas. Cierra un acoplamiento que estaba sin vigilar por los dos lados — la clave se compone en una plantilla, así que el extractor de `t("literal")` no la veía.
 - **Tests del contrato de interfaz** (`crates/codify-app/tests/ui_contract.rs`): que ninguna clave usada falte del catálogo y que ninguna clave del catálogo sobre; que ningún texto visible esté escrito directamente en el HTML; que ningún elemento tenga dos dueños de su texto; y que **todo `ProviderIssue` tenga frase en ambos idiomas**.
 - **Manual (quickstart)**: recorrer la aplicación en cada idioma. Sigue teniendo valor —nadie automatiza «se entiende»— pero ya no es lo único: la primera pasada real encontró tres textos que se quedaban en el idioma equivocado, y los tests de arriba existen para que no vuelvan.

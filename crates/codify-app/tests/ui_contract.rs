@@ -404,6 +404,53 @@ fn el_atributo_hidden_gana_siempre() {
     );
 }
 
+/// Cada estado de sesión que el núcleo sabe reportar tiene texto en **los dos** idiomas.
+///
+/// Este test nace de un acoplamiento que estaba sin vigilar por los dos lados. La ventana pinta
+/// el estado con `t(`session.state.${state}`)`, y ese `state` venía de `format!("{:?}")` sobre
+/// la variante de Rust. Es decir: las claves del catálogo dependían **literalmente** del nombre
+/// de la variante, y renombrar `Approved` habría dejado la interfaz mostrando la clave cruda.
+///
+/// El test de claves usadas no lo cubría —extrae `t("literal")`, y esto es una plantilla— y el
+/// inverso pasaba por coincidencia de prefijo. Ahora el vínculo es explícito: el núcleo expone
+/// un `code()` estable y esto comprueba que cada uno tenga su frase.
+#[test]
+fn todo_estado_de_sesion_tiene_texto_en_ambos_idiomas() {
+    use codify_core::domain::session::SessionState;
+
+    let estados = [
+        SessionState::Ingesting,
+        SessionState::Generating,
+        SessionState::Refining,
+        SessionState::Approved,
+        SessionState::Failed,
+        SessionState::Cancelled,
+    ];
+
+    for locale in [Locale::Es, Locale::En] {
+        let entries = strings_for(locale).entries;
+        for estado in estados {
+            let key = format!("session.state.{}", estado.code());
+            let texto = entries.get(key.as_str()).unwrap_or_else(|| {
+                panic!(
+                    "el estado {estado:?} no tiene texto en {}: la interfaz mostraría la clave \
+                     cruda '{key}'",
+                    locale.code()
+                )
+            });
+            assert!(!texto.trim().is_empty(), "'{key}' está vacío");
+        }
+    }
+
+    // Y los códigos son distintos entre sí: dos que colisionaran se verían como el mismo estado.
+    let codigos: std::collections::HashSet<_> = estados.iter().map(|e| e.code()).collect();
+    assert_eq!(
+        codigos.len(),
+        estados.len(),
+        "hay códigos de estado repetidos"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // S6 · Solo teclado
 // ---------------------------------------------------------------------------
