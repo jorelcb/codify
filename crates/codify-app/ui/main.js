@@ -8,6 +8,7 @@ import * as i18n from "./i18n.js";
 import * as stream from "./stream.js";
 import * as provider from "./provider.js";
 import * as artifact from "./artifact.js";
+import * as decide from "./decide.js";
 
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
@@ -31,6 +32,9 @@ const el = {
   tentativeCount: document.getElementById("tentative-count"),
   tentativeReview: document.getElementById("tentative-review"),
   tentativeConfirm: document.getElementById("tentative-confirm"),
+  composer: document.getElementById("composer"),
+  message: document.getElementById("message"),
+  send: document.getElementById("send"),
 };
 
 /** Estado de la piel. El estado real de la sesión vive en el núcleo. */
@@ -73,6 +77,12 @@ function renderMode() {
   el.mode.dataset.mode = ui.local ? "local" : "hybrid";
   el.modeLabel.textContent = i18n.t(key);
   el.mode.title = i18n.t(ui.local ? "mode.local_hint" : "mode.hybrid_hint");
+}
+
+/** El refinamiento solo tiene sentido con una sesión viva y algo generado. */
+function setComposerEnabled(on) {
+  el.message.disabled = !on;
+  el.send.disabled = !on;
 }
 
 function setRunning(running) {
@@ -130,6 +140,14 @@ listen("artifact.written", (e) => {
   ui.artifacts.add(e.payload.target);
   refreshArtifactList();
 });
+// Una propuesta llega por dos caminos a la vez, y cada uno hace algo distinto:
+// la corriente **registra** que se propuso (append-only, no se reescribe), y el panel la
+// pone a esperar decisión. El núcleo está bloqueado hasta que alguien decida.
+listen("proposal.new", (e) => {
+  const p = e.payload;
+  stream.push("proposal", p.target, p.rationale);
+  decide.enqueue(p);
+});
 listen("session.cancelled", (e) => stream.push("cancelled", null, e.payload.target));
 listen("session.state_changed", (e) => setSessionState(e.payload.state));
 
@@ -158,6 +176,8 @@ async function start() {
   ui.artifacts.clear();
   ui.unattendedTentative = 0;
   refreshArtifactList();
+  decide.reset();
+  setComposerEnabled(false);
 
   try {
     ui.sessionId = await invoke("start_session", {
@@ -211,6 +231,9 @@ async function finish() {
   for (const a of snapshot.artifacts ?? []) ui.artifacts.add(a.path);
   refreshArtifactList();
 
+  // Con contexto generado ya se puede conversar para refinarlo (FR-010).
+  setComposerEnabled(Boolean(ui.sessionId) && ui.artifacts.size > 0);
+
   ui.unattendedTentative = snapshot.unattendedTentative ?? 0;
   if (ui.unattendedTentative > 0) {
     stream.push("unresolved", null, i18n.t("artifact.pending_tentative"));
@@ -225,6 +248,51 @@ async function finish() {
 el.action.addEventListener("click", () => (ui.running ? cancel() : start()));
 el.providerRetry.addEventListener("click", () => provider.refresh(ui.local));
 el.openArtifact.addEventListener("click", () => artifact.open());
+
+/**
+ * **T044** — refinamiento en lenguaje natural: una caja de texto, no una cola de preguntas.
+ *
+ * `submit_message` no retorna hasta que el turno queda resuelto, así que mientras tanto el
+ * compositor se bloquea: aceptar un segundo mensaje encima del primero produciría propuestas
+ * sobre un contexto que está a punto de cambiar.
+ */
+el.composer.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const texto = el.message.value.trim();
+  if (!texto || !ui.sessionId) return;
+
+  stream.push("activity", texto, null, i18n.t("refine.thinking"));
+  el.message.value = "";
+  setComposerEnabled(false);
+  try {
+    const proposals = await invoke("submit_message", {
+      sessionId: ui.sessionId,
+      message: texto,
+    });
+    if (!proposals.length) {
+      stream.push("activity", null, i18n.t("refine.no_changes"));
+    }
+    // Las de bajo riesgo ya vienen aplicadas: se declara, no se pregunta (FR-010).
+    for (const p of proposals.filter((p) => p.applied)) {
+      stream.push("proposal", p.target, i18n.t("proposal.auto_applied"));
+    }
+    await finish();
+  } catch (err) {
+    showError("error.unknown", String(err));
+  } finally {
+    setComposerEnabled(Boolean(ui.sessionId));
+  }
+});
+
+// Cada decisión deja rastro en la corriente: «no se aplicó nada» tiene que poder verse.
+decide.configure(({ verdict, proposal, error }) => {
+  if (error) {
+    showError("error.unknown", error);
+    return;
+  }
+  const clave = { approve: "proposal.approved", edit: "proposal.edited", reject: "proposal.rejected" };
+  stream.push("proposal", proposal.target, i18n.t(clave[verdict] ?? "proposal.decided"));
+});
 el.artifactClose.addEventListener("click", () => artifact.close());
 el.repo.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !ui.running) start();
@@ -264,6 +332,7 @@ el.uiLocale.addEventListener("change", async () => {
   // Todo lo que se escribe a mano hay que repintarlo: `apply()` solo alcanza al DOM marcado.
   provider.render();
   artifact.render();
+  decide.render();
   refreshArtifactList(); // el «por qué no» del control de apertura también es texto
 });
 

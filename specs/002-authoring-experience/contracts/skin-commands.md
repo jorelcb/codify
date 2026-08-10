@@ -12,6 +12,9 @@ Extiende la superficie ya implementada en T029 (`001/contracts/tauri-commands.md
 | `cancel_session` | `{ sessionId }` | `CancelOutcomeDto` | 🆕 FR-023 |
 | `artifact` | `{ sessionId, path }` | `ArtifactDto` (**+ `writeState`**) | 🆕 FR-021 |
 | `defer_tentative` | `{ sessionId, path, index }` | `number` (cuántos quedan) | 🆕 FR-014 |
+| `submit_message` | `{ sessionId, message }` | `ProposalDto[]` | 🆕 FR-010 — **retorna cuando el turno está resuelto** |
+| `pending_proposals` | — | `string[]` (ids) | 🆕 lo que el núcleo espera **ahora mismo** |
+| `decide` | `{ proposalId, verdict, edited? }` | `ack` | 🆕 FR-014/FR-015 |
 | `probe_provider` | `{ local }` | `ProviderStatusDto` | 🆕 FR-019 |
 | `ui_strings` | `{ locale }` | `{ locale, entries }` | 🆕 FR-016b |
 | `system_locale` | — | `{ locale }` (`es`\|`en`, cae a `en`) | 🆕 FR-016b |
@@ -29,6 +32,7 @@ Los cuatro primeros **ya existen**; se añaden dos.
 | `session.state_changed` | `{ state }` | Transición de la máquina de estados |
 | `artifact.written` | `{ path, bytes, outcome }` | 🆕 Un artefacto llegó al repositorio (FR-017) |
 | `session.cancelled` | `{ phase, writes }` | 🆕 La sesión se canceló y este es el balance (FR-023) |
+| `proposal.new` | `{ id, target, unified, rationale, risk }` | 🆕 El núcleo **está bloqueado** esperando una decisión sobre este cambio |
 
 ## Reglas de la piel
 
@@ -38,6 +42,8 @@ Los cuatro primeros **ya existen**; se añaden dos.
 - **Toda acción tiene camino de teclado** (FR-025): iniciar, cancelar, recorrer la corriente, abrir un artefacto, cerrar la vista.
 - **Ningún texto va incrustado en la vista**: todo sale del catálogo de `ui_strings` (FR-016b).
 - **Ningún fallo se muestra crudo** (FR-028): se traduce a qué pasó y qué hacer.
+- **El `Prompter` es la piel, y por eso el port es `async`**: `present()` emite `proposal.new` y **espera** en un canal que `decide` resuelve. El turno sigue siendo una unidad — `submit_message` retorna cuando todo quedó decidido. Si el canal se cierra sin respuesta (ventana cerrada, sesión cancelada), la propuesta **no** se aplica.
+- **El panel de decisión vive fuera de la corriente**: la corriente es append-only y registra qué pasó; lo que espera decisión cambia. Mezclarlos obligaría a reescribir bloques ya emitidos.
 - **Diferir es por fragmento**: `defer_tentative` exige un índice concreto. No existe «diferir todo» — despachar sin leer es el hábito que el producto corrige, no uno que facilite.
 - **Un archivo en pantalla no es un archivo en el repositorio**: `writeState` (`written` | `pending` | `failed` | `skipped`) viaja con el artefacto, y la vista lo declara.
 

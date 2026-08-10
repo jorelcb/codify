@@ -19,6 +19,7 @@ const KINDS = {
   contradiction: { label: "stream.contradiction", glyph: "≠" },
   written: { label: "stream.written", glyph: "▸" },
   interview: { label: "stream.interview", glyph: "✎" },
+  proposal: { label: "proposal.label", glyph: "±" },
   egress: { label: "stream.egress_blocked", glyph: "⊘" },
   cancelled: { label: "stream.cancelled", glyph: "■" },
   error: { label: "stream.error", glyph: "!" },
