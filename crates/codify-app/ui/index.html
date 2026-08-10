@@ -51,6 +51,37 @@
       <p class="hint" data-i18n="stream.hint"></p>
     </main>
 
+    <!-- Panel de decisión (FR-010/FR-012/FR-014). Vive FUERA de la corriente a propósito:
+         la corriente es append-only y registra qué pasó; esto es lo que está esperando a una
+         persona ahora mismo, y cambia. Mezclarlos obligaría a reescribir bloques ya emitidos. -->
+    <section id="decide" class="decide" role="region" aria-label="" data-i18n-aria="a11y.decide_region" hidden>
+      <header class="decide-head">
+        <h2 data-i18n="proposal.title"></h2>
+        <span id="decide-count" class="decide-count"></span>
+        <button id="decide-prev" class="ghost" data-i18n="proposal.prev"></button>
+        <button id="decide-next" class="ghost" data-i18n="proposal.next"></button>
+      </header>
+      <p id="decide-target" class="decide-target"></p>
+      <p id="decide-rationale" class="decide-rationale"></p>
+      <!-- El diff se muestra tal cual: es lo que la persona lee para decidir. -->
+      <pre id="decide-diff" class="diff" tabindex="0"></pre>
+      <div id="decide-editor" class="decide-editor" hidden>
+        <label class="label" for="decide-text" data-i18n="proposal.edit_hint"></label>
+        <textarea id="decide-text" rows="6"></textarea>
+      </div>
+      <div class="dialog-actions">
+        <button id="decide-reject" class="ghost" data-i18n="proposal.reject"></button>
+        <button id="decide-edit" class="ghost" data-i18n="proposal.edit"></button>
+        <button id="decide-approve" class="primary" data-i18n="proposal.approve"></button>
+      </div>
+    </section>
+
+    <!-- Refinamiento conversacional (FR-010): una caja de texto, no una cola de preguntas. -->
+    <form id="composer" class="composer">
+      <input id="message" type="text" data-i18n-attr="placeholder:refine.placeholder" disabled />
+      <button id="send" type="submit" class="primary" data-i18n="refine.send" disabled></button>
+    </form>
+
     <!-- Preferencias: los dos idiomas son independientes y se ve que lo son (FR-016/016b). -->
     <footer class="prefs" role="region" aria-label="" data-i18n-aria="a11y.toolbar_region">
       <label class="inline">

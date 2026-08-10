@@ -168,7 +168,7 @@ clase —`quien_pinta_a_mano_repinta_al_cambiar_de_idioma`— y no instancia a i
 
 ---
 
-## Phase 5: User Story 2 — Decidir sobre los cambios con el diff a la vista (Priority: P2) ✅ DESBLOQUEADA
+## Phase 5: User Story 2 — Decidir sobre los cambios con el diff a la vista (Priority: P2) ✅ COMPLETA
 
 **Goal**: revisar propuestas como diffs y decidir: aprobar, editar o rechazar.
 
@@ -176,10 +176,10 @@ clase —`quien_pinta_a_mano_repinta_al_cambiar_de_idioma`— y no instancia a i
 
 - [X] T039 [US2] Comandos `submit_message`, `pending_proposals` y `decide` + eventos `proposal.new`/`agent.token`, en `crates/codify-app/src/commands.rs` (001-US2 **ya entregada**) — `submit_message` y los eventos llegan aquí desde la T040 de `001`, que describía esta misma piel y quedó remitida a esta fase
 - [X] T040 [US2] `Prompter` real de la piel que reemplaza a `UnavailablePrompter`, en `crates/codify-app/src/adapters.rs` (001-US2 **ya entregada**)
-- [ ] T041 [US2] Bloque de propuesta con diff legible y razón del cambio, en `crates/codify-app/ui/stream.js`
-- [ ] T042 [US2] Captura de decisión (aprobar / editar / rechazar) y reversión de lo auto-aplicado, en `crates/codify-app/ui/main.js`
-- [ ] T043 [US2] Contador de decisiones pendientes y navegación entre ellas sin perder lo ya decidido, en `crates/codify-app/ui/main.js`
-- [ ] T044 [US2] Refinamiento conversacional en lenguaje natural (sin interacción modal por hueco), en `crates/codify-app/ui/main.js`
+- [X] T041 [US2] Bloque de propuesta con diff legible y razón del cambio, en `crates/codify-app/ui/stream.js` — el bloque vive en la corriente como **registro** (append-only) y el diff revisable en el panel de decisión, que sí cambia; mezclarlos obligaría a reescribir bloques ya emitidos
+- [X] T042 [US2] Captura de decisión (aprobar / editar / rechazar) y reversión de lo auto-aplicado, en `crates/codify-app/ui/main.js` — editar es en **dos pasos**: abrir el editor y confirmar. Enviar a la primera aplicaría un texto vacío
+- [X] T043 [US2] Contador de decisiones pendientes y navegación entre ellas sin perder lo ya decidido, en `crates/codify-app/ui/main.js`
+- [X] T044 [US2] Refinamiento conversacional en lenguaje natural (sin interacción modal por hueco), en `crates/codify-app/ui/main.js` — el compositor se bloquea mientras el turno se resuelve: un segundo mensaje encima del primero produciría propuestas sobre un contexto a punto de cambiar
 
 ---
 

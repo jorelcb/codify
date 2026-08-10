@@ -175,12 +175,6 @@ fn ningun_texto_visible_escapa_al_catalogo() {
 #[test]
 fn ningun_elemento_tiene_dos_duenos_de_su_texto() {
     let html = read(ui_dir().join("index.html"));
-    let js: String = ui_files()
-        .iter()
-        .filter(|(n, _)| n.ends_with(".js"))
-        .map(|(_, c)| c.as_str())
-        .collect::<Vec<_>>()
-        .join("\n");
 
     // Ids cuyo texto pinta `apply()`.
     let traducidos: Vec<String> = text_runs_tags(&html)
@@ -189,33 +183,41 @@ fn ningun_elemento_tiene_dos_duenos_de_su_texto() {
         .filter_map(|tag| between(&tag, "id=\"", "\""))
         .collect();
 
-    // Ids que el JavaScript ata a una variable, con el nombre de esa variable.
+    // El análisis va **archivo a archivo**: la atadura entre una variable y su id es local al
+    // módulo. Analizar todo el JavaScript junto daba falsos positivos —`nextEl` es
+    // `provider-next` en un módulo y `decide-next` en otro—, y un test que grita sin motivo
+    // acaba ignorándose, que es peor que no tenerlo.
     let mut conflictos = Vec::new();
-    let mut rest = js.as_str();
-    while let Some(at) = rest.find("document.getElementById(\"") {
-        let antes = &rest[..at];
-        let nombre: String = antes
-            .trim_end()
-            .trim_end_matches(['=', ':'])
-            .trim_end()
-            .chars()
-            .rev()
-            .take_while(|c| c.is_alphanumeric() || *c == '_' || *c == '$')
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .collect();
-        rest = &rest[at + "document.getElementById(\"".len()..];
-        let Some(id) = rest.split('"').next().map(str::to_string) else {
-            continue;
-        };
-        if nombre.is_empty() || !traducidos.contains(&id) {
+    for (name, content) in ui_files() {
+        if !name.ends_with(".js") {
             continue;
         }
-        if js.contains(&format!("{nombre}.textContent")) {
-            conflictos.push(format!(
-                "#{id}: lleva `data-i18n` en el HTML y `{nombre}.textContent =` en el JavaScript"
-            ));
+        let mut rest = content.as_str();
+        while let Some(at) = rest.find("document.getElementById(\"") {
+            let nombre: String = rest[..at]
+                .trim_end()
+                .trim_end_matches(['=', ':'])
+                .trim_end()
+                .chars()
+                .rev()
+                .take_while(|c| c.is_alphanumeric() || *c == '_' || *c == '$')
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect();
+            rest = &rest[at + "document.getElementById(\"".len()..];
+            let Some(id) = rest.split('"').next().map(str::to_string) else {
+                continue;
+            };
+            if nombre.is_empty() || !traducidos.contains(&id) {
+                continue;
+            }
+            if content.contains(&format!("{nombre}.textContent =")) {
+                conflictos.push(format!(
+                    "{name} #{id}: lleva `data-i18n` en el HTML y `{nombre}.textContent =` en el \
+                     JavaScript"
+                ));
+            }
         }
     }
 
@@ -377,6 +379,29 @@ fn todo_motivo_del_proveedor_tiene_texto_en_ambos_idiomas() {
             );
         }
     }
+}
+
+/// `hidden` tiene que ocultar de verdad.
+///
+/// Este test nace de un defecto real: `#decide` llevaba `display: flex` y el atributo `hidden`
+/// no hacía nada — el panel de decisión seguía visible cuando el código creía haberlo ocultado.
+/// El atributo pone `display: none` desde la hoja del navegador, y **cualquier** `display` de
+/// autor lo pisa. Basta una regla global para matar la clase entera.
+#[test]
+fn el_atributo_hidden_gana_siempre() {
+    let css = read(ui_dir().join("styles.css")).replace(' ', "");
+    let html = read(ui_dir().join("index.html"));
+
+    assert!(
+        html.contains("hidden"),
+        "si nada usa `hidden`, este test sobra"
+    );
+    assert!(
+        css.contains("[hidden]{display:none!important;}")
+            || css.contains("[hidden]{display:none!important"),
+        "falta la regla global `[hidden] {{ display: none !important; }}`: sin ella, cualquier \
+         elemento con `display` propio ignora el atributo y el código que lo oculta no hace nada"
+    );
 }
 
 // ---------------------------------------------------------------------------

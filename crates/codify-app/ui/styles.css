@@ -35,11 +35,19 @@
 
 * { box-sizing: border-box; }
 
+/* `hidden` tiene que ganar SIEMPRE.
+ *
+ * El atributo pone `display: none` desde la hoja del navegador, así que **cualquier**
+ * `display` declarado aquí lo pisa: un panel con `display: flex` sigue visible con `hidden`
+ * puesto, y el código que lo "oculta" no hace nada. Pasó con el panel de decisión. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background: var(--bg);
   color: var(--fg);
   font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -166,6 +174,8 @@ select {
 
 .stream {
   flex: 1;
+  min-height: 0;      /* sin esto, un hijo flex no encoge y el scroll se va al body */
+  overflow-y: auto;
   width: 100%;
   max-width: 920px;
   margin: 0 auto;
@@ -211,6 +221,88 @@ select {
 .block[data-kind="activity"] { border-left-color: var(--muted); }
 .block[data-kind="read"] { border-left-color: var(--ok); }
 .block[data-kind="written"] { border-left-color: var(--accent); }
+.block[data-kind="proposal"] { border-left-color: var(--accent); }
+
+/* --- Panel de decisión ---------------------------------------------------- */
+
+.decide {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.decide-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.decide-head h2 { margin: 0; font-size: 15px; }
+.decide-count {
+  padding: 3px 9px;
+  border: 1px solid var(--warn);
+  border-radius: 999px;
+  color: var(--warn);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.decide-head .ghost { margin-left: 0; }
+.decide-head #decide-prev { margin-left: auto; }
+
+.decide-target { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+.decide-rationale { margin: 0; color: var(--muted); font-size: 12.5px; }
+
+/* El diff se lee tal cual. Las líneas que entran y salen se distinguen por su PREFIJO
+   (+ / -), que es parte del texto: el color va encima, no en su lugar (FR-026). */
+.diff {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre;
+  max-height: 22vh;
+}
+
+.decide-editor { display: flex; flex-direction: column; gap: 5px; }
+.decide-editor textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  resize: vertical;
+}
+
+/* --- Compositor de conversación ------------------------------------------- */
+
+.composer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+.composer input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+}
+.composer input:disabled { opacity: 0.55; }
+
 .block[data-kind="interview"] { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
 .block[data-kind="unresolved"] { border-left-color: var(--warn); }
 .block[data-kind="contradiction"] { border-left-color: var(--bad); }
