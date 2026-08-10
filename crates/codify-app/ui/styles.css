@@ -282,6 +282,20 @@ select {
   resize: vertical;
 }
 
+.applied {
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+.applied h2 { margin: 0 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.applied-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.applied-list li { display: flex; align-items: center; gap: 10px; }
+.applied-target {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+}
+.applied-list button { margin-left: auto; padding: 3px 10px; font-size: 12px; }
+
 /* --- Compositor de conversación ------------------------------------------- */
 
 .composer {

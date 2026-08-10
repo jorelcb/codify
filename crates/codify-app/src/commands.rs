@@ -132,7 +132,7 @@ fn to_proposal_dto(p: &codify_core::domain::change::ChangeProposal) -> ProposalD
         },
         unified: p.diff.unified.clone(),
         rationale: p.rationale.clone(),
-        risk: format!("{:?}", p.risk).to_lowercase(),
+        risk: p.risk.code().to_string(),
         applied: p.applied,
     }
 }
@@ -724,6 +724,26 @@ pub fn decide(
             at: codify_core::domain::ports::Clock::now_iso(&SystemClock),
         })
         .map_err(|_| "el núcleo dejó de esperar esta decisión".to_string())
+}
+
+/// Deshace un cambio auto-aplicado por bajo riesgo (FR-008).
+///
+/// Es la compensación de no haber preguntado: se aplicó algo sin consultar al usuario, así que
+/// tiene que poder devolverlo. El núcleo rechaza deshacer lo que pasó por una decisión humana.
+#[tauri::command]
+pub async fn revert_proposal(
+    state: State<'_, AppState>,
+    session_id: String,
+    proposal_id: String,
+) -> Result<(), String> {
+    let service = state
+        .lookup(&session_id)
+        .ok_or_else(|| format!("sesión desconocida: {session_id}"))?;
+
+    service
+        .revert_proposal(&SessionId::new(session_id), &ProposalId::new(proposal_id))
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// Traduce el veredicto que llega de la ventana.
