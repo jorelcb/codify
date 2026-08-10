@@ -41,8 +41,9 @@ conclusiones falsas.
 
 ### ✅ Lo que este spec bloqueaba — ya no
 
-**La US2 de aquí está entregada**, así que la **US2 de `002` (issue #5) queda DESBLOQUEADA**, y
-con ella la **US3 de aquí (issue #7)**, que reusaba su `DiffEngine` y su flujo de aprobación.
+**La US2 de aquí está entregada**, y con ella la **US2 de `002` (issue #5) ya se cerró también**.
+Queda desbloqueada la **US3 de aquí (issue #7)**, que reusa su `DiffEngine` y su flujo de
+aprobación.
 
 Lo que ahora existe y aquellas tareas pueden dar por hecho:
 
@@ -53,9 +54,8 @@ Lo que ahora existe y aquellas tareas pueden dar por hecho:
 | Loop curado de refinamiento | `application/refine.rs` |
 | `submit_message` / `pending_proposals` / `decide` | `application/service.rs` |
 
-Queda **un marcador vivo** en la piel: `UnavailablePrompter` (`codify-app/src/adapters.rs`)
-sigue fallando a propósito. Es justamente lo que la T040 de `002` viene a reemplazar — el
-núcleo ya sabe pedir una decisión, pero nadie la puede tomar todavía desde la interfaz.
+`UnavailablePrompter` **ya no existe**: la T040 de `002` lo reemplazó por `WindowPrompter`, que
+emite `proposal.new` a la ventana y espera la decisión en un canal. El circuito está completo.
 
 ### Lo que `002` ya nos entregó
 

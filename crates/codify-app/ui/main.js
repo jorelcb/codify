@@ -231,8 +231,12 @@ async function finish() {
   for (const a of snapshot.artifacts ?? []) ui.artifacts.add(a.path);
   refreshArtifactList();
 
-  // Con contexto generado ya se puede conversar para refinarlo (FR-010).
-  setComposerEnabled(Boolean(ui.sessionId) && ui.artifacts.size > 0);
+  // Se puede conversar si hay contexto que refinar **o** si no hay nada que leer: el
+  // repositorio vacío es justo el caso donde la conversación es la única vía, y dejar la
+  // caja apagada ahí era apagarla donde más falta hace.
+  setComposerEnabled(
+    Boolean(ui.sessionId) && (ui.artifacts.size > 0 || snapshot.interviewMode),
+  );
 
   ui.unattendedTentative = snapshot.unattendedTentative ?? 0;
   if (ui.unattendedTentative > 0) {
