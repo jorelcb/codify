@@ -213,7 +213,7 @@ fn to_artifact_dto(
 fn to_snapshot_dto(snapshot: SessionSnapshot) -> SessionSnapshotDto {
     SessionSnapshotDto {
         id: snapshot.id.as_str().to_string(),
-        state: format!("{:?}", snapshot.state).to_lowercase(),
+        state: snapshot.state.code().to_string(),
         locale: snapshot.locale,
         artifacts: snapshot
             .artifacts
@@ -225,7 +225,7 @@ fn to_snapshot_dto(snapshot: SessionSnapshot) -> SessionSnapshotDto {
             .iter()
             .map(|u| UnresolvedDto {
                 origin: u.origin.clone(),
-                state: format!("{:?}", u.state).to_lowercase(),
+                state: u.state.code().to_string(),
             })
             .collect(),
         omitted: snapshot.omitted,
@@ -590,7 +590,7 @@ pub async fn cancel_session(
 
     Ok(CancelOutcomeDto {
         session_id: outcome.session_id.as_str().to_string(),
-        phase: format!("{:?}", outcome.phase).to_lowercase(),
+        phase: outcome.phase.code().to_string(),
         writes: outcome.writes.iter().map(to_write_dto).collect(),
     })
 }
