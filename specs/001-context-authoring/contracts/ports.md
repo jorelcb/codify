@@ -71,3 +71,4 @@ pub trait LocaleDetector { async fn detect(&self, repo: &Repository) -> Locale; 
 - `ModelProvider.is_local() == false` **no puede existir** en el grafo cuando `mode = Local` (verificado en el composition root + test de egress).
 - `ReferenceResolver` nunca devuelve `Resolved` con contenido fabricado para un `RequiresAuth`/`Inaccessible`.
 - `DiffEngine.apply` es reversible con `revert` (property test: apply∘revert = identidad).
+- **La generación no sobrescribe a ciegas** (US3): antes de escribir consulta `ArtifactWriter.read_existing`; si ya hay contexto y difiere, produce una `ChangeProposal` de origen `Generation` y espera decisión. Rechazar deja el archivo intacto y lo declara como `Skipped` con su motivo — nunca como un olvido.

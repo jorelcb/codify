@@ -172,19 +172,19 @@ Verificado contra el código, no contra la documentación. **Revisar antes de re
 
 ---
 
-## Phase 5: User Story 3 - Repo con contexto previo: actualización sin sobrescribir (Priority: P3)
+## Phase 5: User Story 3 - Repo con contexto previo: actualización sin sobrescribir (Priority: P3) ✅ COMPLETA
 
 **Goal**: Re-ejecutar sobre un repo con contexto existente → proponer actualización como diff, cero sobrescrituras silenciosas.
 
 **Independent Test**: Re-ejecutar sobre repo con `AGENTS.md` existente → diff de actualización + aprobación (quickstart S3).
 
 ### Tests for User Story 3 (test-first) ⚠️
-- [ ] T041 [P] [US3] Escenario de aceptación BDD (quickstart S3: no-clobber) en `crates/codify-core/tests/us3_update.rs`
+- [X] T041 [P] [US3] Escenario de aceptación BDD (quickstart S3: no-clobber) en `crates/codify-core/tests/us3_update.rs`
 
 ### Implementation for User Story 3
-- [ ] T042 [US3] Detectar artefactos de contexto existentes en `start_session` y derivar al flujo de actualización en `crates/codify-core/src/application/authoring_loop.rs` — **usa `ArtifactWriter::read_existing`, que ya existe** (entregado por `002`-Fase 2)
-- [ ] T043 [US3] Producir `ChangeProposal` de actualización preservando contenido humano (reusa `DiffEngine`/aprobación de US2) en `crates/codify-core/src/application/refine.rs`
-- [ ] T044 [US3] Cablear el camino de contexto-previo en `start_session` + mensajería de UI en `crates/codify-app/`
+- [X] T042 [US3] Detectar artefactos de contexto existentes en `start_session` y derivar al flujo de actualización en `crates/codify-core/src/application/authoring_loop.rs` — **usa `ArtifactWriter::read_existing`, que ya existe** (entregado por `002`-Fase 2) — el flujo vive en `generate()`: antes de escribir consulta `read_existing`; si hay contexto previo distinto, propone en vez de pisar
+- [X] T043 [US3] Producir `ChangeProposal` de actualización preservando contenido humano (reusa `DiffEngine`/aprobación de US2) en `crates/codify-core/src/application/refine.rs` — **sin fusión automática**, y es deliberado: el sistema no puede saber qué párrafo escribió una persona y cuál generó él. Adivinarlo produciría pérdidas silenciosas justo donde más duelen; así que enseña el diff y pregunta, y si el usuario edita se escribe lo suyo
+- [X] T044 [US3] Cablear el camino de contexto-previo en `start_session` + mensajería de UI en `crates/codify-app/` — **no hizo falta interfaz nueva**: la propuesta de actualización viaja por el mismo `proposal.new` → panel de decisión que montó la US2 de `002`. Verificado en navegador
 
 **Checkpoint**: Las tres user stories funcionan de forma independiente.
 
