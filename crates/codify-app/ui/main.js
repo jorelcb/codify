@@ -9,6 +9,7 @@ import * as stream from "./stream.js";
 import * as provider from "./provider.js";
 import * as artifact from "./artifact.js";
 import * as decide from "./decide.js";
+import * as applied from "./applied.js";
 
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
@@ -177,6 +178,7 @@ async function start() {
   ui.unattendedTentative = 0;
   refreshArtifactList();
   decide.reset();
+  applied.reset();
   setComposerEnabled(false);
 
   try {
@@ -185,6 +187,10 @@ async function start() {
     });
     artifact.configure(ui.sessionId, (remaining) => {
       ui.unattendedTentative = remaining;
+    });
+    applied.configure(ui.sessionId, ({ proposal, error }) => {
+      if (error) return showError("error.unknown", error);
+      stream.push("proposal", proposal.target, i18n.t("proposal.reverted"));
     });
     await finish();
   } catch (err) {
@@ -276,9 +282,11 @@ el.composer.addEventListener("submit", async (e) => {
     if (!proposals.length) {
       stream.push("activity", null, i18n.t("refine.no_changes"));
     }
-    // Las de bajo riesgo ya vienen aplicadas: se declara, no se pregunta (FR-010).
+    // Las de bajo riesgo ya vienen aplicadas: se declara, no se pregunta (FR-010) — y se
+    // deja a mano cómo deshacerlas, que es el precio de no haber consultado (FR-008).
     for (const p of proposals.filter((p) => p.applied)) {
       stream.push("proposal", p.target, i18n.t("proposal.auto_applied"));
+      applied.add(p);
     }
     await finish();
   } catch (err) {
@@ -337,6 +345,7 @@ el.uiLocale.addEventListener("change", async () => {
   provider.render();
   artifact.render();
   decide.render();
+  applied.render();
   refreshArtifactList(); // el «por qué no» del control de apertura también es texto
 });
 

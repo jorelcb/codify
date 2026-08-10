@@ -174,11 +174,13 @@ clase —`quien_pinta_a_mano_repinta_al_cambiar_de_idioma`— y no instancia a i
 
 **⚠️ Bloqueada por el spec 001**: requiere el loop de refinamiento (`001/tasks.md` T031–T040 y T055–T057), que genera las propuestas. **No empezar antes.**
 
-- [X] T039 [US2] Comandos `submit_message`, `pending_proposals` y `decide` + eventos `proposal.new`/`agent.token`, en `crates/codify-app/src/commands.rs` (001-US2 **ya entregada**) — `submit_message` y los eventos llegan aquí desde la T040 de `001`, que describía esta misma piel y quedó remitida a esta fase
+- [X] T039 [US2] Comandos `submit_message`, `pending_proposals` y `decide` + evento `proposal.new`, en `crates/codify-app/src/commands.rs` (001-US2 **ya entregada**) — **`agent.token` no entró**: el streaming token a token exige que el turno deje de ser una unidad bloqueante, que es justo la decisión que sostiene el puente del `Prompter`. Extraído a T056 — `submit_message` y los eventos llegan aquí desde la T040 de `001`, que describía esta misma piel y quedó remitida a esta fase
 - [X] T040 [US2] `Prompter` real de la piel que reemplaza a `UnavailablePrompter`, en `crates/codify-app/src/adapters.rs` (001-US2 **ya entregada**)
 - [X] T041 [US2] Bloque de propuesta con diff legible y razón del cambio, en `crates/codify-app/ui/stream.js` — el bloque vive en la corriente como **registro** (append-only) y el diff revisable en el panel de decisión, que sí cambia; mezclarlos obligaría a reescribir bloques ya emitidos
-- [X] T042 [US2] Captura de decisión (aprobar / editar / rechazar) y reversión de lo auto-aplicado, en `crates/codify-app/ui/main.js` — editar es en **dos pasos**: abrir el editor y confirmar. Enviar a la primera aplicaría un texto vacío
+- [X] T042 [US2] Captura de decisión (aprobar / editar / rechazar), en `crates/codify-app/ui/main.js` — editar es en **dos pasos**: abrir el editor y confirmar. Enviar a la primera aplicaría un texto vacío
 - [X] T043 [US2] Contador de decisiones pendientes y navegación entre ellas sin perder lo ya decidido, en `crates/codify-app/ui/main.js`
+- [X] T055 [US2] **Deshacer** un cambio auto-aplicado (FR-008): `revert_proposal` en el servicio, comando en la piel y control en `ui/applied.js` — extraído de T042, que lo prometía sin entregarlo. Solo aplica a lo de bajo riesgo: lo aprobado por una persona se cambia decidiendo otra vez, no a sus espaldas
+- [ ] T056 Streaming token a token (`agent.token`) durante el refinamiento — **requiere decidir antes** si el turno debe dejar de bloquear; no es solo añadir un evento
 - [X] T044 [US2] Refinamiento conversacional en lenguaje natural (sin interacción modal por hueco), en `crates/codify-app/ui/main.js` — el compositor se bloquea mientras el turno se resuelve: un segundo mensaje encima del primero produciría propuestas sobre un contexto a punto de cambiar
 
 ---

@@ -29,6 +29,18 @@ impl RiskLevel {
     pub fn requires_approval(&self) -> bool {
         matches!(self, RiskLevel::HighImpact)
     }
+
+    /// Identificador estable para la piel. Es **parte del contrato**.
+    ///
+    /// Derivarlo de `Debug` —como se hacía— ataba la interfaz al nombre de la variante: un
+    /// renombrado la habría roto sin que nada avisara. Es la misma trampa que ya se cerró con
+    /// `ProviderIssue`.
+    pub fn code(&self) -> &'static str {
+        match self {
+            RiskLevel::Low => "low",
+            RiskLevel::HighImpact => "high_impact",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -167,6 +179,14 @@ mod tests {
         );
         assert!(!low.requires_approval());
         assert!(high.requires_approval());
+    }
+
+    /// Los códigos son distintos y estables: dos que colisionaran se presentarían igual.
+    #[test]
+    fn each_risk_level_has_its_own_stable_code() {
+        assert_ne!(RiskLevel::Low.code(), RiskLevel::HighImpact.code());
+        assert_eq!(RiskLevel::Low.code(), "low");
+        assert_eq!(RiskLevel::HighImpact.code(), "high_impact");
     }
 
     #[test]

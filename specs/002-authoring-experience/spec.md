@@ -109,7 +109,7 @@ Al leer el contexto generado, el usuario distingue **sin esfuerzo y sin ambigüe
 - **FR-014**: La aplicación MUST advertir al usuario si intenta cerrar la sesión con puntos tentativos **sin atender**, y permitirle resolverlos o diferirlos de forma explícita.
 
 **Alcance y control del usuario**
-- **FR-015**: La aplicación MUST permitir al usuario elegir el repositorio objetivo y el modo de la sesión antes de comenzar.
+- **FR-015**: La aplicación MUST permitir al usuario elegir el **repositorio objetivo** antes de comenzar, y **declarar** el modo en que va a correr. *La **elección** de modo queda diferida hasta que exista un segundo modo: el híbrido requiere el proveedor remoto de `001`-T045, todavía pendiente. Ofrecer hoy un selector de una sola opción sugeriría una capacidad inexistente.*
 - **FR-016**: La aplicación MUST permitir cambiar el **idioma de los artefactos**, sobrescribiendo el detectado automáticamente.
 - **FR-016b**: La **interfaz** MUST estar disponible en **español e inglés**, tomando por defecto el idioma del sistema operativo y permitiendo cambiarlo. Su idioma es **independiente** del de los artefactos: un usuario con el sistema en inglés puede generar contexto en español. Todo texto visible MUST provenir de un catálogo de cadenas, no estar incrustado en la vista.
 - **FR-017**: La aplicación MUST dejar claro, en todo momento, **qué se escribió al repositorio** y qué sigue siendo una propuesta.
@@ -160,6 +160,7 @@ Al leer el contexto generado, el usuario distingue **sin esfuerzo y sin ambigüe
 - **Alcance**: este spec cubre la **experiencia** de la aplicación de escritorio. El scaffold de la piel y el cableado de comandos/eventos son prerrequisitos técnicos que viven en `001-context-authoring` (T003, T029) y **no** se re-especifican aquí.
 - **La piel no contiene lógica de dominio**: renderiza lo que el núcleo expone y captura decisiones. Toda regla (qué es alto impacto, qué está fundamentado) proviene del núcleo, ya especificado en 001.
 - **Comportamientos ya decididos en 001** que esta experiencia debe reflejar, no redefinir: loop curado (bajo riesgo se auto-aplica, alto impacto requiere aprobación, todo revertible), cero-egress en modo local, idioma auto-detectado con override, y que lo no verificable se marca en vez de afirmarse.
+- **Un solo modo disponible**: la sesión corre siempre en local. El indicador de modo es **persistente y declarativo** (FR-005); el selector llegará con el proveedor remoto de `001`-T045.
 - **Un solo usuario, un solo repositorio por sesión**; no hay colaboración concurrente ni multi-proyecto simultáneo en esta etapa.
 - **Escritorio**: la experiencia se diseña para pantalla de computador con teclado y ratón; no hay soporte táctil ni móvil.
 - **Accesibilidad**: alcance fijado en FR-025 a FR-027 (operable por teclado, sin depender del color, marcado semántico). Un programa formal de conformidad (auditoría con lectores de pantalla, WCAG) queda **fuera** de esta etapa.

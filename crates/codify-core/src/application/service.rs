@@ -10,7 +10,7 @@ use crate::application::authoring_loop::{AuthoringLoop, IngestOutcome};
 use crate::application::deps::AuthoringDeps;
 use crate::application::ports::Cancellation;
 use crate::domain::audit::{AuditEvent, AuditKind};
-use crate::domain::change::{ApprovalDecision, ChangeProposal, ChangeTarget, Verdict};
+use crate::domain::change::{ApprovalDecision, ChangeProposal, ChangeTarget, ProposalId, Verdict};
 use crate::domain::context::ContextArtifact;
 use crate::domain::error::{CoreError, Result};
 use crate::domain::reference::ReferenceState;
@@ -96,6 +96,14 @@ pub trait AuthoringService: Send + Sync {
 
     /// Registra una decisión sobre una propuesta concreta (FR-014/FR-015).
     async fn decide(&self, id: &SessionId, decision: ApprovalDecision) -> Result<()>;
+
+    /// Deshace un cambio **auto-aplicado por bajo riesgo** (FR-008).
+    ///
+    /// Es la compensación de no haber preguntado: al usuario se le aplicó algo sin
+    /// consultarle, así que tiene que poder devolverlo. Solo aplica a lo auto-aplicado —
+    /// lo que pasó por una decisión humana se cambia decidiendo otra vez, no deshaciéndolo
+    /// a espaldas de quien lo aprobó.
+    async fn revert_proposal(&self, id: &SessionId, proposal_id: &ProposalId) -> Result<()>;
 
     /// Difiere un fragmento tentativo: el usuario lo ha **visto** y decide dejarlo declarado
     /// como pendiente en vez de resolverlo (FR-014 de `002-authoring-experience`).
@@ -416,6 +424,67 @@ impl AuthoringService for ContextAuthoring {
                 decision.actor
             ),
         );
+        Ok(())
+    }
+
+    async fn revert_proposal(&self, id: &SessionId, proposal_id: &ProposalId) -> Result<()> {
+        let entry = self.entry(id).await?;
+        let mut view = entry.view.lock().await;
+
+        let proposal = view
+            .proposals
+            .iter_mut()
+            .find(|p| &p.id == proposal_id)
+            .ok_or_else(|| CoreError::NotFound(format!("propuesta {}", proposal_id.as_str())))?;
+
+        if !proposal.applied {
+            return Err(CoreError::Invalid(format!(
+                "la propuesta {} no está aplicada: no hay nada que deshacer",
+                proposal_id.as_str()
+            )));
+        }
+        if proposal.requires_approval() {
+            return Err(CoreError::Invalid(format!(
+                "la propuesta {} se aplicó tras una decisión explícita: para cambiarla hay que \
+                 volver a decidir, no deshacerla a espaldas de quien la aprobó",
+                proposal_id.as_str()
+            )));
+        }
+
+        let ChangeTarget::Artifact(kind) = proposal.target.clone() else {
+            return Err(CoreError::Invalid(
+                "solo se deshacen cambios sobre artefactos de contexto".into(),
+            ));
+        };
+
+        // Se pide el «antes» al motor de diffs en vez de leerlo del propio diff: así la
+        // reversión pasa por el port —con su propiedad `apply∘revert = identidad` verificada
+        // por contract test— y no por una copia de campo que podría desincronizarse.
+        let anterior = self
+            .deps
+            .diff
+            .revert(&proposal.diff.after, &proposal.diff)?;
+        proposal.applied = false;
+        let proposal_id_str = proposal_id.as_str().to_string();
+
+        let locale = view.locale.clone().unwrap_or_else(|| "en".into());
+        let segments = crate::application::authoring_loop::parse_segments(&anterior)
+            .unwrap_or_else(|_| {
+                vec![crate::domain::context::Segment::tentative(
+                    anterior.clone(),
+                    "proviene del refinamiento conversacional; no se ha verificado contra una fuente",
+                )]
+            });
+        view.artifacts.retain(|a| a.kind != kind);
+        view.artifacts
+            .push(ContextArtifact::new(kind, locale).with_segments(segments));
+        view.unattended_tentative = view
+            .artifacts
+            .iter()
+            .map(|a| a.unattended_tentative_count())
+            .sum();
+
+        self.audit(AuditKind::ProposalReverted, proposal_id_str);
         Ok(())
     }
 

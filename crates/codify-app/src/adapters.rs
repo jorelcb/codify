@@ -186,7 +186,7 @@ impl Prompter for WindowPrompter {
                 target,
                 unified: proposal.diff.unified.clone(),
                 rationale: proposal.rationale.clone(),
-                risk: format!("{:?}", proposal.risk).to_lowercase(),
+                risk: proposal.risk.code().to_string(),
             },
         );
 
