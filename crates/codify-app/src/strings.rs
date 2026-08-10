@@ -72,7 +72,7 @@ const CATALOG: &[(&str, &str, &str)] = &[
     ("session.state.failed", "con error", "failed"),
     ("session.state.interview", "sin material", "no material"),
     ("session.interview", "El repositorio está vacío: no hay nada que leer todavía.", "The repository is empty: there is nothing to read yet."),
-    ("session.interview_next", "No se escribió contexto: lo que no se puede verificar contra una fuente no se afirma. Elige un repositorio con contenido para empezar.", "No context was written: what cannot be verified against a source is not asserted. Choose a repository with content to begin."),
+    ("session.interview_next", "No hay nada que leer, así que nada puede fundamentarse en una fuente. Descríbelo abajo en tus palabras: se redactará a partir de lo que digas, marcado como sin verificar hasta que exista código que lo respalde.", "There is nothing to read, so nothing can be grounded in a source. Describe it below in your own words: it will be drafted from what you say, marked as unverified until there is code to back it up."),
     // --- Balance de escrituras (FR-017 / FR-023) --------------------------
     ("session.balance.title", "Qué se escribió al repositorio", "What was written to the repository"),
     ("session.balance.none", "No se escribió ningún archivo.", "No file was written."),
