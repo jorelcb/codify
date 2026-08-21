@@ -34,7 +34,13 @@ cargo test --workspace                                   # incluye arquitectura 
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all -- --check
 cargo run -p codify-app                                  # levanta la aplicación
+./scripts/quickstart-fixture.sh                          # genera el fixture de validación
 ```
+
+El fixture reproduce el patrón que originó el proyecto: un `README` que **referencia** un `SPEC`
+hermano y que, leído solo, invita a suponer un broker de mensajes — el `SPEC` dice explícitamente
+que no lo hay. Si el contexto generado menciona uno, el agente se lo inventó en vez de seguir la
+referencia. Los escenarios de validación y qué cubre ya el build están en los `quickstart.md`.
 
 ## Cómo se trabaja aquí
 
