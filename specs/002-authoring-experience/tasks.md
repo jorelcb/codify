@@ -214,8 +214,8 @@ No es solo i18n: el núcleo redactando texto de interfaz es presentación colán
 aplicación. Con el motivo como dato, SC-009 vuelve a ser **demostrable** —un test recorre los
 motivos y comprueba que ninguno se quedó sin texto en ninguno de los dos idiomas— en vez de
 depender de que alguien mire la pantalla en inglés.
-- [ ] T049 Ejecutar la validación completa de `quickstart.md` (S1–S8)
-- [ ] T050 Verificar en CI que fmt, clippy y las fitness functions siguen verdes
+- [~] T049 Ejecutar la validación completa de `quickstart.md` (S1–S8) — **S5, S6 y S7 automatizados** y verificados (`ui_contract.rs`); **S8 parcial** (presentación cubierta, la entrevista con modelo real no). **S1–S4 pendientes del operador**: exigen Ollama y un repositorio con referencias, y miden lo que una persona logra entender mirando — SC-001 y SC-002 no los decide un test. Fixture listo: `./scripts/quickstart-fixture.sh`. Detalle por escenario en la tabla de `quickstart.md`
+- [X] T050 Verificar en CI que fmt, clippy y las fitness functions siguen verdes — verificado sobre el commit `68ed5df` (run 31377803807, `completed/success`); el paso «Tests (incluye fitness functions de arquitectura y cero-egress)» pasó, y `cargo test --workspace` recorre `arch_deps.rs` y `egress_guard.rs` por vivir en la raíz de `tests/`. **Limitación declarada**: los logs del run no se pudieron leer desde esta máquina (**token de `gh` inválido**, no falta de permisos), así que la evidencia es la conclusión del paso, no la lectura línea a línea
 
 ---
 

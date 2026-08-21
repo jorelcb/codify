@@ -25,6 +25,26 @@ cargo run -p codify-app    # levanta la aplicación
 > red. La primera pasada real, midiendo la interfaz en un navegador en vez de leyéndola, encontró
 > cuatro defectos; los tests existen para que no vuelvan.
 
+## Cobertura automatizada
+
+**S5, S6 y S7 ya no dependen de mirar**: sus propiedades mecánicas las verifica el build en
+`crates/codify-app/tests/ui_contract.rs`. S8 tiene cubierta la presentación. Los cuatro
+primeros exigen un backend real y una persona — son justo los que preguntan «¿se entiende lo
+que está pasando?», y eso no lo automatiza nadie.
+
+| Escenario | Estado | Detalle |
+|---|---|---|
+| S1 · Ver trabajar al agente | 🧑 **humano** | el núcleo está cubierto (`us1_grounded.rs`, `us1_nonblocking.rs`); SC-001 mide lo que una persona logra *enumerar* mirando |
+| S2 · Cancelar a mitad | 🧑 **humano** | el núcleo sí: `us1_cancellation.rs` (3), incluida la cancelación de la llamada en vuelo |
+| S3 · Leer el fundamento | 🧑 **humano** | render verificado en navegador; SC-002 exige que alguien **ajeno** acierte ≥90 % sin instrucción |
+| S4 · Onboarding del proveedor | 🧑 **humano** | `contract_provider_discovery.rs` y el test de motivos cubren el mecanismo; falta apagar el backend y ver si guía |
+| S5 · Idioma | ✅ **automatizado** | `ningun_texto_visible_escapa_al_catalogo`, `quien_pinta_a_mano_repinta_al_cambiar_de_idioma`, `ningun_elemento_tiene_dos_duenos_de_su_texto`, paridad del catálogo |
+| S6 · Solo teclado | ✅ **automatizado** | `no_hay_tabindex_positivo`, `el_foco_siempre_deja_rastro_visible` |
+| S7 · Ventana mínima | ✅ **automatizado** | `el_punto_de_quiebre_responsivo_es_alcanzable` |
+| S8 · Repositorio vacío | ◐ **parcial** | `el_repositorio_vacio_tiene_presentacion_propia`; la entrevista con un modelo real, pendiente |
+
+**Fixture**: `./scripts/quickstart-fixture.sh`.
+
 ## Escenarios
 
 ### S1 — Ver trabajar al agente (US1 · SC-001)

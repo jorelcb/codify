@@ -199,9 +199,9 @@ Verificado contra el código, no contra la documentación. **Revisar antes de re
 - [X] T047 [P] Comando `set_locale` (override de idioma, FR-019) en `crates/codify-app/src/commands.rs` — **ya existe** (entregado con T029)
 - [ ] T048 [P] Persistencia de `AuditSink` en `crates/codify-core/src/infrastructure/audit/sink.rs` — el *evento `egress.blocked` en UI* **ya lo entregó `002`-T051**; queda solo la persistencia
 - [X] T049 Modo entrevista para repo vacío (edge case) — **hecho**: el núcleo lo devuelve (`interview_mode`) y la interfaz de `002` lo presenta
-- [ ] T050 [P] Ejecutar validación quickstart.md (S1–S5) end-to-end — **solapa con `002`-T049**: ejecutar una sola vez
+- [~] T050 [P] Ejecutar validación quickstart.md (S1–S5) end-to-end — ejecutado una sola vez junto a `002`-T049. **El mecanismo de los cinco escenarios está cubierto** por tests de integración (`us1_grounded`, `us2_refine`, `us2_scaffolding`, `us2_revert`, `us3_update`, `egress_guard`). Lo que falta **no es el mecanismo sino la calidad de la salida**: un proveedor con guion no puede demostrar SC-001 («≥90 % consistente con la SSOT»). Requiere una pasada con modelo real sobre el fixture
 - [ ] T051 [P] Empaquetado Tauri (macOS/Linux/Windows) + docs en `docs/`
-- [ ] T052 Verificar en CI las fitness functions verdes — **solapa con `002`-T050**: ejecutar una sola vez
+- [X] T052 Verificar en CI las fitness functions verdes — ejecutado una sola vez junto a `002`-T050: verificado sobre el commit `68ed5df` (run 31377803807, `completed/success`); el paso «Tests (incluye fitness functions de arquitectura y cero-egress)» pasó, y `cargo test --workspace` recorre `arch_deps.rs` y `egress_guard.rs` por vivir en la raíz de `tests/`. **Limitación declarada**: los logs del run no se pudieron leer desde esta máquina (**token de `gh` inválido**, no falta de permisos), así que la evidencia es la conclusión del paso, no la lectura línea a línea
 
 ---
 
