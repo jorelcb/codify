@@ -15,6 +15,24 @@ cargo test --test integration             # loop end-to-end con fakes
 cargo tauri dev                            # levanta la piel para validación manual
 ```
 
+## Cobertura automatizada
+
+Los cinco escenarios están cubiertos por tests de integración del núcleo. Lo que **sigue
+necesitando una persona con un modelo real** es la *calidad de la salida*, no el mecanismo: un
+proveedor con guion no puede demostrar SC-001 («≥90 % consistente con la SSOT»).
+
+| Escenario | Tests que lo cubren | Qué queda para el humano |
+|---|---|---|
+| S1 · Grounded + cero-egress | `us1_grounded.rs` (5), `egress_guard.rs` (8) | leer el `CONTEXT` generado por un modelo real y juzgar si es fiel al SPEC |
+| S2 · Refinamiento curado | `us2_refine.rs` (6), `us2_scaffolding.rs` (4), `us2_revert.rs` (5) | que la conversación *fluya*: eso no lo mide un guion |
+| S3 · Contexto previo | `us3_update.rs` (7) | — cubierto |
+| S4 · Referencia no resuelta | `us1_grounded.rs::unresolved_private_reference…`, `contract_ports.rs::requires_auth…` | — cubierto |
+| S5 · Idioma | `us1_grounded.rs::locale_is_autodetected_and_can_be_overridden` | — cubierto |
+
+**Fixture**: `./scripts/quickstart-fixture.sh` lo genera. El README referencia un SPEC hermano
+que **contradice** lo que un modelo asumiría leyendo solo el README — si el contexto generado
+menciona un broker de mensajes, el agente se lo inventó.
+
 ## Escenarios
 
 ### S1 — Grounded + cero-egress (US1, SC-001/002/006/007)
