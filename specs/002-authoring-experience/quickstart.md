@@ -25,6 +25,11 @@ cargo run -p codify-app    # levanta la aplicación
 > red. La primera pasada real, midiendo la interfaz en un navegador en vez de leyéndola, encontró
 > cuatro defectos; los tests existen para que no vuelvan.
 
+> **Hallazgos de la primera pasada con modelo real** (2026-08-23): están en
+> `001/quickstart.md`, y **uno es de este spec** — la sesión puede terminar en `Failed` sin
+> artefactos y **sin motivo**, contra lo que exige FR-028 ([#24](https://github.com/jorelcb/codify/issues/24)).
+> Los demás: [#23](https://github.com/jorelcb/codify/issues/23) y [#25](https://github.com/jorelcb/codify/issues/25).
+
 ## Cobertura automatizada
 
 **S5, S6 y S7 ya no dependen de mirar**: sus propiedades mecánicas las verifica el build en

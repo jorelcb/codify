@@ -35,12 +35,16 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all -- --check
 cargo run -p codify-app                                  # levanta la aplicación
 ./scripts/quickstart-fixture.sh                          # genera el fixture de validación
+cargo test -p codify-core --test live_backend -- --ignored --nocapture   # contra un modelo real
 ```
 
 El fixture reproduce el patrón que originó el proyecto: un `README` que **referencia** un `SPEC`
 hermano y que, leído solo, invita a suponer un broker de mensajes — el `SPEC` dice explícitamente
 que no lo hay. Si el contexto generado menciona uno, el agente se lo inventó en vez de seguir la
-referencia. Los escenarios de validación y qué cubre ya el build están en los `quickstart.md`.
+referencia. Los escenarios de validación y qué cubre ya el build están en los `quickstart.md`. El arnés
+`live_backend` va marcado `#[ignore]` porque necesita un backend vivo (`CODIFY_LOCAL_ENDPOINT`
+apuntando a Ollama o `llama.cpp server`); **CI nunca lo corre**. Es lo único que puede medir la
+*calidad* de la salida, que un proveedor con guion no demuestra.
 
 ## Cómo se trabaja aquí
 
