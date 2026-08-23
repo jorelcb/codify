@@ -20,7 +20,7 @@
 
 use codify_core::application::ingest::IngestBudget;
 use codify_core::application::service::{AuthoringService, ContextAuthoring, StartSession};
-use codify_core::domain::context::ArtifactKind;
+use codify_core::domain::context::{ArtifactKind, Groundedness};
 use codify_core::domain::session::Mode;
 use codify_core::infrastructure::composition::CoreBuilder;
 use codify_core::infrastructure::providers::local::LocalOpenAiCompatProvider;
@@ -73,6 +73,31 @@ const NIEGA: &[&str] = &[
 ///
 /// Contar apariciones sueltas daría falsos positivos con «**no** hay broker», que es
 /// exactamente lo que un contexto correcto dice.
+/// Todo el material del fixture, normalizado igual que lo normaliza el núcleo. Sirve para
+/// comprobar **desde fuera** lo que `parse_segments` promete desde dentro.
+fn material_del_fixture() -> String {
+    fn recoger(dir: &std::path::Path, out: &mut String) {
+        let Ok(entradas) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for e in entradas.flatten() {
+            let ruta = e.path();
+            if ruta.is_dir() {
+                recoger(&ruta, out);
+            } else if let Ok(c) = std::fs::read_to_string(&ruta) {
+                out.push_str(&c);
+                out.push('\n');
+            }
+        }
+    }
+    let mut todo = String::new();
+    recoger(std::path::Path::new(&fixture()), &mut todo);
+    todo.to_lowercase()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 fn afirmaciones_inventadas(contexto: &str) -> Vec<String> {
     contexto
         .split(['.', '\n'])
@@ -189,5 +214,54 @@ async fn the_agent_follows_the_reference_instead_of_inventing_an_architecture() 
     assert!(
         contexto.to_lowercase().contains("temporal"),
         "el contexto no recoge lo que el SPEC sí dice (Temporal):\n{contexto}"
+    );
+
+    // -----------------------------------------------------------------------
+    // Fase 7 (T065) — que F-1 no se reproduzca, y que la defensa no sea vacua
+    // -----------------------------------------------------------------------
+
+    let material = material_del_fixture();
+    let segmentos: Vec<_> = snap.artifacts.iter().flat_map(|a| &a.segments).collect();
+    let (mut fundamentados, mut tentativos, mut sin_respaldo) = (0usize, 0usize, Vec::new());
+
+    for seg in &segmentos {
+        let citas = match &seg.groundedness {
+            Groundedness::Grounded { quotes, .. } => {
+                fundamentados += 1;
+                quotes.clone()
+            }
+            Groundedness::Contradiction { quotes, .. } => quotes.clone(),
+            Groundedness::Tentative { .. } => {
+                tentativos += 1;
+                Vec::new()
+            }
+        };
+        for cita in citas {
+            let cn = cita
+                .to_lowercase()
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ");
+            if !material.contains(&cn) {
+                sin_respaldo.push(format!("«{cita}» en: {}", seg.text));
+            }
+        }
+    }
+
+    println!("--- procedencia: {fundamentados} fundamentados, {tentativos} tentativos");
+
+    // Esto es F-1: una afirmación presentada como verificada cuya cita no está en lo leído.
+    assert!(
+        sin_respaldo.is_empty(),
+        "F-1 SE REPRODUCE: hay citas que no aparecen en el material leído.\n{sin_respaldo:#?}"
+    );
+
+    // Y el reverso, sin el cual lo de arriba se cumpliría degradándolo todo: si el material
+    // nunca llegara a la verificación, cero segmentos sobrevivirían y el test de arriba
+    // pasaría igual. Un pase que no fundamenta NADA no es una victoria, es una tubería rota.
+    assert!(
+        fundamentados > 0,
+        "ningún segmento quedó fundamentado sobre un fixture con fuentes legibles: \
+         revisa que el material leído llegue a la verificación, no que el modelo falle.\n{contexto}"
     );
 }
