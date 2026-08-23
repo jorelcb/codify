@@ -31,7 +31,7 @@ regresión que originó el proyecto no se reproduce.** Los cuatro artefactos lle
 
 | # | Hallazgo | Gravedad |
 |---|---|---|
-| **F-1** | El sistema **atribuye a una fuente algo que esa fuente no dice**. Se registró la contradicción `[docs/PRD.md vs Makefile] «el Makefile solo soporta PostgreSQL 16»` — el `Makefile` del fixture tiene dos líneas y **cero** menciones a PostgreSQL. Causa de diseño: `parse_segments` degrada a tentativo lo que llega *sin* procedencia, pero **no verifica la procedencia que sí llega** | ⚠️ choca con el principio rector |
+| **F-1** | El sistema **atribuye a una fuente algo que esa fuente no dice**. Se registró la contradicción `[docs/PRD.md vs Makefile] «el Makefile solo soporta PostgreSQL 16»` — el `Makefile` del fixture tiene dos líneas y **cero** menciones a PostgreSQL. Causa de diseño: `parse_segments` degradaba a tentativo lo que llegaba *sin* procedencia, pero **no verificaba la procedencia que sí llegaba** | ✅ **cerrado en la Fase 7**: la cita se comprueba contra el material leído (`us1_provenance.rs`) |
 | **F-2** | La sesión puede terminar en `Failed` con **cero artefactos y sin motivo** en el snapshot (1 de 3 corridas, 124 s). FR-028 exige explicar qué pasó y qué hacer | alta |
 | **F-3** | Contexto en **idioma mezclado**: fixture íntegramente en español, salida mayormente en inglés con frases sueltas en español. FR-019 / S5 | media |
 | **F-4** | **Contenido duplicado**: el mismo bloque de seis frases repetido dentro de un artefacto | media |
