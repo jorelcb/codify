@@ -6,7 +6,7 @@
 //!
 //! Nombre sin decoración: `ContextAuthoring` nombra la capacidad, no el patrón.
 
-use crate::application::authoring_loop::{AuthoringLoop, IngestOutcome};
+use crate::application::authoring_loop::{AuthoringLoop, GatheredSource, IngestOutcome};
 use crate::application::deps::AuthoringDeps;
 use crate::application::ports::Cancellation;
 use crate::domain::audit::{AuditEvent, AuditKind};
@@ -120,6 +120,12 @@ struct SessionEntry {
     view: Arc<Mutex<SessionSnapshot>>,
     cancel: Arc<dyn Cancellation>,
     handle: Mutex<Option<JoinHandle<()>>>,
+    /// El material que la sesión **leyó**, contra el que se comprueba toda cita (FR-006a).
+    ///
+    /// Vive aquí y no en la proyección por dos razones: el agregado muere con la tarea de
+    /// ingesta —`submit_message` lo reconstruye desde la vista, sin fuentes—, y el contenido
+    /// íntegro de los archivos no tiene nada que hacer en un snapshot destinado a la interfaz.
+    material: Arc<Mutex<Vec<GatheredSource>>>,
 }
 
 pub struct ContextAuthoring {
@@ -222,10 +228,12 @@ impl AuthoringService for ContextAuthoring {
             &session,
             &IngestOutcome::default(),
         )));
+        let material: Arc<Mutex<Vec<GatheredSource>>> = Arc::new(Mutex::new(Vec::new()));
         let cancel = self.deps.cancellations.create();
 
         let authoring = self.build_loop();
         let task_view = view.clone();
+        let task_material = material.clone();
         let task_cancel = cancel.clone();
         let audit = self.deps.audit.clone();
         let clock = self.deps.clock.clone();
@@ -255,6 +263,7 @@ impl AuthoringService for ContextAuthoring {
                 }
             };
 
+            *task_material.lock().await = outcome.gathered.clone();
             *task_view.lock().await = Self::project(&session, &outcome);
         });
 
@@ -264,6 +273,7 @@ impl AuthoringService for ContextAuthoring {
                 view,
                 cancel,
                 handle: Mutex::new(Some(handle)),
+                material,
             }),
         );
 
@@ -332,7 +342,9 @@ impl AuthoringService for ContextAuthoring {
             (s, view.proposals.clone())
         };
 
-        let refine = crate::application::refine::RefineLoop::new(self.deps.clone());
+        let material = entry.material.lock().await.clone();
+        let refine =
+            crate::application::refine::RefineLoop::new(self.deps.clone()).with_material(material);
         let outcome = refine.submit_message(&mut session, message, cancel).await?;
 
         let mut view = entry.view.lock().await;
@@ -359,6 +371,7 @@ impl AuthoringService for ContextAuthoring {
 
     async fn decide(&self, id: &SessionId, decision: ApprovalDecision) -> Result<()> {
         let entry = self.entry(id).await?;
+        let material = entry.material.lock().await.clone();
         let mut view = entry.view.lock().await;
 
         let proposal = view
@@ -394,8 +407,9 @@ impl AuthoringService for ContextAuthoring {
         if let Some(contenido) = contenido {
             proposal.applied = true;
             let locale = view.locale.clone().unwrap_or_else(|| "en".into());
-            let segments = crate::application::authoring_loop::parse_segments(&contenido)
-                .unwrap_or_else(|_| {
+            let segments =
+                crate::application::authoring_loop::parse_segments(&contenido, &material)
+                    .unwrap_or_else(|_| {
                     vec![crate::domain::context::Segment::tentative(
                         contenido.clone(),
                         "proviene del refinamiento conversacional; no se ha verificado contra una fuente",
@@ -429,6 +443,7 @@ impl AuthoringService for ContextAuthoring {
 
     async fn revert_proposal(&self, id: &SessionId, proposal_id: &ProposalId) -> Result<()> {
         let entry = self.entry(id).await?;
+        let material = entry.material.lock().await.clone();
         let mut view = entry.view.lock().await;
 
         let proposal = view
@@ -468,7 +483,7 @@ impl AuthoringService for ContextAuthoring {
         let proposal_id_str = proposal_id.as_str().to_string();
 
         let locale = view.locale.clone().unwrap_or_else(|| "en".into());
-        let segments = crate::application::authoring_loop::parse_segments(&anterior)
+        let segments = crate::application::authoring_loop::parse_segments(&anterior, &material)
             .unwrap_or_else(|_| {
                 vec![crate::domain::context::Segment::tentative(
                     anterior.clone(),

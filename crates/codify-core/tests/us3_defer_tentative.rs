@@ -23,15 +23,24 @@ const README: &str = "# Proyecto\nMotor: Temporal.";
 /// El modelo devuelve un artefacto con un fundamentado y **dos tentativos**.
 fn script() -> Vec<CompletionOutput> {
     let generated = r#"{"segments":[
-        {"text":"Motor: Temporal","grounded":["README.md"]},
+        {"text":"Motor: Temporal","grounded":["README.md"],"quotes":["Motor: Temporal."]},
         {"text":"Métricas por definir","tentative":"no hay fuente que lo respalde"},
         {"text":"Despliegue por definir","tentative":"no se encontró manifiesto"}
     ]}"#;
-    let mut s = vec![CompletionOutput::ToolCalls(vec![ToolCall {
-        id: "c1".into(),
-        name: "finalize".into(),
-        arguments: r#"{"summary":"listo"}"#.into(),
-    }])];
+    // El README se lee de verdad: desde FR-006a, citar una fuente que la sesión nunca abrió
+    // ya no produce un segmento fundamentado, y el guion tiene que reflejar un pase real.
+    let mut s = vec![
+        CompletionOutput::ToolCalls(vec![ToolCall {
+            id: "c1".into(),
+            name: "read_file".into(),
+            arguments: r#"{"path":"README.md"}"#.into(),
+        }]),
+        CompletionOutput::ToolCalls(vec![ToolCall {
+            id: "c2".into(),
+            name: "finalize".into(),
+            arguments: r#"{"summary":"listo"}"#.into(),
+        }]),
+    ];
     for _ in 0..4 {
         s.push(CompletionOutput::Text(generated.to_string()));
     }

@@ -43,12 +43,22 @@ impl ArtifactKind {
 /// Grado de fundamentación de un fragmento de contexto.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Groundedness {
-    /// Verificado contra una o más fuentes leídas.
-    Grounded { sources: Vec<String> },
+    /// Verificado contra una o más fuentes leídas. `quotes` son los fragmentos **textuales**
+    /// que lo respaldan: el núcleo comprueba que aparecen en el material antes de admitir
+    /// este estado (FR-006a). Sin cita comprobable no hay `Grounded`.
+    Grounded {
+        sources: Vec<String>,
+        quotes: Vec<String>,
+    },
     /// Inferido o pendiente. `acknowledged` = el usuario lo difirió explícitamente.
     Tentative { reason: String, acknowledged: bool },
     /// Las fuentes se contradicen entre sí: se señala, no se resuelve en silencio (FR-008).
-    Contradiction { sources: Vec<String>, note: String },
+    /// Exige cita comprobable de **cada** fuente en conflicto (FR-006b).
+    Contradiction {
+        sources: Vec<String>,
+        quotes: Vec<String>,
+        note: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,10 +68,10 @@ pub struct Segment {
 }
 
 impl Segment {
-    pub fn grounded(text: impl Into<String>, sources: Vec<String>) -> Self {
+    pub fn grounded(text: impl Into<String>, sources: Vec<String>, quotes: Vec<String>) -> Self {
         Self {
             text: text.into(),
-            groundedness: Groundedness::Grounded { sources },
+            groundedness: Groundedness::Grounded { sources, quotes },
         }
     }
 
@@ -78,12 +88,14 @@ impl Segment {
     pub fn contradiction(
         text: impl Into<String>,
         sources: Vec<String>,
+        quotes: Vec<String>,
         note: impl Into<String>,
     ) -> Self {
         Self {
             text: text.into(),
             groundedness: Groundedness::Contradiction {
                 sources,
+                quotes,
                 note: note.into(),
             },
         }
@@ -162,7 +174,7 @@ impl ContextArtifact {
                 Groundedness::Tentative { reason, .. } => {
                     out.push_str(&format!("{} <!-- TENTATIVO: {} -->", seg.text, reason));
                 }
-                Groundedness::Contradiction { sources, note } => {
+                Groundedness::Contradiction { sources, note, .. } => {
                     out.push_str(&format!(
                         "{} <!-- CONTRADICCIÓN entre fuentes [{}]: {} -->",
                         seg.text,
@@ -192,7 +204,11 @@ mod tests {
     #[test]
     fn render_marks_non_grounded_content_distinguishably() {
         let art = ContextArtifact::new(ArtifactKind::Context, "es").with_segments(vec![
-            Segment::grounded("Motor: Temporal", vec!["SPEC-30".into()]),
+            Segment::grounded(
+                "Motor: Temporal",
+                vec!["SPEC-30".into()],
+                vec!["el motor es Temporal".into()],
+            ),
             Segment::tentative("Observabilidad: por definir", "sin fuente"),
         ]);
         let rendered = art.render();
@@ -205,7 +221,7 @@ mod tests {
     #[test]
     fn artifact_counts_unattended_tentative_segments() {
         let art = ContextArtifact::new(ArtifactKind::Agents, "en").with_segments(vec![
-            Segment::grounded("a", vec![]),
+            Segment::grounded("a", vec![], vec![]),
             Segment::tentative("b", "r"),
             Segment::tentative("c", "r"),
         ]);

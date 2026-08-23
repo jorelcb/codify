@@ -47,18 +47,23 @@ reunido que se te entrega.
 
 Devuelve SOLO un objeto JSON con esta forma:
 {\"segments\":[
-  {\"text\":\"...\",\"grounded\":[\"fuente1\"]},
+  {\"text\":\"...\",\"grounded\":[\"fuente1\"],\"quotes\":[\"fragmento textual de fuente1\"]},
   {\"text\":\"...\",\"tentative\":\"por qué no pudo verificarse\"},
-  {\"text\":\"...\",\"contradiction\":{\"sources\":[\"a\",\"b\"],\"note\":\"en qué se contradicen\"}}
+  {\"text\":\"...\",\"contradiction\":{\"sources\":[\"a\",\"b\"],\
+\"quotes\":[\"fragmento de a\",\"fragmento de b\"],\"note\":\"en qué se contradicen\"}}
 ]}
 
 Reglas innegociables:
 - Todo lo que afirmes como hecho DEBE ir en un segmento 'grounded' citando la fuente donde lo \
-  leíste.
+  leíste Y el fragmento TEXTUAL que lo dice, en 'quotes'.
+- Cada cita de 'quotes' debe estar COPIADA LITERALMENTE del material, no parafraseada ni \
+  reconstruida de memoria. Se comprueba una por una contra el texto que se te entregó: la que \
+  no aparezca degrada el segmento a tentativo.
+- No cites lo que la fuente NO dice. Si una fuente niega algo, la cita es la negación.
 - Lo que no puedas verificar va en 'tentative'. Es preferible un contexto con huecos \
   declarados a uno completo e inventado.
-- Si dos fuentes se contradicen, emite un segmento 'contradiction': señálalo, NO elijas en \
-  silencio.";
+- Si dos fuentes se contradicen, emite un segmento 'contradiction' con una cita textual de \
+  CADA una: señálalo, NO elijas en silencio.";
 
 /// Material reunido durante la ingesta, con su procedencia.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -94,6 +99,8 @@ struct RawContradiction {
     #[serde(default)]
     sources: Vec<String>,
     #[serde(default)]
+    quotes: Vec<String>,
+    #[serde(default)]
     note: String,
 }
 
@@ -103,6 +110,8 @@ struct RawSegment {
     text: String,
     #[serde(default)]
     grounded: Option<Vec<String>>,
+    #[serde(default)]
+    quotes: Vec<String>,
     #[serde(default)]
     tentative: Option<String>,
     #[serde(default)]
@@ -115,11 +124,60 @@ struct RawArtifact {
     segments: Vec<RawSegment>,
 }
 
-/// Convierte la salida del modelo en segmentos de dominio.
+/// Longitud mínima —ya normalizada— para que una cita demuestre algo. Un fragmento de tres
+/// caracteres aparece en cualquier texto: admitirlo convertiría la comprobación en un trámite.
+const CITA_MINIMA: usize = 12;
+
+/// Normalización de la comparación (T063).
 ///
-/// Política de seguridad: un segmento **sin** procedencia declarada NO se toma por hecho —
-/// se degrada a tentativo. El modelo no puede colar afirmaciones sin fuente.
-pub fn parse_segments(raw: &str) -> Result<Vec<Segment>> {
+/// Se equiparan mayúsculas y cualquier racha de espacios, tabuladores o saltos de línea. El
+/// modelo reproduce el sentido de una frase, no su maquetación: exigir el byte exacto haría que
+/// un salto de línea de más invalidara una cita legítima, y el criterio sería inútilmente
+/// estricto. Lo que **no** se normaliza son las palabras — sin eso, la comprobación dejaría de
+/// distinguir lo que la fuente dice de lo que se le atribuye, que es justo lo que verifica.
+fn normalizar(texto: &str) -> String {
+    texto
+        .to_lowercase()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Las fuentes citadas que de verdad se leyeron, con su contenido normalizado.
+///
+/// El emparejamiento es tolerante en el identificador (`docs/SPEC-30.md` vale por `SPEC-30.md`)
+/// porque el modelo abrevia rutas, y ser estricto ahí castigaría una cita correcta por un
+/// prefijo. Es tolerancia sobre **qué** fuente, nunca sobre qué dice.
+fn fuentes_leidas<'a>(
+    citadas: &'a [String],
+    material: &[GatheredSource],
+) -> Vec<(&'a str, String)> {
+    citadas
+        .iter()
+        .filter_map(|c| {
+            let cn = normalizar(c);
+            material
+                .iter()
+                .find(|g| {
+                    let gn = normalizar(&g.id);
+                    !cn.is_empty() && (gn.contains(&cn) || cn.contains(&gn))
+                })
+                .map(|g| (c.as_str(), normalizar(&g.content)))
+        })
+        .collect()
+}
+
+/// Convierte la salida del modelo en segmentos de dominio, **comprobando la procedencia**.
+///
+/// Política de seguridad (FR-006a): que el modelo declare una fuente no verifica nada. Para que
+/// un segmento sea `Grounded`, su cita textual debe aparecer en el material que efectivamente se
+/// leyó; lo que no se sostiene se degrada a tentativo **declarando el motivo** (FR-006c). Una
+/// `Contradiction` exige además cita comprobable de cada lado (FR-006b).
+///
+/// El origen es el hallazgo F-1: el sistema afirmó `[PRD vs Makefile]` algo sobre un `Makefile`
+/// de dos líneas que sí había leído. La defensa anterior cubría la procedencia **ausente**; esta
+/// cubre la **falsa**, que es la que engaña.
+pub fn parse_segments(raw: &str, material: &[GatheredSource]) -> Result<Vec<Segment>> {
     let cleaned = strip_code_fences(raw);
     let parsed: RawArtifact = serde_json::from_str(&cleaned)
         .map_err(|e| CoreError::Provider(format!("respuesta de generación no parseable: {e}")))?;
@@ -128,12 +186,101 @@ pub fn parse_segments(raw: &str) -> Result<Vec<Segment>> {
         .segments
         .into_iter()
         .map(|s| match (s.grounded, s.tentative, s.contradiction) {
-            (_, _, Some(c)) => Segment::contradiction(s.text, c.sources, c.note),
-            (Some(sources), _, None) if !sources.is_empty() => Segment::grounded(s.text, sources),
+            (_, _, Some(c)) => verificar_contradiccion(s.text, c, material),
+            (Some(sources), _, None) if !sources.is_empty() => {
+                verificar_grounded(s.text, sources, s.quotes, material)
+            }
             (_, Some(reason), None) => Segment::tentative(s.text, reason),
             _ => Segment::tentative(s.text, "el modelo no declaró procedencia"),
         })
         .collect())
+}
+
+/// `Grounded` solo si cada cita aparece en alguna de las fuentes citadas **y leídas**.
+fn verificar_grounded(
+    text: String,
+    sources: Vec<String>,
+    quotes: Vec<String>,
+    material: &[GatheredSource],
+) -> Segment {
+    let leidas = fuentes_leidas(&sources, material);
+    if leidas.is_empty() {
+        return Segment::tentative(
+            text,
+            format!(
+                "cita fuentes que no están en el material leído: {}",
+                sources.join(", ")
+            ),
+        );
+    }
+
+    if quotes.is_empty() {
+        return Segment::tentative(
+            text,
+            "declara la fuente pero no la cita: sin fragmento textual no hay nada que comprobar",
+        );
+    }
+
+    for cita in &quotes {
+        let cn = normalizar(cita);
+        if cn.chars().count() < CITA_MINIMA {
+            return Segment::tentative(
+                text,
+                format!("la cita «{cita}» es demasiado corta para demostrar la afirmación"),
+            );
+        }
+        if !leidas.iter().any(|(_, contenido)| contenido.contains(&cn)) {
+            return Segment::tentative(
+                text,
+                format!(
+                    "la cita «{cita}» no aparece en {}: la fuente se leyó, pero no dice eso",
+                    leidas
+                        .iter()
+                        .map(|(id, _)| *id)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            );
+        }
+    }
+
+    Segment::grounded(text, sources, quotes)
+}
+
+/// Una contradicción exige cita comprobable de **cada** fuente en conflicto (FR-006b): si solo
+/// se sostiene un lado, lo que hay es una afirmación, no un choque entre fuentes.
+fn verificar_contradiccion(
+    text: String,
+    c: RawContradiction,
+    material: &[GatheredSource],
+) -> Segment {
+    let leidas = fuentes_leidas(&c.sources, material);
+    if leidas.len() < 2 || leidas.len() != c.sources.len() {
+        return Segment::tentative(
+            text,
+            format!(
+                "una contradicción necesita al menos dos fuentes leídas; se citaron: {}",
+                c.sources.join(", ")
+            ),
+        );
+    }
+
+    for (id, contenido) in &leidas {
+        let sostenida = c.quotes.iter().any(|q| {
+            let qn = normalizar(q);
+            qn.chars().count() >= CITA_MINIMA && contenido.contains(&qn)
+        });
+        if !sostenida {
+            return Segment::tentative(
+                text,
+                format!(
+                    "no hay cita comprobable de {id}: el conflicto está afirmado, no demostrado"
+                ),
+            );
+        }
+    }
+
+    Segment::contradiction(text, c.sources, c.quotes, c.note)
 }
 
 fn strip_code_fences(raw: &str) -> String {
@@ -474,13 +621,13 @@ impl AuthoringLoop {
                 }
             };
 
-            let segments = parse_segments(&raw)?;
+            let segments = parse_segments(&raw, &outcome.gathered)?;
             let artifact =
                 ContextArtifact::new(kind, locale.clone()).with_segments(segments.clone());
 
             // FR-008: una contradicción entre fuentes se señala y queda auditada.
             for seg in &segments {
-                if let Groundedness::Contradiction { sources, note } = &seg.groundedness {
+                if let Groundedness::Contradiction { sources, note, .. } = &seg.groundedness {
                     self.audit(
                         AuditKind::ContradictionDetected,
                         format!("{}: [{}] {}", kind.file_path(), sources.join(" vs "), note),
@@ -611,14 +758,184 @@ impl AuthoringLoop {
 mod tests {
     use super::*;
 
+    /// Material de registro para los tests: lo que la sesión dice haber leído.
+    fn material(pares: &[(&str, &str)]) -> Vec<GatheredSource> {
+        pares
+            .iter()
+            .map(|(id, content)| GatheredSource {
+                id: (*id).into(),
+                content: (*content).into(),
+            })
+            .collect()
+    }
+
+    /// Material vacío: para los casos donde lo que se comprueba no es la cita.
+    fn sin_material() -> Vec<GatheredSource> {
+        Vec::new()
+    }
+
+    // -----------------------------------------------------------------------
+    // T058 — la cita se comprueba contra el material, no se cree
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn grounded_survives_when_its_quote_appears_in_the_cited_source() {
+        let mat = material(&[("SPEC-30.md", "El motor de workflows es Temporal.")]);
+        let raw = r#"{"segments":[
+            {"text":"Motor: Temporal","grounded":["SPEC-30.md"],"quotes":["El motor de workflows es Temporal"]}
+        ]}"#;
+        let segments = parse_segments(raw, &mat).unwrap();
+        assert!(
+            segments[0].is_grounded(),
+            "la cita está en la fuente citada: debe sostenerse"
+        );
+    }
+
+    #[test]
+    fn grounded_is_downgraded_when_its_quote_is_absent_from_the_material() {
+        let mat = material(&[("SPEC-30.md", "El motor de workflows es Temporal.")]);
+        let raw = r#"{"segments":[
+            {"text":"Usa Kafka","grounded":["SPEC-30.md"],"quotes":["El bus de eventos es Kafka"]}
+        ]}"#;
+        let segments = parse_segments(raw, &mat).unwrap();
+        assert!(
+            segments[0].is_unattended_tentative(),
+            "una cita que no aparece en la fuente no verifica nada"
+        );
+        assert!(
+            motivo(&segments[0]).contains("no aparece"),
+            "el motivo debe decir por qué se degradó, no degradar en silencio: {:?}",
+            motivo(&segments[0])
+        );
+    }
+
+    #[test]
+    fn grounded_without_quotes_is_no_longer_enough() {
+        let mat = material(&[("SPEC-30.md", "El motor de workflows es Temporal.")]);
+        let raw = r#"{"segments":[{"text":"Motor: Temporal","grounded":["SPEC-30.md"]}]}"#;
+        assert!(
+            parse_segments(raw, &mat).unwrap()[0].is_unattended_tentative(),
+            "declarar la fuente sin citarla ya no basta (FR-006a)"
+        );
+    }
+
+    #[test]
+    fn a_quote_found_in_another_source_does_not_verify_the_cited_one() {
+        let mat = material(&[
+            ("SPEC-30.md", "No hay broker de mensajes."),
+            ("PRD.md", "La persistencia es DynamoDB."),
+        ]);
+        let raw = r#"{"segments":[
+            {"text":"Persistencia en DynamoDB","grounded":["SPEC-30.md"],"quotes":["La persistencia es DynamoDB"]}
+        ]}"#;
+        assert!(
+            parse_segments(raw, &mat).unwrap()[0].is_unattended_tentative(),
+            "atribuir a la fuente equivocada también es inventar procedencia"
+        );
+    }
+
+    #[test]
+    fn citing_a_source_that_was_never_read_does_not_verify() {
+        let mat = material(&[("SPEC-30.md", "El motor de workflows es Temporal.")]);
+        let raw = r#"{"segments":[
+            {"text":"Usa Redis","grounded":["ARQUITECTURA.md"],"quotes":["Usa Redis"]}
+        ]}"#;
+        assert!(
+            parse_segments(raw, &mat).unwrap()[0].is_unattended_tentative(),
+            "no se puede verificar contra material que nunca se leyó"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // T063 — normalización: el formato no decide la verdad
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn a_quote_that_differs_only_in_formatting_still_counts() {
+        let mat = material(&[("SPEC-30.md", "El motor\n  de workflows   es Temporal.")]);
+        let raw = r#"{"segments":[
+            {"text":"Motor: Temporal","grounded":["SPEC-30.md"],"quotes":["el   MOTOR de workflows es temporal"]}
+        ]}"#;
+        assert!(
+            parse_segments(raw, &mat).unwrap()[0].is_grounded(),
+            "espacios, saltos y mayúsculas no cambian lo que la fuente dice"
+        );
+    }
+
+    #[test]
+    fn a_trivially_short_quote_does_not_verify() {
+        let mat = material(&[("SPEC-30.md", "El motor de workflows es Temporal.")]);
+        let raw = r#"{"segments":[
+            {"text":"Usa Kafka","grounded":["SPEC-30.md"],"quotes":["el"]}
+        ]}"#;
+        assert!(
+            parse_segments(raw, &mat).unwrap()[0].is_unattended_tentative(),
+            "una cita trivial aparece en cualquier texto: no demuestra nada"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // T059 — la contradicción exige cita de CADA fuente (FR-006b)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn contradiction_holds_when_each_source_has_a_checkable_quote() {
+        let mat = material(&[
+            ("SPEC-30.md", "El sistema NO es event-sourced."),
+            ("PRD.md", "La persistencia es DynamoDB con event sourcing."),
+        ]);
+        let raw = r#"{"segments":[
+            {"text":"Persistencia","contradiction":{"sources":["SPEC-30.md","PRD.md"],
+             "quotes":["El sistema NO es event-sourced","La persistencia es DynamoDB con event sourcing"],
+             "note":"una lo niega, la otra lo afirma"}}
+        ]}"#;
+        assert!(
+            parse_segments(raw, &mat).unwrap()[0].is_contradiction(),
+            "con cita comprobable de cada lado, la contradicción se sostiene"
+        );
+    }
+
+    #[test]
+    fn contradiction_without_a_quote_from_each_source_is_not_asserted() {
+        let mat = material(&[
+            ("SPEC-30.md", "El sistema NO es event-sourced."),
+            ("PRD.md", "La persistencia es DynamoDB."),
+        ]);
+        let raw = r#"{"segments":[
+            {"text":"Persistencia","contradiction":{"sources":["SPEC-30.md","PRD.md"],
+             "quotes":["El sistema NO es event-sourced"],
+             "note":"chocan"}}
+        ]}"#;
+        let segments = parse_segments(raw, &mat).unwrap();
+        assert!(
+            !segments[0].is_contradiction(),
+            "sin cita de PRD.md no hay conflicto demostrado, solo afirmado (FR-006b)"
+        );
+        assert!(segments[0].is_unattended_tentative());
+    }
+
+    /// Qué motivo quedó registrado al degradar. Degradar en silencio sería otro defecto.
+    fn motivo(seg: &Segment) -> String {
+        match &seg.groundedness {
+            Groundedness::Tentative { reason, .. } => reason.clone(),
+            otro => panic!("se esperaba tentativo, hay {otro:?}"),
+        }
+    }
+
     #[test]
     fn parses_grounded_tentative_and_contradiction_segments() {
+        let mat = material(&[
+            ("SPEC-30.md", "El motor de workflows es Temporal."),
+            ("PRD.md", "La persistencia es Postgres."),
+        ]);
         let raw = r#"{"segments":[
-            {"text":"Motor: Temporal","grounded":["SPEC-30.md"]},
+            {"text":"Motor: Temporal","grounded":["SPEC-30.md"],"quotes":["El motor de workflows es Temporal"]},
             {"text":"Métricas por definir","tentative":"ninguna fuente lo cubre"},
-            {"text":"Persistencia","contradiction":{"sources":["PRD","SPEC"],"note":"uno dice Postgres, otro event-sourced"}}
+            {"text":"Persistencia","contradiction":{"sources":["PRD.md","SPEC-30.md"],
+             "quotes":["La persistencia es Postgres","El motor de workflows es Temporal"],
+             "note":"uno dice Postgres, otro no lo menciona"}}
         ]}"#;
-        let segments = parse_segments(raw).unwrap();
+        let segments = parse_segments(raw, &mat).unwrap();
         assert_eq!(segments.len(), 3);
         assert!(segments[0].is_grounded());
         assert!(segments[1].is_unattended_tentative());
@@ -628,7 +945,7 @@ mod tests {
     #[test]
     fn segment_without_provenance_is_downgraded_to_tentative() {
         let raw = r#"{"segments":[{"text":"Usa RabbitMQ"}]}"#;
-        let segments = parse_segments(raw).unwrap();
+        let segments = parse_segments(raw, &sin_material()).unwrap();
         assert!(
             segments[0].is_unattended_tentative(),
             "sin fuente declarada no puede pasar por hecho"
@@ -638,17 +955,18 @@ mod tests {
     #[test]
     fn empty_grounded_list_is_not_enough_to_claim_a_fact() {
         let raw = r#"{"segments":[{"text":"Usa Kafka","grounded":[]}]}"#;
-        assert!(parse_segments(raw).unwrap()[0].is_unattended_tentative());
+        assert!(parse_segments(raw, &sin_material()).unwrap()[0].is_unattended_tentative());
     }
 
     #[test]
     fn tolerates_code_fenced_json() {
-        let raw = "```json\n{\"segments\":[{\"text\":\"x\",\"grounded\":[\"a\"]}]}\n```";
-        assert!(parse_segments(raw).unwrap()[0].is_grounded());
+        let mat = material(&[("a", "el contenido citado vive aquí dentro")]);
+        let raw = "```json\n{\"segments\":[{\"text\":\"x\",\"grounded\":[\"a\"],\"quotes\":[\"el contenido citado vive aquí\"]}]}\n```";
+        assert!(parse_segments(raw, &mat).unwrap()[0].is_grounded());
     }
 
     #[test]
     fn rejects_unparseable_generation_output() {
-        assert!(parse_segments("lo siento, no puedo").is_err());
+        assert!(parse_segments("lo siento, no puedo", &sin_material()).is_err());
     }
 }

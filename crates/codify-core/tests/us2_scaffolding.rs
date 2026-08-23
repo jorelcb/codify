@@ -37,6 +37,7 @@ fn sesion() -> AuthoringSession {
         ContextArtifact::new(ArtifactKind::Context, "es").with_segments(vec![Segment::grounded(
             CON_ANDAMIAJE,
             vec!["README.md".into()],
+            vec!["el andamiaje del README".into()],
         )]),
     );
     s

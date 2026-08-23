@@ -3,6 +3,7 @@
 
 mod fakes;
 
+use codify_core::application::authoring_loop::GatheredSource;
 use codify_core::application::ports::{CompletionOutput, ToolCall};
 use codify_core::application::service::{AuthoringService, ContextAuthoring, StartSession};
 use codify_core::domain::audit::AuditKind;
@@ -25,8 +26,11 @@ fn call(id: &str, name: &str, args: &str) -> ToolCall {
 
 #[tokio::test]
 async fn contradiction_between_sources_is_surfaced_and_audited() {
+    // FR-006b: cada lado del conflicto va con su cita textual, o no se afirma.
     let generated = r#"{"segments":[
-        {"text":"Persistencia del Run","contradiction":{"sources":["PRD-00.md","SPEC-30.md"],"note":"PRD dice PostgreSQL; SPEC dice event-sourced sin base de datos"}}
+        {"text":"Persistencia del Run","contradiction":{"sources":["PRD-00.md","SPEC-30.md"],
+         "quotes":["la persistencia del Run es PostgreSQL","el Run es event-sourced en Temporal"],
+         "note":"PRD dice PostgreSQL; SPEC dice event-sourced sin base de datos"}}
     ]}"#;
 
     let mut script = vec![
@@ -86,8 +90,13 @@ async fn contradiction_between_sources_is_surfaced_and_audited() {
         .expect("el segmento de contradicción debe preservarse");
 
     match &contradiction.groundedness {
-        Groundedness::Contradiction { sources, note } => {
+        Groundedness::Contradiction {
+            sources,
+            quotes,
+            note,
+        } => {
             assert_eq!(sources.len(), 2, "deben citarse ambas fuentes en conflicto");
+            assert_eq!(quotes.len(), 2, "y una cita textual por cada una (FR-006b)");
             assert!(note.contains("PostgreSQL"));
         }
         other => panic!("groundedness inesperada: {other:?}"),
@@ -114,8 +123,20 @@ async fn contradiction_between_sources_is_surfaced_and_audited() {
 /// Una contradicción **no** es un segmento grounded: no puede colarse como afirmación firme.
 #[tokio::test]
 async fn contradiction_is_never_treated_as_grounded_fact() {
-    let raw = r#"{"segments":[{"text":"x","grounded":["a"],"contradiction":{"sources":["a","b"],"note":"chocan"}}]}"#;
-    let segments = codify_core::application::authoring_loop::parse_segments(raw).unwrap();
+    let material = vec![
+        GatheredSource {
+            id: "a".into(),
+            content: "la fuente a sostiene una cosa".into(),
+        },
+        GatheredSource {
+            id: "b".into(),
+            content: "la fuente b sostiene la contraria".into(),
+        },
+    ];
+    let raw = r#"{"segments":[{"text":"x","grounded":["a"],"contradiction":{"sources":["a","b"],
+        "quotes":["la fuente a sostiene una cosa","la fuente b sostiene la contraria"],"note":"chocan"}}]}"#;
+    let segments =
+        codify_core::application::authoring_loop::parse_segments(raw, &material).unwrap();
     assert!(segments[0].is_contradiction());
     assert!(
         !segments[0].is_grounded(),

@@ -38,8 +38,8 @@ fn call(id: &str, name: &str, args: &str) -> ToolCall {
 /// finaliza y luego redacta los cuatro artefactos.
 fn scripted_model() -> Vec<CompletionOutput> {
     let generated = r#"{"segments":[
-        {"text":"Motor de durabilidad: Temporal. Los Runs son workflows, no tareas en una cola.","grounded":["SPEC-30-Ejecucion-Workers-Python.md"]},
-        {"text":"El estado vive como event history de Temporal; no hay base de datos propia.","grounded":["SPEC-30-Ejecucion-Workers-Python.md"]},
+        {"text":"Motor de durabilidad: Temporal. Los Runs son workflows, no tareas en una cola.","grounded":["SPEC-30-Ejecucion-Workers-Python.md"],"quotes":["No hay broker ni cola de mensajes: el despacho lo hace Temporal por task queues."]},
+        {"text":"El estado vive como event history de Temporal; no hay base de datos propia.","grounded":["SPEC-30-Ejecucion-Workers-Python.md"],"quotes":["El estado del Run no vive en una fila de base de datos: vive como event history."]},
         {"text":"Stack de observabilidad por definir.","tentative":"ninguna fuente leída lo cubre"}
     ]}"#;
 
@@ -321,7 +321,7 @@ async fn empty_repository_switches_to_interview_mode() {
 /// El presupuesto agotado se **declara**: nada se omite en silencio.
 #[tokio::test]
 async fn exhausted_budget_is_declared_not_silent() {
-    let generated = r#"{"segments":[{"text":"Motor: Temporal","grounded":["README.md"]}]}"#;
+    let generated = r#"{"segments":[{"text":"Componente de Lumen","grounded":["README.md"],"quotes":["Componente del proyecto Lumen"]}]}"#;
     let mut script = vec![
         CompletionOutput::ToolCalls(vec![call("c1", "read_file", r#"{"path":"README.md"}"#)]),
         CompletionOutput::ToolCalls(vec![call(

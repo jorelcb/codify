@@ -14,6 +14,7 @@
 //! El sesgo de la interrupción es deliberado: preguntar por todo entrena a aprobar sin leer, y
 //! preguntar por nada escribe sin permiso. El `RiskClassifier` decide dónde cae la línea.
 
+use crate::application::authoring_loop::GatheredSource;
 use crate::application::deps::AuthoringDeps;
 use crate::application::ports::{Cancellation, CompletionOutput, CompletionRequest, Message, Tier};
 use crate::domain::audit::{AuditEvent, AuditKind};
@@ -68,11 +69,23 @@ impl RefineOutcome {
 
 pub struct RefineLoop {
     deps: AuthoringDeps,
+    material: Vec<GatheredSource>,
 }
 
 impl RefineLoop {
     pub fn new(deps: AuthoringDeps) -> Self {
-        Self { deps }
+        Self {
+            deps,
+            material: Vec::new(),
+        }
+    }
+
+    /// El material que la sesión leyó. Un refinamiento aprobado vuelve a pasar por la misma
+    /// comprobación de citas que una generación: aprobar no convierte en verificado lo que no
+    /// lo estaba (FR-006a).
+    pub fn with_material(mut self, material: Vec<GatheredSource>) -> Self {
+        self.material = material;
+        self
     }
 
     fn audit(&self, kind: AuditKind, payload: impl Into<String>) {
@@ -190,8 +203,9 @@ impl RefineLoop {
         contenido: String,
     ) -> Result<()> {
         let locale = session.locale().unwrap_or("en").to_string();
-        let segments = crate::application::authoring_loop::parse_segments(&contenido)
-            .unwrap_or_else(|_| vec![refined_segment(&contenido)]);
+        let segments =
+            crate::application::authoring_loop::parse_segments(&contenido, &self.material)
+                .unwrap_or_else(|_| vec![refined_segment(&contenido)]);
 
         session.put_artifact(ContextArtifact::new(kind, locale).with_segments(segments));
         proposal.applied = true;
