@@ -153,9 +153,13 @@ pub struct SessionSnapshotDto {
     pub writes: Vec<WriteRecordDto>,
 }
 
+/// Las `quotes` que respaldan un segmento **no** se proyectan a la interfaz. No es un olvido:
+/// tras FR-006a un segmento `grounded` ya está comprobado contra el material, así que lo que la
+/// interfaz muestra hoy es más cierto que antes, no menos. Enseñar la evidencia al usuario es
+/// una decisión de presentación —de `002`— con su clave de catálogo y su test de contrato.
 fn to_segment_dto(segment: &codify_core::domain::context::Segment) -> SegmentDto {
     match &segment.groundedness {
-        Groundedness::Grounded { sources } => SegmentDto {
+        Groundedness::Grounded { sources, .. } => SegmentDto {
             text: segment.text.clone(),
             kind: "grounded".into(),
             sources: sources.clone(),
@@ -172,7 +176,7 @@ fn to_segment_dto(segment: &codify_core::domain::context::Segment) -> SegmentDto
             reason: Some(reason.clone()),
             acknowledged: *acknowledged,
         },
-        Groundedness::Contradiction { sources, note } => SegmentDto {
+        Groundedness::Contradiction { sources, note, .. } => SegmentDto {
             text: segment.text.clone(),
             kind: "contradiction".into(),
             sources: sources.clone(),
@@ -378,9 +382,18 @@ mod tests {
 
     fn tres_estados() -> ContextArtifact {
         ContextArtifact::new(ArtifactKind::Context, "es").with_segments(vec![
-            Segment::grounded("Motor: Temporal", vec!["SPEC-30.md".into()]),
+            Segment::grounded(
+                "Motor: Temporal",
+                vec!["SPEC-30.md".into()],
+                vec!["el motor es Temporal".into()],
+            ),
             Segment::tentative("Métricas por definir", "sin fuente"),
-            Segment::contradiction("Persistencia", vec!["PRD".into(), "SPEC".into()], "chocan"),
+            Segment::contradiction(
+                "Persistencia",
+                vec!["PRD".into(), "SPEC".into()],
+                vec!["Postgres".into(), "event-sourced".into()],
+                "chocan",
+            ),
         ])
     }
 

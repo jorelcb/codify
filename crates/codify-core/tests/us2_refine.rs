@@ -28,6 +28,7 @@ fn contexto_con_un_supuesto_erroneo() -> ContextArtifact {
         Segment::grounded(
             "El motor de orquestación es Kafka.",
             vec!["README.md".into()],
+            vec!["el motor de orquestación es Kafka".into()],
         ),
         Segment::tentative(
             "Las métricas de negocio están por definir.",
