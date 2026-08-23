@@ -15,6 +15,41 @@ cargo test --test integration             # loop end-to-end con fakes
 cargo tauri dev                            # levanta la piel para validación manual
 ```
 
+## Hallazgos de la primera pasada con modelo real
+
+Ejecutada el 2026-08-23 con `llama.cpp server` + `qwen2.5-7b-q4km`, sobre el fixture, **tres
+corridas**. El arnés que la reproduce es `crates/codify-core/tests/live_backend.rs`
+(marcado `#[ignore]`: necesita un backend vivo, CI nunca lo corre).
+
+### Lo que funciona
+
+El agente **sigue la referencia**: `ReferenceResolved: docs/SPEC-30.md` en las tres corridas, y
+en las tres reprodujo las negaciones del SPEC («no message broker», «no event-sourcing»). **La
+regresión que originó el proyecto no se reproduce.** Los cuatro artefactos llegan a disco.
+
+### Lo que no
+
+| # | Hallazgo | Gravedad |
+|---|---|---|
+| **F-1** | El sistema **atribuye a una fuente algo que esa fuente no dice**. Se registró la contradicción `[docs/PRD.md vs Makefile] «el Makefile solo soporta PostgreSQL 16»` — el `Makefile` del fixture tiene dos líneas y **cero** menciones a PostgreSQL. Causa de diseño: `parse_segments` degrada a tentativo lo que llega *sin* procedencia, pero **no verifica la procedencia que sí llega** | ⚠️ choca con el principio rector |
+| **F-2** | La sesión puede terminar en `Failed` con **cero artefactos y sin motivo** en el snapshot (1 de 3 corridas, 124 s). FR-028 exige explicar qué pasó y qué hacer | alta |
+| **F-3** | Contexto en **idioma mezclado**: fixture íntegramente en español, salida mayormente en inglés con frases sueltas en español. FR-019 / S5 | media |
+| **F-4** | **Contenido duplicado**: el mismo bloque de seis frases repetido dentro de un artefacto | media |
+| **F-5** | La **URL privada nunca se intenta** (`unresolved: []`), así que **S4 no llega a ejercitarse**. El escenario existe pero el flujo no lo dispara | media |
+
+### Advertencia sobre el instrumento
+
+El arnés dio **dos falsos positivos** antes de servir: primero buscaba subcadenas (marcaba «**no**
+hay broker» como invención), luego le faltaba «discarded» porque el modelo respondió en inglés y
+la lista de negaciones estaba en español. La versión actual mide **afirmación, no mención**, pero
+el mismo sesgo puede seguir ahí: estos hallazgos merecen confirmarse a ojo antes de actuar.
+
+### Determinismo
+
+Tres corridas, tres resultados distintos (una limpia, una fallo total, una con contradicciones
+fabricadas). **SC-001 («≥90 % consistente con la SSOT») necesita medirse sobre varias corridas**,
+no sobre una.
+
 ## Cobertura automatizada
 
 Los cinco escenarios están cubiertos por tests de integración del núcleo. Lo que **sigue
