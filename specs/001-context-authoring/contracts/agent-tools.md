@@ -43,3 +43,16 @@ Herramientas que el loop (`application/authoring_loop.rs`) expone al LLM vía `M
 - `propose_change` de bajo riesgo se **auto-aplica** y se muestra (revertible); alto impacto **espera** `decide` del usuario (D6/FR-012).
 - El loop **jamás** deja que el modelo fabrique contenido de una referencia no resuelta: solo `note_unresolved`.
 - En modo local, `fetch_url` a hosts no-locales está **deshabilitado** (cero-egress estructural) → `unresolved: 'out_of_scope'` + evento `egress.blocked`.
+
+## Regla que gobierna la procedencia (FR-006a/b/c)
+
+**Declarar una fuente no la verifica.** El núcleo comprueba que la cita textual aparece en el
+material leído; si no, el span **se degrada a tentativo** con el motivo — no se descarta.
+
+Aplica igual a las contradicciones: afirmar que dos fuentes chocan exige una cita comprobable
+**de cada una**. Sin ellas, la contradicción no se afirma.
+
+> Nace de un fallo real (2026-08-23): el sistema registró «[PRD vs Makefile] el Makefile solo
+> soporta PostgreSQL 16» sobre un `Makefile` de dos líneas que no menciona PostgreSQL. La fuente
+> **sí se había leído** — lo inventado era lo que se le atribuía, así que comprobar «¿se leyó?»
+> no habría bastado.
