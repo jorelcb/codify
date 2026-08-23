@@ -56,6 +56,22 @@ material leído; si no, el span **se degrada a tentativo** con el motivo — no 
 Aplica igual a las contradicciones: afirmar que dos fuentes chocan exige una cita comprobable
 **de cada una**. Sin ellas, la contradicción no se afirma.
 
+### Cómo se compara la cita
+
+La comparación **normaliza mayúsculas y espacios** —cualquier racha de espacios, tabuladores o
+saltos de línea cuenta como uno—, y nada más. El modelo reproduce el sentido de una frase, no su
+maquetación: exigir el byte exacto haría que un salto de línea de más invalidara una cita
+legítima. Lo que **no** se normaliza son las palabras; sin eso, la comprobación dejaría de
+distinguir lo que la fuente dice de lo que se le atribuye.
+
+Dos consecuencias que conviene tener presentes:
+
+- una cita por debajo de **12 caracteres** no verifica nada: un fragmento así aparece en
+  cualquier texto;
+- el identificador de la fuente se empareja con tolerancia (`docs/SPEC-30.md` vale por
+  `SPEC-30.md`), porque el modelo abrevia rutas. Es tolerancia sobre **qué** fuente, nunca sobre
+  qué dice.
+
 > Nace de un fallo real (2026-08-23): el sistema registró «[PRD vs Makefile] el Makefile solo
 > soporta PostgreSQL 16» sobre un `Makefile` de dos líneas que no menciona PostgreSQL. La fuente
 > **sí se había leído** — lo inventado era lo que se le atribuía, así que comprobar «¿se leyó?»

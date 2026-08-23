@@ -226,26 +226,26 @@ como verificado.
 
 ### Tests (test-first) ⚠️
 
-- [ ] T058 [P] Unit: `parse_segments` degrada a tentativo un `grounded` cuya cita **no aparece** en el material, y conserva el `Grounded` cuando sí aparece — en `crates/codify-core/src/application/authoring_loop.rs` (módulo `tests`)
-- [ ] T059 [P] Unit: una `contradiction` sin cita comprobable **de cada** fuente no se afirma (FR-006b) — en `crates/codify-core/src/application/authoring_loop.rs` (módulo `tests`)
-- [ ] T060 [P] Escenario: el caso exacto de F-1 — citar una fuente **leída** atribuyéndole algo ausente ⇒ tentativo con motivo — en `crates/codify-core/tests/us1_provenance.rs`
+- [X] T058 [P] Unit: `parse_segments` degrada a tentativo un `grounded` cuya cita **no aparece** en el material, y conserva el `Grounded` cuando sí aparece — en `crates/codify-core/src/application/authoring_loop.rs` (módulo `tests`)
+- [X] T059 [P] Unit: una `contradiction` sin cita comprobable **de cada** fuente no se afirma (FR-006b) — en `crates/codify-core/src/application/authoring_loop.rs` (módulo `tests`)
+- [X] T060 [P] Escenario: el caso exacto de F-1 — citar una fuente **leída** atribuyéndole algo ausente ⇒ tentativo con motivo — en `crates/codify-core/tests/us1_provenance.rs`
 
 ### Dominio
 
-- [ ] T061 `Groundedness::Grounded` y `Contradiction` ganan `quotes: Vec<String>` en `crates/codify-core/src/domain/context.rs`, con los constructores y `render()` al día (data-model.md)
+- [X] T061 `Groundedness::Grounded` y `Contradiction` ganan `quotes: Vec<String>` en `crates/codify-core/src/domain/context.rs`, con los constructores y `render()` al día (data-model.md)
 
 ### Verificación en el núcleo
 
-- [ ] T062 `parse_segments` recibe el **material leído** y comprueba cada cita; lo que no se sostiene se degrada a `Tentative` declarando el motivo — en `crates/codify-core/src/application/authoring_loop.rs` (depende de T061). **Ojo: 5 puntos de llamada** — `authoring_loop.rs:477`, `refine.rs:193`, `service.rs:397` y `:471`, más los tests
-- [ ] T063 Decidir y documentar la **normalización** de la comparación (espacios, mayúsculas, saltos de línea) en el propio `parse_segments`: una cita que solo difiere en formato debe seguir contando, o el criterio será inútilmente estricto
+- [X] T062 `parse_segments` recibe el **material leído** y comprueba cada cita; lo que no se sostiene se degrada a `Tentative` declarando el motivo — en `crates/codify-core/src/application/authoring_loop.rs` (depende de T061). **Ojo: 5 puntos de llamada** — `authoring_loop.rs:477`, `refine.rs:193`, `service.rs:397` y `:471`, más los tests
+- [X] T063 Decidir y documentar la **normalización** de la comparación (espacios, mayúsculas, saltos de línea) en el propio `parse_segments`: una cita que solo difiere en formato debe seguir contando, o el criterio será inútilmente estricto
 
 ### Prompt
 
-- [ ] T064 El esquema de salida pasa a exigir `quotes` junto a `grounded` y en cada lado de `contradiction`, con la instrucción de que la cita sea **textual** — en `GENERATE_SYSTEM_PROMPT` de `crates/codify-core/src/application/authoring_loop.rs` y alineado con `contracts/agent-tools.md`
+- [X] T064 El esquema de salida pasa a exigir `quotes` junto a `grounded` y en cada lado de `contradiction`, con la instrucción de que la cita sea **textual** — en `GENERATE_SYSTEM_PROMPT` de `crates/codify-core/src/application/authoring_loop.rs` y alineado con `contracts/agent-tools.md`
 
 ### Cierre
 
-- [ ] T065 Correr el arnés `live_backend` contra un modelo real y comprobar que F-1 **no se reproduce** — `cargo test -p codify-core --test live_backend -- --ignored`. Medir sobre **≥3 corridas** (SC-001 revisado)
+- [~] T065 Correr el arnés `live_backend` contra un modelo real y comprobar que F-1 **no se reproduce** — `cargo test -p codify-core --test live_backend -- --ignored`. Medir sobre **≥3 corridas** (SC-001 revisado). **El arnés ya mide lo que la fase exige**: comprueba cita a cita contra el material del fixture y exige que **algún** segmento sobreviva fundamentado —sin eso, una tubería rota que lo degradara todo pasaría por victoria—. **Queda la corrida**: necesita `CODIFY_LOCAL_ENDPOINT` apuntando a un backend vivo, y ninguna de las dos estaciones lo tiene levantado ahora mismo
 
 **Checkpoint**: `Grounded` es una afirmación comprobada, no una declarada. El principio rector
 del proyecto deja de depender de la buena fe del modelo.
