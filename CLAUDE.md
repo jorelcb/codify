@@ -53,6 +53,22 @@ lee el spec del feature: qué se decidió, qué se descartó y por qué. Los spe
 **alternativas rechazadas con la señal que justificaría revisitarlas** — si estás a punto de
 proponer una, mira si ya se evaluó.
 
+### Una rama, un PR, por ciclo
+
+El ciclo de un feature —`specify` → `clarify` → `plan` → `tasks` → `analyze` → `implement`— vive en
+**una sola rama** y produce **un solo PR**, al final, con el CI en verde. Cada paso deja su propio
+commit; ninguno abre PR por su cuenta.
+
+Los pasos intermedios no se revisan por PR: se revisan en la conversación, que es donde `clarify`
+pregunta y `analyze` reporta. Un PR por paso fragmenta esa revisión sin añadirle nada, y deja `main`
+con specs a medio ciclo — **un contrato mergeado antes de que exista su implementación es un
+contrato que nadie ha probado.**
+
+**Excepciones**, que sí van en rama y PR propios:
+
+- deriva que el barrido cruzado encuentra tras un merge (no pertenece a este ciclo);
+- arreglos sobre algo ya mergeado que desbloquean el ciclo en curso.
+
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
