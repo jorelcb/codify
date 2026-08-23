@@ -22,7 +22,8 @@ Documento aludido desde el material leído.
 ## ContextArtifact
 Cada archivo de contexto generado.
 - **Campos**: `kind` (`Agents` | `Context` | `DevelopmentGuide` | `InteractionsLog` | `Idioms`), `segments: [Segment]`, `locale`.
-- **Segment**: `{ text, groundedness: Grounded { sources: [ReferenceRef] } | Tentative { reason } }`.
+- **Segment**: `{ text, groundedness: Grounded { sources: [ReferenceRef], quotes: [String] } | Tentative { reason } | Contradiction { sources, quotes, note } }`.
+- **`quotes`** (FR-006a): fragmento **textual** de cada fuente que respalda la afirmación. El núcleo comprueba que aparece en el material leído; si no, el segmento **se degrada a `Tentative`** con el motivo (FR-006c). Sin cita comprobable no hay `Grounded` — la procedencia declarada por el modelo no basta.
 - **Reglas**: todo `Tentative` es distinguible del `Grounded` en el render (SC-002); `Idioms` solo cuando hay lenguaje aplicable detectable.
 
 ## ChangeProposal (diff)

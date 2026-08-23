@@ -18,6 +18,12 @@
 - Q: ¿Se soporta un modo totalmente local sin egress a la nube? → A: Sí — **modo 100% local de primera clase** con **cero egress** garantizado cuando se selecciona; el tier frontier/nube es opcional.
 - Q: ¿Qué lee el sistema para fundamentar (profundidad de ingesta)? → A: **Docs + señales estructurales + muestreo selectivo de código** (entrypoints, interfaces/puertos, configs); no el repo completo.
 
+### Session 2026-08-23
+
+- Q: FR-006 y SC-002 exigen no afirmar lo no verificado, pero no definían el **acto de verificar**. ¿En qué consiste? → A: El modelo **cita un fragmento textual** de la fuente y el núcleo **comprueba que ese fragmento existe** en el material leído. Verificar es una comprobación mecánica del sistema, no una declaración del modelo.
+- Q: Si la comprobación de la cita falla, ¿qué pasa con ese fragmento? → A: **Se degrada a tentativo** con el motivo, no se descarta. Misma vía que lo que llega sin procedencia; no se añade un cuarto estado.
+- Q: SC-001 no decía sobre cuántas corridas se mide, y tres corridas dieron tres resultados distintos. → A: Se mide sobre **al menos 3 corridas** y el criterio se cumple si **la mayoría** alcanza el ≥90 %.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Contexto grounded desde el repo y sus referencias (Priority: P1)
@@ -89,6 +95,9 @@ El usuario re-ejecuta el authoring sobre un repo que **ya tiene** archivos de co
 **Generación de contexto**
 - **FR-005**: El sistema MUST generar el conjunto de archivos de contexto: AGENTS.md, CONTEXT.md, DEVELOPMENT_GUIDE.md, INTERACTIONS_LOG.md e IDIOMS.md (este último cuando se detecta lenguaje aplicable).
 - **FR-006**: El sistema MUST fundamentar las afirmaciones en las fuentes leídas y NO afirmar como hecho ninguna arquitectura/decisión que no haya podido verificar.
+- **FR-006a**: **Verificar es una comprobación del sistema, no una declaración del modelo.** Para que una afirmación sea `grounded`, el modelo MUST acompañarla de un **fragmento textual** de la fuente que la respalda, y el núcleo MUST comprobar que ese fragmento **aparece en el material leído**. La procedencia que el modelo declara sin cita comprobable NO cuenta como verificada.
+- **FR-006b**: Lo mismo aplica a las **contradicciones** (FR-008): señalar que dos fuentes chocan exige una cita comprobable **de cada una**. Sin ellas, la contradicción no se afirma.
+- **FR-006c**: Cuando la comprobación falla, el fragmento **se degrada a tentativo declarando el motivo** — no se descarta. Es la misma vía que ya sigue el contenido sin procedencia: la **ausencia** y la **falsedad** de procedencia acaban en el mismo estado, sin añadir un cuarto que compita con SC-002. Se conserva el contenido porque que una cita no se compruebe **no prueba que la afirmación sea falsa**, solo que no está respaldada; y un hueco silencioso oculta que el agente intentó afirmar algo.
 - **FR-007**: El sistema MUST marcar de forma distinguible el contenido **inferido o tentativo** frente al contenido **grounded** (verificado contra fuentes), de modo que el usuario y cualquier agente lector sepan qué es firme y qué no.
 - **FR-008**: Cuando las fuentes se contradicen, el sistema MUST señalar la contradicción en vez de resolverla en silencio.
 - **FR-019**: El sistema MUST **auto-detectar el idioma** de salida a partir del contenido existente del repo (README/docs) y generar los artefactos de contexto en ese idioma, permitiendo un **override explícito** del usuario.
@@ -124,7 +133,7 @@ El usuario re-ejecuta el authoring sobre un repo que **ya tiene** archivos de co
 
 ### Measurable Outcomes
 
-- **SC-001**: Dado un repo cuyo README referencia una SSOT, ≥90% de las afirmaciones arquitectónicas del contexto generado son **consistentes con esa SSOT** (vs. el baseline actual, que las contradice/aluciona).
+- **SC-001**: Dado un repo cuyo README referencia una SSOT, ≥90% de las afirmaciones arquitectónicas del contexto generado son **consistentes con esa SSOT** (vs. el baseline actual, que las contradice/aluciona). Se mide sobre **al menos 3 corridas** con el mismo fixture, y el criterio se cumple si **la mayoría** las alcanza. *Un LLM no es determinista: medir sobre una sola corrida diría más del azar que del producto — comprobado el 2026-08-23, donde tres corridas dieron tres resultados distintos.*
 - **SC-002**: **0** afirmaciones no verificadas se presentan como hecho: el 100% del contenido no-grounded queda marcado como tentativo.
 - **SC-003**: Un usuario lleva un repo desde "sin contexto" hasta "contexto aprobado por él" en **una sola sesión, sin cambiar de herramienta**. Objetivo de tiempo: **p50 < 10 min para un repo ≤ 2.000 archivos en modo local** — **indicativo, no-gate de v1** (se re-cuantifica cuando exista telemetría real).
 - **SC-004**: El refinamiento se completa mediante **conversación + aprobación de diffs**, sin exigir una interacción modal aislada por cada hueco; al cerrar quedan **0 marcadores sin atender**.
