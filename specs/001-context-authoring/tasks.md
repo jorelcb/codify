@@ -205,7 +205,63 @@ Verificado contra el código, no contra la documentación. **Revisar antes de re
 
 ---
 
+---
+
+## Phase 7: Verificación de procedencia — FR-006a/b/c (issue #23)
+
+**Goal**: que `Grounded` signifique algo comprobable. Hoy el modelo declara la fuente y el
+núcleo le cree; tras esto, una afirmación solo es `Grounded` si su **cita textual aparece en el
+material leído**.
+
+**Independent Test**: sembrar una respuesta del modelo que cite una fuente real atribuyéndole
+algo que no dice → el segmento **se degrada a tentativo** con el motivo, en vez de presentarse
+como verificado.
+
+> **Origen**: hallazgo F-1 de la pasada con modelo real (2026-08-23). El sistema registró
+> `[PRD vs Makefile] «el Makefile solo soporta PostgreSQL 16»` sobre un `Makefile` de dos líneas.
+> La fuente **sí se había leído** — lo inventado era lo que se le atribuía.
+
+> **Consecuencia esperada y aceptada**: tras esto, la primera corrida parecerá **menos**
+> fundamentada que hoy — más segmentos en tentativo. Es la señal de que funciona.
+
+### Tests (test-first) ⚠️
+
+- [ ] T058 [P] Unit: `parse_segments` degrada a tentativo un `grounded` cuya cita **no aparece** en el material, y conserva el `Grounded` cuando sí aparece — en `crates/codify-core/src/application/authoring_loop.rs` (módulo `tests`)
+- [ ] T059 [P] Unit: una `contradiction` sin cita comprobable **de cada** fuente no se afirma (FR-006b) — en `crates/codify-core/src/application/authoring_loop.rs` (módulo `tests`)
+- [ ] T060 [P] Escenario: el caso exacto de F-1 — citar una fuente **leída** atribuyéndole algo ausente ⇒ tentativo con motivo — en `crates/codify-core/tests/us1_provenance.rs`
+
+### Dominio
+
+- [ ] T061 `Groundedness::Grounded` y `Contradiction` ganan `quotes: Vec<String>` en `crates/codify-core/src/domain/context.rs`, con los constructores y `render()` al día (data-model.md)
+
+### Verificación en el núcleo
+
+- [ ] T062 `parse_segments` recibe el **material leído** y comprueba cada cita; lo que no se sostiene se degrada a `Tentative` declarando el motivo — en `crates/codify-core/src/application/authoring_loop.rs` (depende de T061). **Ojo: 5 puntos de llamada** — `authoring_loop.rs:477`, `refine.rs:193`, `service.rs:397` y `:471`, más los tests
+- [ ] T063 Decidir y documentar la **normalización** de la comparación (espacios, mayúsculas, saltos de línea) en el propio `parse_segments`: una cita que solo difiere en formato debe seguir contando, o el criterio será inútilmente estricto
+
+### Prompt
+
+- [ ] T064 El esquema de salida pasa a exigir `quotes` junto a `grounded` y en cada lado de `contradiction`, con la instrucción de que la cita sea **textual** — en `GENERATE_SYSTEM_PROMPT` de `crates/codify-core/src/application/authoring_loop.rs` y alineado con `contracts/agent-tools.md`
+
+### Cierre
+
+- [ ] T065 Correr el arnés `live_backend` contra un modelo real y comprobar que F-1 **no se reproduce** — `cargo test -p codify-core --test live_backend -- --ignored`. Medir sobre **≥3 corridas** (SC-001 revisado)
+
+**Checkpoint**: `Grounded` es una afirmación comprobada, no una declarada. El principio rector
+del proyecto deja de depender de la buena fe del modelo.
+
+
 ## Dependencies & Execution Order
+
+### Fase 7 (verificación de procedencia) — dónde encaja
+
+**No depende de ninguna user story pendiente**: toca el dominio, el parseo y el prompt, que ya
+existen. Se puede tomar de inmediato.
+
+Dentro de la fase el orden sí importa: **T058–T060 (tests) → T061 (dominio) → T062–T063
+(verificación) → T064 (prompt) → T065 (cierre con modelo real)**. T062 no puede escribirse antes
+que T061 porque necesita el campo `quotes`; y T064 va después de T062 porque cambiar el prompt
+sin tener la verificación deja al modelo produciendo un campo que nadie mira.
 
 ### Phase Dependencies
 - **Setup (P1)**: sin dependencias.
