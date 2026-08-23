@@ -30,6 +30,11 @@ Loop de authoring de contexto de codify-NG: un agente **lee el repo y sigue sus 
 
 **Scale/Scope**: Single-user desktop. Repos hasta mediano/monorepo con **muestreo acotado y declarado** (D4). Sin índice de embeddings en v1.
 
+**Verificación de procedencia** (FR-006a/b/c, añadido tras el clarify del 2026-08-23): `grounded`
+exige una **cita textual comprobable** contra el material leído, no una fuente declarada. Nace de
+un fallo real en la primera pasada con modelo real, donde el sistema atribuyó a un `Makefile` de
+dos líneas algo que no decía. Ver `spec.md` § Clarifications.
+
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*

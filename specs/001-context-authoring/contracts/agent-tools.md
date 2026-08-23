@@ -24,7 +24,11 @@ Herramientas que el loop (`application/authoring_loop.rs`) expone al LLM vía `M
 // propose_change — emite un ChangeProposal (el core hace el diff real y clasifica riesgo)
 { "name": "propose_change",
   "input": { "target": "artifact_kind|repo_path", "new_content": "string",
-             "rationale": "string", "groundedness": "[{span, sources[]|tentative_reason}]" },
+             "rationale": "string",
+             // FR-006a: `sources` NO basta. Cada span grounded exige `quotes`: fragmentos
+             // TEXTUALES de la fuente. El núcleo comprueba que aparecen en el material leído
+             // y degrada a tentativo lo que no se sostiene (FR-006c).
+             "groundedness": "[{span, sources[]+quotes[]|tentative_reason}]" },
   "returns": "{ proposal_id, risk: 'low'|'high_impact', applied: bool }" }
 
 // ask_user — hace una pregunta al usuario en el loop conversacional (surface vía Prompter)
