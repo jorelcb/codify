@@ -44,7 +44,13 @@ fn fixture() -> String {
 /// Términos que el SPEC **niega**. Mencionarlos no es inventar — el propio SPEC los nombra
 /// para descartarlos, y un contexto fiel hará lo mismo. Lo que delata la invención es
 /// **afirmarlos**: decir que hay un broker, no decir que no lo hay.
-const NEGADOS_POR_EL_SPEC: &[&str] = &["kafka", "rabbitmq", "broker", "event sourc", "dynamodb"];
+/// `dynamodb` **no** está aquí, y la ausencia es deliberada: `docs/PRD.md` lo afirma con todas
+/// las letras. Es la contradicción que el fixture planta a propósito, no una invención — el
+/// modelo que lo recoge está siendo fiel a una fuente real. Meterlo en esta lista confundía
+/// «contradicho» con «inventado», que son fallos distintos: el primero se señala (FR-008), el
+/// segundo no debe ocurrir. Atribuir DynamoDB a quien no lo dice sí es invención, y de eso se
+/// encarga la comprobación de citas de más abajo, que es donde corresponde.
+const NEGADOS_POR_EL_SPEC: &[&str] = &["kafka", "rabbitmq", "broker", "event sourc"];
 
 /// Marcas de negación en español e inglés, más las de tentativo: si aparecen en la misma
 /// frase, el término está siendo descartado o declarado sin verificar, no afirmado.
@@ -195,12 +201,24 @@ async fn the_agent_follows_the_reference_instead_of_inventing_an_architecture() 
     println!("--- omitido: {:?}", snap.omitted);
     println!("--- escrituras: {:?}", snap.writes.len());
 
-    // La prueba de fuego: no que se mencionen los términos, sino que se AFIRMEN.
-    let inventadas = afirmaciones_inventadas(&contexto);
+    let segmentos: Vec<_> = snap.artifacts.iter().flat_map(|a| &a.segments).collect();
+
+    // La prueba de fuego: no que se mencionen los términos, sino que se AFIRMEN. Y afirmar es
+    // lo que hace un segmento **fundamentado**: un tentativo declara que no lo sabe y una
+    // contradicción declara que las fuentes chocan. Escrutar el render entero los metía a
+    // todos en el mismo saco y convertía en falta el señalamiento, que es justo lo que este
+    // producto existe para hacer.
+    let afirmado = segmentos
+        .iter()
+        .filter(|s| s.is_grounded())
+        .map(|s| s.text.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    let inventadas = afirmaciones_inventadas(&afirmado);
     assert!(
         inventadas.is_empty(),
         "el agente AFIRMÓ algo que el SPEC niega — no siguió la referencia.\n\
-         Frases: {inventadas:#?}\n\n{contexto}"
+         Frases (de segmentos FUNDAMENTADOS, no de los señalados): {inventadas:#?}\n\n{contexto}"
     );
 
     // Y la otra mitad: que las negaciones del SPEC lleguen al contexto. Un texto que
@@ -221,7 +239,6 @@ async fn the_agent_follows_the_reference_instead_of_inventing_an_architecture() 
     // -----------------------------------------------------------------------
 
     let material = material_del_fixture();
-    let segmentos: Vec<_> = snap.artifacts.iter().flat_map(|a| &a.segments).collect();
     let (mut fundamentados, mut tentativos, mut sin_respaldo) = (0usize, 0usize, Vec::new());
 
     for seg in &segmentos {
