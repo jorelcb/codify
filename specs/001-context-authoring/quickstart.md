@@ -62,9 +62,9 @@ Ninguno estaba en el plan de la fase, y los tres se arreglaron antes de cerrarla
 
 1. **Fixture contaminado.** Encadenar corridas sin regenerar hace que el agente lea los
    artefactos de la anterior como si fueran del repositorio. Una corrida se fundamentó en
-   `context/CONTEXT.md`, su propia salida previa. El arnés ahora lo aborta. **Queda abierta la
-   pregunta de producto**: en uso real `context/` existe de sesiones anteriores, y el agente lo
-   leerá igual.
+   `context/CONTEXT.md`, su propia salida previa. El arnés ahora lo aborta. La pregunta de
+   producto que dejaba abierta —en uso real `context/` existe de sesiones anteriores— **se
+   resolvió en la Fase 8**: FR-006d, la salida propia se lee pero no fundamenta (issue #34).
 2. **El arnés confundía «contradicho» con «inventado».** Tenía `dynamodb` en la lista de
    términos que delatan invención, pero `docs/PRD.md` lo afirma: es la contradicción deliberada
    del fixture. Y escrutaba el render completo, marcadores incluidos, así que **señalar** un

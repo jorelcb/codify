@@ -56,6 +56,22 @@ material leído; si no, el span **se degrada a tentativo** con el motivo — no 
 Aplica igual a las contradicciones: afirmar que dos fuentes chocan exige una cita comprobable
 **de cada una**. Sin ellas, la contradicción no se afirma.
 
+### Qué material puede respaldar
+
+**Un artefacto que escribió el propio sistema no es fuente de procedencia** (FR-006d). Se sigue
+leyendo —US3 lo necesita para proponer una actualización en vez de sobrescribir— pero citarlo no
+verifica nada: lo que solo se apoya en él se degrada a tentativo, aunque la cita esté ahí
+literalmente.
+
+Se reconoce **por ruta canónica**, las que define FR-005. Son los huecos de salida del producto,
+así que lo que viva ahí es salida propia lo haya escrito quien lo haya escrito — sí, también un
+`AGENTS.md` hecho a mano. Se prefiere ese coste a inferir quién editó qué.
+
+> Nace de la segunda pasada con modelo real (2026-08-23): al encadenar corridas sin regenerar el
+> fixture, una sesión resolvió la contradicción sobre la persistencia contra `context/CONTEXT.md`
+> —su propia salida previa— y la presentó como verificada. La comprobación de la cita no puede
+> atrapar esto por construcción: la cita **sí** estaba en el material leído.
+
 ### Cómo se compara la cita
 
 La comparación **normaliza mayúsculas y espacios** —cualquier racha de espacios, tabuladores o

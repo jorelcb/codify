@@ -271,26 +271,26 @@ segmento **se degrada a tentativo** nombrando el motivo, aunque la cita esté li
 
 ### Tests (test-first) ⚠️
 
-- [ ] T066 [P] Unit: un `grounded` cuya **única** fuente citada es un artefacto propio se degrada a tentativo, y el motivo nombra el artefacto — en `crates/codify-core/src/application/authoring_loop.rs` (módulo `tests`)
-- [ ] T067 [P] Unit: un `grounded` que **además** cita una fuente real con cita comprobable **se mantiene** — FR-006d degrada lo que *solo* se apoya en la salida propia, no lo que la menciona — en `crates/codify-core/src/application/authoring_loop.rs` (módulo `tests`)
-- [ ] T068 [P] Escenario: el caso exacto de la medición — `context/CONTEXT.md` como lado de una contradicción ⇒ no se afirma (FR-006b + FR-006d) — en `crates/codify-core/tests/us1_provenance.rs`
+- [X] T066 [P] Unit: un `grounded` cuya **única** fuente citada es un artefacto propio se degrada a tentativo, y el motivo nombra el artefacto — en `crates/codify-core/src/application/authoring_loop.rs` (módulo `tests`)
+- [X] T067 [P] Unit: un `grounded` que **además** cita una fuente real con cita comprobable **se mantiene** — FR-006d degrada lo que *solo* se apoya en la salida propia, no lo que la menciona — en `crates/codify-core/src/application/authoring_loop.rs` (módulo `tests`)
+- [X] T068 [P] Escenario: el caso exacto de la medición — `context/CONTEXT.md` como lado de una contradicción ⇒ no se afirma (FR-006b + FR-006d) — en `crates/codify-core/tests/us1_provenance.rs`
 
 ### Dominio
 
-- [ ] T069 `ArtifactKind` sabe reconocer sus propias rutas: `is_canonical_path(&str) -> bool` en `crates/codify-core/src/domain/context.rs`, cubriendo **las cinco** —`Idioms` incluido, que no está en `default_set()`— y normalizando el separador. Es del Dominio porque es él quien nombra esas rutas (`file_path()`)
+- [X] T069 `ArtifactKind` sabe reconocer sus propias rutas: `is_canonical_path(&str) -> bool` en `crates/codify-core/src/domain/context.rs`, cubriendo **las cinco** —`Idioms` incluido, que no está en `default_set()`— y normalizando el separador. Es del Dominio porque es él quien nombra esas rutas (`file_path()`)
 
 ### Verificación en el núcleo
 
-- [ ] T070 `GatheredSource` distingue **fuente** de **artefacto propio**, y la ingesta lo clasifica al reunir el material — en `crates/codify-core/src/application/authoring_loop.rs` y `crates/codify-core/src/application/ingest.rs` (depende de T069)
-- [ ] T071 `fuentes_leidas` deja de admitir artefactos propios como respaldo, y el motivo del degradado lo dice — en `crates/codify-core/src/application/authoring_loop.rs` (depende de T070). **Ojo**: el material se lee igual; lo que cambia es qué puede sostener una afirmación
+- [X] T070 `GatheredSource` distingue **fuente** de **artefacto propio**, y la ingesta lo clasifica al reunir el material — en `crates/codify-core/src/application/authoring_loop.rs` y `crates/codify-core/src/application/ingest.rs` (depende de T069)
+- [X] T071 `fuentes_leidas` deja de admitir artefactos propios como respaldo, y el motivo del degradado lo dice — en `crates/codify-core/src/application/authoring_loop.rs` (depende de T070). **Ojo**: el material se lee igual; lo que cambia es qué puede sostener una afirmación
 
 ### Contratos
 
-- [ ] T072 [P] `data-model.md` recoge el origen en `GatheredSource`, y `contracts/ports.md` y `contracts/agent-tools.md` dicen que la salida propia no fundamenta — en `specs/001-context-authoring/`
+- [X] T072 [P] `data-model.md` recoge el origen en `GatheredSource`, y `contracts/ports.md` y `contracts/agent-tools.md` dicen que la salida propia no fundamenta — en `specs/001-context-authoring/`
 
 ### Cierre
 
-- [ ] T073 Arnés en vivo: **dos pases encadenados sin regenerar el fixture**, comprobando que el segundo no se fundamenta en el primero — en `crates/codify-core/tests/live_backend.rs`. Invierte a propósito el guardia `exigir_fixture_limpio`, que existe para proteger la *medición*; este test necesita justo el fixture sucio para probar que el *producto* lo resiste
+- [X] T073 Arnés en vivo: **dos pases encadenados sin regenerar el fixture** — **hecho el 2026-08-24** con `Qwen2.5-32B`: el segundo pase dejó **18 segmentos fundamentados y ninguno citando una ruta canónica**, y resolvió la contradicción contra `docs/PRD.md` vs `docs/SPEC-30.md`, las fuentes correctas. **Matiz honesto**: ese pase no llegó a leer ningún artefacto propio, así que comprobó el resultado sin ejercitar el mecanismo en vivo; el test avisa por consola cuando eso pasa, y quien lo cubre de forma determinista es `us1_provenance.rs`
 
 **Checkpoint**: el sistema no puede citarse a sí mismo. El bucle donde lo afirmado ayer respalda
 lo de hoy queda cerrado, y `context/` vuelve a ser lo que US3 necesita —material para proponer
