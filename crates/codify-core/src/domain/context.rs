@@ -28,6 +28,31 @@ impl ArtifactKind {
         }
     }
 
+    /// Todas las variantes. A diferencia de `default_set()`, incluye `Idioms`: para decidir si
+    /// una ruta es un hueco de salida del sistema hay que mirarlas **todas**, se emita o no.
+    pub fn all() -> [ArtifactKind; 5] {
+        [
+            ArtifactKind::Agents,
+            ArtifactKind::Context,
+            ArtifactKind::DevelopmentGuide,
+            ArtifactKind::InteractionsLog,
+            ArtifactKind::Idioms,
+        ]
+    }
+
+    /// ¿Esta ruta es uno de los archivos que el sistema escribe? (FR-006d)
+    ///
+    /// Vive aquí y no en la aplicación porque es el Dominio quien nombra esas rutas en
+    /// `file_path()`: preguntar si una ruta es una de ellas es la misma pregunta desde el otro
+    /// lado, y duplicar la lista fuera sería invitar a que las dos versiones se separen.
+    pub fn is_canonical_path(path: &str) -> bool {
+        let normalizada = path.replace('\\', "/");
+        let normalizada = normalizada.trim_start_matches("./");
+        ArtifactKind::all()
+            .iter()
+            .any(|k| k.file_path() == normalizada)
+    }
+
     /// Conjunto por defecto. `Idioms` se emite solo si hay lenguaje aplicable detectable,
     /// por eso no forma parte del conjunto base.
     pub fn default_set() -> Vec<ArtifactKind> {
@@ -192,6 +217,38 @@ impl ContextArtifact {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn las_rutas_canonicas_se_reconocen_todas() {
+        // `Idioms` no está en `default_set()` y aun así es un hueco de salida: si `all()` lo
+        // olvidara, un IDIOMS.md previo pasaría por fuente del proyecto (FR-006d).
+        assert_eq!(ArtifactKind::all().len(), 5);
+        for k in ArtifactKind::all() {
+            assert!(
+                ArtifactKind::is_canonical_path(k.file_path()),
+                "{} debería reconocerse como ruta propia",
+                k.file_path()
+            );
+        }
+        assert!(ArtifactKind::is_canonical_path("./context/IDIOMS.md"));
+        assert!(ArtifactKind::is_canonical_path("context\\CONTEXT.md"));
+    }
+
+    #[test]
+    fn un_documento_del_proyecto_no_es_ruta_canonica() {
+        for ruta in [
+            "README.md",
+            "docs/SPEC-30.md",
+            "docs/AGENTS.md",
+            "context/NOTAS.md",
+            "AGENTS.md.bak",
+        ] {
+            assert!(
+                !ArtifactKind::is_canonical_path(ruta),
+                "{ruta} no es salida del sistema: excluirla perdería una fuente legítima"
+            );
+        }
+    }
 
     #[test]
     fn tentative_segment_starts_unattended_and_can_be_acknowledged() {
