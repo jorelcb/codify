@@ -23,6 +23,18 @@ pub struct LocalOpenAiCompatProvider {
     http: reqwest::Client,
 }
 
+/// Cuánto se espera a un modelo local antes de darlo por perdido.
+///
+/// Los 120 s que había aquí antes no daban. Medido el 2026-08-23 con un Qwen2.5-32B en
+/// `llama.cpp`: la generación de un solo artefacto iba por 690 tokens a 5,8 t/s —dos minutos
+/// largos— cuando el cliente HTTP cortó. La sesión caía a `Failed` sin motivo, y el fallo
+/// parecía un misterio del modelo cuando era nuestro reloj.
+///
+/// Un modelo local grande en hardware de sobremesa va a ese ritmo, y la petición de citas
+/// textuales (FR-006a) alarga la salida, así que el margen tiene que dar para eso. Esperar no
+/// bloquea a nadie: el trabajo va en segundo plano y la sesión es cancelable (FR-022/FR-023).
+const TIEMPO_MAXIMO: Duration = Duration::from_secs(900);
+
 impl LocalOpenAiCompatProvider {
     /// Construye el proveedor **solo** si el endpoint es loopback.
     /// Un endpoint remoto es un error de construcción, no una advertencia en runtime.
@@ -38,7 +50,7 @@ impl LocalOpenAiCompatProvider {
             )));
         }
         let http = reqwest::Client::builder()
-            .timeout(Duration::from_secs(120))
+            .timeout(TIEMPO_MAXIMO)
             .build()
             .map_err(|e| CoreError::Provider(e.to_string()))?;
         Ok(Self {
