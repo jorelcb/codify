@@ -81,6 +81,27 @@ const NIEGA: &[&str] = &[
 /// exactamente lo que un contexto correcto dice.
 /// Todo el material del fixture, normalizado igual que lo normaliza el núcleo. Sirve para
 /// comprobar **desde fuera** lo que `parse_segments` promete desde dentro.
+/// Aborta si el fixture arrastra la salida de una corrida anterior.
+///
+/// No es celo de limpieza: si `context/` o `AGENTS.md` ya están ahí, el agente los lee como
+/// fuentes y puede **fundamentar una afirmación contra su propio output previo**. La medida
+/// dejaría de decir lo que se cree que dice, y en verde, que es la peor forma de fallar.
+/// Pasó de verdad — la corrida 2 del 2026-08-23 citó `context/CONTEXT.md` como fuente de la
+/// contradicción sobre la persistencia, en vez de `docs/PRD.md`.
+fn exigir_fixture_limpio() {
+    let raiz = fixture();
+    let sucios: Vec<_> = ["AGENTS.md", "context"]
+        .iter()
+        .filter(|n| std::path::Path::new(&raiz).join(n).exists())
+        .collect();
+    assert!(
+        sucios.is_empty(),
+        "el fixture arrastra artefactos de una corrida anterior ({sucios:?}): el agente los \
+         leería como fuentes y se fundamentaría contra sí mismo. Regenéralo antes de cada \
+         corrida con ./scripts/quickstart-fixture.sh"
+    );
+}
+
 fn material_del_fixture() -> String {
     fn recoger(dir: &std::path::Path, out: &mut String) {
         let Ok(entradas) = std::fs::read_dir(dir) else {
@@ -121,6 +142,8 @@ fn afirmaciones_inventadas(contexto: &str) -> Vec<String> {
 #[tokio::test]
 #[ignore = "necesita un backend de modelo local corriendo"]
 async fn the_agent_follows_the_reference_instead_of_inventing_an_architecture() {
+    exigir_fixture_limpio();
+
     let repo = fixture();
     let model = std::env::var("CODIFY_MODEL").unwrap_or_else(|_| "default".into());
 
