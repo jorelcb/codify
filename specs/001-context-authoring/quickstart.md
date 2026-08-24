@@ -37,6 +37,45 @@ regresión que originó el proyecto no se reproduce.** Los cuatro artefactos lle
 | **F-4** | **Contenido duplicado**: el mismo bloque de seis frases repetido dentro de un artefacto | media |
 | **F-5** | La **URL privada nunca se intenta** (`unresolved: []`), así que **S4 no llega a ejercitarse**. El escenario existe pero el flujo no lo dispara | media |
 
+## Segunda pasada — verificación de procedencia (Fase 7)
+
+Ejecutada el 2026-08-23 con `llama.cpp server` + **`Qwen2.5-32B-Instruct-Q4_K_M`**, regenerando
+el fixture antes de cada corrida. **Tres corridas completas, las tres en verde.**
+
+| | fundamentados | tentativos | referencias | contradicción | citas sin respaldo |
+|---|---|---|---|---|---|
+| 1 | 11 | 15 | 3 | ✅ | **0** |
+| 2 | 24 | 5 | 3 | ✅ | **0** |
+| 3 | 14 | 11 | 3 | ✅ | **0** |
+
+**F-1 no se reproduce.** Ninguna afirmación presentada como verificada se apoya en algo que las
+fuentes no dicen, y la comprobación no es vacua: entre 11 y 24 segmentos sobreviven fundamentados
+por corrida. Ese contraste importa — una tubería rota que degradara todo daría cero citas sin
+respaldo exactamente igual, y por eso el arnés exige además que **algo** quede en pie.
+
+La dispersión entre corridas (de 11/15 a 24/5) es del modelo, no del mecanismo. Es la razón de
+que SC-001 se mida sobre varias corridas y no sobre una.
+
+### Tres defectos que salieron por el camino
+
+Ninguno estaba en el plan de la fase, y los tres se arreglaron antes de cerrarla:
+
+1. **Fixture contaminado.** Encadenar corridas sin regenerar hace que el agente lea los
+   artefactos de la anterior como si fueran del repositorio. Una corrida se fundamentó en
+   `context/CONTEXT.md`, su propia salida previa. El arnés ahora lo aborta. **Queda abierta la
+   pregunta de producto**: en uso real `context/` existe de sesiones anteriores, y el agente lo
+   leerá igual.
+2. **El arnés confundía «contradicho» con «inventado».** Tenía `dynamodb` en la lista de
+   términos que delatan invención, pero `docs/PRD.md` lo afirma: es la contradicción deliberada
+   del fixture. Y escrutaba el render completo, marcadores incluidos, así que **señalar** un
+   conflicto contaba como cometerlo. Ahora solo mira los segmentos fundamentados.
+3. **Timeout de 120 s en el proveedor local.** Cortaba generaciones sanas —690 tokens a 5,8 t/s
+   cuando saltó el reloj— y la sesión caía a `Failed`. La petición de citas alarga la salida, así
+   que **esta misma fase hizo el fallo más frecuente**. Subido a 900 s.
+
+El tercero costó cinco corridas perdidas, y no por difícil: `Failed` no dice por qué (**F-2**,
+issue #24). Un timeout de cliente es trivial de diagnosticar cuando se nombra.
+
 ### Advertencia sobre el instrumento
 
 El arnés dio **dos falsos positivos** antes de servir: primero buscaba subcadenas (marcaba «**no**
