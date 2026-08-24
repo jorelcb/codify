@@ -28,7 +28,9 @@ cargo run -p codify-app    # levanta la aplicación
 > **Hallazgos de la primera pasada con modelo real** (2026-08-23): están en
 > `001/quickstart.md`, y **uno es de este spec** — la sesión puede terminar en `Failed` sin
 > artefactos y **sin motivo**, contra lo que exige FR-028 ([#24](https://github.com/jorelcb/codify/issues/24)).
-> Los demás: [#23](https://github.com/jorelcb/codify/issues/23) y [#25](https://github.com/jorelcb/codify/issues/25).
+> Los demás: [#25](https://github.com/jorelcb/codify/issues/25), y
+> [#34](https://github.com/jorelcb/codify/issues/34), que salió de la segunda pasada.
+> [#23](https://github.com/jorelcb/codify/issues/23) se cerró con la Fase 7 de `001`.
 
 ## Cobertura automatizada
 
