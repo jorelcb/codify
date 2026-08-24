@@ -124,14 +124,8 @@ async fn contradiction_between_sources_is_surfaced_and_audited() {
 #[tokio::test]
 async fn contradiction_is_never_treated_as_grounded_fact() {
     let material = vec![
-        GatheredSource {
-            id: "a".into(),
-            content: "la fuente a sostiene una cosa".into(),
-        },
-        GatheredSource {
-            id: "b".into(),
-            content: "la fuente b sostiene la contraria".into(),
-        },
+        GatheredSource::source("a", "la fuente a sostiene una cosa"),
+        GatheredSource::source("b", "la fuente b sostiene la contraria"),
     ];
     let raw = r#"{"segments":[{"text":"x","grounded":["a"],"contradiction":{"sources":["a","b"],
         "quotes":["la fuente a sostiene una cosa","la fuente b sostiene la contraria"],"note":"chocan"}}]}"#;

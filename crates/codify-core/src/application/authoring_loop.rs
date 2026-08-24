@@ -66,10 +66,48 @@ Reglas innegociables:
   CADA una: señálalo, NO elijas en silencio.";
 
 /// Material reunido durante la ingesta, con su procedencia.
+/// De dónde salió una pieza de material.
+///
+/// La distinción existe porque **leer** y **fundamentar** dejaron de ser lo mismo (FR-006d):
+/// un artefacto de una sesión anterior se sigue leyendo —US3 lo necesita para proponer una
+/// actualización en vez de sobrescribir— pero no puede respaldar una afirmación.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MaterialOrigin {
+    /// Documento del proyecto. Puede respaldar una afirmación.
+    Source,
+    /// Artefacto que escribió el propio sistema. Se lee; no fundamenta.
+    OwnOutput,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GatheredSource {
     pub id: String,
     pub content: String,
+    pub origin: MaterialOrigin,
+}
+
+impl GatheredSource {
+    /// Material del proyecto, apto para respaldar una afirmación.
+    pub fn source(id: impl Into<String>, content: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            content: content.into(),
+            origin: MaterialOrigin::Source,
+        }
+    }
+
+    /// Artefacto propio: entra al material, no a la procedencia.
+    pub fn own_output(id: impl Into<String>, content: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            content: content.into(),
+            origin: MaterialOrigin::OwnOutput,
+        }
+    }
+
+    pub fn is_own_output(&self) -> bool {
+        self.origin == MaterialOrigin::OwnOutput
+    }
 }
 
 /// Resultado de la ingesta. `omitted` y `budget_exhausted` existen para poder **declarar**
@@ -143,28 +181,37 @@ fn normalizar(texto: &str) -> String {
         .join(" ")
 }
 
-/// Las fuentes citadas que de verdad se leyeron, con su contenido normalizado.
+/// Las fuentes citadas que de verdad se leyeron, separadas por si pueden respaldar algo.
 ///
 /// El emparejamiento es tolerante en el identificador (`docs/SPEC-30.md` vale por `SPEC-30.md`)
 /// porque el modelo abrevia rutas, y ser estricto ahí castigaría una cita correcta por un
 /// prefijo. Es tolerancia sobre **qué** fuente, nunca sobre qué dice.
+///
+/// Devuelve dos listas y no una filtrada porque la segunda hace falta para **explicarse**: si
+/// lo único citado fue salida propia, el motivo del degradado tiene que decir eso y no «la
+/// fuente no está en el material leído», que sería falso — sí está.
 fn fuentes_leidas<'a>(
     citadas: &'a [String],
     material: &[GatheredSource],
-) -> Vec<(&'a str, String)> {
-    citadas
-        .iter()
-        .filter_map(|c| {
-            let cn = normalizar(c);
-            material
-                .iter()
-                .find(|g| {
-                    let gn = normalizar(&g.id);
-                    !cn.is_empty() && (gn.contains(&cn) || cn.contains(&gn))
-                })
-                .map(|g| (c.as_str(), normalizar(&g.content)))
-        })
-        .collect()
+) -> (Vec<(&'a str, String)>, Vec<&'a str>) {
+    let mut respaldan = Vec::new();
+    let mut propias = Vec::new();
+
+    for c in citadas {
+        let cn = normalizar(c);
+        let encontrada = material.iter().find(|g| {
+            let gn = normalizar(&g.id);
+            !cn.is_empty() && (gn.contains(&cn) || cn.contains(&gn))
+        });
+        match encontrada {
+            // FR-006d: se leyó, pero es nuestra. No cuenta como procedencia.
+            Some(g) if g.is_own_output() => propias.push(c.as_str()),
+            Some(g) => respaldan.push((c.as_str(), normalizar(&g.content))),
+            None => {}
+        }
+    }
+
+    (respaldan, propias)
 }
 
 /// Convierte la salida del modelo en segmentos de dominio, **comprobando la procedencia**.
@@ -203,14 +250,24 @@ fn verificar_grounded(
     quotes: Vec<String>,
     material: &[GatheredSource],
 ) -> Segment {
-    let leidas = fuentes_leidas(&sources, material);
+    let (leidas, propias) = fuentes_leidas(&sources, material);
     if leidas.is_empty() {
+        // Distinguir los dos casos importa: uno es citar lo que no se leyó, el otro es citarse
+        // a uno mismo. Confundirlos mandaría al usuario a buscar un archivo que sí está.
         return Segment::tentative(
             text,
-            format!(
-                "cita fuentes que no están en el material leído: {}",
-                sources.join(", ")
-            ),
+            if propias.is_empty() {
+                format!(
+                    "cita fuentes que no están en el material leído: {}",
+                    sources.join(", ")
+                )
+            } else {
+                format!(
+                    "solo se apoya en artefactos que escribió el propio sistema ({}): se leen, \
+                     pero no son fuente de procedencia",
+                    propias.join(", ")
+                )
+            },
         );
     }
 
@@ -254,14 +311,24 @@ fn verificar_contradiccion(
     c: RawContradiction,
     material: &[GatheredSource],
 ) -> Segment {
-    let leidas = fuentes_leidas(&c.sources, material);
+    let (leidas, propias) = fuentes_leidas(&c.sources, material);
     if leidas.len() < 2 || leidas.len() != c.sources.len() {
         return Segment::tentative(
             text,
-            format!(
-                "una contradicción necesita al menos dos fuentes leídas; se citaron: {}",
-                c.sources.join(", ")
-            ),
+            if propias.is_empty() {
+                format!(
+                    "una contradicción necesita al menos dos fuentes leídas; se citaron: {}",
+                    c.sources.join(", ")
+                )
+            } else {
+                // Contradecirse con uno mismo no es un conflicto entre fuentes: es el bucle
+                // que FR-006d viene a cerrar.
+                format!(
+                    "un lado del conflicto es salida del propio sistema ({}): no hay dos \
+                     fuentes que se contradigan",
+                    propias.join(", ")
+                )
+            },
         );
     }
 
@@ -500,10 +567,16 @@ impl AuthoringLoop {
                         if file.truncated {
                             outcome.omitted.push(format!("{path} (recortado)"));
                         }
-                        outcome.gathered.push(GatheredSource {
-                            id: path.clone(),
-                            content: file.content.clone(),
-                        });
+                        // FR-006d: una ruta canónica es un hueco de salida del sistema, así
+                        // que lo que hay ahí es nuestro de una sesión anterior. Se lee igual;
+                        // lo que no puede es respaldar una afirmación.
+                        outcome
+                            .gathered
+                            .push(if ArtifactKind::is_canonical_path(&path) {
+                                GatheredSource::own_output(path.clone(), file.content.clone())
+                            } else {
+                                GatheredSource::source(path.clone(), file.content.clone())
+                            });
                         session.record_reference(Reference::resolved(
                             ReferenceOrigin::LocalPath(path.clone()),
                             file.content.clone(),
@@ -547,10 +620,11 @@ impl AuthoringLoop {
 
                 match reference.content() {
                     Some(content) => {
-                        outcome.gathered.push(GatheredSource {
-                            id: url.clone(),
-                            content: content.to_string(),
-                        });
+                        // Una URL nunca es un artefacto propio: el sistema escribe a disco,
+                        // no publica. Se marca explícitamente en vez de asumirlo.
+                        outcome
+                            .gathered
+                            .push(GatheredSource::source(url.clone(), content.to_string()));
                         self.audit(AuditKind::ReferenceResolved, url.clone());
                         format!("contenido de {url}:\n{content}")
                     }
@@ -762,16 +836,85 @@ mod tests {
     fn material(pares: &[(&str, &str)]) -> Vec<GatheredSource> {
         pares
             .iter()
-            .map(|(id, content)| GatheredSource {
-                id: (*id).into(),
-                content: (*content).into(),
-            })
+            .map(|(id, content)| GatheredSource::source(*id, *content))
             .collect()
     }
 
     /// Material vacío: para los casos donde lo que se comprueba no es la cita.
     fn sin_material() -> Vec<GatheredSource> {
         Vec::new()
+    }
+
+    /// Artefactos que escribió el propio sistema: se leen, pero no fundamentan (FR-006d).
+    fn propio(pares: &[(&str, &str)]) -> Vec<GatheredSource> {
+        pares
+            .iter()
+            .map(|(id, content)| GatheredSource::own_output(*id, *content))
+            .collect()
+    }
+
+    // -----------------------------------------------------------------------
+    // T066/T067 — la salida propia se lee, pero no respalda (FR-006d)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn a_segment_backed_only_by_our_own_output_is_downgraded() {
+        let mut mat = material(&[("docs/SPEC-30.md", "El motor de workflows es Temporal.")]);
+        mat.extend(propio(&[(
+            "context/CONTEXT.md",
+            "La persistencia se resolvió con DynamoDB.",
+        )]));
+
+        let raw = r#"{"segments":[
+            {"text":"Persistencia en DynamoDB","grounded":["context/CONTEXT.md"],
+             "quotes":["La persistencia se resolvió con DynamoDB"]}
+        ]}"#;
+        let segments = parse_segments(raw, &mat).unwrap();
+
+        assert!(
+            segments[0].is_unattended_tentative(),
+            "la cita está ahí, pero el documento lo escribimos nosotros: no es evidencia"
+        );
+        let m = motivo(&segments[0]);
+        assert!(
+            m.contains("context/CONTEXT.md"),
+            "el motivo debe nombrar el artefacto propio, no hablar de fuentes ausentes: {m:?}"
+        );
+    }
+
+    #[test]
+    fn our_own_output_alongside_a_real_source_does_not_poison_the_segment() {
+        let mut mat = material(&[("docs/SPEC-30.md", "El motor de workflows es Temporal.")]);
+        mat.extend(propio(&[("context/CONTEXT.md", "El motor es Temporal.")]));
+
+        let raw = r#"{"segments":[
+            {"text":"Motor: Temporal","grounded":["context/CONTEXT.md","docs/SPEC-30.md"],
+             "quotes":["El motor de workflows es Temporal"]}
+        ]}"#;
+        assert!(
+            parse_segments(raw, &mat).unwrap()[0].is_grounded(),
+            "FR-006d degrada lo que SOLO se apoya en la salida propia, no lo que la menciona: \
+             la cita se sostiene en el SPEC"
+        );
+    }
+
+    #[test]
+    fn a_contradiction_cannot_use_our_own_output_as_one_of_its_sides() {
+        let mut mat = material(&[("docs/SPEC-30.md", "Persistencia: PostgreSQL 16.")]);
+        mat.extend(propio(&[(
+            "context/CONTEXT.md",
+            "La persistencia se resolvió con DynamoDB.",
+        )]));
+
+        let raw = r#"{"segments":[
+            {"text":"Persistencia","contradiction":{"sources":["docs/SPEC-30.md","context/CONTEXT.md"],
+             "quotes":["Persistencia: PostgreSQL 16","La persistencia se resolvió con DynamoDB"],
+             "note":"chocan"}}
+        ]}"#;
+        assert!(
+            !parse_segments(raw, &mat).unwrap()[0].is_contradiction(),
+            "contradecirse con uno mismo no es un conflicto entre fuentes (FR-006b + FR-006d)"
+        );
     }
 
     // -----------------------------------------------------------------------

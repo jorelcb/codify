@@ -27,14 +27,8 @@ const PRD: &str = "PRD-00: la persistencia del Run es DynamoDB.";
 
 fn material() -> Vec<GatheredSource> {
     vec![
-        GatheredSource {
-            id: "Makefile".into(),
-            content: MAKEFILE.into(),
-        },
-        GatheredSource {
-            id: "PRD-00.md".into(),
-            content: PRD.into(),
-        },
+        GatheredSource::source("Makefile", MAKEFILE),
+        GatheredSource::source("PRD-00.md", PRD),
     ]
 }
 
@@ -171,5 +165,146 @@ async fn end_to_end_the_loop_verifies_against_what_it_actually_read() {
     assert!(
         todos.iter().all(|s| !s.is_grounded()),
         "ningún segmento puede quedar fundamentado: la cita no está en el Makefile que se leyó"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// FR-006d — la salida propia se lee, pero no fundamenta (issue #34)
+// ---------------------------------------------------------------------------
+
+/// El `CONTEXT.md` que el sistema escribió en una sesión anterior. Su contenido es una
+/// afirmación **nuestra**, no del proyecto.
+const CONTEXTO_PREVIO: &str = "# Contexto\nLa persistencia del Run es DynamoDB.";
+
+fn material_con_salida_propia() -> Vec<GatheredSource> {
+    let mut m = vec![GatheredSource::source(
+        "docs/SPEC-30.md",
+        "Persistencia: PostgreSQL 16.",
+    )];
+    m.push(GatheredSource::own_output(
+        "context/CONTEXT.md",
+        CONTEXTO_PREVIO,
+    ));
+    m
+}
+
+/// El caso exacto de la medición del 2026-08-23: al encadenar corridas sin regenerar el
+/// fixture, una sesión resolvió la contradicción sobre la persistencia contra su **propia
+/// salida previa** y la presentó como procedencia verificada. En verde.
+///
+/// Nótese que la comprobación de la Fase 7 no puede atrapar esto: la cita **sí** aparece en el
+/// material leído, palabra por palabra. Lo que falla no es la cita, es qué cuenta como fuente.
+#[test]
+fn resolving_a_contradiction_against_our_own_previous_output_is_not_provenance() {
+    let raw = r#"{"segments":[
+        {"text":"Persistencia","contradiction":{"sources":["docs/SPEC-30.md","context/CONTEXT.md"],
+         "quotes":["Persistencia: PostgreSQL 16","La persistencia del Run es DynamoDB"],
+         "note":"el SPEC dice PostgreSQL; el contexto dice DynamoDB"}}
+    ]}"#;
+
+    let segments = parse_segments(raw, &material_con_salida_propia()).unwrap();
+
+    assert!(
+        !segments[0].is_contradiction(),
+        "el bucle se reproduce: lo que el sistema afirmó ayer está respaldando lo de hoy"
+    );
+    assert!(segments[0].is_unattended_tentative());
+    let motivo = motivo(&segments[0].groundedness);
+    assert!(
+        motivo.contains("context/CONTEXT.md"),
+        "el motivo debe nombrar el artefacto propio: {motivo:?}"
+    );
+}
+
+/// Y el reverso, para que la regla no degenere en «ignora todo lo que haya en context/»: una
+/// afirmación que se sostiene en una fuente real sigue en pie aunque el artefacto propio la
+/// repita.
+#[test]
+fn a_real_source_still_grounds_even_if_our_output_says_the_same() {
+    let raw = r#"{"segments":[
+        {"text":"Persistencia en PostgreSQL 16","grounded":["docs/SPEC-30.md","context/CONTEXT.md"],
+         "quotes":["Persistencia: PostgreSQL 16"]}
+    ]}"#;
+    assert!(
+        parse_segments(raw, &material_con_salida_propia()).unwrap()[0].is_grounded(),
+        "la cita está en el SPEC: que el contexto previo coincida no la invalida"
+    );
+}
+
+/// De punta a punta: el loop **lee de verdad** un `context/CONTEXT.md` que había en el
+/// repositorio y aun así no puede fundamentarse en él.
+///
+/// Este test existe por un agujero que destapó la comprobación por inyección: al desactivar la
+/// clasificación en la ingesta, los unitarios seguían todos en verde, porque construyen el
+/// material a mano y le ponen el origen ellos. Nadie miraba el cableado — y sin el cableado la
+/// regla no protege nada.
+#[tokio::test]
+async fn end_to_end_a_previous_artifact_read_from_the_repo_does_not_ground() {
+    let generado = r#"{"segments":[
+        {"text":"La persistencia del Run es DynamoDB","grounded":["context/CONTEXT.md"],
+         "quotes":["La persistencia del Run es DynamoDB"]}
+    ]}"#;
+
+    let mut script = vec![
+        CompletionOutput::ToolCalls(vec![ToolCall {
+            id: "c1".into(),
+            name: "read_file".into(),
+            arguments: r#"{"path":"context/CONTEXT.md"}"#.into(),
+        }]),
+        CompletionOutput::ToolCalls(vec![ToolCall {
+            id: "c2".into(),
+            name: "finalize".into(),
+            arguments: r#"{"summary":"leído"}"#.into(),
+        }]),
+    ];
+    for _ in 0..4 {
+        script.push(CompletionOutput::Text(generado.to_string()));
+    }
+
+    let deps = CoreBuilder::new(Mode::Local)
+        .provider(Arc::new(FakeModelProvider::local("ollama", script)))
+        // El repositorio trae un artefacto de una corrida anterior, como en el uso real.
+        .navigator(Arc::new(FakeRepoNavigator::with_files(&[(
+            "context/CONTEXT.md",
+            CONTEXTO_PREVIO,
+        )])))
+        .resolver(Arc::new(FakeReferenceResolver::new()))
+        .diff(Arc::new(FakeDiffEngine))
+        .risk(Arc::new(ConservativeRisk))
+        .prompter(Arc::new(FakePrompter::approving()))
+        .audit(Arc::new(RecordingAudit::default()))
+        .locale(Arc::new(FixedLocale("es")))
+        .clock(Arc::new(FixedClock))
+        .writer(Arc::new(FakeArtifactWriter::new()))
+        .discovery(Arc::new(FakeProviderDiscovery(
+            codify_core::application::ports::ProviderStatus::reachable(
+                "http://localhost:11434",
+                vec!["fake-model".into()],
+            ),
+        )))
+        .cancellations(Arc::new(FakeCancellationFactory::new()))
+        .build()
+        .expect("el grafo local debe armarse");
+
+    let service = ContextAuthoring::new(deps);
+    let id = service
+        .start_session(StartSession {
+            repo_root: ".".into(),
+            mode: Mode::Local,
+            locale: Some("es".into()),
+        })
+        .await
+        .expect("la sesión debe arrancar");
+    service.join_session(&id).await.expect("debe terminar");
+
+    let vista = service.session_state(&id).await.expect("debe haber vista");
+    let todos: Vec<_> = vista.artifacts.iter().flat_map(|a| &a.segments).collect();
+    assert!(
+        !todos.is_empty(),
+        "el pase debe producir segmentos; si no, el test no comprueba nada"
+    );
+    assert!(
+        todos.iter().all(|s| !s.is_grounded()),
+        "el artefacto se leyó, pero es nuestro: no puede fundamentar (FR-006d)"
     );
 }
