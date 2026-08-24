@@ -245,7 +245,7 @@ como verificado.
 
 ### Cierre
 
-- [~] T065 Correr el arnés `live_backend` contra un modelo real y comprobar que F-1 **no se reproduce** — `cargo test -p codify-core --test live_backend -- --ignored`. Medir sobre **≥3 corridas** (SC-001 revisado). **El arnés ya mide lo que la fase exige**: comprueba cita a cita contra el material del fixture y exige que **algún** segmento sobreviva fundamentado —sin eso, una tubería rota que lo degradara todo pasaría por victoria—. **Queda la corrida**: necesita `CODIFY_LOCAL_ENDPOINT` apuntando a un backend vivo, y ninguna de las dos estaciones lo tiene levantado ahora mismo
+- [X] T065 Correr el arnés `live_backend` contra un modelo real y comprobar que F-1 **no se reproduce** — **hecho el 2026-08-23** con `Qwen2.5-32B-Instruct-Q4_K_M`, tres corridas completas regenerando el fixture entre cada una: **cero citas sin respaldo** en las tres, y entre 11 y 24 segmentos fundamentados por corrida, que es lo que descarta que la defensa funcione degradándolo todo. Detalle y los tres defectos que salieron por el camino, en `quickstart.md`
 
 **Checkpoint**: `Grounded` es una afirmación comprobada, no una declarada. El principio rector
 del proyecto deja de depender de la buena fe del modelo.
