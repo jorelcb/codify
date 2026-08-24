@@ -24,6 +24,11 @@
 - Q: Si la comprobación de la cita falla, ¿qué pasa con ese fragmento? → A: **Se degrada a tentativo** con el motivo, no se descarta. Misma vía que lo que llega sin procedencia; no se añade un cuarto estado.
 - Q: SC-001 no decía sobre cuántas corridas se mide, y tres corridas dieron tres resultados distintos. → A: Se mide sobre **al menos 3 corridas** y el criterio se cumple si **la mayoría** alcanza el ≥90 %.
 
+### Session 2026-08-24
+
+- Q: ¿Un artefacto de contexto generado por el propio sistema cuenta como fuente válida de procedencia? → A: **No.** Se sigue leyendo —US3 lo necesita para proponer la actualización— pero **nunca respalda un `grounded`**. Lo que solo se apoye en él baja a tentativo por la vía de FR-006c. La salida propia deja de ser evidencia sin dejar de ser contexto.
+- Q: ¿Cómo reconoce el sistema que un archivo es artefacto propio y no fuente? → A: **Por ruta canónica** — las que FR-005 define. Son los huecos de salida de codify: lo que viva ahí es salida propia, lo haya escrito quien lo haya escrito.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Contexto grounded desde el repo y sus referencias (Priority: P1)
@@ -80,6 +85,7 @@ El usuario re-ejecuta el authoring sobre un repo que **ya tiene** archivos de co
 - **Fuentes contradictorias** entre sí: el sistema señala la contradicción al usuario en vez de elegir en silencio.
 - **Sin proveedor frontier disponible (offline):** el authoring pesado debe degradar de forma transparente (avisar y ofrecer continuar solo con el tier local, con calidad reducida declarada) en lugar de fallar opacamente.
 - **Repo muy grande / monorepo:** el sistema debe acotar qué lee y declarar qué dejó fuera (sin truncamiento silencioso).
+- **Repo con artefactos de una corrida previa:** el sistema los lee para proponer la actualización, pero **no los usa como respaldo**: lo que solo se apoye en ellos queda tentativo (FR-006d). Que la afirmación de ayer verifique la de hoy sería fundamentarse en sí mismo.
 - **El usuario rechaza todos los diffs:** el estado del repo no cambia y no se pierde trabajo.
 
 ## Requirements *(mandatory)*
@@ -98,6 +104,12 @@ El usuario re-ejecuta el authoring sobre un repo que **ya tiene** archivos de co
 - **FR-006a**: **Verificar es una comprobación del sistema, no una declaración del modelo.** Para que una afirmación sea `grounded`, el modelo MUST acompañarla de un **fragmento textual** de la fuente que la respalda —el campo `quotes` del segmento—, y el núcleo MUST comprobar que ese fragmento **aparece en el material leído**. La procedencia que el modelo declara sin cita comprobable NO cuenta como verificada.
 - **FR-006b**: Lo mismo aplica a las **contradicciones** (FR-008): señalar que dos fuentes chocan exige una cita comprobable **de cada una**. Sin ellas, la contradicción no se afirma.
 - **FR-006c**: Cuando la comprobación falla, el fragmento **se degrada a tentativo declarando el motivo** — no se descarta. Es la misma vía que ya sigue el contenido sin procedencia: la **ausencia** y la **falsedad** de procedencia acaban en el mismo estado, sin añadir un cuarto que compita con SC-002. Se conserva el contenido porque que una cita no se compruebe **no prueba que la afirmación sea falsa**, solo que no está respaldada; y un hueco silencioso oculta que el agente intentó afirmar algo.
+- **FR-006d**: **Un artefacto de contexto generado por el propio sistema NO es fuente de procedencia.** El sistema MUST seguir leyéndolo —US3 depende de ello para proponer una actualización en vez de sobrescribir— pero MUST NOT admitirlo como respaldo de un segmento `grounded`: una afirmación que solo se sostenga sobre él se degrada a tentativo por FR-006c. El reconocimiento es **por ruta canónica** (las de FR-005), sin marcadores ni registro de sesión.
+
+  La razón es la misma que sostiene FR-006a desde el otro lado. FR-006a impide **atribuir a una fuente algo que no dice**; esto impide **tratar como fuente algo que no lo es**. Un artefacto que escribió el sistema no es evidencia independiente: es su propia afirmación de una sesión anterior. Sin esta regla la verificación de citas no lo detecta —la cita *sí* aparece en el material leído— y se abre un bucle donde lo dicho ayer respalda lo de hoy y cada pase lo refuerza, sin que ninguna fuente del proyecto lo sostenga.
+
+  Coste aceptado: un `AGENTS.md` escrito **a mano** en la ruta canónica tampoco fundamenta. Se prefiere a inferir quién editó qué, que exigiría huellas o registro y fallaría en silencio cuando no se pueda saber.
+
 - **FR-007**: El sistema MUST marcar de forma distinguible el contenido **inferido o tentativo** frente al contenido **grounded** (verificado contra fuentes), de modo que el usuario y cualquier agente lector sepan qué es firme y qué no.
 - **FR-008**: Cuando las fuentes se contradicen, el sistema MUST señalar la contradicción en vez de resolverla en silencio.
 - **FR-019**: El sistema MUST **auto-detectar el idioma** de salida a partir del contenido existente del repo (README/docs) y generar los artefactos de contexto en ese idioma, permitiendo un **override explícito** del usuario.
@@ -123,7 +135,7 @@ El usuario re-ejecuta el authoring sobre un repo que **ya tiene** archivos de co
 
 - **Repositorio objetivo**: el proyecto sobre el que se autora el contexto; puede estar vacío o existente.
 - **Referencia**: un documento aludido desde el material leído — ruta local in-repo o enlace externo; tiene un estado (resuelta / inaccesible / fuera-de-alcance).
-- **Artefacto de contexto**: cada archivo generado (AGENTS/CONTEXT/DEVELOPMENT_GUIDE/INTERACTIONS_LOG/IDIOMS); contiene contenido grounded y/o tentativo.
+- **Artefacto de contexto**: cada archivo generado (AGENTS/CONTEXT/DEVELOPMENT_GUIDE/INTERACTIONS_LOG/IDIOMS); contiene contenido grounded y/o tentativo. Vive en una **ruta canónica**, y eso lo distingue de una fuente: se lee, pero no fundamenta (FR-006d).
 - **Marcador de incertidumbre**: señal que distingue contenido inferido/por-definir del grounded.
 - **Propuesta de cambio (diff)**: unidad de cambio presentada al usuario para aprobar/editar/rechazar.
 - **Decisión de aprobación**: el resultado de la revisión del usuario sobre un diff.
