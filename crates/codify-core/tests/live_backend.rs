@@ -139,11 +139,14 @@ fn afirmaciones_inventadas(contexto: &str) -> Vec<String> {
         .collect()
 }
 
-#[tokio::test]
-#[ignore = "necesita un backend de modelo local corriendo"]
-async fn the_agent_follows_the_reference_instead_of_inventing_an_architecture() {
-    exigir_fixture_limpio();
-
+/// Un pase completo sobre el fixture, con el grafo real cableado.
+///
+/// Extraído para que T073 pueda encadenar dos sin duplicar el cableado: lo que ese test
+/// comprueba es precisamente qué ocurre en el **segundo**.
+async fn correr_pase() -> (
+    codify_core::application::service::SessionSnapshot,
+    Arc<RecordingAudit>,
+) {
     let repo = fixture();
     let model = std::env::var("CODIFY_MODEL").unwrap_or_else(|_| "default".into());
 
@@ -188,6 +191,15 @@ async fn the_agent_follows_the_reference_instead_of_inventing_an_architecture() 
     svc.join_session(&id).await.expect("la sesión termina");
 
     let snap = svc.session_state(&id).await.expect("hay snapshot");
+    (snap, audit)
+}
+
+#[tokio::test]
+#[ignore = "necesita un backend de modelo local corriendo"]
+async fn the_agent_follows_the_reference_instead_of_inventing_an_architecture() {
+    exigir_fixture_limpio();
+
+    let (snap, audit) = correr_pase().await;
 
     // Diagnóstico antes de asertar: si el modelo no produjo lo esperado, hay que poder ver
     // QUÉ produjo, no solo que faltaba.
@@ -303,5 +315,89 @@ async fn the_agent_follows_the_reference_instead_of_inventing_an_architecture() 
         fundamentados > 0,
         "ningún segmento quedó fundamentado sobre un fixture con fuentes legibles: \
          revisa que el material leído llegue a la verificación, no que el modelo falle.\n{contexto}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// T073 — FR-006d contra un modelo real: dos pases encadenados
+// ---------------------------------------------------------------------------
+
+/// Dos pases sobre el **mismo** fixture, sin regenerarlo entre medias: el segundo lee los
+/// artefactos que dejó el primero y no puede fundamentarse en ellos.
+///
+/// Invierte a propósito `exigir_fixture_limpio`. Aquel guardia protege la **medición** —una
+/// corrida sucia daba números que no significaban lo que parecían— y por eso aborta. Este test
+/// necesita justo ese fixture sucio, porque lo que prueba es que el **producto** resiste lo que
+/// el guardia se limitaba a evitar. Por eso el guardia se comprueba al principio, sobre el
+/// fixture todavía limpio, y no se vuelve a llamar.
+#[tokio::test]
+#[ignore = "necesita un backend vivo; CI nunca lo corre"]
+async fn a_second_pass_cannot_ground_itself_on_what_the_first_one_wrote() {
+    exigir_fixture_limpio();
+
+    // Primer pase: deja `AGENTS.md` y `context/*` dentro del fixture.
+    let (primera, _) = correr_pase().await;
+    assert!(
+        !primera.artifacts.is_empty(),
+        "el primer pase debe escribir artefactos, o el segundo no tendría qué releer"
+    );
+    assert!(
+        std::path::Path::new(&fixture()).join("context").exists(),
+        "sin `context/` en disco el segundo pase no reproduce el escenario y el test no \
+         probaría nada"
+    );
+
+    // Segundo pase sobre el fixture ya poblado: el agente leerá lo que escribimos nosotros.
+    let (segunda, audit) = correr_pase().await;
+
+    for e in audit.events.lock().unwrap().iter() {
+        println!("--- 2º pase, audit {:?}: {}", e.kind, e.payload);
+    }
+
+    let mut apoyadas_en_lo_nuestro = Vec::new();
+    let (mut fundamentados, mut tentativos) = (0usize, 0usize);
+
+    for seg in segunda.artifacts.iter().flat_map(|a| &a.segments) {
+        let fuentes = match &seg.groundedness {
+            Groundedness::Grounded { sources, .. } => {
+                fundamentados += 1;
+                sources.clone()
+            }
+            Groundedness::Contradiction { sources, .. } => sources.clone(),
+            Groundedness::Tentative { .. } => {
+                tentativos += 1;
+                continue;
+            }
+        };
+        for fuente in fuentes {
+            if ArtifactKind::is_canonical_path(&fuente) {
+                apoyadas_en_lo_nuestro.push(format!("«{}» citando {fuente}", seg.text));
+            }
+        }
+    }
+
+    println!("--- 2º pase: {fundamentados} fundamentados, {tentativos} tentativos");
+
+    // Que el agente **lea** los artefactos previos depende de lo que decida explorar, y no se
+    // puede forzar sin dejar de medir un pase real. Cuando no los lee, este test comprueba el
+    // resultado sin haber ejercitado el mecanismo — y eso hay que decirlo, porque un verde que
+    // no probó nada se lee igual que uno que sí.
+    let leyo_lo_nuestro = audit
+        .events
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|e| ArtifactKind::is_canonical_path(&e.payload));
+    if !leyo_lo_nuestro {
+        println!(
+            "--- AVISO: el 2º pase no llegó a leer ningún artefacto propio. El escenario no se \
+             ejercitó en vivo; quien lo cubre de forma determinista es us1_provenance.rs"
+        );
+    }
+
+    assert!(
+        apoyadas_en_lo_nuestro.is_empty(),
+        "el segundo pase se fundamentó en la salida del primero (FR-006d):\n\
+         {apoyadas_en_lo_nuestro:#?}"
     );
 }

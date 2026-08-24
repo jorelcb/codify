@@ -23,6 +23,8 @@ Documento aludido desde el material leído.
 Cada archivo de contexto generado.
 - **Campos**: `kind` (`Agents` | `Context` | `DevelopmentGuide` | `InteractionsLog` | `Idioms`), `segments: [Segment]`, `locale`.
 - **Segment**: `{ text, groundedness: Grounded { sources: [ReferenceRef], quotes: [String] } | Tentative { reason } | Contradiction { sources, quotes, note } }`.
+- **GatheredSource**: `{ id, content, origin: Source | OwnOutput }`. El origen distingue un documento del proyecto de un **artefacto que escribió el propio sistema**; se reconoce por ruta canónica (`ArtifactKind::is_canonical_path`).
+- **`origin`** (FR-006d): la salida propia entra al material —US3 la necesita para proponer una actualización— pero **no respalda** un segmento. Lo que solo se apoye en ella se degrada a `Tentative`. Leer y fundamentar dejan de ser lo mismo.
 - **`quotes`** (FR-006a): fragmento **textual** de cada fuente que respalda la afirmación. El núcleo comprueba que aparece en el material leído; si no, el segmento **se degrada a `Tentative`** con el motivo (FR-006c). Sin cita comprobable no hay `Grounded` — la procedencia declarada por el modelo no basta.
 - **Reglas**: todo `Tentative` es distinguible del `Grounded` en el render (SC-002); `Idioms` solo cuando hay lenguaje aplicable detectable.
 
