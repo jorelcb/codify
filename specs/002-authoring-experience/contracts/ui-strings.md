@@ -48,6 +48,17 @@ Se expone al frontend con el comando `ui_strings(locale)`.
 
 > Las etiquetas de `artifact.*` para grounded / tentativo / contradicción son las que garantizan que la distinción **no dependa del color** (FR-026): son la señal textual de las tres redundantes.
 
+### Fallo de sesión (FR-028)
+
+`session.failure.<codigo>` y `session.failure.<codigo>.next`, **una pareja por cada variante de
+`SessionFailure`**: `provider_timeout`, `provider_unavailable`, `provider_unparseable`,
+`repo_unreadable`, `egress_blocked`, `unauthorized`, `internal`.
+
+Las dos claves son obligatorias. FR-028 pide explicar *qué ocurrió* **y** *qué puede hacer el
+usuario*; sin la segunda, un motivo preciso deja a la persona igual de atascada que un `Failed`
+mudo. Un test recorre `SessionFailure::all()` y falla si falta cualquiera de las dos en
+cualquiera de los dos idiomas.
+
 ## Verificación
 
 - **Test de paridad**: `strings_for(Es).entries.keys() == strings_for(En).entries.keys()`. Falla el build si alguien añade una cadena en un solo idioma.

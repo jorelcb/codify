@@ -243,30 +243,30 @@ y la interfaz muestra una frase del catálogo más un siguiente paso, nunca el e
 
 ### Tests (test-first) ⚠️
 
-- [ ] T057 [P] Cada variante de `SessionFailure` tiene texto **y siguiente paso** en los dos idiomas — en `crates/codify-app/tests/ui_contract.rs`, siguiendo el patrón de `todo_motivo_del_proveedor_tiene_texto_en_ambos_idiomas`
-- [ ] T058 [P] Una sesión que muere por fallo del proveedor expone el **código**, no el mensaje crudo, en `crates/codify-core/tests/us1_session_failure.rs`
-- [ ] T059 [P] El caso medido: un *timeout* del proveedor produce un motivo distinguible de «el modelo respondió algo no parseable» — sin esa distinción el hallazgo de #24 se repite — en `crates/codify-core/tests/us1_session_failure.rs`
+- [X] T057 [P] Cada variante de `SessionFailure` tiene texto **y siguiente paso** en los dos idiomas — en `crates/codify-app/tests/ui_contract.rs`, siguiendo el patrón de `todo_motivo_del_proveedor_tiene_texto_en_ambos_idiomas`
+- [X] T058 [P] Una sesión que muere por fallo del proveedor expone el **código**, no el mensaje crudo, en `crates/codify-core/tests/us1_session_failure.rs`
+- [X] T059 [P] El caso medido: un *timeout* del proveedor produce un motivo distinguible de «el modelo respondió algo no parseable» — sin esa distinción el hallazgo de #24 se repite — en `crates/codify-core/tests/us1_session_failure.rs`
 
 ### Dominio (núcleo)
 
-- [ ] T060 `SessionFailure` con `code()` estable, derivable desde `CoreError`, en `crates/codify-core/src/domain/session.rs`. Sigue el precedente de `ProviderIssue`/`ReferenceState`/`RiskLevel`: el núcleo devuelve un código, la piel elige la frase — es lo que permite que el motivo no nazca redactado en un idioma fijo
-- [ ] T061 `AuthoringSession` transporta el motivo al pasar a `Failed`, y `advance_to` deja de aceptar ese estado sin él — en `crates/codify-core/src/domain/session.rs` (depende de T060). **Que el tipo lo exija** es lo que impide que vuelva a perderse
+- [X] T060 `SessionFailure` con `code()` estable, derivable desde `CoreError`, en `crates/codify-core/src/domain/session.rs`. Sigue el precedente de `ProviderIssue`/`ReferenceState`/`RiskLevel`: el núcleo devuelve un código, la piel elige la frase — es lo que permite que el motivo no nazca redactado en un idioma fijo
+- [X] T061 `AuthoringSession` transporta el motivo al pasar a `Failed`, y `advance_to` deja de aceptar ese estado sin él — en `crates/codify-core/src/domain/session.rs` (depende de T060). **Que el tipo lo exija** es lo que impide que vuelva a perderse
 
 ### Núcleo → vista
 
-- [ ] T062 `service.rs` deja de descartar el error con `Err(_)`: lo mapea a `SessionFailure`, lo audita (`AuditKind::SessionFailed`) y lo publica en `SessionSnapshot.failure` — en `crates/codify-core/src/application/service.rs` (depende de T061)
+- [X] T062 `service.rs` deja de descartar el error con `Err(_)`: lo mapea a `SessionFailure`, lo audita (`AuditKind::SessionFailed`) y lo publica en `SessionSnapshot.failure` — en `crates/codify-core/src/application/service.rs` (depende de T061)
 
 ### Interfaz
 
-- [ ] T063 El DTO lleva el código y la interfaz lo resuelve contra el catálogo: frase + siguiente paso, nunca el crudo — en `crates/codify-app/src/commands.rs`, `crates/codify-app/src/strings.rs` y `crates/codify-app/ui/main.js`. **Ojo**: `error.session_failed` es hoy la frase genérica; queda como respaldo solo para fallos sin código, o se retira si no queda ninguno
+- [X] T063 El DTO lleva el código y la interfaz lo resuelve contra el catálogo: frase + siguiente paso, nunca el crudo — en `crates/codify-app/src/commands.rs`, `crates/codify-app/src/strings.rs` y `crates/codify-app/ui/main.js`. **Ojo**: `error.session_failed` es hoy la frase genérica; queda como respaldo solo para fallos sin código, o se retira si no queda ninguno
 
 ### Contratos
 
-- [ ] T064 [P] `contracts/skin-commands.md` documenta el campo `failure` del snapshot, y `contracts/ui-strings.md` recoge las claves `session.failure.*` en su superficie correspondiente — en `specs/002-authoring-experience/contracts/`
+- [X] T064 [P] `contracts/skin-commands.md` documenta el campo `failure` del snapshot, y `contracts/ui-strings.md` recoge las claves `session.failure.*` en su superficie correspondiente — en `specs/002-authoring-experience/contracts/`
 
 ### Cierre
 
-- [ ] T065 Provocar un fallo real contra un backend inalcanzable y comprobar que la interfaz explica y ofrece salida — escenario **S9** en `specs/002-authoring-experience/quickstart.md`
+- [~] T065 Provocar un fallo real contra un backend inalcanzable y comprobar que la interfaz explica y ofrece salida — **escenario S9 escrito** en `quickstart.md`, con los dos casos que importan: backend caído y backend que acepta sin contestar. **Queda ejecutarlo con una persona delante**: lo que S9 mide es si el texto se entiende, y eso no lo decide un test. Misma clase que T049
 
 **Checkpoint**: un fallo deja de ser un misterio. El coste que #24 se cobró en la Fase 7 de `001`
 —cinco corridas para encontrar un timeout— no se vuelve a pagar.
