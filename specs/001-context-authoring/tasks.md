@@ -194,13 +194,23 @@ Verificado contra el código, no contra la documentación. **Revisar antes de re
 
 **Purpose**: Capacidades transversales y hardening (no bloquean el MVP).
 
-- [ ] T045 [P] `ModelProvider` remoto + OAuth device-flow + keyring (`connect_provider`/`list_connections`) en `crates/codify-core/src/infrastructure/providers/remote.rs` y `crates/codify-core/src/infrastructure/secrets/keyring.rs`
-- [ ] T046 [P] Routing de tiers (cheap/heavy) + degradación transparente (FR-018) en `crates/codify-core/src/application/routing.rs`
+> **Una casilla vacía no dice lo mismo en todos los casos.** Aquí conviven tres cosas distintas,
+> y confundirlas es lo que hace que un spec envejezca mal:
+>
+> - **defecto** — falta trabajo, nada lo bloquea. Se puede tomar hoy.
+> - **decisión sin tomar** — el trabajo está claro, lo que falta es saber qué se quiere. Pedirlo
+>   sin decidir produciría la respuesta equivocada bien implementada.
+> - **fuera de nuestro alcance** — depende de algo que el equipo no tiene, y ninguna cantidad de
+>   trabajo lo desbloquea.
+
+- [ ] T045 [P] `ModelProvider` remoto + OAuth device-flow + keyring (`connect_provider`/`list_connections`) en `crates/codify-core/src/infrastructure/providers/remote.rs` y `crates/codify-core/src/infrastructure/secrets/keyring.rs` — **decisión sin tomar**: qué proveedores, y si el tier frontier entra en v1. Además **toca la garantía de cero-egress**, que hoy es estructural (el registro rechaza proveedores no locales y el local rechaza endpoints no-loopback): un remoto hace real el `Mode::Hybrid` y `egress_guard` tiene que seguir demostrando que Local no puede salir. Merece su propio ciclo `speckit`, no una tarea de pulido
+- [ ] T046 [P] Degradación **declarada** entre tiers (FR-018) — **defecto, no feature**. El enrutado ya existe y ya degrada (`ProviderRegistry::pick` en `crates/codify-core/src/application/deps.rs` cae al primer proveedor disponible), pero **nadie avisa**: no hay `AuditKind` ni campo en el snapshot ni clave de catálogo. FR-018 pide las dos mitades. Se prueba con dos proveedores falsos de tiers distintos y **no depende de T045**. El comentario del código llegó a afirmar que sí se declaraba; corregido
 - [X] T047 [P] Comando `set_locale` (override de idioma, FR-019) en `crates/codify-app/src/commands.rs` — **ya existe** (entregado con T029)
-- [ ] T048 [P] Persistencia de `AuditSink` en `crates/codify-core/src/infrastructure/audit/sink.rs` — el *evento `egress.blocked` en UI* **ya lo entregó `002`-T051**; queda solo la persistencia
+- [ ] T048 [P] Persistencia de `AuditSink` en `crates/codify-core/src/infrastructure/audit/sink.rs` — el *evento `egress.blocked` en UI* **ya lo entregó `002`-T051**. **Decisión sin tomar**: para qué. Si es para que la sesión en curso muestre lo ocurrido, ya está resuelto y esta tarea sobra. Si es para demostrar meses después que un cambio se aplicó o se rechazó, eso decide formato y retención — y probablemente deja de ser pulido para ser parte de la custodia del ciclo de vida
 - [X] T049 Modo entrevista para repo vacío (edge case) — **hecho**: el núcleo lo devuelve (`interview_mode`) y la interfaz de `002` lo presenta
 - [~] T050 [P] Ejecutar validación quickstart.md (S1–S5) end-to-end — **pasada ejecutada el 2026-08-23** con `llama.cpp server` + `qwen2.5-7b-q4km`, tres corridas (arnés `live_backend.rs`). S1, S2, S3 y S5 ejercitados; **cinco hallazgos** documentados en `quickstart.md`. **F-1 (#23) está cerrado** por la Fase 7, verificado en una segunda pasada con `Qwen2.5-32B` y tres corridas limpias; siguen abiertos #24 y #25, más **#34**, que salió de esa segunda pasada. **Queda S4 sin ejercitar**: el agente nunca intenta la URL privada, y decidir si debería es la pregunta abierta de #25
-- [ ] T051 [P] Empaquetado Tauri (macOS/Linux/Windows) + docs en `docs/`
+- [ ] T051 [P] Empaquetado Tauri firmado (macOS/Linux/Windows) + docs en `docs/` — **fuera de nuestro alcance y de las últimas del proyecto**. `tauri.conf.json` ya trae `bundle.targets: "all"` e iconos; falta una matriz de CI en los tres sistemas, y sobre todo **certificados que no tenemos**: Apple Developer para firmar y notarizar, y firma de Windows. Sin ellos el binario se distribuye igual, pero Gatekeeper y SmartScreen avisan al usuario. Es una compra, no trabajo de código
+- [ ] T053 [P] Distribución por Homebrew — **va antes que T051**. Se reutiliza **al 100% el nombre `codify`**, reapuntando la fórmula existente de `jorelcb/homebrew-tap`, que hoy sirve el binario Go de `codify-og`. Es la vía real de distribución mientras no haya certificados, y un `.app` instalado por cask no arrastra la misma fricción que un `.dmg` descargado del navegador — conviene confirmarlo al llegar
 - [X] T052 Verificar en CI las fitness functions verdes — ejecutado una sola vez junto a `002`-T050: verificado sobre el commit `68ed5df` (run 31377803807, `completed/success`); el paso «Tests (incluye fitness functions de arquitectura y cero-egress)» pasó, y `cargo test --workspace` recorre `arch_deps.rs` y `egress_guard.rs` por vivir en la raíz de `tests/`. **Limitación declarada**: los logs del run no se pudieron leer desde esta máquina (**token de `gh` inválido**, no falta de permisos), así que la evidencia es la conclusión del paso, no la lectura línea a línea
 
 ---

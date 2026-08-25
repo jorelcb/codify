@@ -51,8 +51,11 @@ impl ProviderRegistry {
         &self.providers
     }
 
-    /// Enruta por tier. Sin proveedor del tier pedido, degrada al primero disponible; la
-    /// degradación se declara al usuario en la capa de aplicación (FR-018).
+    /// Enruta por tier. Sin proveedor del tier pedido, degrada al primero disponible.
+    ///
+    /// **La degradación todavía NO se declara** (FR-018 pide avisar, no solo no romperse): no
+    /// hay evento de auditoría ni campo en el snapshot. Es la mitad que falta de T046, y se
+    /// anota aquí porque este comentario llegó a afirmar lo contrario.
     pub fn pick(&self, tier: Tier) -> Arc<dyn ModelProvider> {
         self.providers
             .iter()
