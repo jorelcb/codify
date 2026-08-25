@@ -170,6 +170,22 @@ const CATALOG: &[(&str, &str, &str)] = &[
     ("error.no_repo", "Elige un repositorio antes de iniciar.", "Choose a repository before starting."),
     ("error.session_failed", "La sesión no pudo completarse", "The session could not be completed"),
     ("error.unknown", "Ocurrió algo inesperado", "Something unexpected happened"),
+    // `002`-FR-028: cada motivo lleva **qué pasó** y **qué hacer**. Sin lo segundo, saber por
+    // qué falló deja al usuario igual de atascado.
+    ("session.failure.provider_timeout", "El modelo tardó más de lo permitido.", "The model took longer than allowed."),
+    ("session.failure.provider_timeout.next", "Prueba con un modelo más pequeño, o vuelve a intentarlo: los modelos grandes tardan minutos por artefacto.", "Try a smaller model, or run it again: large models take minutes per artifact."),
+    ("session.failure.provider_unavailable", "No se pudo contactar con el backend de modelos.", "The model backend could not be reached."),
+    ("session.failure.provider_unavailable.next", "Comprueba que esté levantado y escuchando en el endpoint configurado.", "Check that it is running and listening on the configured endpoint."),
+    ("session.failure.provider_unparseable", "El modelo respondió algo que no se pudo interpretar.", "The model returned something that could not be interpreted."),
+    ("session.failure.provider_unparseable.next", "Suele pasar con modelos pequeños. Prueba con uno mayor.", "This usually happens with small models. Try a larger one."),
+    ("session.failure.repo_unreadable", "No se pudo leer el repositorio o escribir en él.", "The repository could not be read or written to."),
+    ("session.failure.repo_unreadable.next", "Comprueba la ruta y los permisos del directorio.", "Check the path and the directory permissions."),
+    ("session.failure.egress_blocked", "La política de cero-egress cortó la operación.", "The zero-egress policy stopped the operation."),
+    ("session.failure.egress_blocked.next", "En modo local es lo esperado: nada sale del equipo. Revisa qué se intentó en el registro.", "In local mode this is expected: nothing leaves your machine. Check the log to see what was attempted."),
+    ("session.failure.unauthorized", "Falta autorización para algo que se intentó.", "Authorization is missing for something that was attempted."),
+    ("session.failure.unauthorized.next", "Revisa las credenciales del proveedor configurado.", "Check the credentials of the configured provider."),
+    ("session.failure.internal", "La sesión falló por un problema interno.", "The session failed due to an internal problem."),
+    ("session.failure.internal.next", "Vuelve a intentarlo. Si se repite, el detalle técnico está en el registro de actividad.", "Try again. If it repeats, the technical detail is in the activity log."),
     // --- Cierre (FR-024) --------------------------------------------------
     ("close.title", "Hay una sesión en curso", "A session is in progress"),
     ("close.warning", "Si cierras ahora, la sesión termina y no se reanuda. Lo ya escrito permanece en el repositorio.", "If you close now, the session ends and will not resume. What has already been written stays in the repository."),

@@ -14,7 +14,7 @@ use crate::domain::change::{ApprovalDecision, ChangeProposal, ChangeTarget, Prop
 use crate::domain::context::ContextArtifact;
 use crate::domain::error::{CoreError, Result};
 use crate::domain::reference::ReferenceState;
-use crate::domain::session::{AuthoringSession, Mode, SessionId, SessionState};
+use crate::domain::session::{AuthoringSession, Mode, SessionFailure, SessionId, SessionState};
 use crate::domain::write::WriteRecord;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -56,6 +56,8 @@ pub struct SessionSnapshot {
     pub unattended_tentative: usize,
     /// Propuestas del refinamiento. Las que siguen sin aplicar son las que esperan decisión.
     pub proposals: Vec<ChangeProposal>,
+    /// Por qué murió la sesión, como código estable (`002`-FR-028). `None` si no murió.
+    pub failure: Option<SessionFailure>,
     /// Algo se generó con un tier inferior al pedido (FR-018). La piel lo declara: entregar
     /// calidad reducida sin decirlo es peor que no entregarla.
     pub tier_degraded: bool,
@@ -199,6 +201,7 @@ impl ContextAuthoring {
             unattended_tentative: session.unattended_tentative_count(),
             proposals: Vec::new(),
             tier_degraded: outcome.tier_degraded,
+            failure: session.failure(),
         }
     }
 
@@ -261,8 +264,19 @@ impl AuthoringService for ContextAuthoring {
                     ));
                     IngestOutcome::default()
                 }
-                Err(_) => {
-                    let _ = session.advance_to(SessionState::Failed);
+                Err(e) => {
+                    // `002`-FR-028. Aquí estaba el defecto: un `Err(_)` descartaba el motivo
+                    // teniendo `CoreError` variantes tipadas. Diagnosticar un timeout costó
+                    // cinco corridas por esto (issue #24).
+                    let motivo = SessionFailure::from(&e);
+                    session.fail(motivo);
+                    audit.record(AuditEvent::new(
+                        clock.now_iso(),
+                        AuditKind::SessionFailed,
+                        // El código es lo que la piel traduce; el detalle técnico va al lado
+                        // para el registro, nunca a la pantalla.
+                        format!("{}: {e}", motivo.code()),
+                    ));
                     IngestOutcome::default()
                 }
             };

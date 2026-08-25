@@ -153,6 +153,9 @@ pub struct SessionSnapshotDto {
     pub writes: Vec<WriteRecordDto>,
     /// Se generó con un tier inferior al pedido (`001`-FR-018). La interfaz lo declara.
     pub tier_degraded: bool,
+    /// Por qué murió la sesión, como código (`002`-FR-028). La frase sale del catálogo: el
+    /// núcleo no redacta, para que el motivo siga el idioma activo (SC-009).
+    pub failure: Option<String>,
 }
 
 /// Las `quotes` que respaldan un segmento **no** se proyectan a la interfaz. No es un olvido:
@@ -240,6 +243,7 @@ fn to_snapshot_dto(snapshot: SessionSnapshot) -> SessionSnapshotDto {
         unattended_tentative: snapshot.unattended_tentative,
         writes: snapshot.writes.iter().map(to_write_dto).collect(),
         tier_degraded: snapshot.tier_degraded,
+        failure: snapshot.failure.map(|f| f.code().to_string()),
     }
 }
 

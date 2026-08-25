@@ -49,8 +49,29 @@ impl LocalOpenAiCompatProvider {
                 "endpoint no local rechazado para un proveedor local: {base_url}"
             )));
         }
+        Self::con_tiempo(name, base_url, model, TIEMPO_MAXIMO)
+    }
+
+    /// Igual que `new`, con el reloj a medida.
+    ///
+    /// Existe para poder **probar** que un timeout produce `ProviderTimeout` y no un error
+    /// genérico: con los 900 s de producción ese test tardaría quince minutos, así que no se
+    /// escribiría, y la distinción que costó cinco corridas quedaría sin cubrir donde de verdad
+    /// se decide — en el adapter, no en el mapeo.
+    pub fn con_tiempo(
+        name: impl Into<String>,
+        base_url: impl Into<String>,
+        model: impl Into<String>,
+        tiempo: Duration,
+    ) -> Result<Self> {
+        let base_url = base_url.into();
+        if !Self::is_loopback(&base_url) {
+            return Err(CoreError::EgressBlocked(format!(
+                "endpoint no local rechazado para un proveedor local: {base_url}"
+            )));
+        }
         let http = reqwest::Client::builder()
-            .timeout(TIEMPO_MAXIMO)
+            .timeout(tiempo)
             .build()
             .map_err(|e| CoreError::Provider(e.to_string()))?;
         Ok(Self {
@@ -198,7 +219,22 @@ impl ModelProvider for LocalOpenAiCompatProvider {
             .json(&self.to_payload(&request))
             .send()
             .await
-            .map_err(|e| CoreError::Provider(format!("{} no respondió: {e}", self.name)))?;
+            .map_err(|e| {
+                // Un timeout y un backend caído piden cosas opuestas al usuario —esperar más
+                // frente a levantar el servidor—, así que se separan aquí, donde `reqwest`
+                // todavía sabe cuál fue. Más arriba solo queda una cadena.
+                if e.is_timeout() {
+                    CoreError::ProviderTimeout(format!(
+                        "{} no respondió en {} s",
+                        self.name,
+                        TIEMPO_MAXIMO.as_secs()
+                    ))
+                } else if e.is_connect() {
+                    CoreError::Unavailable(format!("{} no está disponible: {e}", self.name))
+                } else {
+                    CoreError::Provider(format!("{} no respondió: {e}", self.name))
+                }
+            })?;
 
         if !resp.status().is_success() {
             return Err(CoreError::Provider(format!(

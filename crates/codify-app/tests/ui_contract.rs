@@ -332,12 +332,15 @@ fn toda_clave_del_catalogo_esta_cableada_o_declarada_como_reservada() {
         // era demasiado laxo: `provider.tier_degraded` pasaba por el mero hecho de que la
         // palabra «provider» saliera en `provider.issue.${…}`, y una clave sin cablear se daba
         // por consumida. Ahora se exige la plantilla concreta: `<prefijo>.${`.
-        let usada = files.iter().any(|(_, c)| c.contains(key))
-            || rust.contains(key)
-            || key.rsplit_once('.').is_some_and(|(prefix, _)| {
-                let plantilla = format!("{prefix}.${{");
-                files.iter().any(|(_, c)| c.contains(&plantilla))
-            });
+        // Se prueban **todos** los cortes, no solo el último: una clave compuesta puede llevar
+        // sufijo tras la interpolación (`session.failure.${motivo}.next`), y probar un único
+        // prefijo la daba por huérfana. Sigue exigiendo la plantilla concreta, que es lo que
+        // impide que valga cualquier mención suelta del prefijo.
+        let compuesta = key.match_indices('.').any(|(i, _)| {
+            let plantilla = format!("{}.${{", &key[..i]);
+            files.iter().any(|(_, c)| c.contains(&plantilla))
+        });
+        let usada = files.iter().any(|(_, c)| c.contains(key)) || rust.contains(key) || compuesta;
         if !usada {
             huerfanas.push(*key);
         }
@@ -381,6 +384,41 @@ fn todo_motivo_del_proveedor_tiene_texto_en_ambos_idiomas() {
                 "'{key}' está vacío en {}",
                 locale.code()
             );
+        }
+    }
+}
+
+/// Cada motivo de fallo tiene **texto y siguiente paso** en los dos idiomas (`002`-FR-028).
+///
+/// El segundo no es adorno. FR-028 pide explicar *qué ocurrió* **y** *qué puede hacer el
+/// usuario*: saber que el modelo tardó demasiado, sin que nadie diga que se puede probar con uno
+/// más pequeño, deja a la persona igual de atascada que un `Failed` mudo.
+///
+/// El núcleo devuelve `SessionFailure::code()` y la piel elige la frase. Ese desacople permite
+/// que el motivo siga el idioma activo (SC-009) y abre el hueco que este test cierra: un motivo
+/// nuevo sin entrada en el catálogo se vería en pantalla como `session.failure.loquesea`.
+#[test]
+fn todo_motivo_de_fallo_tiene_texto_y_salida_en_ambos_idiomas() {
+    use codify_core::domain::session::SessionFailure;
+
+    for locale in [Locale::Es, Locale::En] {
+        let entries = strings_for(locale).entries;
+        for motivo in SessionFailure::all() {
+            for sufijo in ["", ".next"] {
+                let key = format!("session.failure.{}{sufijo}", motivo.code());
+                let texto = entries.get(key.as_str()).unwrap_or_else(|| {
+                    panic!(
+                        "el motivo {motivo:?} no tiene '{key}' en {}: se vería la clave cruda en \
+                         pantalla, que es justo lo que FR-028 prohíbe",
+                        locale.code()
+                    )
+                });
+                assert!(
+                    !texto.trim().is_empty(),
+                    "'{key}' está vacío en {}",
+                    locale.code()
+                );
+            }
         }
     }
 }
@@ -565,9 +603,13 @@ fn ninguna_funcion_de_la_interfaz_queda_sin_llamar() {
         .filter(|(n, _)| n.ends_with(".js"))
         .cloned()
         .collect();
+    // Los comentarios NO cuentan. Es un defecto real que este mismo test dejó pasar: al
+    // cablear `renderFailure` (`002`-FR-028) quité su llamada para comprobar que el test la
+    // atrapaba, y no lo hizo — porque un comentario mío de otra función mencionaba su nombre.
+    // Una función muerta a la que la prosa mantiene viva sigue sin ejecutarse.
     let todo: String = js
         .iter()
-        .map(|(_, c)| c.as_str())
+        .map(|(_, c)| sin_comentarios(c))
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -612,4 +654,19 @@ fn ocurrencias_como_identificador(fuente: &str, nombre: &str) -> usize {
             antes && despues
         })
         .count()
+}
+
+/// Quita comentarios de JavaScript para que la prosa no cuente como uso de un identificador.
+fn sin_comentarios(fuente: &str) -> String {
+    let sin_bloque = strip_between(fuente, "/*", "*/");
+    sin_bloque
+        .lines()
+        .map(|l| match l.find("//") {
+            // `https://` no es un comentario; se descarta el falso positivo más común.
+            Some(i) if i > 0 && l.as_bytes()[i - 1] == b':' => l,
+            Some(i) => &l[..i],
+            None => l,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
