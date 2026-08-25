@@ -219,6 +219,55 @@ depender de que alguien mire la pantalla en inglés.
 
 ---
 
+## Phase 7: Un fallo que se puede entender — FR-028 (issue #24)
+
+**Goal**: que `Failed` deje de ser un callejón sin salida. Hoy la sesión puede terminar con cero
+artefactos y **sin decir por qué**, contra lo que FR-028 exige: explicar qué ocurrió y qué puede
+hacer el usuario.
+
+**Independent Test**: provocar un fallo del proveedor ⇒ la vista expone un **código de motivo**
+y la interfaz muestra una frase del catálogo más un siguiente paso, nunca el error crudo.
+
+> **Origen**: hallazgo F-2 de la pasada con modelo real, y **medido** el 2026-08-24 durante la
+> Fase 7 de `001`: diagnosticar un simple *timeout* de cliente costó **cinco corridas perdidas**
+> de entre 4 y 9 minutos, más una hipótesis falsa perseguida hasta el final. No por difícil —
+> porque sin motivo cualquier hipótesis vale lo mismo y se persiguen por plausibilidad en vez de
+> por evidencia.
+
+> **El defecto es de una línea**: `crates/codify-core/src/application/service.rs` hace
+> `Err(_) => { advance_to(Failed) }`. El motivo **existe** —`CoreError` tiene siete variantes
+> tipadas— y se descarta con un comodín.
+
+> **Reparto**: el requisito incumplido es de `002`, pero el motivo nace en el núcleo. Las tareas
+> que tocan `codify-core` lo dicen; es el mismo reparto que la degradación de tier (`001`-T046).
+
+### Tests (test-first) ⚠️
+
+- [ ] T057 [P] Cada variante de `SessionFailure` tiene texto **y siguiente paso** en los dos idiomas — en `crates/codify-app/tests/ui_contract.rs`, siguiendo el patrón de `todo_motivo_del_proveedor_tiene_texto_en_ambos_idiomas`
+- [ ] T058 [P] Una sesión que muere por fallo del proveedor expone el **código**, no el mensaje crudo, en `crates/codify-core/tests/us1_session_failure.rs`
+- [ ] T059 [P] El caso medido: un *timeout* del proveedor produce un motivo distinguible de «el modelo respondió algo no parseable» — sin esa distinción el hallazgo de #24 se repite — en `crates/codify-core/tests/us1_session_failure.rs`
+
+### Dominio (núcleo)
+
+- [ ] T060 `SessionFailure` con `code()` estable, derivable desde `CoreError`, en `crates/codify-core/src/domain/session.rs`. Sigue el precedente de `ProviderIssue`/`ReferenceState`/`RiskLevel`: el núcleo devuelve un código, la piel elige la frase — es lo que permite que el motivo no nazca redactado en un idioma fijo
+- [ ] T061 `AuthoringSession` transporta el motivo al pasar a `Failed`, y `advance_to` deja de aceptar ese estado sin él — en `crates/codify-core/src/domain/session.rs` (depende de T060). **Que el tipo lo exija** es lo que impide que vuelva a perderse
+
+### Núcleo → vista
+
+- [ ] T062 `service.rs` deja de descartar el error con `Err(_)`: lo mapea a `SessionFailure`, lo audita (`AuditKind::SessionFailed`) y lo publica en `SessionSnapshot.failure` — en `crates/codify-core/src/application/service.rs` (depende de T061)
+
+### Interfaz
+
+- [ ] T063 El DTO lleva el código y la interfaz lo resuelve contra el catálogo: frase + siguiente paso, nunca el crudo — en `crates/codify-app/src/commands.rs`, `crates/codify-app/src/strings.rs` y `crates/codify-app/ui/main.js`. **Ojo**: `error.session_failed` es hoy la frase genérica; queda como respaldo solo para fallos sin código, o se retira si no queda ninguno
+
+### Cierre
+
+- [ ] T064 Provocar un fallo real contra un backend inalcanzable y comprobar que la interfaz explica y ofrece salida — escenario **S9** en `specs/002-authoring-experience/quickstart.md`
+
+**Checkpoint**: un fallo deja de ser un misterio. El coste que #24 se cobró en la Fase 7 de `001`
+—cinco corridas para encontrar un timeout— no se vuelve a pagar.
+
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
