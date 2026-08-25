@@ -116,6 +116,17 @@ function renderBalance(writes) {
   stream.pushList("written", i18n.t("session.balance.title"), items);
 }
 
+/**
+ * Calidad reducida por falta del tier pedido (`001`-FR-018).
+ *
+ * Va junto a lo omitido y no en un aviso aparte porque es la misma clase de cosa: algo que el
+ * resultado no dice de sí mismo y el usuario necesita saber para leerlo bien.
+ */
+function renderTierDegraded(snapshot) {
+  if (!snapshot.tierDegraded) return;
+  stream.push("unresolved", i18n.t("provider.tier_degraded"));
+}
+
 /** Lo que quedó sin leer: el resultado nunca debe aparentar ser completo (FR-004). */
 function renderOmitted(snapshot) {
   if (!snapshot.omitted?.length && !snapshot.budgetExhausted) return;
@@ -230,6 +241,7 @@ async function finish() {
     setSessionState("interview");
     stream.push("interview", i18n.t("session.interview"), i18n.t("session.interview_next"));
   }
+  renderTierDegraded(snapshot);
   renderOmitted(snapshot);
   renderBalance(snapshot.writes);
 

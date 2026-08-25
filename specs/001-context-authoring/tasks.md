@@ -208,7 +208,7 @@ Verificado contra el código, no contra la documentación. **Revisar antes de re
 > dice aquí para que la próxima revisión no lo cuente como hueco.
 
 - [ ] T045 [P] `ModelProvider` remoto + OAuth device-flow + keyring (`connect_provider`/`list_connections`) en `crates/codify-core/src/infrastructure/providers/remote.rs` y `crates/codify-core/src/infrastructure/secrets/keyring.rs` — **decisión sin tomar**: qué proveedores, y si el tier frontier entra en v1. Además **toca la garantía de cero-egress**, que hoy es estructural (el registro rechaza proveedores no locales y el local rechaza endpoints no-loopback): un remoto hace real el `Mode::Hybrid` y `egress_guard` tiene que seguir demostrando que Local no puede salir. Merece su propio ciclo `speckit`, no una tarea de pulido
-- [ ] T046 [P] Degradación **declarada** entre tiers (FR-018) — **defecto, no feature**. El enrutado ya existe y ya degrada (`ProviderRegistry::pick` en `crates/codify-core/src/application/deps.rs` cae al primer proveedor disponible), pero **nadie avisa**: no hay `AuditKind` ni campo en el snapshot ni clave de catálogo. FR-018 pide las dos mitades. Se prueba con dos proveedores falsos de tiers distintos y **no depende de T045**. El comentario del código llegó a afirmar que sí se declaraba; corregido
+- [X] T046 [P] Degradación **declarada** entre tiers (`001`-FR-018) — **hecho**. `ProviderRegistry::pick` devuelve un `Routed { provider, degraded_from }` en vez del proveedor a secas, para que la degradación **no se pueda ignorar por descuido**: quien enruta recibe el dato en la mano. Se audita (`AuditKind::TierDegraded`), viaja al snapshot (`tier_degraded`) y la interfaz lo declara con `provider.tier_degraded`. Tres tests nuevos en `crates/codify-core/tests/us1_tier_degradation.rs`
 - [X] T047 [P] Comando `set_locale` (override de idioma, FR-019) en `crates/codify-app/src/commands.rs` — **ya existe** (entregado con T029)
 - [ ] T048 [P] Persistencia de `AuditSink` en `crates/codify-core/src/infrastructure/audit/sink.rs` — el *evento `egress.blocked` en UI* **ya lo entregó `002`-T051**. **Decisión sin tomar**: para qué. Si es para que la sesión en curso muestre lo ocurrido, ya está resuelto y esta tarea sobra. Si es para demostrar meses después que un cambio se aplicó o se rechazó, eso decide formato y retención — y probablemente deja de ser pulido para ser parte de la custodia del ciclo de vida
 - [X] T049 Modo entrevista para repo vacío (edge case) — **hecho**: el núcleo lo devuelve (`interview_mode`) y la interfaz de `002` lo presenta
@@ -396,6 +396,9 @@ Setup+Foundational → US1 (MVP) → US2 → US3, cada una testeada e integrada 
 | **SC-005** 0 sobrescrituras silenciosas | US3 (T041–T044) | ✅ |
 | **SC-006** nunca inventa una referencia no resuelta | T050 (S2) | ✅ |
 | **SC-007** cero egress en modo local | `egress_guard.rs`, T052 | ✅ |
+
+FR-018 (degradación declarada) no tiene SC propio: lo cubre SC-002 por la vía de no presentar
+como firme lo que no lo es.
 
 Los FR sin ID citado en su tarea **están cubiertos** — verificado contra el código, no contra el
 papel. La cita se añade al tocar cada tarea, no en una pasada masiva que nadie revisaría y que

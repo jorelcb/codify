@@ -25,6 +25,16 @@ pub struct ProviderRegistry {
     mode: Mode,
 }
 
+/// Resultado de enrutar por tier: el proveedor, y si hubo que conformarse con otro.
+///
+/// FR-018 pide degradar **de forma transparente**, y transparente son dos cosas: no romperse, y
+/// avisar. La segunda mitad vive en este `Option`.
+pub struct Routed {
+    pub provider: Arc<dyn ModelProvider>,
+    /// `Some(tier)` cuando no había proveedor de ese tier y se sirvió con otro.
+    pub degraded_from: Option<Tier>,
+}
+
 impl ProviderRegistry {
     pub fn for_mode(mode: Mode, providers: Vec<Arc<dyn ModelProvider>>) -> Result<Self> {
         if providers.is_empty() {
@@ -51,17 +61,24 @@ impl ProviderRegistry {
         &self.providers
     }
 
-    /// Enruta por tier. Sin proveedor del tier pedido, degrada al primero disponible.
+    /// Enruta por tier. Sin proveedor del tier pedido, degrada al primero disponible **y lo
+    /// dice**: `degraded_from` lleva el tier que no se pudo servir.
     ///
-    /// **La degradación todavía NO se declara** (FR-018 pide avisar, no solo no romperse): no
-    /// hay evento de auditoría ni campo en el snapshot. Es la mitad que falta de T046, y se
-    /// anota aquí porque este comentario llegó a afirmar lo contrario.
-    pub fn pick(&self, tier: Tier) -> Arc<dyn ModelProvider> {
-        self.providers
-            .iter()
-            .find(|p| p.tier_hint() == tier)
-            .cloned()
-            .unwrap_or_else(|| self.providers[0].clone())
+    /// Devuelve un `Routed` en vez del proveedor a secas para que la degradación **no se pueda
+    /// ignorar por descuido**. Durante mucho tiempo `pick` devolvía el proveedor y un
+    /// comentario aquí afirmaba que la capa de aplicación lo declaraba; no lo hacía nadie, y
+    /// nada en el código obligaba a notarlo. Ahora quien enruta recibe el dato en la mano.
+    pub fn pick(&self, tier: Tier) -> Routed {
+        match self.providers.iter().find(|p| p.tier_hint() == tier) {
+            Some(p) => Routed {
+                provider: p.clone(),
+                degraded_from: None,
+            },
+            None => Routed {
+                provider: self.providers[0].clone(),
+                degraded_from: Some(tier),
+            },
+        }
     }
 
     /// `true` si **todo** el registro es local. Invariante verificada en CI.

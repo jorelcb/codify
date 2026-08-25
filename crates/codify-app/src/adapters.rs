@@ -91,6 +91,17 @@ impl AuditSink for EventAuditSink {
                 );
             }
             AuditKind::ArtifactGenerated => self.activity("generado", &event.payload),
+            // `001`-FR-018. El payload lleva el detalle técnico —qué tier faltaba, con qué se
+            // sirvió— para el registro; la frase que ve el usuario sale del catálogo.
+            AuditKind::TierDegraded => {
+                let _ = self.app.emit(
+                    "tier.degraded",
+                    ActivityPayload {
+                        action: "degradado".into(),
+                        target: event.payload,
+                    },
+                );
+            }
             AuditKind::ArtifactWritten => {
                 let (target, reason) = Self::split_reason(&event.payload);
                 let _ = self.app.emit(

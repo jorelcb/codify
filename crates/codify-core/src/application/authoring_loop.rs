@@ -23,6 +23,7 @@ use crate::domain::reference::{Reference, ReferenceOrigin};
 use crate::domain::session::{AuthoringSession, SessionState};
 use crate::domain::write::WriteRecord;
 use serde::Deserialize;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 const INGEST_SYSTEM_PROMPT: &str = "\
@@ -120,6 +121,9 @@ pub struct IngestOutcome {
     pub budget_exhausted: bool,
     pub summary: String,
     pub interview_mode: bool,
+    /// Se sirvió alguna petición con un tier inferior al pedido (FR-018). Degradar sin decirlo
+    /// entrega calidad reducida haciéndola pasar por la buena.
+    pub tier_degraded: bool,
 }
 
 impl IngestOutcome {
@@ -369,6 +373,10 @@ fn strip_code_fences(raw: &str) -> String {
 pub struct AuthoringLoop {
     deps: AuthoringDeps,
     budget: IngestBudget,
+    /// Se levantó al menos una vez el enrutado a un tier inferior (FR-018). Vive aquí y no en
+    /// el `IngestOutcome` porque la degradación puede ocurrir en la generación, después de que
+    /// la ingesta haya terminado.
+    degraded: AtomicBool,
 }
 
 impl AuthoringLoop {
@@ -376,6 +384,7 @@ impl AuthoringLoop {
         Self {
             deps,
             budget: IngestBudget::default(),
+            degraded: AtomicBool::new(false),
         }
     }
 
@@ -401,11 +410,12 @@ impl AuthoringLoop {
         session: &mut AuthoringSession,
         cancel: Arc<dyn Cancellation>,
     ) -> Result<IngestOutcome> {
-        let outcome = self.ingest(session, cancel.clone()).await?;
+        let mut outcome = self.ingest(session, cancel.clone()).await?;
 
         // Sin material no se genera nada: la piel abre la entrevista. Generar aquí sería
         // exactamente el pecado que este producto viene a corregir (inventar sin fuentes).
         if outcome.interview_mode {
+            outcome.tier_degraded = self.degraded.load(Ordering::Relaxed);
             return Ok(outcome);
         }
 
@@ -417,6 +427,10 @@ impl AuthoringLoop {
             .advance_to(SessionState::Generating)
             .map_err(|e| CoreError::Invalid(e.to_string()))?;
         self.generate(session, &outcome, cancel).await?;
+
+        // La degradación puede ocurrir en la generación, ya cerrada la ingesta, así que el flag
+        // se traslada aquí y no dentro de `ingest`.
+        outcome.tier_degraded = self.degraded.load(Ordering::Relaxed);
         Ok(outcome)
     }
 
@@ -431,9 +445,23 @@ impl AuthoringLoop {
         request: CompletionRequest,
         cancel: &Arc<dyn Cancellation>,
     ) -> Result<CompletionOutput> {
-        let provider = self.deps.providers.pick(tier);
+        let elegido = self.deps.providers.pick(tier);
+        if let Some(pedido) = elegido.degraded_from {
+            // FR-018: el usuario tiene que poder saber que esto salió de un tier inferior. Se
+            // marca en el resultado —para que llegue a la vista— y se audita, porque «se avisó»
+            // debe poder demostrarse.
+            self.degraded.store(true, Ordering::Relaxed);
+            self.audit(
+                AuditKind::TierDegraded,
+                format!(
+                    "sin proveedor de tier {pedido:?}: se sirvió con '{}' ({:?})",
+                    elegido.provider.name(),
+                    elegido.provider.tier_hint()
+                ),
+            );
+        }
         tokio::select! {
-            result = provider.complete(request) => result,
+            result = elegido.provider.complete(request) => result,
             _ = cancel.cancelled() => Err(CoreError::Cancelled),
         }
     }

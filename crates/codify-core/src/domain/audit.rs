@@ -22,6 +22,9 @@ pub enum AuditKind {
     EgressBlocked,
     /// La sesión se canceló; el payload lleva el balance de escrituras.
     SessionCancelled,
+    /// No había proveedor del tier pedido y se enrutó a otro (FR-018). Que quede auditado es
+    /// lo que permite demostrar que se avisó, en vez de solo afirmarlo.
+    TierDegraded,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

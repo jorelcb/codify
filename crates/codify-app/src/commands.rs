@@ -151,6 +151,8 @@ pub struct SessionSnapshotDto {
     pub unattended_tentative: usize,
     /// Qué llegó (o no) al repositorio (FR-017).
     pub writes: Vec<WriteRecordDto>,
+    /// Se generó con un tier inferior al pedido (`001`-FR-018). La interfaz lo declara.
+    pub tier_degraded: bool,
 }
 
 /// Las `quotes` que respaldan un segmento **no** se proyectan a la interfaz. No es un olvido:
@@ -237,6 +239,7 @@ fn to_snapshot_dto(snapshot: SessionSnapshot) -> SessionSnapshotDto {
         interview_mode: snapshot.interview_mode,
         unattended_tentative: snapshot.unattended_tentative,
         writes: snapshot.writes.iter().map(to_write_dto).collect(),
+        tier_degraded: snapshot.tier_degraded,
     }
 }
 
