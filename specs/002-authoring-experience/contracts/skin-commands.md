@@ -23,7 +23,9 @@ Extiende la superficie ya implementada en T029 (`001/contracts/tauri-commands.md
 
 `id` · `state` · `locale` · `artifacts` · `unresolved` · `omitted` · `budgetExhausted` ·
 `interviewMode` · `unattendedTentative` · `writes` (FR-017) · `tierDegraded` (`001`-FR-018) ·
-`failure` (FR-028, en curso).
+`failure` (FR-028): código estable del motivo por el que murió la sesión, o ausente si no
+murió. La piel lo resuelve contra `session.failure.<codigo>` y `…​.next`; el detalle técnico
+llega aparte, por el evento `session.failed`, y va al registro — **nunca a la pantalla**.
 
 Se enumeran porque la fila «**+ `writes`**» llevaba tiempo describiendo un DTO de once campos
 como si tuviera uno más que antes. Un contrato que solo dice «crece» no permite notar que dejó

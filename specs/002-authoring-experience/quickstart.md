@@ -96,6 +96,22 @@ que está pasando?», y eso no lo automatiza nadie.
 1. Apuntar a un directorio vacío.
 2. **Esperado**: la aplicación **conduce una entrevista**; no muestra una pantalla en blanco ni un error, y **no inventa** contexto.
 
+### S9 — Un fallo que se puede entender (FR-028 · SC-010)
+
+1. Levantar la aplicación **sin backend de modelos** (o apuntar `CODIFY_LOCAL_ENDPOINT` a un
+   puerto donde no escucha nadie).
+2. Iniciar una sesión sobre cualquier repositorio.
+3. **Esperado**: la sesión termina y la interfaz dice **qué ocurrió** —«no se pudo contactar con
+   el backend de modelos»— **y qué hacer** —«comprueba que esté levantado y escuchando en el
+   endpoint configurado»—. El detalle técnico aparece en el registro de actividad, no en esa
+   línea.
+4. Repetir con un backend que **acepta pero no contesta** (un `nc -l` basta): el motivo debe ser
+   **distinto** — el del *timeout*, no el de backend caído.
+
+> El paso 4 es el que importa. Diagnosticar un *timeout* de cliente costó cinco corridas el
+> 2026-08-23 porque la sesión solo decía `Failed`; si los dos casos produjeran el mismo mensaje,
+> el hallazgo volvería con otra cara.
+
 ## Mapeo a criterios de éxito
 
 | Escenario | Cubre |
@@ -107,4 +123,5 @@ que está pasando?», y eso no lo automatiza nadie.
 | S5 | SC-009 |
 | S6 | FR-025, FR-027 |
 | S7 | SC-007 |
+| S9 | FR-028, SC-010 |
 | S1+S3 | SC-003 (todo en una sola aplicación) |
