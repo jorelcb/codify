@@ -35,6 +35,13 @@ exige una **cita textual comprobable** contra el material leído, no una fuente 
 un fallo real en la primera pasada con modelo real, donde el sistema atribuyó a un `Makefile` de
 dos líneas algo que no decía. Ver `spec.md` § Clarifications.
 
+**La salida propia no fundamenta** (FR-006d, clarify del 2026-08-24): un artefacto que escribió
+el sistema se lee —US3 lo necesita para proponer una actualización— pero no respalda un
+`grounded`; se reconoce por ruta canónica. Cierra el hueco por el lado contrario a FR-006a:
+aquel impide atribuir a una fuente algo que no dice, este impide tratar como fuente algo que no
+lo es. Nace de la segunda pasada con modelo real, donde una sesión se fundamentó en su propio
+`context/CONTEXT.md` previo.
+
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*

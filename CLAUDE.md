@@ -53,6 +53,9 @@ lee el spec del feature: qué se decidió, qué se descartó y por qué. Los spe
 **alternativas rechazadas con la señal que justificaría revisitarlas** — si estás a punto de
 proponer una, mira si ya se evaluó.
 
+Los identificadores de requisito son **por spec**: `FR-018` es la degradación entre tiers en
+`001` y «revisor, no editor» en `002`. Cítalos siempre con prefijo — `001`-FR-018.
+
 ### Una rama, un PR, por ciclo
 
 El ciclo de un feature —`specify` → `clarify` → `plan` → `tasks` → `analyze` → `implement`— vive en

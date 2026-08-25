@@ -202,6 +202,10 @@ Verificado contra el código, no contra la documentación. **Revisar antes de re
 >   sin decidir produciría la respuesta equivocada bien implementada.
 > - **fuera de nuestro alcance** — depende de algo que el equipo no tiene, y ninguna cantidad de
 >   trabajo lo desbloquea.
+>
+> **T051 y T053 son operativas, no derivadas de un requisito.** `001` especifica cómo se autora
+> el contexto, no cómo se distribuye la aplicación. Que no tengan FR detrás es correcto, y se
+> dice aquí para que la próxima revisión no lo cuente como hueco.
 
 - [ ] T045 [P] `ModelProvider` remoto + OAuth device-flow + keyring (`connect_provider`/`list_connections`) en `crates/codify-core/src/infrastructure/providers/remote.rs` y `crates/codify-core/src/infrastructure/secrets/keyring.rs` — **decisión sin tomar**: qué proveedores, y si el tier frontier entra en v1. Además **toca la garantía de cero-egress**, que hoy es estructural (el registro rechaza proveedores no locales y el local rechaza endpoints no-loopback): un remoto hace real el `Mode::Hybrid` y `egress_guard` tiene que seguir demostrando que Local no puede salir. Merece su propio ciclo `speckit`, no una tarea de pulido
 - [ ] T046 [P] Degradación **declarada** entre tiers (FR-018) — **defecto, no feature**. El enrutado ya existe y ya degrada (`ProviderRegistry::pick` en `crates/codify-core/src/application/deps.rs` cae al primer proveedor disponible), pero **nadie avisa**: no hay `AuditKind` ni campo en el snapshot ni clave de catálogo. FR-018 pide las dos mitades. Se prueba con dos proveedores falsos de tiers distintos y **no depende de T045**. El comentario del código llegó a afirmar que sí se declaraba; corregido
@@ -255,7 +259,7 @@ como verificado.
 
 ### Cierre
 
-- [X] T065 Correr el arnés `live_backend` contra un modelo real y comprobar que F-1 **no se reproduce** — **hecho el 2026-08-23** con `Qwen2.5-32B-Instruct-Q4_K_M`, tres corridas completas regenerando el fixture entre cada una: **cero citas sin respaldo** en las tres, y entre 11 y 24 segmentos fundamentados por corrida, que es lo que descarta que la defensa funcione degradándolo todo. Detalle y los tres defectos que salieron por el camino, en `quickstart.md`
+- [X] T065 Correr el arnés `live_backend` contra un modelo real y comprobar que F-1 **no se reproduce** — **hecho el 2026-08-23** con `Qwen2.5-32B-Instruct-Q4_K_M`, tres corridas completas regenerando el fixture entre cada una **(SC-001, medido sobre ≥3 corridas)**: **cero citas sin respaldo** en las tres, y entre 11 y 24 segmentos fundamentados por corrida, que es lo que descarta que la defensa funcione degradándolo todo. Detalle y los tres defectos que salieron por el camino, en `quickstart.md`
 
 **Checkpoint**: `Grounded` es una afirmación comprobada, no una declarada. El principio rector
 del proyecto deja de depender de la buena fe del modelo.
@@ -380,6 +384,22 @@ Task: "ModelProvider local en crates/codify-core/src/infrastructure/providers/lo
 Setup+Foundational → US1 (MVP) → US2 → US3, cada una testeada e integrada sin romper las previas. Polish (P6) al final o intercalado por necesidad (OAuth remoto solo cuando se requiera el tier frontier).
 
 ---
+
+## Trazabilidad — qué valida cada criterio
+
+| | Validado por | Estado |
+|---|---|---|
+| **SC-001** ≥90 % consistente con la SSOT | T065 (3 corridas en vivo) | ✅ |
+| **SC-002** 0 afirmaciones no verificadas como hecho | T058–T060, T066–T068 | ✅ |
+| **SC-003** de «sin contexto» a «aprobado» en una sesión | T050 (S1–S3) | 🔶 falta S4 |
+| **SC-004** refinamiento por conversación + diffs | US2 (T031–T040) | ✅ |
+| **SC-005** 0 sobrescrituras silenciosas | US3 (T041–T044) | ✅ |
+| **SC-006** nunca inventa una referencia no resuelta | T050 (S2) | ✅ |
+| **SC-007** cero egress en modo local | `egress_guard.rs`, T052 | ✅ |
+
+Los FR sin ID citado en su tarea **están cubiertos** — verificado contra el código, no contra el
+papel. La cita se añade al tocar cada tarea, no en una pasada masiva que nadie revisaría y que
+convertiría la trazabilidad en ceremonia.
 
 ## Notes
 - [P] = archivos distintos, sin dependencias pendientes.
