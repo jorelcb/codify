@@ -28,6 +28,29 @@ Fase 0. Las 6 decisiones raíz fueron cerradas por el operador antes del plan; a
 - **Rationale**: mantiene la lógica curada en el dominio, reusable e auditable; la piel es tonta.
 - **Alternativas**: que la piel implemente el diff/approval (rompería reuso entre pieles — rechazado).
 
+## D7 — Verificar es comprobar la cita, no confiar en la fuente declarada
+
+- **Decisión**: un segmento solo es `grounded` si su cita textual aparece en el material leído
+  (FR-006a/b/c). Lo que no se sostiene se degrada a tentativo declarando el motivo.
+- **Alternativas**: (a) **confiar en `sources`** — lo que había, y produjo el hallazgo F-1;
+  (b) **cuarto estado para «procedencia falsa»** — rechazado: competiría con SC-002 y multiplica
+  lo que la interfaz debe explicar; (c) **comparación byte a byte** — rechazado, un salto de
+  línea de más invalidaría una cita legítima.
+- **Revisitar si**: los modelos empiezan a citar con fidelidad literal alta y el mínimo de doce
+  caracteres pasa a ser el criterio que más degrada.
+
+## D8 — Los artefactos propios se reconocen por ruta canónica
+
+- **Decisión**: lo que vive en una ruta que FR-005 define es salida del sistema; se lee, no
+  fundamenta (FR-006d).
+- **Alternativas**: (a) **marcador dentro del archivo** — sobrevive a moverlo y distingue lo
+  escrito a mano, pero ensucia el artefacto y se pierde si alguien borra la marca;
+  (b) **registro de escrituras** — preciso, pero vive en la sesión y el caso es leer artefactos
+  de una **anterior**, de la que no queda rastro; (c) **solo si lo editó un humano** — exigiría
+  huellas y fallaría en silencio cuando no se pueda saber.
+- **Revisitar si**: aparece demanda real de fundamentar sobre un `AGENTS.md` escrito a mano, que
+  es el coste que (a) evitaba y hoy se acepta.
+
 ## Unknowns técnicos resueltos
 - **Diff**: crate `similar` (line/word diff, robusto, sin deps pesadas).
 - **HTTP**: `reqwest` (async, TLS) para proveedores remotos y para `fetch_url` (solo URLs públicas; auth/privados **fuera de v1**, se reportan como no resueltos — FR-003/FR-004).
