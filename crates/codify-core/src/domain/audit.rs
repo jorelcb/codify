@@ -22,6 +22,9 @@ pub enum AuditKind {
     EgressBlocked,
     /// La sesión se canceló; el payload lleva el balance de escrituras.
     SessionCancelled,
+    /// La sesión murió, con su motivo como código estable (`002`-FR-028). El payload lleva
+    /// además el detalle técnico: sirve para el registro, no para la pantalla.
+    SessionFailed,
     /// No había proveedor del tier pedido y se enrutó a otro (FR-018). Que quede auditado es
     /// lo que permite demostrar que se avisó, en vez de solo afirmarlo.
     TierDegraded,

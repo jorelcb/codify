@@ -84,9 +84,81 @@ pub enum SessionError {
 
     #[error("no se puede aprobar: quedan {0} segmento(s) tentativo(s) sin atender")]
     PendingTentativeSegments(usize),
+
+    #[error("no se puede pasar a Failed sin motivo: usa fail(SessionFailure)")]
+    FailureNeedsReason,
 }
 
-#[derive(Debug, Clone)]
+/// Por qué murió una sesión (`002`-FR-028).
+///
+/// El núcleo devuelve un **código estable** y la piel elige la frase, igual que `ProviderIssue`
+/// o `ReferenceState`. Ese desacople es lo que permite que el motivo no nazca redactado en un
+/// idioma fijo (SC-009) — y lo que hace que añadir un motivo sin texto rompa un test en vez de
+/// aparecer en pantalla como `session.failure.loquesea`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SessionFailure {
+    /// El modelo no contestó a tiempo. Se espera más, o se usa uno más rápido.
+    ProviderTimeout,
+    /// El backend no responde. Se comprueba que esté levantado.
+    ProviderUnavailable,
+    /// Contestó algo que no se pudo interpretar. Se revisa el prompt o el modelo.
+    ProviderUnparseable,
+    /// No se pudo leer el repositorio o escribir en él.
+    RepoUnreadable,
+    /// La política de cero-egress cortó la operación. En modo local es lo esperado.
+    EgressBlocked,
+    /// Falta autorización para algo que se intentó.
+    Unauthorized,
+    /// Cualquier otro fallo del propio sistema.
+    Internal,
+}
+
+impl SessionFailure {
+    pub fn code(&self) -> &'static str {
+        match self {
+            SessionFailure::ProviderTimeout => "provider_timeout",
+            SessionFailure::ProviderUnavailable => "provider_unavailable",
+            SessionFailure::ProviderUnparseable => "provider_unparseable",
+            SessionFailure::RepoUnreadable => "repo_unreadable",
+            SessionFailure::EgressBlocked => "egress_blocked",
+            SessionFailure::Unauthorized => "unauthorized",
+            SessionFailure::Internal => "internal",
+        }
+    }
+
+    /// Todas las variantes. La piel la recorre para comprobar que ninguna se queda sin texto.
+    pub fn all() -> [SessionFailure; 7] {
+        [
+            SessionFailure::ProviderTimeout,
+            SessionFailure::ProviderUnavailable,
+            SessionFailure::ProviderUnparseable,
+            SessionFailure::RepoUnreadable,
+            SessionFailure::EgressBlocked,
+            SessionFailure::Unauthorized,
+            SessionFailure::Internal,
+        ]
+    }
+}
+
+impl From<&crate::domain::error::CoreError> for SessionFailure {
+    fn from(e: &crate::domain::error::CoreError) -> Self {
+        use crate::domain::error::CoreError as E;
+        match e {
+            E::ProviderTimeout(_) => SessionFailure::ProviderTimeout,
+            E::Unavailable(_) => SessionFailure::ProviderUnavailable,
+            E::Provider(_) => SessionFailure::ProviderUnparseable,
+            E::Storage(_) | E::NotFound(_) => SessionFailure::RepoUnreadable,
+            E::EgressBlocked(_) => SessionFailure::EgressBlocked,
+            E::Unauthorized(_) => SessionFailure::Unauthorized,
+            E::Invalid(_) => SessionFailure::Internal,
+            // Cancelar no es fallar: tiene su propio estado y su propio balance (FR-023). Si
+            // llega aquí, alguien confundió las dos cosas — se mapea para que el match sea
+            // total, no porque tenga sentido.
+            E::Cancelled => SessionFailure::Internal,
+        }
+    }
+}
+
 pub struct AuthoringSession {
     id: SessionId,
     repo_root: PathBuf,
@@ -96,6 +168,7 @@ pub struct AuthoringSession {
     artifacts: Vec<ContextArtifact>,
     references: Vec<Reference>,
     writes: Vec<WriteRecord>,
+    failure: Option<SessionFailure>,
 }
 
 impl AuthoringSession {
@@ -109,6 +182,7 @@ impl AuthoringSession {
             artifacts: Vec::new(),
             references: Vec::new(),
             writes: Vec::new(),
+            failure: None,
         }
     }
 
@@ -175,9 +249,18 @@ impl AuthoringSession {
             .sum()
     }
 
+    /// Avanza de estado. **No admite `Failed`**: para eso está `fail(motivo)`.
+    ///
+    /// Podría bastar con un campo opcional y la disciplina de rellenarlo, pero esa disciplina ya
+    /// falló: el `Err(_)` que descartaba el error llevaba ahí desde el principio y nadie lo notó
+    /// hasta que costó cinco corridas diagnosticar un timeout (`002`-FR-028). Que el tipo lo
+    /// exija es lo que impide que vuelva a perderse.
     pub fn advance_to(&mut self, to: SessionState) -> Result<(), SessionError> {
         if to == SessionState::Approved {
             return self.approve();
+        }
+        if to == SessionState::Failed {
+            return Err(SessionError::FailureNeedsReason);
         }
         if !Self::can_transition(self.state, to) {
             return Err(SessionError::InvalidTransition {
@@ -187,6 +270,20 @@ impl AuthoringSession {
         }
         self.state = to;
         Ok(())
+    }
+
+    /// Da la sesión por fallida **con su motivo** (`002`-FR-028).
+    ///
+    /// No devuelve `Result`: un fallo no puede fallar. Si el estado no admitiera la transición
+    /// y esto rechazara, el motivo se perdería justo cuando más falta hace.
+    pub fn fail(&mut self, motivo: SessionFailure) {
+        self.state = SessionState::Failed;
+        self.failure = Some(motivo);
+    }
+
+    /// Por qué murió la sesión, si murió.
+    pub fn failure(&self) -> Option<SessionFailure> {
+        self.failure
     }
 
     /// Cierra la sesión. Falla si queda contexto tentativo sin atender (FR-013).

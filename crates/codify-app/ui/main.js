@@ -117,6 +117,22 @@ function renderBalance(writes) {
 }
 
 /**
+ * Por qué murió la sesión, y qué hacer (`002`-FR-028).
+ *
+ * El núcleo entrega un código y aquí se elige la frase, que es lo que permite que el motivo siga
+ * el idioma activo. El detalle técnico llega por el evento `session.failed` y va al registro de
+ * actividad, no a esta línea: FR-028 prohíbe expresamente el mensaje crudo.
+ */
+function renderFailure(snapshot) {
+  if (!snapshot.failure) return;
+  stream.push(
+    "error",
+    i18n.t(`session.failure.${snapshot.failure}`),
+    i18n.t(`session.failure.${snapshot.failure}.next`),
+  );
+}
+
+/**
  * Calidad reducida por falta del tier pedido (`001`-FR-018).
  *
  * Va junto a lo omitido y no en un aviso aparte porque es la misma clase de cosa: algo que el
@@ -142,6 +158,11 @@ function renderOmitted(snapshot) {
 // Eventos del núcleo
 // ---------------------------------------------------------------------------
 
+listen("session.failed", (e) =>
+  // El detalle técnico va al registro, donde sirve para diagnosticar; la línea que explica al
+  // usuario la pinta `renderFailure` desde el catálogo.
+  stream.push("error", i18n.t(`session.failure.${e.payload.target}`), e.payload.reason),
+);
 listen("agent.activity", (e) => stream.push("activity", e.payload.target, null, e.payload.action));
 listen("reference.resolved", (e) => stream.push("read", e.payload.target));
 listen("reference.unresolved", (e) => stream.push("unresolved", e.payload.target, e.payload.reason));
@@ -241,6 +262,7 @@ async function finish() {
     setSessionState("interview");
     stream.push("interview", i18n.t("session.interview"), i18n.t("session.interview_next"));
   }
+  renderFailure(snapshot);
   renderTierDegraded(snapshot);
   renderOmitted(snapshot);
   renderBalance(snapshot.writes);
