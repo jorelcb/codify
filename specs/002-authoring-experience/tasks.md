@@ -260,9 +260,13 @@ y la interfaz muestra una frase del catálogo más un siguiente paso, nunca el e
 
 - [ ] T063 El DTO lleva el código y la interfaz lo resuelve contra el catálogo: frase + siguiente paso, nunca el crudo — en `crates/codify-app/src/commands.rs`, `crates/codify-app/src/strings.rs` y `crates/codify-app/ui/main.js`. **Ojo**: `error.session_failed` es hoy la frase genérica; queda como respaldo solo para fallos sin código, o se retira si no queda ninguno
 
+### Contratos
+
+- [ ] T064 [P] `contracts/skin-commands.md` documenta el campo `failure` del snapshot, y `contracts/ui-strings.md` recoge las claves `session.failure.*` en su superficie correspondiente — en `specs/002-authoring-experience/contracts/`
+
 ### Cierre
 
-- [ ] T064 Provocar un fallo real contra un backend inalcanzable y comprobar que la interfaz explica y ofrece salida — escenario **S9** en `specs/002-authoring-experience/quickstart.md`
+- [ ] T065 Provocar un fallo real contra un backend inalcanzable y comprobar que la interfaz explica y ofrece salida — escenario **S9** en `specs/002-authoring-experience/quickstart.md`
 
 **Checkpoint**: un fallo deja de ser un misterio. El coste que #24 se cobró en la Fase 7 de `001`
 —cinco corridas para encontrar un timeout— no se vuelve a pagar.

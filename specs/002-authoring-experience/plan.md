@@ -125,6 +125,17 @@ Hoy `generate()` termina en `session.put_artifact()` y nada llega al disco. Se a
 
 Port **`ProviderDiscovery`** con `probe()` que devuelve si el backend responde y qué modelos ofrece. El adapter consulta el endpoint OpenAI-compatible; en modo local solo acepta loopback, así que la garantía de cero-egress no se debilita. La piel expone `probe_provider` y presenta el resultado como estado accionable (FR-028).
 
+### 3b. Un fallo que se puede entender (FR-028)
+
+`SessionState::Failed` no basta: FR-028 pide **qué ocurrió y qué puede hacer el usuario**. El
+núcleo devuelve un `SessionFailure` con código estable y la piel elige la frase, igual que con
+`ProviderIssue` — eso es lo que permite que el motivo no nazca redactado en un idioma fijo
+(SC-009). El tipo exige el motivo al pasar a `Failed`: la disciplina de rellenarlo ya falló una
+vez, con un `Err(_)` que descartaba el error desde el principio.
+
+La otra mención de FR-028 en este plan es sobre el `probe` del proveedor; son las dos mitades
+del mismo requisito —explicar y ofrecer salida— en dos superficies distintas.
+
 ### 4. Frontend sin framework — decisión, no inercia
 
 **Se mantiene vanilla.** La interfaz son tres superficies (corriente, vista de artefacto, panel de proveedor) sin estado compartido complejo; el estado real vive en el núcleo. Introducir un framework añadiría npm, un bundler y Node al CI —hoy inexistentes— para resolver un problema que aún no tenemos. Criterio explícito para revisitarlo en `research.md`.
