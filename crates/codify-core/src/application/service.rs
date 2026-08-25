@@ -56,6 +56,9 @@ pub struct SessionSnapshot {
     pub unattended_tentative: usize,
     /// Propuestas del refinamiento. Las que siguen sin aplicar son las que esperan decisión.
     pub proposals: Vec<ChangeProposal>,
+    /// Algo se generó con un tier inferior al pedido (FR-018). La piel lo declara: entregar
+    /// calidad reducida sin decirlo es peor que no entregarla.
+    pub tier_degraded: bool,
 }
 
 /// Balance de una cancelación: en qué fase se cortó y qué alcanzó a escribirse (FR-023).
@@ -195,6 +198,7 @@ impl ContextAuthoring {
             interview_mode: outcome.interview_mode,
             unattended_tentative: session.unattended_tentative_count(),
             proposals: Vec::new(),
+            tier_degraded: outcome.tier_degraded,
         }
     }
 

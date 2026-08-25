@@ -101,6 +101,12 @@ const CATALOG: &[(&str, &str, &str)] = &[
     ("provider.no_models", "El backend responde pero no tiene modelos instalados.", "The backend responds but has no models installed."),
     ("provider.retry", "Volver a comprobar", "Check again"),
     ("provider.next_step", "Qué hacer", "What to do"),
+    // `001`-FR-018: degradar sin decirlo entrega calidad reducida haciéndola pasar por la buena.
+    (
+        "provider.tier_degraded",
+        "Generado con calidad reducida: no había un modelo del nivel pedido y se usó el disponible.",
+        "Generated with reduced quality: no model of the requested tier was available, so the available one was used.",
+    ),
     // Un texto por cada `ProviderIssue::code()`. El núcleo nombra el motivo; el idioma
     // se decide aquí. Hay un test que comprueba que no falte ninguno.
     ("provider.issue.no_models", "Descarga un modelo, por ejemplo `ollama pull qwen2.5-coder`.", "Download a model, for example `ollama pull qwen2.5-coder`."),
@@ -160,7 +166,6 @@ const CATALOG: &[(&str, &str, &str)] = &[
     ("proposal.revert", "Deshacer", "Undo"),
     ("proposal.reverted", "deshecha: el archivo volvió a como estaba", "undone: the file went back to how it was"),
     ("proposal.applied_title", "Aplicados sin preguntar", "Applied without asking"),
-    ("proposal.none", "No hay nada esperando tu decisión.", "Nothing is waiting for your decision."),
     // --- Errores accionables (FR-028) -------------------------------------
     ("error.no_repo", "Elige un repositorio antes de iniciar.", "Choose a repository before starting."),
     ("error.session_failed", "La sesión no pudo completarse", "The session could not be completed"),

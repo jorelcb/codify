@@ -327,13 +327,17 @@ fn toda_clave_del_catalogo_esta_cableada_o_declarada_como_reservada() {
         if RESERVADAS.contains(key) {
             continue;
         }
-        // Las claves compuestas (`session.state.${state}`) se arman en tiempo de ejecución:
-        // basta con que su prefijo aparezca.
+        // Las claves compuestas se arman en tiempo de ejecución (`session.state.${state}`), así
+        // que no aparecen literalmente. Pero exigir solo que el **prefijo** esté en algún sitio
+        // era demasiado laxo: `provider.tier_degraded` pasaba por el mero hecho de que la
+        // palabra «provider» saliera en `provider.issue.${…}`, y una clave sin cablear se daba
+        // por consumida. Ahora se exige la plantilla concreta: `<prefijo>.${`.
         let usada = files.iter().any(|(_, c)| c.contains(key))
             || rust.contains(key)
-            || key
-                .rsplit_once('.')
-                .is_some_and(|(prefix, _)| files.iter().any(|(_, c)| c.contains(prefix)));
+            || key.rsplit_once('.').is_some_and(|(prefix, _)| {
+                let plantilla = format!("{prefix}.${{");
+                files.iter().any(|(_, c)| c.contains(&plantilla))
+            });
         if !usada {
             huerfanas.push(*key);
         }
@@ -545,4 +549,67 @@ fn el_repositorio_vacio_tiene_presentacion_propia() {
         entries.contains_key("session.state.interview"),
         "el estado no puede quedarse en «terminada» cuando no había nada que leer (FR-004)"
     );
+}
+
+/// Ninguna función de la interfaz se define y luego no se llama.
+///
+/// Nace de un hueco real: al cablear `provider.tier_degraded` (`001`-FR-018) comprobé que la
+/// clave estuviera consumida y lo estaba —dentro de una función que nadie invocaba—. El test de
+/// claves huérfanas no podía verlo: la cadena aparecía en el fichero. Una función muerta que
+/// menciona una clave la mantiene «viva» a ojos de un contrato textual, y el usuario no ve nada.
+#[test]
+fn ninguna_funcion_de_la_interfaz_queda_sin_llamar() {
+    let files = ui_files();
+    let js: Vec<_> = files
+        .iter()
+        .filter(|(n, _)| n.ends_with(".js"))
+        .cloned()
+        .collect();
+    let todo: String = js
+        .iter()
+        .map(|(_, c)| c.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let mut muertas = Vec::new();
+    for (nombre, contenido) in &js {
+        for linea in contenido.lines() {
+            let t = linea.trim_start();
+            let Some(resto) = t.strip_prefix("function ") else {
+                continue;
+            };
+            let Some(fin) = resto.find('(') else { continue };
+            let fn_name = &resto[..fin];
+            if fn_name.is_empty() {
+                continue;
+            }
+            // Se cuenta el identificador, no la llamada: `segments.map(renderSegment)` pasa la
+            // función como valor y no lleva paréntesis. Contar `nombre(` la daba por muerta.
+            // Con límite de palabra, para que `render` no se cuele dentro de `renderSegment`.
+            let usos = ocurrencias_como_identificador(&todo, fn_name);
+            if usos <= 1 {
+                muertas.push(format!("{nombre}: {fn_name}"));
+            }
+        }
+    }
+
+    assert!(
+        muertas.is_empty(),
+        "funciones definidas y nunca llamadas — el código está, el usuario no lo ve: {muertas:?}"
+    );
+}
+
+/// Cuenta apariciones de `nombre` como identificador completo, no como subcadena.
+fn ocurrencias_como_identificador(fuente: &str, nombre: &str) -> usize {
+    let bytes = fuente.as_bytes();
+    let ident = |b: u8| b.is_ascii_alphanumeric() || b == b'_' || b == b'$';
+    fuente
+        .match_indices(nombre)
+        .filter(|(i, _)| {
+            let antes = *i == 0 || !ident(bytes[i - 1]);
+            let fin = i + nombre.len();
+            let despues = fin >= bytes.len() || !ident(bytes[fin]);
+            antes && despues
+        })
+        .count()
 }

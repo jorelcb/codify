@@ -106,9 +106,18 @@ impl RefineLoop {
         }
 
         let estado_actual = self.render_current(session);
-        let provider = self.deps.providers.pick(Tier::Heavy);
+        let elegido = self.deps.providers.pick(Tier::Heavy);
+        if let Some(pedido) = elegido.degraded_from {
+            self.audit(
+                AuditKind::TierDegraded,
+                format!(
+                    "sin proveedor de tier {pedido:?}: el refinamiento se sirvió con '{}'",
+                    elegido.provider.name()
+                ),
+            );
+        }
         let response = tokio::select! {
-            r = provider.complete(CompletionRequest {
+            r = elegido.provider.complete(CompletionRequest {
                 system: REFINE_SYSTEM_PROMPT.to_string(),
                 messages: vec![Message::user(format!(
                     "=== CONTEXTO ACTUAL ===\n{estado_actual}\n\n=== EL USUARIO DICE ===\n{message}"

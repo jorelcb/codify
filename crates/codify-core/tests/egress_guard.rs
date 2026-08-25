@@ -61,8 +61,8 @@ fn local_mode_registry_is_fully_local() {
 
     assert!(registry.is_fully_local());
     assert!(registry.all().iter().all(|p| p.is_local()));
-    assert!(registry.pick(Tier::Heavy).is_local());
-    assert!(registry.pick(Tier::Cheap).is_local());
+    assert!(registry.pick(Tier::Heavy).provider.is_local());
+    assert!(registry.pick(Tier::Cheap).provider.is_local());
 }
 
 #[test]
