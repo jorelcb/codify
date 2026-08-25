@@ -141,6 +141,23 @@ El usuario re-ejecuta el authoring sobre un repo que **ya tiene** archivos de co
 - **Decisión de aprobación**: el resultado de la revisión del usuario sobre un diff.
 - **Proveedor de modelo (tier)**: origen de inferencia configurable (local económico / frontier), seleccionado por tipo de tarea.
 
+### Requisitos aún no cumplidos
+
+> **Esta sección existe porque faltaba.** FR-016 y FR-017 llevaban tiempo sin implementar, con
+> su estado anotado al final de líneas largas de `tasks.md` que nadie lee, mientras los resúmenes
+> decían que solo quedaba un hallazgo menor. Un requisito incumplido tiene que verse desde el
+> spec que lo promete, no desde el rastreador de tareas.
+
+| | Estado | Dónde se aborda |
+|---|---|---|
+| **FR-016** proveedor remoto configurable | ❌ sin implementar — solo hay proveedores locales | spec `003` ([#42](https://github.com/jorelcb/codify/issues/42)) |
+| **FR-017** reparto entre tier económico y pesado | ❌ sin implementar — hay un solo tier real | spec `003` ([#42](https://github.com/jorelcb/codify/issues/42)) |
+| Persistencia del registro de auditoría | ❌ vive en memoria y muere con la sesión | spec `004` ([#43](https://github.com/jorelcb/codify/issues/43)) |
+
+**Los tres están dentro del alcance de v1** (decidido el 2026-08-25). Mientras no se cierren, este
+spec promete más de lo que el código entrega, y las menciones a *frontier* en Edge Cases, Key
+Entities y Assumptions describen un futuro, no el presente.
+
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
