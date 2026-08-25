@@ -7,7 +7,7 @@ Extiende la superficie ya implementada en T029 (`001/contracts/tauri-commands.md
 | Comando | Input | Output | Estado |
 |---|---|---|---|
 | `start_session` | `{ repoRoot, local, locale? }` | `{ sessionId }` **inmediato** | ⚠️ cambia: ya no espera a que termine el trabajo |
-| `session_state` | `{ sessionId }` | `SessionSnapshotDto` (**+ `writes`**) | ⚠️ crece |
+| `session_state` | `{ sessionId }` | `SessionSnapshotDto` | ⚠️ crece — ver abajo |
 | `set_locale` | `{ sessionId, locale }` | `ack` | ya existe |
 | `cancel_session` | `{ sessionId }` | `CancelOutcomeDto` | 🆕 FR-023 |
 | `artifact` | `{ sessionId, path }` | `ArtifactDto` (**+ `writeState`**) | 🆕 FR-021 |
@@ -18,6 +18,17 @@ Extiende la superficie ya implementada en T029 (`001/contracts/tauri-commands.md
 | `revert_proposal` | `{ sessionId, proposalId }` | `ack` | 🆕 FR-008 — **solo lo auto-aplicado** |
 | `probe_provider` | `{ local }` | `ProviderStatusDto` | 🆕 FR-019 |
 | `ui_strings` | `{ locale }` | `{ locale, entries }` | 🆕 FR-016b |
+
+### `SessionSnapshotDto` — campos
+
+`id` · `state` · `locale` · `artifacts` · `unresolved` · `omitted` · `budgetExhausted` ·
+`interviewMode` · `unattendedTentative` · `writes` (FR-017) · `tierDegraded` (`001`-FR-018) ·
+`failure` (FR-028, en curso).
+
+Se enumeran porque la fila «**+ `writes`**» llevaba tiempo describiendo un DTO de once campos
+como si tuviera uno más que antes. Un contrato que solo dice «crece» no permite notar que dejó
+de ser cierto — y de hecho no lo permitió: `tierDegraded`, `interviewMode` y
+`unattendedTentative` llevaban tiempo fuera.
 | `system_locale` | — | `{ locale }` (`es`\|`en`, cae a `en`) | 🆕 FR-016b |
 
 ## Eventos (backend → frontend)

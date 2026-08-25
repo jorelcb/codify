@@ -154,6 +154,7 @@ Al leer el contexto generado, el usuario distingue **sin esfuerzo y sin ambigüe
 - **SC-007**: Con la ventana en su tamaño mínimo soportado, el diff y la conversación **siguen siendo utilizables** (sin recorte de contenido ni desplazamiento horizontal).
 - **SC-008**: Cancelar una sesión en curso deja el repositorio en un estado que el usuario **puede describir con exactitud** a partir de lo que la aplicación le muestra — nunca en un estado que deba averiguar inspeccionando archivos.
 - **SC-009**: La interfaz se muestra íntegramente en el idioma activo: **cero** cadenas sin traducir en español o inglés, verificable recorriendo la aplicación con cada idioma.
+- **SC-010**: Ante un fallo, una persona ajena a la sesión puede decir **qué ocurrió y qué hacer a continuación** solo mirando la interfaz, sin leer logs ni mensajes técnicos crudos.
 
 ## Assumptions
 
