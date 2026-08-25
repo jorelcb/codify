@@ -42,6 +42,12 @@ aquel impide atribuir a una fuente algo que no dice, este impide tratar como fue
 lo es. Nace de la segunda pasada con modelo real, donde una sesión se fundamentó en su propio
 `context/CONTEXT.md` previo.
 
+**La degradación entre tiers se declara** (FR-018, T046): `ProviderRegistry::pick` devuelve un
+`Routed { provider, degraded_from }` en vez del proveedor a secas. Devolver el proveedor hacía
+que ignorar la degradación fuera el camino de menor esfuerzo —y así estuvo, con un comentario
+afirmando lo contrario—; el tipo obliga ahora a decidir qué se hace con el dato. De ahí salen el
+evento de auditoría, el campo del snapshot y la frase de catálogo.
+
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
