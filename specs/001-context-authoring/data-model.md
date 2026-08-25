@@ -5,9 +5,12 @@ Entidades del **dominio** (crate `codify-core`, capa `domain/`). Puras, sin I/O.
 ## AuthoringSession (agregado raíz del loop)
 Representa una sesión de authoring sobre un repo objetivo.
 - **Campos**: `id`, `repo_root` (path), `mode` (`Local` | `Hybrid`), `locale` (auto-detectado | override), `state`, `provider_wiring_ref`.
+- **Campos** (cont.): `failure` (`SessionFailure?`) — por qué murió, si murió.
+- **`SessionFailure`** (`002`-FR-028): `ProviderTimeout` | `ProviderUnavailable` | `ProviderUnparseable` | `RepoUnreadable` | `EgressBlocked` | `Unauthorized` | `Internal`, cada uno con `code()` estable. El dominio da el código y la piel elige la frase, para que el motivo siga el idioma activo en vez de nacer redactado en uno fijo.
 - **Estados** (máquina): `Ingesting → Generating → Refining → Approved` (+ `Failed`, `Cancelled`). `Refining` es un loop que puede repetir.
 - **Invariantes**:
   - En `mode = Local` el grafo de proveedores no contiene adapters de red (garantía estructural; SC-007).
+  - **No puede llegar a `Failed` sin motivo**: esa transición no existe en `advance_to`, solo en `fail(SessionFailure)`. Un campo opcional con la disciplina de rellenarlo ya falló una vez.
   - No puede pasar a `Approved` con segmentos tentativos **sin atender** (resueltos o explícitamente diferidos) — FR-013.
 
 ## Repository (target)
