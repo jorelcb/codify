@@ -31,11 +31,13 @@
 
 ## Notes
 
-- **Sin marcadores de clarificación, pero con tres supuestos que conviene confirmar** antes de
-  `/speckit-plan`, y que están escritos como tales en Assumptions: qué proveedores concretos
-  entran en v1, que el reparto es automático y no configurable tarea por tarea, y que no hay
-  reparto de carga entre proveedores del mismo tier. Ninguno bloquea la planificación; los tres
-  cambiarían el alcance si se decidieran al revés.
+- **Tres decisiones resueltas en la sesión de clarificación del 2026-08-26**: la vía de
+  autenticación (ambas, según el proveedor), el alcance de lo que sale (todo el material, con
+  consentimiento por modo) y cuándo se elige el modo (al cambiarlo se rearma el grafo). Las tres
+  cambiaban el alcance, y la tercera además decidía si FR-008 seguía siendo demostrable.
+- **Quedan dos supuestos vivos**, escritos en Assumptions y con defecto razonable: el reparto es
+  automático por tipo de tarea, y no hay reparto de carga entre proveedores del mismo tier.
+  Ninguno bloquea planificar.
 - **FR-008 es el requisito difícil** y merece atención en el plan: exige que el modo local siga
   siendo *incapaz* de egress tras introducir un modo que sí sale. Es una propiedad negativa, y las
   propiedades negativas no se demuestran con un test de ejemplo.

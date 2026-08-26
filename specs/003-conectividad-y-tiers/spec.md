@@ -24,12 +24,21 @@ proveedor, y un proveedor remoto sin reparto obliga a elegir a mano en cada tare
 > parte difícil no es añadirlo, es que el modo local siga siendo **incapaz** de egress, no
 > meramente configurado para no hacerlo.
 
+## Clarifications
+
+### Session 2026-08-26
+
+- Q: ¿Qué significa «conectar cuenta», dado que los frontier mayoritarios autentican con clave y no con OAuth device-flow? → A: **Ambos, según el proveedor.** Device-flow donde exista; clave introducida una vez y custodiada en el almacén del sistema donde no. Lo que `research.md` de `001` descartó fue quedarse *solo* con claves —«incumple D3»—, y D3 es *auth pluggable*: varios mecanismos, no la ausencia de uno.
+- Q: Con remotos permitidos, ¿qué contenido del repositorio puede salir? → A: **Todo el material reunido.** El consentimiento es por **modo**, explícito y previo. Se descartó una lista de permitidos por fuente: produce control aparente —un archivo mal clasificado basta para filtrar— y la respuesta real a «esto no debe salir» ya existe y es de primera clase, el modo local.
+- Q: ¿Cuándo se elige el modo, si de eso depende que el cero-egress siga siendo estructural? → A: **Al cambiarlo se rearma el grafo de objetos.** Un grafo local no contiene adapter remoto, así que no hay ruta que auditar. Elegirlo por sesión obligaría a un grafo capaz de salir a la red, y «imposible» se degradaría a «no usado esta vez».
+
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Conectar un proveedor remoto sin manejar secretos a mano (Priority: P1)
+### User Story 1 - Conectar un proveedor remoto una sola vez (Priority: P1)
 
-El usuario conecta una cuenta de un proveedor de modelos desde la aplicación. No copia ni pega
-claves: autoriza en su navegador y la credencial queda guardada por el sistema operativo.
+El usuario conecta una cuenta de un proveedor de modelos desde la aplicación: autoriza en su
+navegador si el proveedor lo permite, o introduce su credencial **una sola vez** si no. A partir
+de ahí la custodia el sistema operativo, y el usuario no vuelve a verla ni a escribirla.
 
 **Why this priority**: sin esto no hay segundo proveedor, y sin segundo proveedor no hay nada más
 en este spec. Es el MVP.
@@ -39,9 +48,12 @@ la credencial aparezca en disco en claro, en el registro ni en la interfaz.
 
 **Acceptance Scenarios**:
 
-1. **Given** ningún proveedor remoto conectado, **When** el usuario conecta uno, **Then** la
-   aplicación le da un código y una dirección, él autoriza fuera, y al volver la cuenta figura
-   conectada.
+1. **Given** un proveedor que ofrece autorización delegada, **When** el usuario lo conecta,
+   **Then** la aplicación le da un código y una dirección, él autoriza fuera, y al volver la
+   cuenta figura conectada.
+1b. **Given** un proveedor que solo admite credencial, **When** el usuario la introduce,
+   **Then** queda guardada por el sistema y **no vuelve a mostrarse** — ni en la interfaz, ni en
+   la configuración, ni en el registro.
 2. **Given** una cuenta conectada, **When** el usuario reinicia la aplicación, **Then** sigue
    conectada sin volver a autorizar.
 3. **Given** una cuenta conectada, **When** el usuario la desconecta, **Then** la credencial se
@@ -109,8 +121,8 @@ del repositorio pueda salir — no que no salga en una corrida concreta.
 - **Dos proveedores del mismo tier**: se usa uno y se declara cuál; no se reparte carga.
 - **Ningún proveedor conectado**: la aplicación sigue siendo usable en local, que es el caso por
   defecto y no un modo degradado.
-- **El usuario cambia de modo con una sesión en curso**: el cambio no afecta a la sesión viva; se
-  aplica a la siguiente, y se dice.
+- **El usuario cambia de modo con una sesión en curso**: la sesión viva termina con el modo con
+  el que nació (FR-008b); el grafo se rearma para la siguiente, y se dice.
 
 ## Requirements *(mandatory)*
 
@@ -118,9 +130,10 @@ del repositorio pueda salir — no que no salga en una corrida concreta.
 
 **Conectar y custodiar**
 
-- **FR-001**: El sistema MUST permitir conectar proveedores de modelo remotos mediante una
-  autorización delegada en el navegador del usuario, **sin que el usuario introduzca secretos en
-  la aplicación**.
+- **FR-001**: El sistema MUST permitir conectar proveedores remotos por **dos vías, según lo que
+  el proveedor ofrezca**: autorización delegada en el navegador donde exista, y credencial
+  introducida **una sola vez** donde no. El sistema MUST NOT exigir volver a introducirla, ni
+  mostrarla después de guardada.
 - **FR-002**: Las credenciales MUST guardarse en el almacén seguro del sistema operativo. El
   sistema MUST NOT escribirlas en archivos de configuración, registros ni la interfaz.
 - **FR-003**: El sistema MUST permitir listar y **desconectar** cuentas, y desconectar MUST
@@ -143,9 +156,15 @@ del repositorio pueda salir — no que no salga en una corrida concreta.
 - **FR-008**: En modo local, el sistema MUST hacer **estructuralmente imposible** el egress: no
   basta con no configurar proveedores remotos, MUST NOT existir una ruta por la que se alcancen.
   Verificable por una comprobación automática que falle si aparece una.
+- **FR-008a**: El modo MUST fijarse al **construir el grafo de objetos**, y cambiarlo MUST
+  reconstruirlo. Un grafo local MUST NOT contener un adapter capaz de salir a la red — que no
+  esté es lo que hace a FR-008 demostrable; que esté y no se use, no.
+- **FR-008b**: Una sesión en curso MUST terminar con el modo con el que nació. Cambiar el modo
+  MUST NOT afectar a lo que ya está corriendo.
 - **FR-009**: Antes de que una sesión pueda enviar contenido del repositorio a un proveedor
   remoto, el usuario MUST haber elegido explícitamente ese modo, y MUST poder ver qué proveedores
-  podrían recibirlo.
+  podrían recibirlo. El alcance es **todo el material que la sesión reúna**: el sistema MUST NOT
+  ofrecer un permiso parcial por fuente, porque no podría sostener la promesa que insinúa.
 - **FR-010**: El sistema MUST registrar qué proveedor atendió cada tarea, de forma que el usuario
   pueda reconstruir después qué salió del equipo y qué no.
 
@@ -174,6 +193,8 @@ del repositorio pueda salir — no que no salga en una corrida concreta.
 - **SC-005**: Tras una sesión, el usuario puede decir correctamente **qué proveedor atendió cada
   tarea**, solo mirando la aplicación.
 - **SC-006**: Desconectar una cuenta impide su uso **inmediatamente**, sin reiniciar.
+- **SC-007**: Cambiar de modo **no exige reiniciar** la aplicación, y una sesión en curso no
+  cambia de modo a mitad.
 
 ## Assumptions
 
@@ -181,6 +202,9 @@ del repositorio pueda salir — no que no salga en una corrida concreta.
   autorizar.
 - El modo local sigue siendo **el caso por defecto**: conectar un remoto es una decisión
   explícita, no el camino recomendado. El producto se define por la garantía local.
+- Introducir una credencial una sola vez es aceptable **si el sistema la custodia**; lo que no lo
+  es —y FR-002 lo prohíbe— es que quede en un archivo del proyecto, en la configuración o en un
+  registro.
 - El reparto por tier es **automático según el tipo de tarea**, no configurable tarea por tarea.
   Se asume que quien conecta dos proveedores quiere que el sistema decida; si aparece demanda de
   control fino, se revisita.
@@ -198,5 +222,5 @@ del repositorio pueda salir — no que no salga en una corrida concreta.
 - Reparto de carga o *failover* entre proveedores del mismo tier.
 - Control de coste o presupuesto por proveedor.
 - Elegir el proveedor tarea por tarea desde la interfaz.
-- Proveedores remotos **no** basados en autorización delegada (claves pegadas a mano): se
-  descartan a propósito, porque obligarían a manejar el secreto dentro de la aplicación.
+- **Reintroducir** la credencial en cada sesión, o mostrarla tras guardarla.
+- Permisos de egress por fuente: descartados en la sesión de clarificación del 2026-08-26.
