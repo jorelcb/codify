@@ -26,8 +26,10 @@ impl SessionId {
 
 /// Modo de operación. `Local` implica la garantía de cero-egress, que se materializa
 /// estructuralmente en el composition root (no con un flag consultado en runtime).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Mode {
+    /// El caso por defecto del producto: conectar un remoto es una decisión explícita.
+    #[default]
     Local,
     Hybrid,
 }

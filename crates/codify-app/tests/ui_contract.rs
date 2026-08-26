@@ -423,6 +423,34 @@ fn todo_motivo_de_fallo_tiene_texto_y_salida_en_ambos_idiomas() {
     }
 }
 
+/// Cada estado de conexión tiene texto en **los dos** idiomas (`003`-T029).
+///
+/// Mismo patrón que `ProviderIssue` y `SessionFailure`: el núcleo devuelve `code()` y la piel
+/// elige la frase. Ese desacople permite que el estado siga el idioma activo, y abre el hueco
+/// que este test cierra — un estado nuevo sin entrada se vería como `connection.state.loquesea`.
+#[test]
+fn todo_estado_de_conexion_tiene_texto_en_ambos_idiomas() {
+    use codify_core::application::connections::ConnectionState;
+
+    for locale in [Locale::Es, Locale::En] {
+        let entries = strings_for(locale).entries;
+        for estado in ConnectionState::all() {
+            let key = format!("connection.state.{}", estado.code());
+            let texto = entries.get(key.as_str()).unwrap_or_else(|| {
+                panic!(
+                    "el estado {estado:?} no tiene texto en {}: se vería la clave cruda",
+                    locale.code()
+                )
+            });
+            assert!(
+                !texto.trim().is_empty(),
+                "'{key}' está vacío en {}",
+                locale.code()
+            );
+        }
+    }
+}
+
 /// `hidden` tiene que ocultar de verdad.
 ///
 /// Este test nace de un defecto real: `#decide` llevaba `display: flex` y el atributo `hidden`

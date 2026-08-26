@@ -101,6 +101,21 @@ const CATALOG: &[(&str, &str, &str)] = &[
     ("provider.no_models", "El backend responde pero no tiene modelos instalados.", "The backend responds but has no models installed."),
     ("provider.retry", "Volver a comprobar", "Check again"),
     ("provider.next_step", "Qué hacer", "What to do"),
+    // `003` — conectar cuentas remotas y elegir el modo.
+    ("connection.title", "Proveedores conectados", "Connected providers"),
+    ("connection.add", "Conectar un proveedor", "Connect a provider"),
+    ("connection.none", "Ninguno. La aplicación funciona en local.", "None. The app runs locally."),
+    ("connection.disconnect", "Desconectar", "Disconnect"),
+    ("connection.code_hint", "Introduce este código en la página que se abrirá:", "Enter this code on the page that will open:"),
+    ("connection.secret_hint", "Se guarda en el almacén del sistema y no vuelve a mostrarse.", "It is stored in the system keychain and never shown again."),
+    ("connection.no_store", "Este sistema no tiene almacén de credenciales. Puedes seguir en modo local.", "This system has no credential store. You can continue in local mode."),
+    ("connection.state.connected", "conectada", "connected"),
+    ("connection.state.expired", "caducada: hay que reconectar", "expired: reconnect needed"),
+    ("connection.state.revoked", "revocada", "revoked"),
+    ("mode.title", "Modo", "Mode"),
+    ("mode.local_option", "Solo local — nada sale de este equipo", "Local only — nothing leaves this machine"),
+    ("mode.changed", "El modo nuevo se aplica a la siguiente sesión; la actual termina como empezó.", "The new mode applies to the next session; the current one finishes as it started."),
+    ("mode.will_receive", "Con este modo, estos proveedores pueden recibir contenido del repositorio:", "In this mode, these providers may receive repository content:"),
     // `001`-FR-018: degradar sin decirlo entrega calidad reducida haciéndola pasar por la buena.
     (
         "provider.tier_degraded",

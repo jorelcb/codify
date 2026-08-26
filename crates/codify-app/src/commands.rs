@@ -7,6 +7,11 @@
 use crate::adapters::{
     EventAuditSink, PendingDecisions, StatePayload, SystemClock, WindowPrompter,
 };
+use codify_core::application::connections::ProviderConnection;
+use codify_core::application::ports::Tier;
+use codify_core::application::ports::{
+    AccountConnector, CredentialStore, Desafio, ReferenciaDeCredencial, Secreto,
+};
 use codify_core::application::ports::{ProviderDiscovery, ProviderIssue};
 use codify_core::application::service::{
     AuthoringService, ContextAuthoring, SessionSnapshot, StartSession,
@@ -24,6 +29,9 @@ use codify_core::infrastructure::repo::locale::HeuristicLocaleDetector;
 use codify_core::infrastructure::repo::navigator::FsRepoNavigator;
 use codify_core::infrastructure::repo::reference_resolver::FsHttpReferenceResolver;
 use codify_core::infrastructure::repo::writer::FsArtifactWriter;
+use codify_core::infrastructure::secrets::device_flow::DeviceFlow;
+use codify_core::infrastructure::secrets::direct::DirectCredential;
+use codify_core::infrastructure::secrets::keyring::SystemKeyring;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -38,9 +46,28 @@ const DEFAULT_MODEL: &str = "qwen2.5-coder";
 
 /// Un servicio por sesión: el núcleo se cablea contra un repositorio concreto, así que no
 /// puede existir un único servicio global.
+/// Un desafío de conexión esperando a que el usuario termine.
+///
+/// Con nombres en vez de una tupla: `(Desafio, Arc<dyn AccountConnector>, Tier, String)` obliga
+/// a recordar qué era el cuarto elemento cada vez que se lee.
+struct DesafioPendiente {
+    desafio: Desafio,
+    conector: Arc<dyn AccountConnector>,
+    tier: Tier,
+    label: String,
+}
+
 #[derive(Default)]
 pub struct AppState {
     services: Mutex<HashMap<String, Arc<ContextAuthoring>>>,
+    /// Cuentas remotas conectadas (`003`-FR-003). No guardan el secreto: llevan la referencia
+    /// con la que pedírselo al almacén del sistema.
+    connections: Mutex<Vec<ProviderConnection>>,
+    /// Desafíos de conexión a medio completar, por id.
+    challenges: Mutex<HashMap<String, DesafioPendiente>>,
+    /// El modo elegido por el usuario (`003`-FR-008a). Cambiarlo rearma el grafo de la
+    /// **siguiente** sesión; la viva conserva el suyo (FR-008b).
+    mode: Mutex<Mode>,
     /// Decisiones que el núcleo está esperando ahora mismo. Es el otro extremo del canal
     /// que `WindowPrompter::present` deja abierto: `decide` lo resuelve.
     pending: PendingDecisions,
@@ -338,9 +365,210 @@ fn cablear<M: ModoDelGrafo>(
         .map_err(|e| format!("no se pudo cablear el núcleo: {e}"))
 }
 
+/// Conexión a un proveedor remoto, tal y como la ve la interfaz (`003`-contracts).
+///
+/// **No tiene campo para el secreto, ni podría tenerlo**: `ProviderConnection` tampoco. Es más
+/// fiable que acordarse de no rellenarlo.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderConnectionDto {
+    pub id: String,
+    pub label: String,
+    /// Solo el host: FR-009 necesita decir **quién** podría recibir contenido, no cómo se llega.
+    pub endpoint_host: String,
+    pub tier: String,
+    pub state: String,
+}
+
+fn to_connection_dto(c: &ProviderConnection) -> ProviderConnectionDto {
+    ProviderConnectionDto {
+        id: c.id.clone(),
+        label: c.label.clone(),
+        endpoint_host: c.endpoint_host.clone(),
+        tier: match c.tier {
+            Tier::Cheap => "cheap".into(),
+            Tier::Heavy => "heavy".into(),
+        },
+        state: c.state.code().to_string(),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Comandos
 // ---------------------------------------------------------------------------
+
+/// `003`-FR-001. Devuelve el desafío: código y dirección, o la petición de credencial.
+#[tauri::command]
+pub async fn connect_provider(
+    state: State<'_, AppState>,
+    label: String,
+    endpoint: String,
+    tier: String,
+    delegada: bool,
+) -> Result<ConnectChallengeDto, String> {
+    let tier = match tier.as_str() {
+        "heavy" => Tier::Heavy,
+        _ => Tier::Cheap,
+    };
+    let conector: Arc<dyn AccountConnector> = if delegada {
+        Arc::new(
+            DeviceFlow::new(
+                format!("{endpoint}/device/code"),
+                format!("{endpoint}/token"),
+                env_or("CODIFY_OAUTH_CLIENT_ID", "codify"),
+            )
+            .map_err(|e| e.to_string())?,
+        )
+    } else {
+        Arc::new(DirectCredential::new(
+            "Pega tu credencial: se guarda en el almacén del sistema y no vuelve a mostrarse.",
+        ))
+    };
+
+    let desafio = conector.iniciar().await.map_err(|e| e.to_string())?;
+    let id = format!("conn-{}", uuid_simple());
+    let dto = ConnectChallengeDto::from(&id, &desafio);
+    if let Ok(mut m) = state.challenges.lock() {
+        m.insert(
+            id,
+            DesafioPendiente {
+                desafio,
+                conector,
+                tier,
+                label,
+            },
+        );
+    }
+    Ok(dto)
+}
+
+/// `003`-FR-001/FR-002. Guarda en el almacén del sistema y devuelve la conexión **sin** secreto.
+#[tauri::command]
+pub async fn complete_connection(
+    state: State<'_, AppState>,
+    challenge_id: String,
+    secret: Option<String>,
+) -> Result<ProviderConnectionDto, String> {
+    let DesafioPendiente {
+        desafio,
+        conector,
+        tier,
+        label,
+    } = state
+        .challenges
+        .lock()
+        .ok()
+        .and_then(|mut m| m.remove(&challenge_id))
+        .ok_or_else(|| "ese desafío ya no está en curso".to_string())?;
+
+    let store = SystemKeyring::new();
+    if !store.disponible() {
+        // FR-004: se dice, y NO se recurre a otro sitio.
+        return Err("no hay almacén de credenciales disponible en este sistema".into());
+    }
+
+    let secreto = conector
+        .completar(&desafio, secret.map(Secreto::new))
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let referencia = ReferenciaDeCredencial::new(challenge_id.clone());
+    store
+        .guardar(&referencia, secreto)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let conexion = ProviderConnection::new(challenge_id, label, "", tier, referencia);
+    let dto = to_connection_dto(&conexion);
+    if let Ok(mut c) = state.connections.lock() {
+        c.push(conexion);
+    }
+    Ok(dto)
+}
+
+/// `003`-FR-003.
+#[tauri::command]
+pub async fn list_connections(
+    state: State<'_, AppState>,
+) -> Result<Vec<ProviderConnectionDto>, String> {
+    Ok(state
+        .connections
+        .lock()
+        .map(|c| c.iter().map(to_connection_dto).collect())
+        .unwrap_or_default())
+}
+
+/// `003`-FR-003 y SC-006: borra del almacén y quita la conexión, **sin reiniciar**.
+#[tauri::command]
+pub async fn disconnect_provider(
+    state: State<'_, AppState>,
+    connection_id: String,
+) -> Result<(), String> {
+    let referencia = ReferenciaDeCredencial::new(connection_id.clone());
+    SystemKeyring::new()
+        .borrar(&referencia)
+        .await
+        .map_err(|e| e.to_string())?;
+    if let Ok(mut c) = state.connections.lock() {
+        c.retain(|x| x.id != connection_id);
+    }
+    Ok(())
+}
+
+/// `003`-FR-008a. El modo se guarda y el grafo se rearma en la **siguiente** sesión: la viva
+/// conserva el suyo (FR-008b), y por eso este comando no toca ninguna.
+#[tauri::command]
+pub async fn set_mode(state: State<'_, AppState>, local: bool) -> Result<(), String> {
+    if let Ok(mut m) = state.mode.lock() {
+        *m = if local { Mode::Local } else { Mode::Hybrid };
+    }
+    Ok(())
+}
+
+/// Id corto y suficiente: solo tiene que ser único dentro de esta ejecución.
+fn uuid_simple() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    format!(
+        "{:x}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    )
+}
+
+/// El desafío, tal y como lo ve la interfaz.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectChallengeDto {
+    pub challenge_id: String,
+    /// `"delegada"` o `"credencial"`: la interfaz elige qué enseñar.
+    pub kind: String,
+    pub code: Option<String>,
+    pub url: Option<String>,
+    pub instructions: Option<String>,
+}
+
+impl ConnectChallengeDto {
+    fn from(id: &str, d: &Desafio) -> Self {
+        match d {
+            Desafio::Delegada { codigo, url } => Self {
+                challenge_id: id.into(),
+                kind: "delegada".into(),
+                code: Some(codigo.clone()),
+                url: Some(url.clone()),
+                instructions: None,
+            },
+            Desafio::PideCredencial { instrucciones } => Self {
+                challenge_id: id.into(),
+                kind: "credencial".into(),
+                code: None,
+                url: None,
+                instructions: Some(instrucciones.clone()),
+            },
+        }
+    }
+}
 
 #[tauri::command]
 pub async fn start_session(

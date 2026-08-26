@@ -68,8 +68,8 @@ la credencial aparezca en disco, en el registro ni en la interfaz.
 
 ### Piel
 
-- [ ] T016 [US1] Comandos `connect_provider`, `complete_connection`, `list_connections` y `disconnect_provider` en `crates/codify-app/src/commands.rs`, con el DTO sin campo para el secreto (contracts/skin-commands.md). **Desconectar borra del almacén y rearma el grafo** (research.md D4): sin lo segundo, la conexión seguiría cableada hasta reiniciar y SC-006 no se cumpliría
-- [ ] T017 [US1] Conectar y desconectar en la interfaz — `crates/codify-app/ui/` y claves nuevas en `crates/codify-app/src/strings.rs`, en los dos idiomas
+- [X] T016 [US1] Comandos `connect_provider`, `complete_connection`, `list_connections` y `disconnect_provider` en `crates/codify-app/src/commands.rs`, con el DTO sin campo para el secreto (contracts/skin-commands.md). **Desconectar borra del almacén y rearma el grafo** (research.md D4): sin lo segundo, la conexión seguiría cableada hasta reiniciar y SC-006 no se cumpliría
+- [X] T017 [US1] Conectar y desconectar en la interfaz — `crates/codify-app/ui/` y claves nuevas en `crates/codify-app/src/strings.rs`, en los dos idiomas
 
 **Checkpoint**: hay un segundo proveedor, y su credencial no está en ningún sitio que podamos leer.
 
@@ -92,8 +92,8 @@ de mayor capacidad, comprobable sin leer el código.
 
 - [X] T020 [US2] **Crear** e implementar el adapter `ModelProvider` remoto genérico en `crates/codify-core/src/infrastructure/providers/remote.rs`: `is_local()` devuelve `false` y `tier_hint()` el tier **declarado**, no inferido (contracts/ports.md)
 - [ ] T021 [US2] Cablear las conexiones guardadas al grafo híbrido en `crates/codify-core/src/infrastructure/composition.rs` (depende de T004, T013, T020)
-- [ ] T022 [US2] Eventos `task.routed` —tier y conexión— y **`connection.state_changed`** —conectada, caducada o revocada—, en `crates/codify-core/src/domain/audit.rs` y `crates/codify-app/src/adapters.rs`. Los dos están en el contrato; el segundo se había quedado sin tarea
-- [ ] T023 [US2] Mostrar qué tier atendió cada tarea en `crates/codify-app/ui/` (FR-006)
+- [X] T022 [US2] Eventos `task.routed` —tier y conexión— y **`connection.state_changed`** —conectada, caducada o revocada—, en `crates/codify-core/src/domain/audit.rs` y `crates/codify-app/src/adapters.rs`. Los dos están en el contrato; el segundo se había quedado sin tarea
+- [X] T023 [US2] Mostrar qué tier atendió cada tarea en `crates/codify-app/ui/` (FR-006)
 
 **Checkpoint**: iterar deja de costar lo que cuesta generar.
 
@@ -108,14 +108,14 @@ US1 exista sin romper la promesa del producto.
 
 ### Tests ⚠️
 
-- [ ] T024 [P] [US3] Cambiar de modo **no** afecta a una sesión en curso (FR-008b), en `crates/codify-core/tests/us3_mode.rs`
-- [ ] T025 [P] [US3] Tras una sesión, el registro permite reconstruir **qué proveedor atendió cada tarea** (FR-010), en `crates/codify-core/tests/us3_mode.rs`
+- [X] T024 [P] [US3] Cambiar de modo **no** afecta a una sesión en curso (FR-008b), en `crates/codify-core/tests/us3_mode.rs`
+- [X] T025 [P] [US3] Tras una sesión, el registro permite reconstruir **qué proveedor atendió cada tarea** (FR-010), en `crates/codify-core/tests/us3_mode.rs`
 
 ### Implementación
 
-- [ ] T026 [US3] Comando `set_mode` que **rearma el grafo** sin reiniciar, en `crates/codify-app/src/commands.rs` y `crates/codify-app/src/lib.rs` (depende de T004)
-- [ ] T027 [US3] Antes de arrancar una sesión híbrida, mostrar **qué proveedores podrían recibir contenido** del repositorio (FR-009), en `crates/codify-app/ui/`
-- [ ] T028 [US3] Evento `mode.changed` y su presentación, incluyendo que la sesión viva no cambia, en `crates/codify-app/src/adapters.rs` y `crates/codify-app/ui/`
+- [X] T026 [US3] Comando `set_mode` que **rearma el grafo** sin reiniciar, en `crates/codify-app/src/commands.rs` y `crates/codify-app/src/lib.rs` (depende de T004)
+- [X] T027 [US3] Antes de arrancar una sesión híbrida, mostrar **qué proveedores podrían recibir contenido** del repositorio (FR-009), en `crates/codify-app/ui/`
+- [X] T028 [US3] Evento `mode.changed` y su presentación, incluyendo que la sesión viva no cambia, en `crates/codify-app/src/adapters.rs` y `crates/codify-app/ui/`
 
 **Checkpoint**: el modo local sigue siendo una garantía, no una opción de configuración.
 
@@ -123,7 +123,7 @@ US1 exista sin romper la promesa del producto.
 
 ## Phase 6: Polish
 
-- [ ] T029 [P] Cada código nuevo —estado de conexión, modo— tiene texto en **los dos idiomas**, con el test que recorre los códigos del núcleo, en `crates/codify-app/tests/ui_contract.rs`
+- [X] T029 [P] Cada código nuevo —estado de conexión, modo— tiene texto en **los dos idiomas**, con el test que recorre los códigos del núcleo, en `crates/codify-app/tests/ui_contract.rs`
 - [ ] T030 [P] Contratos al día: `contracts/ports.md` y `contracts/skin-commands.md` reflejan lo entregado, y `002/contracts/skin-commands.md` recoge los campos nuevos del DTO de sesión si los hubiera
 - [ ] T031 Ejecutar la validación de `quickstart.md` (S1–S7) — **S4 y S6 necesitan comprobarse fuera de la aplicación**: buscar la credencial en disco y en el keyring del sistema con sus propias herramientas, porque preguntárselo a la aplicación es preguntarle a la parte interesada
 

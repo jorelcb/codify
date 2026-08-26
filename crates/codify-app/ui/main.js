@@ -10,6 +10,7 @@ import * as provider from "./provider.js";
 import * as artifact from "./artifact.js";
 import * as decide from "./decide.js";
 import * as applied from "./applied.js";
+import * as connections from "./connections.js";
 
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
@@ -380,6 +381,7 @@ el.uiLocale.addEventListener("change", async () => {
   artifact.render();
   decide.render();
   applied.render();
+  connections.render();
   refreshArtifactList(); // el «por qué no» del control de apertura también es texto
 });
 
@@ -457,3 +459,5 @@ el.tentativeConfirm?.addEventListener("click", async () => {
   await provider.refresh(ui.local);
   el.repo.focus();
 })();
+
+connections.configure();
