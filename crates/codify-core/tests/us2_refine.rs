@@ -18,7 +18,7 @@ use codify_core::application::refine::RefineLoop;
 use codify_core::domain::change::{ChangeTarget, RiskLevel, Verdict};
 use codify_core::domain::context::{ArtifactKind, ContextArtifact, Segment};
 use codify_core::domain::session::{AuthoringSession, Mode, SessionId, SessionState};
-use codify_core::infrastructure::composition::CoreBuilder;
+use codify_core::infrastructure::composition::{CoreBuilder, Local};
 use fakes::*;
 use std::sync::Arc;
 
@@ -63,7 +63,7 @@ fn loop_con_riesgo(
     prompter: Arc<FakePrompter>,
     risk: Arc<dyn codify_core::domain::ports::RiskClassifier>,
 ) -> RefineLoop {
-    let deps = CoreBuilder::new(Mode::Local)
+    let deps = CoreBuilder::<Local>::new()
         .provider(Arc::new(FakeModelProvider::local("ollama", script)))
         .navigator(Arc::new(FakeRepoNavigator::with_files(&[])))
         .resolver(Arc::new(FakeReferenceResolver::new()))

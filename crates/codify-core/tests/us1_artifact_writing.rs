@@ -10,7 +10,7 @@ use codify_core::application::ingest::IngestBudget;
 use codify_core::application::ports::{CompletionOutput, ProviderStatus, ToolCall};
 use codify_core::application::service::{AuthoringService, ContextAuthoring, StartSession};
 use codify_core::domain::audit::AuditKind;
-use codify_core::infrastructure::composition::CoreBuilder;
+use codify_core::infrastructure::composition::{CoreBuilder, Local};
 use fakes::*;
 use std::sync::Arc;
 
@@ -37,7 +37,7 @@ fn script() -> Vec<CompletionOutput> {
 }
 
 fn service(writer: Arc<FakeArtifactWriter>, audit: Arc<RecordingAudit>) -> ContextAuthoring {
-    let deps = CoreBuilder::new(codify_core::domain::session::Mode::Local)
+    let deps = CoreBuilder::<Local>::new()
         .provider(Arc::new(FakeModelProvider::local("ollama", script())))
         .navigator(Arc::new(FakeRepoNavigator::with_files(&[(
             "README.md",

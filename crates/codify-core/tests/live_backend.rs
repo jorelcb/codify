@@ -22,7 +22,7 @@ use codify_core::application::ingest::IngestBudget;
 use codify_core::application::service::{AuthoringService, ContextAuthoring, StartSession};
 use codify_core::domain::context::{ArtifactKind, Groundedness};
 use codify_core::domain::session::Mode;
-use codify_core::infrastructure::composition::CoreBuilder;
+use codify_core::infrastructure::composition::{CoreBuilder, Local};
 use codify_core::infrastructure::providers::local::LocalOpenAiCompatProvider;
 use codify_core::infrastructure::repo::locale::HeuristicLocaleDetector;
 use codify_core::infrastructure::repo::navigator::FsRepoNavigator;
@@ -151,7 +151,7 @@ async fn correr_pase() -> (
     let model = std::env::var("CODIFY_MODEL").unwrap_or_else(|_| "default".into());
 
     let audit = Arc::new(RecordingAudit::default());
-    let deps = CoreBuilder::new(Mode::Local)
+    let deps = CoreBuilder::<Local>::new()
         .provider(Arc::new(
             LocalOpenAiCompatProvider::new("local", endpoint(), model)
                 .expect("el endpoint debe ser loopback"),

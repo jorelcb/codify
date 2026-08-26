@@ -15,7 +15,7 @@ use codify_core::application::ports::{CompletionOutput, ProviderStatus};
 use codify_core::application::refine::RefineLoop;
 use codify_core::domain::context::{ArtifactKind, ContextArtifact, Segment};
 use codify_core::domain::session::{AuthoringSession, Mode, SessionId};
-use codify_core::infrastructure::composition::CoreBuilder;
+use codify_core::infrastructure::composition::{CoreBuilder, Local};
 use fakes::*;
 use std::sync::Arc;
 
@@ -52,7 +52,7 @@ fn loop_que_responde(after: &str) -> (RefineLoop, Arc<FakeModelProvider>) {
             serde_json::to_string(after).unwrap(),
         ))],
     ));
-    let deps = CoreBuilder::new(Mode::Local)
+    let deps = CoreBuilder::<Local>::new()
         .provider(provider.clone())
         .navigator(Arc::new(FakeRepoNavigator::with_files(&[])))
         .resolver(Arc::new(FakeReferenceResolver::new()))

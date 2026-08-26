@@ -22,8 +22,8 @@ Conviene saberlo antes de empezar, porque tres piezas del diseño ya están en e
 
 ## Phase 1: Setup
 
-- [ ] T001 Añadir `oauth2` (device-authorization flow) y `keyring` como dependencias de `crates/codify-core/Cargo.toml`, y **`trybuild` como `dev-dependency`** — es lo que permite afirmar que un programa **no compila**, y sin ello T003 no se puede escribir
-- [ ] T002 [P] Crear el módulo `crates/codify-core/src/infrastructure/secrets/mod.rs`, declarado en su `mod.rs` padre. **`providers/remote.rs` no se crea aquí**: lo crea T020, que es quien lo llena. Un módulo vacío durante cuatro fases es un stub sin fecha de caducidad
+- [X] T001 Añadir `oauth2` (device-authorization flow) y `keyring` como dependencias de `crates/codify-core/Cargo.toml`, y **`trybuild` como `dev-dependency`** — es lo que permite afirmar que un programa **no compila**, y sin ello T003 no se puede escribir
+- [X] T002 [P] Crear el módulo `crates/codify-core/src/infrastructure/secrets/mod.rs`, declarado en su `mod.rs` padre. **`providers/remote.rs` no se crea aquí**: lo crea T020, que es quien lo llena. Un módulo vacío durante cuatro fases es un stub sin fecha de caducidad
 
 ---
 
@@ -32,10 +32,10 @@ Conviene saberlo antes de empezar, porque tres piezas del diseño ya están en e
 **Goal**: que un grafo local no pueda contener un adapter de red. Todo lo demás depende de que
 esta forma esté fijada, porque cambia la firma con la que se construye el sistema.
 
-- [ ] T003 ⚠️ **Primero**: test de **compilación fallida** con `trybuild` — un programa que llama al método de proveedor remoto sobre `CoreBuilder<Local>` no debe compilar. El caso va en `crates/codify-core/tests/compile_fail/local_no_admite_remoto.rs` y el arnés que lo ejecuta en `crates/codify-core/tests/compile_fail.rs` (depende de T001). Se escribe antes que T004 porque **es quien define la forma del constructor**
-- [ ] T004 `CoreBuilder<M>` con `M ∈ {Local, Hybrid}` en `crates/codify-core/src/infrastructure/composition.rs`: el método que acepta un proveedor remoto existe **solo** en `CoreBuilder<Hybrid>` (depende de T003)
-- [ ] T005 Extender `crates/codify-core/tests/egress_guard.rs`: la comprobación de runtime de `ProviderRegistry::for_mode` **sigue viva** y se prueba explícitamente. Es defensa en profundidad, no redundancia — cubre un proveedor construido por otra vía
-- [ ] T006 [P] Migrar los puntos de construcción existentes a la firma nueva — `crates/codify-app/src/commands.rs` y los tests que arman el grafo (depende de T004)
+- [X] T003 ⚠️ **Primero**: test de **compilación fallida** con `trybuild` — un programa que llama al método de proveedor remoto sobre `CoreBuilder<Local>` no debe compilar. El caso va en `crates/codify-core/tests/compile_fail/local_no_admite_remoto.rs` y el arnés que lo ejecuta en `crates/codify-core/tests/compile_fail.rs` (depende de T001). Se escribe antes que T004 porque **es quien define la forma del constructor**. **Al escribirlo se vio que no debía importar el adapter remoto**: lo que prueba es que el método no existe, y el argumento da igual — atarlo a T020 habría cruzado una dependencia de fase sin ganar nada
+- [X] T004 `CoreBuilder<M>` con `M ∈ {Local, Hybrid}` en `crates/codify-core/src/infrastructure/composition.rs`: el método que acepta un proveedor remoto existe **solo** en `CoreBuilder<Hybrid>` (depende de T003). **`new()` dejó de recibir el `Mode`**: al pasarlo como tipo y como valor, `CoreBuilder::<Local>::new(Mode::Hybrid)` compilaba y el grafo podía decir una cosa mientras el tipo decía otra. El modo sale ahora de `ModoDelGrafo::MODE`, fuente única
+- [X] T005 Extender `crates/codify-core/tests/egress_guard.rs`: la comprobación de runtime de `ProviderRegistry::for_mode` **sigue viva** y se prueba explícitamente. Es defensa en profundidad, no redundancia — cubre un proveedor construido por otra vía
+- [X] T006 [P] Migrar los puntos de construcción existentes a la firma nueva — `crates/codify-app/src/commands.rs` y los tests que arman el grafo (depende de T004)
 
 **Checkpoint**: escribir un grafo local con salida a la red es un error de compilación.
 

@@ -15,7 +15,7 @@ use codify_core::domain::change::{ApprovalDecision, ProposalId, Verdict};
 use codify_core::domain::context::{ContextArtifact, Groundedness};
 use codify_core::domain::session::{Mode, SessionId};
 use codify_core::infrastructure::cancel::TokenCancellationFactory;
-use codify_core::infrastructure::composition::CoreBuilder;
+use codify_core::infrastructure::composition::{CoreBuilder, Hybrid, Local, ModoDelGrafo};
 use codify_core::infrastructure::diff::engine::SimilarDiffEngine;
 use codify_core::infrastructure::diff::risk::ConservativeRiskClassifier;
 use codify_core::infrastructure::providers::local::LocalOpenAiCompatProvider;
@@ -279,7 +279,46 @@ fn build_service(
         FsHttpReferenceResolver::with_public_web(repo_root)
     };
 
-    let deps = CoreBuilder::new(mode)
+    // El modo vive en el TIPO del builder (`003`-FR-008a), así que aquí hay que ramificar. La
+    // rama no es ceremonia: es el punto exacto donde los dos grafos dejan de ser el mismo, y
+    // tenerlo visible es preferible a un `mode` que viaja como dato y se consulta más tarde.
+    let deps = match mode {
+        Mode::Local => cablear(
+            CoreBuilder::<Local>::new(),
+            app,
+            repo_root,
+            pending,
+            provider,
+            resolver,
+        )?,
+        Mode::Hybrid => cablear(
+            CoreBuilder::<Hybrid>::new(),
+            app,
+            repo_root,
+            pending,
+            provider,
+            resolver,
+        )?,
+    };
+
+    Ok(ContextAuthoring::new(deps))
+}
+
+/// Cablea todo lo que **no** depende del modo.
+///
+/// Es genérica sobre el estado del grafo para que exista una sola copia de esta lista: si el
+/// cableado común se duplicara por rama, olvidar un adapter en una de las dos sería un error
+/// silencioso que solo aparecería en ese modo.
+#[allow(clippy::too_many_arguments)]
+fn cablear<M: ModoDelGrafo>(
+    builder: CoreBuilder<M>,
+    app: &AppHandle,
+    repo_root: &str,
+    pending: PendingDecisions,
+    provider: LocalOpenAiCompatProvider,
+    resolver: FsHttpReferenceResolver,
+) -> Result<codify_core::application::deps::AuthoringDeps, String> {
+    builder
         .provider(Arc::new(provider))
         .navigator(Arc::new(FsRepoNavigator::new(repo_root)))
         .resolver(Arc::new(resolver))
@@ -296,9 +335,7 @@ fn build_service(
         ))
         .cancellations(Arc::new(TokenCancellationFactory))
         .build()
-        .map_err(|e| format!("no se pudo cablear el núcleo: {e}"))?;
-
-    Ok(ContextAuthoring::new(deps))
+        .map_err(|e| format!("no se pudo cablear el núcleo: {e}"))
 }
 
 // ---------------------------------------------------------------------------

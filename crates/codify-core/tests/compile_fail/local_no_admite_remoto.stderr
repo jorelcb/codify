@@ -1,0 +1,11 @@
+error[E0599]: no method named `remote_provider` found for struct `CoreBuilder` in the current scope
+  --> tests/compile_fail/local_no_admite_remoto.rs:21:41
+   |
+21 |     let _ = CoreBuilder::<Local>::new().remote_provider(cualquiera);
+   |                                         ^^^^^^^^^^^^^^^
+   |
+help: there is a method `provider` with a similar name
+   |
+21 -     let _ = CoreBuilder::<Local>::new().remote_provider(cualquiera);
+21 +     let _ = CoreBuilder::<Local>::new().provider(cualquiera);
+   |
