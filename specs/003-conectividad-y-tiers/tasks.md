@@ -91,7 +91,7 @@ de mayor capacidad, comprobable sin leer el código.
 ### Implementación
 
 - [X] T020 [US2] **Crear** e implementar el adapter `ModelProvider` remoto genérico en `crates/codify-core/src/infrastructure/providers/remote.rs`: `is_local()` devuelve `false` y `tier_hint()` el tier **declarado**, no inferido (contracts/ports.md)
-- [ ] T021 [US2] Cablear las conexiones guardadas al grafo híbrido en `crates/codify-core/src/infrastructure/composition.rs` (depende de T004, T013, T020)
+- [X] T021 [US2] Cablear las conexiones guardadas al grafo híbrido en `crates/codify-core/src/infrastructure/composition.rs` (depende de T004, T013, T020)
 - [X] T022 [US2] Eventos `task.routed` —tier y conexión— y **`connection.state_changed`** —conectada, caducada o revocada—, en `crates/codify-core/src/domain/audit.rs` y `crates/codify-app/src/adapters.rs`. Los dos están en el contrato; el segundo se había quedado sin tarea
 - [X] T023 [US2] Mostrar qué tier atendió cada tarea en `crates/codify-app/ui/` (FR-006)
 
@@ -124,8 +124,8 @@ US1 exista sin romper la promesa del producto.
 ## Phase 6: Polish
 
 - [X] T029 [P] Cada código nuevo —estado de conexión, modo— tiene texto en **los dos idiomas**, con el test que recorre los códigos del núcleo, en `crates/codify-app/tests/ui_contract.rs`
-- [ ] T030 [P] Contratos al día: `contracts/ports.md` y `contracts/skin-commands.md` reflejan lo entregado, y `002/contracts/skin-commands.md` recoge los campos nuevos del DTO de sesión si los hubiera
-- [ ] T031 Ejecutar la validación de `quickstart.md` (S1–S7) — **S4 y S6 necesitan comprobarse fuera de la aplicación**: buscar la credencial en disco y en el keyring del sistema con sus propias herramientas, porque preguntárselo a la aplicación es preguntarle a la parte interesada
+- [X] T030 [P] Contratos al día: `contracts/ports.md` y `contracts/skin-commands.md` reflejan lo entregado, y `002/contracts/skin-commands.md` recoge los campos nuevos del DTO de sesión si los hubiera
+- [~] T031 Ejecutar la validación de `quickstart.md` (S1–S7) — **S3, S5 y S7 cubiertos por tests** (`us2_tier_routing.rs`, `us3_mode.rs`) y **SC-003 por el test de compilación fallida**, que es la única forma de comprobarlo. **Queda lo que necesita una persona y un proveedor real**: S1 y S2 exigen una cuenta con la que autorizar; S4 y S6 exigen buscar la credencial en disco y en el keyring **con las herramientas del sistema**, no preguntándole a la aplicación. Misma clase que `001`-T050 y `002`-T049
 
 ---
 

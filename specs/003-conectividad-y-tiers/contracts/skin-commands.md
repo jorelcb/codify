@@ -12,7 +12,12 @@ Extiende la superficie de `002/contracts/skin-commands.md`.
 
 ### `ProviderConnectionDto` — campos
 
-`id` · `label` · `tier` · `state` (`connected` \| `expired` \| `revoked`) · `endpointHost`.
+`id` · `label` · `tier` (`cheap` \| `heavy`) · `state` (`connected` \| `expired` \| `revoked`) ·
+`endpointHost`.
+
+**Entregado.** El comando de conexión devuelve además un `ConnectChallengeDto` con
+`challengeId`, `kind` (`delegada` \| `credencial`), y según la vía `code`+`url` o
+`instructions`. Ninguno de los dos tiene campo para el secreto.
 
 **No lleva la credencial, ni un campo donde pudiera ir.** Se enumeran los campos, y no se dice
 «crece», por lo aprendido en `002`: un contrato que solo dice que crece no permite notar que dejó

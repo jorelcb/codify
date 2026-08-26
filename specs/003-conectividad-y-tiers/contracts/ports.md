@@ -56,3 +56,12 @@ No hay port nuevo: satisface el que ya existe desde `001`.
 
 `CoreBuilder<Local>` no expone el método que acepta un proveedor remoto. Se prueba con un test
 **de compilación fallida**, no con una aserción: lo que se comprueba es que el programa no existe.
+
+**Entregado** (`trybuild`, `tests/compile_fail/local_no_admite_remoto.rs`). El error registrado
+es `no method named 'remote_provider' found for struct 'CoreBuilder'`, y se comprobó inyectando
+la violación en las dos capas: mover el método al `impl` genérico rompe el test, e intentar
+cablear un remoto en la rama local de la aplicación tampoco compila.
+
+Una nota que costó descubrir: el modo **no se pasa** a `new()`. Al recibirlo además del
+parámetro de tipo, `CoreBuilder::<Local>::new(Mode::Hybrid)` compilaba y el grafo podía decir una
+cosa mientras el tipo decía otra. Sale de `ModoDelGrafo::MODE`, fuente única.
