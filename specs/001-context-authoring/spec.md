@@ -150,13 +150,16 @@ El usuario re-ejecuta el authoring sobre un repo que **ya tiene** archivos de co
 
 | | Estado | Dónde se aborda |
 |---|---|---|
-| **FR-017** reparto entre tier económico y pesado | ❌ **sin implementar** — hay un solo tier real | spec `003` ([#42](https://github.com/jorelcb/codify/issues/42)) |
-| Proveedor remoto / frontier | ❌ sin implementar — **no lo exige ningún FR**, lo exige la constitución («provider-agnóstico: local + remotos vía OAuth») y lo asumen Edge Cases, Key Entities y Assumptions | spec `003` ([#42](https://github.com/jorelcb/codify/issues/42)) |
+| **FR-017** reparto entre tier económico y pesado | ✅ **cumplido** — spec `003`, PR #46 | — |
+| Proveedor remoto / frontier | ✅ **entregado** — adapter genérico, dos vías de conexión y credencial custodiada por el sistema (PR #46) | — |
 | Persistencia del registro de auditoría | ❌ vive en memoria y muere con la sesión | spec `004` ([#43](https://github.com/jorelcb/codify/issues/43)) |
 
-**Los tres están dentro del alcance de v1** (decidido el 2026-08-25). Mientras no se cierren, las
-menciones a *frontier* en Edge Cases, Key Entities y Assumptions describen un futuro, no el
-presente.
+**Los tres estaban dentro del alcance de v1** (decidido el 2026-08-25). Dos se cerraron con el
+spec `003` (PR #46), así que las menciones a *frontier* en Edge Cases, Key Entities y Assumptions
+**ya describen el presente**. Queda la persistencia del registro.
+
+La tabla se conserva aunque casi esté vacía: mientras exista un requisito que este spec promete y
+el código no entrega, tiene que verse desde aquí. Vaciarla del todo sería el momento de borrarla.
 
 > **Corrección del 2026-08-25**: esta tabla llegó a listar **FR-016** como incumplido. No lo está:
 > exige proveedores configurables «incluyendo la opción de un proveedor **local**, sin acoplarse a
