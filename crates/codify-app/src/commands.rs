@@ -8,10 +8,10 @@ use crate::adapters::{
     EventAuditSink, PendingDecisions, StatePayload, SystemClock, WindowPrompter,
 };
 use codify_core::application::connections::ProviderConnection;
-use codify_core::application::ports::Tier;
 use codify_core::application::ports::{
     AccountConnector, CredentialStore, Desafio, ReferenciaDeCredencial, Secreto,
 };
+use codify_core::application::ports::{ModelProvider, Tier};
 use codify_core::application::ports::{ProviderDiscovery, ProviderIssue};
 use codify_core::application::service::{
     AuthoringService, ContextAuthoring, SessionSnapshot, StartSession,
@@ -25,6 +25,7 @@ use codify_core::infrastructure::diff::engine::SimilarDiffEngine;
 use codify_core::infrastructure::diff::risk::ConservativeRiskClassifier;
 use codify_core::infrastructure::providers::local::LocalOpenAiCompatProvider;
 use codify_core::infrastructure::providers::probe::LocalProviderProbe;
+use codify_core::infrastructure::providers::remote::RemoteOpenAiCompatProvider;
 use codify_core::infrastructure::repo::locale::HeuristicLocaleDetector;
 use codify_core::infrastructure::repo::navigator::FsRepoNavigator;
 use codify_core::infrastructure::repo::reference_resolver::FsHttpReferenceResolver;
@@ -292,6 +293,7 @@ fn build_service(
     repo_root: &str,
     mode: Mode,
     pending: PendingDecisions,
+    remotos: Vec<Arc<dyn ModelProvider>>,
 ) -> Result<ContextAuthoring, String> {
     let provider = LocalOpenAiCompatProvider::new(
         "local",
@@ -310,6 +312,9 @@ fn build_service(
     // rama no es ceremonia: es el punto exacto donde los dos grafos dejan de ser el mismo, y
     // tenerlo visible es preferible a un `mode` que viaja como dato y se consulta más tarde.
     let deps = match mode {
+        // En local los remotos **no se cablean**, y no porque se filtren: el builder de este
+        // lado no tiene el método (`003`-FR-008). Si alguien los pasara, no habría dónde
+        // ponerlos.
         Mode::Local => cablear(
             CoreBuilder::<Local>::new(),
             app,
@@ -318,14 +323,13 @@ fn build_service(
             provider,
             resolver,
         )?,
-        Mode::Hybrid => cablear(
-            CoreBuilder::<Hybrid>::new(),
-            app,
-            repo_root,
-            pending,
-            provider,
-            resolver,
-        )?,
+        Mode::Hybrid => {
+            let mut b = CoreBuilder::<Hybrid>::new();
+            for r in remotos {
+                b = b.remote_provider(r);
+            }
+            cablear(b, app, repo_root, pending, provider, resolver)?
+        }
     };
 
     Ok(ContextAuthoring::new(deps))
@@ -525,6 +529,37 @@ pub async fn set_mode(state: State<'_, AppState>, local: bool) -> Result<(), Str
     Ok(())
 }
 
+/// Convierte las cuentas conectadas en proveedores, pidiendo cada credencial al almacén.
+///
+/// Una conexión revocada o caducada **no** produce proveedor: SC-006 exige que desconectar surta
+/// efecto en la tarea siguiente, y filtrar aquí es lo que lo consigue sin reiniciar.
+async fn adapters_remotos(state: &State<'_, AppState>) -> Vec<Arc<dyn ModelProvider>> {
+    let conexiones: Vec<ProviderConnection> = state
+        .connections
+        .lock()
+        .map(|c| c.iter().filter(|x| x.usable()).cloned().collect())
+        .unwrap_or_default();
+
+    let store = SystemKeyring::new();
+    let mut out: Vec<Arc<dyn ModelProvider>> = Vec::new();
+    for c in conexiones {
+        // Sin credencial no hay proveedor. Se omite en silencio a propósito: el motivo lo dará
+        // la conexión cuando el usuario mire el panel, no un fallo a mitad de sesión.
+        if let Ok(Some(secreto)) = store.obtener(c.credential()).await {
+            if let Ok(p) = RemoteOpenAiCompatProvider::new(
+                c.label.clone(),
+                format!("https://{}", c.endpoint_host),
+                env_or("CODIFY_REMOTE_MODEL", "default"),
+                c.tier,
+                secreto,
+            ) {
+                out.push(Arc::new(p));
+            }
+        }
+    }
+    out
+}
+
 /// Id corto y suficiente: solo tiene que ser único dentro de esta ejecución.
 fn uuid_simple() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -588,11 +623,16 @@ pub async fn start_session(
         },
     );
 
+    // Las conexiones guardadas se convierten en proveedores **solo** si el modo las admite.
+    // El `for` de dentro de `build_service` no puede colarlas en un grafo local: allí el método
+    // no existe.
+    let remotos = adapters_remotos(&state).await;
     let service = Arc::new(build_service(
         &app,
         &request.repo_root,
         mode,
         state.pending(),
+        remotos,
     )?);
 
     let id = service
