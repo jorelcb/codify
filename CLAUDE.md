@@ -75,5 +75,5 @@ contrato que nadie ha probado.**
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/002-authoring-experience/plan.md` (codify — la experiencia de authoring).
+`specs/003-conectividad-y-tiers/plan.md` (codify — conectividad y reparto de modelos).
 <!-- SPECKIT END -->
