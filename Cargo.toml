@@ -18,3 +18,9 @@ similar = "2"
 walkdir = "2"
 tokio-util = "0.7"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+# 003-FR-001: autorización delegada donde el proveedor la ofrezca.
+oauth2 = { version = "5", default-features = false, features = ["reqwest", "rustls-tls"] }
+# 003-FR-002: la credencial la custodia el sistema operativo, no nosotros.
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+# 003-T003: afirmar que un programa NO compila no es un `#[test]`; necesita su propio arnés.
+trybuild = "1"

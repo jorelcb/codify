@@ -14,7 +14,7 @@ use codify_core::application::ports::{CompletionOutput, ProviderStatus, ToolCall
 use codify_core::application::service::{AuthoringService, ContextAuthoring, StartSession};
 use codify_core::domain::context::ArtifactKind;
 use codify_core::domain::session::{Mode, SessionId};
-use codify_core::infrastructure::composition::CoreBuilder;
+use codify_core::infrastructure::composition::{CoreBuilder, Local};
 use fakes::*;
 use std::sync::Arc;
 
@@ -48,7 +48,7 @@ fn script() -> Vec<CompletionOutput> {
 }
 
 fn service() -> ContextAuthoring {
-    let deps = CoreBuilder::new(Mode::Local)
+    let deps = CoreBuilder::<Local>::new()
         .provider(Arc::new(FakeModelProvider::local("ollama", script())))
         .navigator(Arc::new(FakeRepoNavigator::with_files(&[(
             "README.md",

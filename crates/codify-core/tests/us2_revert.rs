@@ -17,7 +17,7 @@ use codify_core::application::service::{AuthoringService, ContextAuthoring, Star
 use codify_core::domain::change::{ProposalId, RiskLevel};
 use codify_core::domain::context::ArtifactKind;
 use codify_core::domain::session::{Mode, SessionId};
-use codify_core::infrastructure::composition::CoreBuilder;
+use codify_core::infrastructure::composition::{CoreBuilder, Local};
 use fakes::*;
 use std::sync::Arc;
 
@@ -42,7 +42,7 @@ fn script() -> Vec<CompletionOutput> {
 }
 
 fn service(risk: Arc<dyn codify_core::domain::ports::RiskClassifier>) -> ContextAuthoring {
-    let deps = CoreBuilder::new(Mode::Local)
+    let deps = CoreBuilder::<Local>::new()
         .provider(Arc::new(FakeModelProvider::local("ollama", script())))
         .navigator(Arc::new(FakeRepoNavigator::with_files(&[(
             "README.md",

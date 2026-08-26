@@ -9,7 +9,7 @@ use codify_core::application::ingest::IngestBudget;
 use codify_core::application::ports::{CompletionOutput, ProviderStatus, ToolCall};
 use codify_core::application::service::{AuthoringService, ContextAuthoring, StartSession};
 use codify_core::domain::session::{Mode, SessionState};
-use codify_core::infrastructure::composition::CoreBuilder;
+use codify_core::infrastructure::composition::{CoreBuilder, Local};
 use fakes::*;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -25,7 +25,7 @@ fn slow_service(delay: Duration) -> ContextAuthoring {
         })
         .collect();
 
-    let deps = CoreBuilder::new(Mode::Local)
+    let deps = CoreBuilder::<Local>::new()
         .provider(Arc::new(
             FakeModelProvider::local("ollama", script).with_delay(delay),
         ))

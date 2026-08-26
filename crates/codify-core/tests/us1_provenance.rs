@@ -17,7 +17,7 @@ use codify_core::application::ports::{CompletionOutput, ToolCall};
 use codify_core::application::service::{AuthoringService, ContextAuthoring, StartSession};
 use codify_core::domain::context::Groundedness;
 use codify_core::domain::session::Mode;
-use codify_core::infrastructure::composition::CoreBuilder;
+use codify_core::infrastructure::composition::{CoreBuilder, Local};
 use fakes::*;
 use std::sync::Arc;
 
@@ -122,7 +122,7 @@ async fn end_to_end_the_loop_verifies_against_what_it_actually_read() {
         script.push(CompletionOutput::Text(generado.to_string()));
     }
 
-    let deps = CoreBuilder::new(Mode::Local)
+    let deps = CoreBuilder::<Local>::new()
         .provider(Arc::new(FakeModelProvider::local("ollama", script)))
         .navigator(Arc::new(FakeRepoNavigator::with_files(&[(
             "Makefile", MAKEFILE,
@@ -261,7 +261,7 @@ async fn end_to_end_a_previous_artifact_read_from_the_repo_does_not_ground() {
         script.push(CompletionOutput::Text(generado.to_string()));
     }
 
-    let deps = CoreBuilder::new(Mode::Local)
+    let deps = CoreBuilder::<Local>::new()
         .provider(Arc::new(FakeModelProvider::local("ollama", script)))
         // El repositorio trae un artefacto de una corrida anterior, como en el uso real.
         .navigator(Arc::new(FakeRepoNavigator::with_files(&[(

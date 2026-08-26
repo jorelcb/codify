@@ -13,7 +13,7 @@ use codify_core::application::ports::{CompletionOutput, Tier, ToolCall};
 use codify_core::application::service::{AuthoringService, ContextAuthoring, StartSession};
 use codify_core::domain::audit::AuditKind;
 use codify_core::domain::session::Mode;
-use codify_core::infrastructure::composition::CoreBuilder;
+use codify_core::infrastructure::composition::{CoreBuilder, Local};
 use fakes::*;
 use std::sync::Arc;
 
@@ -81,7 +81,7 @@ fn sin_el_tier_pedido_la_degradacion_queda_registrada_en_el_tipo() {
 #[tokio::test]
 async fn la_degradacion_se_declara_en_la_auditoria_y_en_la_vista() {
     let audit = Arc::new(RecordingAudit::default());
-    let deps = CoreBuilder::new(Mode::Local)
+    let deps = CoreBuilder::<Local>::new()
         // Un solo proveedor, de tier Cheap: la generación pide Heavy y no lo hay.
         .provider(Arc::new(FakeModelProvider::local("ollama", guion())))
         .navigator(Arc::new(FakeRepoNavigator::with_files(&[(

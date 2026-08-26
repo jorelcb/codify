@@ -9,7 +9,7 @@ use codify_core::application::service::{AuthoringService, ContextAuthoring, Star
 use codify_core::domain::audit::AuditKind;
 use codify_core::domain::context::Groundedness;
 use codify_core::domain::session::Mode;
-use codify_core::infrastructure::composition::CoreBuilder;
+use codify_core::infrastructure::composition::{CoreBuilder, Local};
 use fakes::*;
 use std::sync::Arc;
 
@@ -43,7 +43,7 @@ async fn contradiction_between_sources_is_surfaced_and_audited() {
     }
 
     let audit = Arc::new(RecordingAudit::default());
-    let deps = CoreBuilder::new(Mode::Local)
+    let deps = CoreBuilder::<Local>::new()
         .provider(Arc::new(FakeModelProvider::local("ollama", script)))
         .navigator(Arc::new(FakeRepoNavigator::with_files(&[
             ("PRD-00.md", PRD),

@@ -6,3 +6,4 @@ pub mod composition;
 pub mod diff;
 pub mod providers;
 pub mod repo;
+pub mod secrets;
