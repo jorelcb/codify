@@ -45,6 +45,29 @@
       <p id="provider-next" class="next-step" hidden></p>
     </section>
 
+    <!-- `003` — modo y proveedores conectados. El modo va primero a propósito: es lo que decide
+         si algo puede salir del equipo, y verlo después de conectar sería tarde. -->
+    <section id="conexiones" class="provider" role="region" aria-label="" data-i18n-aria="a11y.provider_region">
+      <h2 class="visually-hidden" data-i18n="mode.title"></h2>
+      <label class="inline">
+        <input type="checkbox" id="modo-local" checked />
+        <span class="label" data-i18n="mode.local_option"></span>
+      </label>
+      <p id="modo-aviso" class="next-step" hidden data-i18n="mode.changed"></p>
+      <p id="modo-receptores" class="next-step" hidden data-i18n="mode.will_receive"></p>
+
+      <h3 class="visually-hidden" data-i18n="connection.title"></h3>
+      <ul id="conexiones-lista"></ul>
+      <p id="conexiones-vacio" data-i18n="connection.none"></p>
+      <button id="conectar" class="ghost" data-i18n="connection.add"></button>
+
+      <div id="desafio" hidden>
+        <p id="desafio-codigo" class="next-step" data-i18n="connection.code_hint"></p>
+        <p id="desafio-credencial" class="next-step" data-i18n="connection.secret_hint"></p>
+        <p id="desafio-sin-almacen" class="next-step" hidden data-i18n="connection.no_store"></p>
+      </div>
+    </section>
+
     <!-- La corriente cronológica de bloques (FR-020). aria-live para que un lector de
          pantalla anuncie lo que va llegando sin que el usuario tenga que ir a buscarlo. -->
     <main id="stream" class="stream" role="log" aria-live="polite" aria-label="" data-i18n-aria="a11y.stream_region">

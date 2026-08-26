@@ -91,6 +91,15 @@ impl AuditSink for EventAuditSink {
                 );
             }
             AuditKind::ArtifactGenerated => self.activity("generado", &event.payload),
+            // `003`-FR-006: el usuario ve qué tier atendió cada tarea sin abrir herramientas.
+            AuditKind::TaskRouted => self.activity("enrutado", &event.payload),
+            AuditKind::ConnectionStateChanged => {
+                let (target, reason) = Self::split_reason(&event.payload);
+                let _ = self.app.emit(
+                    "connection.state_changed",
+                    UnresolvedPayload { target, reason },
+                );
+            }
             // `002`-FR-028. El payload trae `codigo: detalle`; la piel traduce el código y
             // guarda el detalle para el registro, nunca para la pantalla.
             AuditKind::SessionFailed => {

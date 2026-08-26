@@ -460,6 +460,20 @@ impl AuthoringLoop {
                 ),
             );
         }
+        // `003`-FR-006/FR-010: qué atendió cada tarea. Sin esto el usuario no puede
+        // reconstruir qué salió del equipo, que es lo que hace auditable el modo híbrido.
+        self.audit(
+            AuditKind::TaskRouted,
+            format!(
+                "{tier:?}: {} ({})",
+                elegido.provider.name(),
+                if elegido.provider.is_local() {
+                    "local"
+                } else {
+                    "remoto"
+                }
+            ),
+        );
         tokio::select! {
             result = elegido.provider.complete(request) => result,
             _ = cancel.cancelled() => Err(CoreError::Cancelled),

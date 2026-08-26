@@ -25,6 +25,11 @@ pub enum AuditKind {
     /// La sesión murió, con su motivo como código estable (`002`-FR-028). El payload lleva
     /// además el detalle técnico: sirve para el registro, no para la pantalla.
     SessionFailed,
+    /// Qué tier y qué conexión atendieron una tarea (`003`-FR-006/FR-010). Es lo que permite
+    /// reconstruir después qué salió del equipo y qué no.
+    TaskRouted,
+    /// Una conexión cambió de estado: conectada, caducada o revocada (`003`-FR-003).
+    ConnectionStateChanged,
     /// No había proveedor del tier pedido y se enrutó a otro (FR-018). Que quede auditado es
     /// lo que permite demostrar que se avisó, en vez de solo afirmarlo.
     TierDegraded,
