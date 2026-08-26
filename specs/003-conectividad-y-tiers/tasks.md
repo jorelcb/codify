@@ -52,8 +52,8 @@ la credencial aparezca en disco, en el registro ni en la interfaz.
 
 - [X] T007 [P] [US1] Suite de contrato de `CredentialStore` —guardar, obtener, borrar idempotente, `disponible()` sin escribir— corriendo contra el adapter real **y** contra un doble en memoria, en `crates/codify-core/tests/contract_credential_store.rs`
 - [X] T008 [P] [US1] El secreto **no** aparece en la salida de `Debug` ni en un `AuditEvent`, en `crates/codify-core/tests/contract_credential_store.rs`. Es SC-002 y se comprueba buscándolo, no suponiéndolo
-- [ ] T009 [P] [US1] Abandonar o denegar la autorización deja el sistema sin conexión a medias, **y desconectar una cuenta impide su uso en la tarea siguiente sin reiniciar** (SC-006) — en `crates/codify-core/tests/us1_connect_account.rs`
-- [ ] T010 [P] [US1] Sin almacén disponible, conectar **falla diciendo por qué** y no escribe nada en disco (FR-004), en `crates/codify-core/tests/us1_connect_account.rs`
+- [X] T009 [P] [US1] Abandonar o denegar la autorización deja el sistema sin conexión a medias, **y desconectar una cuenta impide su uso en la tarea siguiente sin reiniciar** (SC-006) — en `crates/codify-core/tests/us1_connect_account.rs`
+- [X] T010 [P] [US1] Sin almacén disponible, conectar **falla diciendo por qué** y no escribe nada en disco (FR-004), en `crates/codify-core/tests/us1_connect_account.rs`
 
 ### Ports y dominio
 
@@ -63,8 +63,8 @@ la credencial aparezca en disco, en el registro ni en la interfaz.
 ### Adapters
 
 - [X] T013 [US1] `CredentialStore` contra el keyring del sistema en `crates/codify-core/src/infrastructure/secrets/keyring.rs`, **sin respaldo en archivo** (research.md D3) (depende de T011)
-- [ ] T014 [US1] `AccountConnector` por device-flow en `crates/codify-core/src/infrastructure/secrets/device_flow.rs`, con **su propio** límite de tiempo — esperar a una persona no es esperar a un modelo
-- [ ] T015 [P] [US1] `AccountConnector` por credencial directa en `crates/codify-core/src/infrastructure/secrets/direct.rs` (depende de T011)
+- [X] T014 [US1] `AccountConnector` por device-flow en `crates/codify-core/src/infrastructure/secrets/device_flow.rs`, con **su propio** límite de tiempo — esperar a una persona no es esperar a un modelo
+- [X] T015 [P] [US1] `AccountConnector` por credencial directa en `crates/codify-core/src/infrastructure/secrets/direct.rs` (depende de T011)
 
 ### Piel
 
@@ -85,12 +85,12 @@ de mayor capacidad, comprobable sin leer el código.
 
 ### Tests ⚠️
 
-- [ ] T018 [P] [US2] Con dos proveedores de tiers distintos, el refinamiento va al económico y la generación pesada al de mayor capacidad, en `crates/codify-core/tests/us2_tier_routing.rs`
-- [ ] T019 [P] [US2] Un fallo de **autorización** llega como `SessionFailure::Unauthorized` y no como fallo del modelo, en `crates/codify-core/tests/us2_tier_routing.rs`
+- [X] T018 [P] [US2] Con dos proveedores de tiers distintos, el refinamiento va al económico y la generación pesada al de mayor capacidad, en `crates/codify-core/tests/us2_tier_routing.rs`
+- [X] T019 [P] [US2] Un fallo de **autorización** llega como `SessionFailure::Unauthorized` y no como fallo del modelo, en `crates/codify-core/tests/us2_tier_routing.rs`
 
 ### Implementación
 
-- [ ] T020 [US2] **Crear** e implementar el adapter `ModelProvider` remoto genérico en `crates/codify-core/src/infrastructure/providers/remote.rs`: `is_local()` devuelve `false` y `tier_hint()` el tier **declarado**, no inferido (contracts/ports.md)
+- [X] T020 [US2] **Crear** e implementar el adapter `ModelProvider` remoto genérico en `crates/codify-core/src/infrastructure/providers/remote.rs`: `is_local()` devuelve `false` y `tier_hint()` el tier **declarado**, no inferido (contracts/ports.md)
 - [ ] T021 [US2] Cablear las conexiones guardadas al grafo híbrido en `crates/codify-core/src/infrastructure/composition.rs` (depende de T004, T013, T020)
 - [ ] T022 [US2] Eventos `task.routed` —tier y conexión— y **`connection.state_changed`** —conectada, caducada o revocada—, en `crates/codify-core/src/domain/audit.rs` y `crates/codify-app/src/adapters.rs`. Los dos están en el contrato; el segundo se había quedado sin tarea
 - [ ] T023 [US2] Mostrar qué tier atendió cada tarea en `crates/codify-app/ui/` (FR-006)

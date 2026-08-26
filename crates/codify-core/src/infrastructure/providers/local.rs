@@ -125,6 +125,14 @@ impl LocalOpenAiCompatProvider {
     /// Traduce la petición de dominio al payload OpenAI-compatible.
     /// Pura: permite testear el mapeo sin levantar un servidor.
     pub fn to_payload(&self, request: &CompletionRequest) -> Value {
+        Self::payload_para(&self.model, request)
+    }
+
+    /// El mismo armado, sin depender de una instancia.
+    ///
+    /// Lo usa el adapter remoto (`003`-T020): local y remoto hablan el mismo protocolo, así que
+    /// duplicar esta traducción sería garantizar que las dos versiones se separen.
+    pub fn payload_para(model: &str, request: &CompletionRequest) -> Value {
         let mut messages = vec![json!({"role": "system", "content": request.system})];
         for m in &request.messages {
             messages.push(json!({"role": Self::role_str(m.role), "content": m.content}));
@@ -147,7 +155,7 @@ impl LocalOpenAiCompatProvider {
             .collect();
 
         let mut payload = json!({
-            "model": self.model,
+            "model": model,
             "messages": messages,
             "stream": false,
         });
