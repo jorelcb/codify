@@ -14,13 +14,16 @@ Conviene saberlo antes de empezar, porque tres piezas del diseño ya están en e
   frase de catálogo. Este spec la usa, no la reescribe.
 - **`SessionFailure::Unauthorized` ya existe** (`002`-FR-028), así que un fallo de autorización ya
   puede llegar al usuario distinguido de un fallo del modelo.
+- **FR-007 de este spec no tiene tarea, y es correcto**: pide degradar y declararlo, que es
+  exactamente `001`-FR-018, entregado en la PR #38. Se dice aquí para que una revisión futura no
+  lo cuente como hueco de cobertura.
 
 ---
 
 ## Phase 1: Setup
 
-- [ ] T001 Añadir `oauth2` (device-authorization flow) y `keyring` como dependencias de `crates/codify-core/Cargo.toml`
-- [ ] T002 [P] Crear los módulos vacíos `crates/codify-core/src/infrastructure/secrets/mod.rs` y `crates/codify-core/src/infrastructure/providers/remote.rs`, declarados en sus `mod.rs` padres
+- [ ] T001 Añadir `oauth2` (device-authorization flow) y `keyring` como dependencias de `crates/codify-core/Cargo.toml`, y **`trybuild` como `dev-dependency`** — es lo que permite afirmar que un programa **no compila**, y sin ello T003 no se puede escribir
+- [ ] T002 [P] Crear el módulo `crates/codify-core/src/infrastructure/secrets/mod.rs`, declarado en su `mod.rs` padre. **`providers/remote.rs` no se crea aquí**: lo crea T020, que es quien lo llena. Un módulo vacío durante cuatro fases es un stub sin fecha de caducidad
 
 ---
 
@@ -29,7 +32,7 @@ Conviene saberlo antes de empezar, porque tres piezas del diseño ya están en e
 **Goal**: que un grafo local no pueda contener un adapter de red. Todo lo demás depende de que
 esta forma esté fijada, porque cambia la firma con la que se construye el sistema.
 
-- [ ] T003 ⚠️ **Primero**: test de **compilación fallida** — un programa que llama al método de proveedor remoto sobre `CoreBuilder<Local>` no debe compilar, en `crates/codify-core/tests/compile_fail/local_no_admite_remoto.rs` con su arnés en `crates/codify-core/tests/compile_fail.rs`. Se escribe antes que T004 porque **es quien define la forma del constructor**
+- [ ] T003 ⚠️ **Primero**: test de **compilación fallida** con `trybuild` — un programa que llama al método de proveedor remoto sobre `CoreBuilder<Local>` no debe compilar. El caso va en `crates/codify-core/tests/compile_fail/local_no_admite_remoto.rs` y el arnés que lo ejecuta en `crates/codify-core/tests/compile_fail.rs` (depende de T001). Se escribe antes que T004 porque **es quien define la forma del constructor**
 - [ ] T004 `CoreBuilder<M>` con `M ∈ {Local, Hybrid}` en `crates/codify-core/src/infrastructure/composition.rs`: el método que acepta un proveedor remoto existe **solo** en `CoreBuilder<Hybrid>` (depende de T003)
 - [ ] T005 Extender `crates/codify-core/tests/egress_guard.rs`: la comprobación de runtime de `ProviderRegistry::for_mode` **sigue viva** y se prueba explícitamente. Es defensa en profundidad, no redundancia — cubre un proveedor construido por otra vía
 - [ ] T006 [P] Migrar los puntos de construcción existentes a la firma nueva — `crates/codify-app/src/commands.rs` y los tests que arman el grafo (depende de T004)
@@ -49,7 +52,7 @@ la credencial aparezca en disco, en el registro ni en la interfaz.
 
 - [ ] T007 [P] [US1] Suite de contrato de `CredentialStore` —guardar, obtener, borrar idempotente, `disponible()` sin escribir— corriendo contra el adapter real **y** contra un doble en memoria, en `crates/codify-core/tests/contract_credential_store.rs`
 - [ ] T008 [P] [US1] El secreto **no** aparece en la salida de `Debug` ni en un `AuditEvent`, en `crates/codify-core/tests/contract_credential_store.rs`. Es SC-002 y se comprueba buscándolo, no suponiéndolo
-- [ ] T009 [P] [US1] Abandonar o denegar la autorización deja el sistema sin conexión a medias, en `crates/codify-core/tests/us1_connect_account.rs`
+- [ ] T009 [P] [US1] Abandonar o denegar la autorización deja el sistema sin conexión a medias, **y desconectar una cuenta impide su uso en la tarea siguiente sin reiniciar** (SC-006) — en `crates/codify-core/tests/us1_connect_account.rs`
 - [ ] T010 [P] [US1] Sin almacén disponible, conectar **falla diciendo por qué** y no escribe nada en disco (FR-004), en `crates/codify-core/tests/us1_connect_account.rs`
 
 ### Ports y dominio
@@ -65,7 +68,7 @@ la credencial aparezca en disco, en el registro ni en la interfaz.
 
 ### Piel
 
-- [ ] T016 [US1] Comandos `connect_provider`, `complete_connection`, `list_connections` y `disconnect_provider` en `crates/codify-app/src/commands.rs`, con el DTO sin campo para el secreto (contracts/skin-commands.md)
+- [ ] T016 [US1] Comandos `connect_provider`, `complete_connection`, `list_connections` y `disconnect_provider` en `crates/codify-app/src/commands.rs`, con el DTO sin campo para el secreto (contracts/skin-commands.md). **Desconectar borra del almacén y rearma el grafo** (research.md D4): sin lo segundo, la conexión seguiría cableada hasta reiniciar y SC-006 no se cumpliría
 - [ ] T017 [US1] Conectar y desconectar en la interfaz — `crates/codify-app/ui/` y claves nuevas en `crates/codify-app/src/strings.rs`, en los dos idiomas
 
 **Checkpoint**: hay un segundo proveedor, y su credencial no está en ningún sitio que podamos leer.
@@ -87,9 +90,9 @@ de mayor capacidad, comprobable sin leer el código.
 
 ### Implementación
 
-- [ ] T020 [US2] Adapter `ModelProvider` remoto genérico en `crates/codify-core/src/infrastructure/providers/remote.rs`: `is_local()` devuelve `false` y `tier_hint()` el tier **declarado**, no inferido (contracts/ports.md)
+- [ ] T020 [US2] **Crear** e implementar el adapter `ModelProvider` remoto genérico en `crates/codify-core/src/infrastructure/providers/remote.rs`: `is_local()` devuelve `false` y `tier_hint()` el tier **declarado**, no inferido (contracts/ports.md)
 - [ ] T021 [US2] Cablear las conexiones guardadas al grafo híbrido en `crates/codify-core/src/infrastructure/composition.rs` (depende de T004, T013, T020)
-- [ ] T022 [US2] Evento `task.routed` con tier y conexión, en `crates/codify-core/src/domain/audit.rs` y `crates/codify-app/src/adapters.rs`
+- [ ] T022 [US2] Eventos `task.routed` —tier y conexión— y **`connection.state_changed`** —conectada, caducada o revocada—, en `crates/codify-core/src/domain/audit.rs` y `crates/codify-app/src/adapters.rs`. Los dos están en el contrato; el segundo se había quedado sin tarea
 - [ ] T023 [US2] Mostrar qué tier atendió cada tarea en `crates/codify-app/ui/` (FR-006)
 
 **Checkpoint**: iterar deja de costar lo que cuesta generar.
