@@ -9,12 +9,13 @@ use crate::domain::error::Result;
 use crate::domain::reference::{Reference, ReferenceOrigin, Repository};
 use crate::domain::write::WriteRecord;
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------
 // Modelos
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Tier {
     /// Alta frecuencia y bajo riesgo: refinamiento, clasificación, monitoreo.
     Cheap,
@@ -163,6 +164,84 @@ pub trait Prompter: Send + Sync {
     async fn ask(&self, question: Question) -> Result<String>;
     /// Solo se invoca para propuestas de alto impacto: son las que bloquean la escritura.
     async fn present(&self, proposal: &ChangeProposal) -> Result<ApprovalDecision>;
+}
+
+/// Un secreto que el sistema custodia pero no mira.
+///
+/// `Debug` está redactado a propósito: `003`-FR-002 prohíbe que la credencial llegue a un
+/// registro, y la forma más fiable de cumplirlo no es acordarse de no imprimirla, sino que
+/// imprimirla no sirva de nada.
+#[derive(Clone, PartialEq, Eq)]
+pub struct Secreto(String);
+
+impl Secreto {
+    pub fn new(valor: impl Into<String>) -> Self {
+        Self(valor.into())
+    }
+
+    /// Lo expone. El nombre es largo a propósito: quien lo escriba debería notar que lo hace.
+    pub fn exponer_para_la_peticion(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Debug for Secreto {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Secreto(<redactado>)")
+    }
+}
+
+/// Dónde vive un secreto dentro del almacén del sistema.
+///
+/// **No es el secreto**: es la clave con la que pedírselo. Por eso sí se serializa — sin ella,
+/// una cuenta no sobreviviría a reiniciar la aplicación (US1, escenario 2).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReferenciaDeCredencial(String);
+
+impl ReferenciaDeCredencial {
+    pub fn new(id: impl Into<String>) -> Self {
+        Self(id.into())
+    }
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// Custodia secretos **fuera del proceso** (`003`-FR-002).
+///
+/// Lo nombra la aplicación, no el Dominio: el Dominio de `001` habla de sesión, referencia y
+/// artefacto. Una credencial es vocabulario de esta capa.
+#[async_trait::async_trait]
+pub trait CredentialStore: Send + Sync {
+    /// `false` si el almacén del sistema no está disponible. MUST poder responder **sin**
+    /// guardar nada: FR-004 exige avisar antes de que el usuario intente conectar.
+    fn disponible(&self) -> bool;
+    async fn guardar(&self, r: &ReferenciaDeCredencial, s: Secreto) -> Result<()>;
+    async fn obtener(&self, r: &ReferenciaDeCredencial) -> Result<Option<Secreto>>;
+    /// Idempotente: desconectar dos veces no es un error.
+    async fn borrar(&self, r: &ReferenciaDeCredencial) -> Result<()>;
+}
+
+/// Lo que el usuario tiene que hacer para autorizar.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Desafio {
+    /// Autorización delegada: la aplicación enseña código y dirección, el usuario va fuera.
+    Delegada { codigo: String, url: String },
+    /// El proveedor no ofrece delegada: hay que pedir la credencial **una sola vez**.
+    PideCredencial { instrucciones: String },
+}
+
+/// Obtiene una credencial del usuario (`003`-FR-001).
+///
+/// Dos implementaciones tras una sola frontera: la diferencia entre las vías es **cómo se
+/// obtiene** el secreto, no qué se hace con él. Custodia, uso y revocación son idénticas, así
+/// que la frontera va donde termina esa diferencia.
+#[async_trait::async_trait]
+pub trait AccountConnector: Send + Sync {
+    async fn iniciar(&self) -> Result<Desafio>;
+    /// `respuesta` lleva la credencial cuando el desafío la pedía; para la vía delegada es
+    /// `None` y el adapter sondea por su cuenta, **con su propio límite de tiempo**.
+    async fn completar(&self, desafio: &Desafio, respuesta: Option<Secreto>) -> Result<Secreto>;
 }
 
 pub trait AuditSink: Send + Sync {

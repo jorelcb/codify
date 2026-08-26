@@ -50,19 +50,19 @@ la credencial aparezca en disco, en el registro ni en la interfaz.
 
 ### Tests (test-first) ⚠️
 
-- [ ] T007 [P] [US1] Suite de contrato de `CredentialStore` —guardar, obtener, borrar idempotente, `disponible()` sin escribir— corriendo contra el adapter real **y** contra un doble en memoria, en `crates/codify-core/tests/contract_credential_store.rs`
-- [ ] T008 [P] [US1] El secreto **no** aparece en la salida de `Debug` ni en un `AuditEvent`, en `crates/codify-core/tests/contract_credential_store.rs`. Es SC-002 y se comprueba buscándolo, no suponiéndolo
+- [X] T007 [P] [US1] Suite de contrato de `CredentialStore` —guardar, obtener, borrar idempotente, `disponible()` sin escribir— corriendo contra el adapter real **y** contra un doble en memoria, en `crates/codify-core/tests/contract_credential_store.rs`
+- [X] T008 [P] [US1] El secreto **no** aparece en la salida de `Debug` ni en un `AuditEvent`, en `crates/codify-core/tests/contract_credential_store.rs`. Es SC-002 y se comprueba buscándolo, no suponiéndolo
 - [ ] T009 [P] [US1] Abandonar o denegar la autorización deja el sistema sin conexión a medias, **y desconectar una cuenta impide su uso en la tarea siguiente sin reiniciar** (SC-006) — en `crates/codify-core/tests/us1_connect_account.rs`
 - [ ] T010 [P] [US1] Sin almacén disponible, conectar **falla diciendo por qué** y no escribe nada en disco (FR-004), en `crates/codify-core/tests/us1_connect_account.rs`
 
 ### Ports y dominio
 
-- [ ] T011 [US1] `CredentialStore` y `AccountConnector` en `crates/codify-core/src/application/ports.rs`, con firmas en tipos de aplicación y **sin** tipo que transporte el secreto fuera del adapter
-- [ ] T012 [US1] `ProviderConnection` en `crates/codify-core/src/application/` — sin campo para la credencial, con `tier` declarado al conectar (data-model.md)
+- [X] T011 [US1] `CredentialStore` y `AccountConnector` en `crates/codify-core/src/application/ports.rs`, con firmas en tipos de aplicación y **sin** tipo que transporte el secreto fuera del adapter
+- [X] T012 [US1] `ProviderConnection` en `crates/codify-core/src/application/` — sin campo para la credencial, con `tier` declarado al conectar (data-model.md)
 
 ### Adapters
 
-- [ ] T013 [US1] `CredentialStore` contra el keyring del sistema en `crates/codify-core/src/infrastructure/secrets/keyring.rs`, **sin respaldo en archivo** (research.md D3) (depende de T011)
+- [X] T013 [US1] `CredentialStore` contra el keyring del sistema en `crates/codify-core/src/infrastructure/secrets/keyring.rs`, **sin respaldo en archivo** (research.md D3) (depende de T011)
 - [ ] T014 [US1] `AccountConnector` por device-flow en `crates/codify-core/src/infrastructure/secrets/device_flow.rs`, con **su propio** límite de tiempo — esperar a una persona no es esperar a un modelo
 - [ ] T015 [P] [US1] `AccountConnector` por credencial directa en `crates/codify-core/src/infrastructure/secrets/direct.rs` (depende de T011)
 
