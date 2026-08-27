@@ -20,6 +20,13 @@ ninguna cadena escapa al catálogo. **Todo eso pasa. Y aun así no se entiende a
 > la superficie de conexión**. Sin uno, «está mal maquetado» es una opinión y el arreglo no es
 > verificable. Escribirlo es la mitad del trabajo.
 
+## Clarifications
+
+### Session 2026-08-27
+
+- Q: ¿Dónde vive el formulario para conectar, sabiendo que el caso por defecto es no tener ninguna cuenta? → A: **Aparece al pulsar** «Conectar un proveedor», en la misma ventana. Enseñar tres campos vacíos de forma permanente hace que el caso común pague por el raro. Se descartó el diálogo modal: `002` los evita por principio (SC-004).
+- Q: El modo se muestra en dos sitios —insignia en la barra y casilla en el panel—. ¿Qué hacemos? → A: **Los dos, con una sola fuente de verdad.** Informar de un vistazo y poder cambiarlo son preguntas distintas; lo que no puede ocurrir es que discrepen, y un test debe impedirlo. Es el patrón que este proyecto ya aplicó tras el defecto de `#provider-status`.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Conectar sin adivinar qué va en cada campo (Priority: P1)
@@ -36,8 +43,10 @@ un proveedor, sin explicarle nada. Si pregunta qué va en un campo, el escenario
 **Acceptance Scenarios**:
 
 1. **Given** la aplicación abierta sin cuentas conectadas, **When** el usuario mira la
-   superficie de conexión, **Then** distingue **dónde empieza y termina** el formulario, y cada
-   campo lleva su etiqueta asociada de forma inequívoca.
+   superficie de conexión, **Then** ve el modo y la ausencia de cuentas, **sin campos de
+   formulario ocupando sitio**.
+1b. **Given** esa misma pantalla, **When** el usuario pulsa «Conectar un proveedor», **Then**
+   aparece el formulario, y cada campo lleva su etiqueta asociada de forma inequívoca.
 2. **Given** el formulario a la vista, **When** el usuario lo recorre, **Then** el orden de los
    campos corresponde al orden en que hay que rellenarlos.
 3. **Given** una cuenta conectada, **When** el usuario mira la lista, **Then** distingue la
@@ -108,8 +117,16 @@ nombre con otra.
   estado para contener un formulario.
 - **FR-002**: Cada campo del formulario de conexión MUST llevar una **etiqueta asociada y
   legible**, colocada de modo que no pueda confundirse con la del campo contiguo.
+- **FR-002a**: El formulario MUST NOT ocupar espacio cuando no se está usando: se revela al pedir
+  conectar un proveedor. El caso por defecto del producto —sin cuentas— es el que debe quedar más
+  limpio.
 - **FR-003**: El control de **modo** MUST distinguirse visualmente de la configuración del
-  proveedor, de forma que se identifique como una decisión y no como un dato.
+  proveedor, de forma que se identifique como una decisión y no como un dato. MUST permanecer
+  visible aunque el formulario esté plegado: comprobar el modo no es una tarea infrecuente.
+- **FR-003a**: El modo se muestra en **dos sitios** —la insignia de la barra y el control del
+  panel— y ambos MUST leer del **mismo estado**. Una comprobación automática MUST impedir que
+  puedan discrepar; que dos elementos afirmen cosas distintas sobre el mismo hecho es el defecto
+  que este proyecto ya corrigió una vez en el indicador de proveedor.
 - **FR-004**: La lista de cuentas conectadas MUST distinguirse del formulario para añadir una.
 
 **Accesibilidad**
@@ -142,13 +159,18 @@ nombre con otra.
 - **SC-004**: Una persona señala correctamente, sin explicaciones, qué control decide si algo
   sale de su equipo.
 - **SC-005**: Con la ventana en su tamaño mínimo, el formulario de conexión sigue siendo
-  utilizable: **cero** desbordamiento horizontal y ningún campo por debajo de un ancho legible.
+  utilizable: **cero** desbordamiento horizontal, y cada campo de texto muestra al menos
+  **24 caracteres** de su contenido sin recortar.
+- **SC-006**: La insignia de modo y el control de modo **nunca** muestran estados distintos,
+  verificable de forma automática.
 
 ## Assumptions
 
-- La superficie sigue viviendo **en la ventana principal**, no en una ventana aparte. Conectar un
-  proveedor es infrecuente, pero ver el modo no lo es: sacarlo de la vista principal escondería
-  justo lo que decide si algo sale del equipo.
+- La superficie sigue viviendo **en la ventana principal**, no en una ventana aparte ni en un
+  diálogo. Conectar un proveedor es infrecuente, pero ver el modo no lo es: sacarlo de la vista
+  principal escondería justo lo que decide si algo sale del equipo.
+- **24 caracteres** es el mínimo por el que una dirección de proveedor deja de ser adivinable. Es
+  un número elegido, no medido; si aparece evidencia de que hace falta más, se revisa.
 - El caso por defecto del producto sigue siendo **sin cuentas conectadas**, así que la superficie
   se diseña para que ese caso sea el que menos ruido produce.
 - No se rediseña el resto de la interfaz. Este spec toca la superficie de conexión y los nombres
