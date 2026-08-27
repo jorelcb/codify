@@ -12,8 +12,12 @@ Extiende la superficie de `002/contracts/skin-commands.md`.
 
 ### `ProviderConnectionDto` — campos
 
-`id` · `label` · `tier` (`cheap` \| `heavy`) · `state` (`connected` \| `expired` \| `revoked`) ·
-`endpointHost`.
+`id` · `label` · `tier` (`cheap` \| `heavy`) · `state` (`connected` \| `expired` \| `revoked` \|
+`credential_missing`) · `endpointHost`.
+
+`endpointHost` lleva **solo el host**, sin esquema ni ruta: FR-009 pide decir quién podría
+recibir contenido, no cómo se llega, y una URL puede llevar credenciales embebidas. Que llegara
+vacío fue el defecto de #48.
 
 **Entregado.** El comando de conexión devuelve además un `ConnectChallengeDto` con
 `challengeId`, `kind` (`delegada` \| `credencial`), y según la vía `code`+`url` o
