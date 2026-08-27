@@ -147,7 +147,13 @@ crea un segundo dueño del mismo hecho.
 ## D6 · Las cuatro claves de catálogo nuevas
 
 `a11y.connections_region` y `a11y.prefs_region` deshacen los dos pares repetidos de D1;
-`connection.reveal` nombra el `<summary>`; `a11y.mode_group` nombra el grupo del modo.
+`a11y.mode_group` nombra el grupo del modo.
+
+**El `<summary>` no estrena clave: reutiliza `connection.add`** («Conectar un proveedor»), que es
+literalmente el texto que la clarificación puso en la puerta de entrada. Lo que cambia es el
+**botón de envío**, que hoy lleva esa misma clave y pasa a `connection.submit` —«Conectar» /
+«Connect»—. Dejar las dos cosas con el mismo texto habría dado dos controles idénticos, uno que
+abre y otro que envía: peor que la pantalla que este spec viene a arreglar.
 
 En los dos idiomas, y el test que ya existe
 —`toda_clave_del_catalogo_esta_cableada_o_declarada_como_reservada`— se encarga de que ninguna

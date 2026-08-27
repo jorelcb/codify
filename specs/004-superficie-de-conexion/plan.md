@@ -25,7 +25,7 @@ vigente. Está documentado en [research.md](./research.md) (D2) y decide la form
 
 **Testing**: `cargo test` — la verificación es **análisis estático** sobre `index.html`,
 `ui/*.js`, `styles.css`, `tauri.conf.json` y `src/strings.rs`, en
-`crates/codify-app/tests/ui_contract.rs` (700 líneas, 14 tests hoy)
+`crates/codify-app/tests/ui_contract.rs` (700 líneas, 14 tests hoy; 19 al cerrar el ciclo)
 
 **Target Platform**: aplicación de escritorio (macOS/Linux/Windows vía Tauri)
 
@@ -37,7 +37,7 @@ vigente. Está documentado en [research.md](./research.md) (D2) y decide la form
 catálogo; cero-egress estructural intacto
 
 **Scale/Scope**: una sección del HTML, dos módulos JS, el CSS de esa sección, dos comandos Tauri,
-cuatro claves de catálogo nuevas en dos idiomas, y cuatro tests nuevos
+cuatro claves de catálogo nuevas en dos idiomas, y cinco tests nuevos
 
 ## Constitution Check
 
@@ -101,7 +101,7 @@ crates/codify-app/
 │   ├── connections.js   # deja de tener opinión sobre el modo
 │   └── main.js          # único sitio que pinta el modo, en las dos superficies
 ├── tests/
-│   └── ui_contract.rs   # 4 tests nuevos (ver contrato)
+│   └── ui_contract.rs   # 5 tests nuevos (ver contrato)
 └── tauri.conf.json      # sin cambios — `minWidth` ya está declarado
 ```
 

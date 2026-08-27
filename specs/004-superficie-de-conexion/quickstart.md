@@ -20,11 +20,12 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all -- --check
 ```
 
-**Se espera**: 18 tests de contrato de interfaz (14 de antes + 4 nuevos), y el workspace entero en
+**Se espera**: 19 tests de contrato de interfaz (14 de antes + 5 nuevos), y el workspace entero en
 verde.
 
 | Criterio | Test | Qué significa que pase |
 |---|---|---|
+| **FR-001, FR-002a, FR-004** | `la_superficie_de_conexion_tiene_forma_propia` | La superficie no es una barra de estado, el formulario está plegado y la lista queda fuera de él |
 | **SC-002** | `ningun_par_de_regiones_comparte_nombre_accesible` | Cero regiones con nombre repetido |
 | **SC-005** | `los_campos_del_formulario_caben_en_la_ventana_minima` | Cada campo declara al menos 24 caracteres de ancho mínimo, y el contenedor envuelve |
 | **SC-006** | `el_modo_no_puede_discrepar_entre_sus_dos_superficies` + `la_interfaz_no_tiene_su_propia_idea_del_modo` | Un solo escritor por superficie, misma función, sin copia en la interfaz |

@@ -46,7 +46,7 @@ tres reescrituras que se pisan.
       `.provider` (FR-001, [research D4](./research.md))
 
 **Punto de control**: la aplicación levanta y la sección se ve como una zona distinta de la barra
-de estado. Los 14 tests siguen verdes.
+de estado. Los 14 tests siguen verdes; el de R5 aún no existe.
 
 ---
 
@@ -63,22 +63,31 @@ una sola vez, la historia falla.
 - [ ] T004 [US1] Escribir `los_campos_del_formulario_caben_en_la_ventana_minima` en
       `tests/ui_contract.rs` — cada campo de texto del formulario declara `min-width` en `ch` de al
       menos 24, y su contenedor envuelve. **Debe fallar** al escribirlo (R4, SC-005)
+- [ ] T005 [US1] Escribir `la_superficie_de_conexion_tiene_forma_propia` en
+      `tests/ui_contract.rs` — `#conexiones` no lleva la clase de la barra de estado, el formulario
+      está en un contenedor plegado por defecto, y la lista de cuentas queda fuera de él. **Debe
+      fallar** (R5, FR-001, FR-002a, FR-004)
 
 ### Implementación
 
-- [ ] T005 [P] [US1] Añadir `connection.reveal` a `src/strings.rs`, en los dos idiomas — el texto
-      del `<summary>` que despliega el formulario
-- [ ] T006 [US1] Envolver el formulario de conexión en `<details><summary>` en `ui/index.html`, de
+- [ ] T006 [P] [US1] Añadir `connection.submit` («Conectar» / «Connect») a `src/strings.rs` y
+      repuntar el botón `#conectar` de `ui/index.html` a esa clave, dejando `connection.add`
+      —«Conectar un proveedor»— libre para el `<summary>` que despliega el formulario
+- [ ] T007 [US1] Envolver el formulario de conexión en `<details><summary>` en `ui/index.html`, de
       modo que quede plegado por defecto (FR-002a, [research D5](./research.md))
-- [ ] T007 [US1] Dar a cada campo su etiqueta asociada e inequívoca en `ui/index.html`, en el orden
+- [ ] T008 [US1] Dar a cada campo su etiqueta asociada e inequívoca en `ui/index.html`, en el orden
       en que hay que rellenarlos, y separar visiblemente la lista de cuentas del formulario
       (FR-002, FR-004)
-- [ ] T008 [US1] Estilar el formulario en `ui/styles.css`: `min-width: 24ch` en los campos de
+- [ ] T009 [US1] Estilar el formulario en `ui/styles.css`: `min-width: 24ch` en los campos de
       texto y contenedor que envuelve, para que el mínimo no produzca desbordamiento (SC-005,
-      [research D3](./research.md))
-- [ ] T009 [US1] Verificar T004 inyectando la violación en `ui/styles.css`: bajar un campo a
-      `20ch`, comprobar que el test cae, revertir; repetir quitando el `flex-wrap`. **Un test que no se ha visto fallar no
-      está verificado**
+      [research D3](./research.md)). Cubrir además los dos casos límite que el mínimo **no**
+      resuelve: un `max-width` que impida que un valor largo empuje a los demás fuera de la fila, y
+      una lista de cuentas que crezca con su propio desplazamiento en vez de empujar al formulario
+      fuera de la vista
+- [ ] T010 [US1] Verificar T004 inyectando la violación en `ui/styles.css`: bajar un campo a
+      `20ch`, comprobar que el test cae, revertir; repetir quitando el `flex-wrap`. Verificar
+      también R5 devolviéndole a `#conexiones` la clase `provider` en `ui/index.html`. **Un test
+      que no se ha visto fallar no está verificado**
 
 **Punto de control**: sin cuentas conectadas, la pantalla enseña el modo y «ninguna cuenta», y
 ningún campo de formulario ocupa sitio. Al pulsar el desplegable aparece el formulario con sus
@@ -98,44 +107,44 @@ sale de su equipo.
 
 ### Tests primero
 
-- [ ] T010 [P] [US2] Escribir `el_modo_no_puede_discrepar_entre_sus_dos_superficies` en
+- [ ] T011 [P] [US2] Escribir `el_modo_no_puede_discrepar_entre_sus_dos_superficies` en
       `tests/ui_contract.rs` — un solo sitio escribe `dataset.mode`, un solo sitio escribe el
       `checked` de `#modo-local`, y ambos son la misma función. **Debe fallar** (R2, SC-006)
-- [ ] T011 [P] [US2] Escribir `la_interfaz_no_tiene_su_propia_idea_del_modo` en
+- [ ] T012 [P] [US2] Escribir `la_interfaz_no_tiene_su_propia_idea_del_modo` en
       `tests/ui_contract.rs` — ningún módulo declara estado de modo propio. **Debe fallar hoy por
       `ui.local`** (R3, FR-003a)
 
 ### Implementación — la fuente única
 
-- [ ] T012 [US2] Añadir el comando `mode() -> ModeDto` y hacer que `set_mode` devuelva el modo
+- [ ] T013 [US2] Añadir el comando `mode() -> ModeDto` y hacer que `set_mode` devuelva el modo
       resultante, en `src/commands.rs` (contrato §Comandos)
-- [ ] T013 [US2] Hacer que `start_session` lea `AppState.mode` en vez de `request.local`, y
+- [ ] T014 [US2] Hacer que `start_session` lea `AppState.mode` en vez de `request.local`, y
       **eliminar** `local` de `StartSessionRequest`, en `src/commands.rs`. Es lo que repara
       `003`-FR-008a: hasta ahora el modo se guardaba y no se aplicaba
-- [ ] T014 [US2] Concentrar en `ui/main.js` la **única** función que pinta el modo, pintando las
+- [ ] T015 [US2] Concentrar en `ui/main.js` la **única** función que pinta el modo, pintando las
       dos superficies —insignia y casilla— desde el valor que devuelve el backend; borrar
       `ui.local` (FR-003a)
-- [ ] T015 [US2] Quitar a `ui/connections.js` toda opinión sobre el modo: el manejador de la
-      casilla invoca `set_mode` y delega el repintado en la función de T014
-- [ ] T016 [US2] Comprobar que `provider.refresh(...)` y cualquier otro consumidor del modo en
+- [ ] T016 [US2] Quitar a `ui/connections.js` toda opinión sobre el modo: el manejador de la
+      casilla invoca `set_mode` y delega el repintado en la función de T015
+- [ ] T017 [US2] Comprobar que `provider.refresh(...)` y cualquier otro consumidor del modo en
       `ui/main.js` leen la fuente única, no una copia — el defecto se propagó por ahí
 
 ### Implementación — la presentación
 
-- [ ] T017 [P] [US2] Añadir `a11y.mode_group` a `src/strings.rs` en los dos idiomas, y agrupar el
+- [ ] T018 [P] [US2] Añadir `a11y.mode_group` a `src/strings.rs` en los dos idiomas, y agrupar el
       control de modo bajo ese nombre en `ui/index.html`
-- [ ] T018 [US2] Distinguir el modo del resto en `ui/styles.css`: se identifica como decisión sin
+- [ ] T019 [US2] Distinguir el modo del resto en `ui/styles.css`: se identifica como decisión sin
       leer las etiquetas completas, y permanece visible con el formulario plegado (FR-003)
-- [ ] T019 [US2] Colocar los receptores posibles **junto al control de modo** cuando el modo
+- [ ] T020 [US2] Colocar los receptores posibles **junto al control de modo** cuando el modo
       admite remotos y hay cuentas conectadas, en `ui/connections.js` y `ui/index.html`
       (`003`-FR-009)
 
 ### Cierre de la historia
 
-- [ ] T020 [US2] Verificar T010 y T011 inyectando: pintar la insignia desde `connections.js` (debe
+- [ ] T021 [US2] Verificar T011 y T012 inyectando: pintar la insignia desde `connections.js` (debe
       caer R2) y reintroducir `local: true` en el estado de `main.js` (debe caer R3). Revertir cada
       una
-- [ ] T021 [P] [US2] Actualizar
+- [ ] T022 [P] [US2] Actualizar
       `specs/003-conectividad-y-tiers/contracts/tauri-commands.md` con la firma nueva de
       `set_mode`, el comando `mode()` y la desaparición de `request.local` — el contrato que cambia
       es el del crate que se toca, no el del spec en que se trabaja
@@ -155,18 +164,18 @@ sesión. Antes de este ciclo no cambiaba ninguna de las dos cosas.
 
 ### Test primero
 
-- [ ] T022 [US3] Escribir `ningun_par_de_regiones_comparte_nombre_accesible` en
+- [ ] T023 [US3] Escribir `ningun_par_de_regiones_comparte_nombre_accesible` en
       `tests/ui_contract.rs` — recoge las regiones de `index.html`, resuelve su `data-i18n-aria`
       contra `src/strings.rs`, y falla si se repite **una clave o un texto**, en cualquiera de los
       dos idiomas. **Debe fallar con los dos pares que hay hoy** (R1, FR-005, FR-006, SC-002)
 
 ### Implementación
 
-- [ ] T023 [P] [US3] Añadir `a11y.connections_region` y `a11y.prefs_region` a `src/strings.rs`, en
+- [ ] T024 [P] [US3] Añadir `a11y.connections_region` y `a11y.prefs_region` a `src/strings.rs`, en
       los dos idiomas
-- [ ] T024 [US3] Cablearlas en `ui/index.html`: `#conexiones` deja `a11y.provider_region` y
+- [ ] T025 [US3] Cablearlas en `ui/index.html`: `#conexiones` deja `a11y.provider_region` y
       `footer.prefs` deja `a11y.toolbar_region` ([data-model.md §Región](./data-model.md))
-- [ ] T025 [US3] Verificar T022 inyectando la violación en `ui/index.html`: dar a `#applied` el
+- [ ] T026 [US3] Verificar T023 inyectando la violación en `ui/index.html`: dar a `#applied` el
       nombre de `#decide`, comprobar que el test cae, revertir
 
 **Punto de control**: siete regiones, siete nombres distintos, en los dos idiomas.
@@ -175,22 +184,24 @@ sesión. Antes de este ciclo no cambiaba ninguna de las dos cosas.
 
 ## Fase 6: Cierre y lo que no puede cerrar el build
 
-- [ ] T026 Dejar el árbol en verde: `cargo test --workspace`, `cargo clippy --workspace
-      --all-targets -- -D warnings`, `cargo fmt --all -- --check`. Se esperan **18** tests de
-      contrato de interfaz
-- [ ] T027 Comprobación de humo del modo con la aplicación levantada, según
+- [ ] T027 Dejar el árbol en verde: `cargo test --workspace`, `cargo clippy --workspace
+      --all-targets -- -D warnings`, `cargo fmt --all -- --check`. Se esperan **19** tests de
+      contrato de interfaz. Es aquí donde se cierra **FR-007**: no tiene tarea propia porque no
+      pide construir nada —pide **no romper** las garantías de catálogo de `002`—, y quien lo
+      comprueba son los tests que ya existen
+- [ ] T028 Comprobación de humo del modo con la aplicación levantada, según
       [quickstart.md](./quickstart.md): la insignia cambia al desmarcar, y la sesión siguiente se
       arma en híbrido. Es la demostración de punta a punta de que `003`-FR-008a se cumple
-- [ ] T028 Abrir issue por el defecto de `003` que este ciclo consume —`set_mode` escribía en un
+- [ ] T029 Abrir issue por el defecto de `003` que este ciclo consume —`set_mode` escribía en un
       estado que nadie leía— para que el arreglo quede trazable fuera de este spec
-- [ ] T029 [persona] **SC-001**: alguien que no conoce la aplicación conecta un proveedor sin
+- [ ] T030 [persona] **SC-001**: alguien que no conoce la aplicación conecta un proveedor sin
       preguntar qué va en cada campo. Anotar **qué preguntó** si falla
-- [ ] T030 [persona] **SC-003**: alguien navegando solo por regiones dice correctamente en cuál
+- [ ] T031 [persona] **SC-003**: alguien navegando solo por regiones dice correctamente en cuál
       está. El test R1 impide que dos suenen igual, pero no que un nombre sea inútil
-- [ ] T031 [persona] **SC-004**: alguien señala, sin explicaciones, qué control decide si algo sale
+- [ ] T032 [persona] **SC-004**: alguien señala, sin explicaciones, qué control decide si algo sale
       de su equipo
 
-> **T029–T031 no se marcan `[X]` porque el CI pase.** Necesitan a una persona delante. Si el ciclo
+> **T030–T032 no se marcan `[X]` porque el CI pase.** Necesitan a una persona delante. Si el ciclo
 > se cierra sin ellas, se dice en el PR — no se dan por hechas.
 
 ---
@@ -223,12 +234,12 @@ opcional: es lo que distingue un test de un adorno.
 
 | Fase | Tareas `[P]` | Por qué |
 |---|---|---|
-| 3 | T005 | `strings.rs`, mientras el resto toca HTML/CSS |
-| 4 | T010 y T011 | Dos tests, un archivo, sin dependencia entre ellos |
-| 4 | T017, T021 | Catálogo y documento de contrato, ajenos a `commands.rs` |
-| 5 | T023 | `strings.rs` antes de cablear |
+| 3 | T006 | `strings.rs`, mientras el resto toca HTML/CSS |
+| 4 | T011 y T012 | Dos tests, un archivo, sin dependencia entre ellos |
+| 4 | T018, T022 | Catálogo y documento de contrato, ajenos a `commands.rs` |
+| 5 | T024 | `strings.rs` antes de cablear |
 
-**Cadena crítica**: T012 → T013 → T014 → T015 → T016. Es una sola costura —la fuente única del
+**Cadena crítica**: T013 → T014 → T015 → T016 → T017. Es una sola costura —la fuente única del
 modo— y partirla deja el sistema con dos verdades a medias, que es peor que el estado actual.
 
 ---
@@ -253,9 +264,9 @@ Cada fase deja el árbol verde y la aplicación usable. Se puede parar después 
 |---|---|---|
 | 1 · Preparación | T001 | — |
 | 2 · Fundacional | T002–T003 | — |
-| 3 · US1 (P1) | T004–T009 | Conectar sin adivinar |
-| 4 · US2 (P2) | T010–T021 | El modo dice la verdad y se ve como decisión |
-| 5 · US3 (P3) | T022–T025 | Nombres de región únicos |
-| 6 · Cierre | T026–T031 | Verde, trazabilidad y los tres de persona |
+| 3 · US1 (P1) | T004–T010 | Conectar sin adivinar |
+| 4 · US2 (P2) | T011–T022 | El modo dice la verdad y se ve como decisión |
+| 5 · US3 (P3) | T023–T026 | Nombres de región únicos |
+| 6 · Cierre | T027–T032 | Verde, trazabilidad y los tres de persona |
 
-**Total: 31 tareas.** 28 las cierra el build; **3 necesitan a una persona delante**.
+**Total: 32 tareas.** 29 las cierra el build; **3 necesitan a una persona delante**.

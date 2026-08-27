@@ -28,7 +28,7 @@ se acepta y no se usa es la siguiente confusión.
 
 ## Reglas que un test hace cumplir
 
-Cada regla nombra el test que la sostiene. Los cuatro son nuevos; los catorce que ya existen
+Cada regla nombra el test que la sostiene. Los cinco son nuevos; los catorce que ya existen
 siguen aplicando sin cambios.
 
 ### R1 · Ninguna región comparte nombre — FR-005, FR-006, SC-002
@@ -72,6 +72,21 @@ desbordamiento.
 
 **Inyección que debe hacerlo fallar**: bajar un campo a `20ch`, o quitar el `flex-wrap`.
 
+### R5 · La superficie tiene forma propia — FR-001, FR-002a, FR-004
+
+> `la_superficie_de_conexion_tiene_forma_propia`
+
+Tres afirmaciones sobre `index.html`: `#conexiones` **no** lleva la clase de la barra de estado; el
+formulario vive dentro de un contenedor **plegado por defecto**; y la lista de cuentas queda
+**fuera** de ese contenedor.
+
+**Inyección que debe hacerlo fallar**: devolverle a `#conexiones` la clase `provider`; abrir el
+contenedor por defecto; meter la lista dentro del plegable.
+
+**Por qué existe.** FR-006 exige, para los nombres de región, que la comprobación no «dependa de
+que alguien lo note mirando». Dejar la forma de la superficie al ojo sería aplicar ese criterio a
+la mitad del spec — y el ojo ya falló una vez aquí.
+
 ---
 
 ## Lo que no cambia, y sigue verificado
@@ -85,5 +100,8 @@ desbordamiento.
 | El punto de quiebre responsivo es alcanzable | `el_punto_de_quiebre_responsivo_es_alcanzable` |
 | Cero-egress estructural | `compile_fail.rs`, `egress_guard.rs` |
 
-Las cuatro claves nuevas —`a11y.connections_region`, `a11y.prefs_region`, `connection.reveal`,
+Las cuatro claves nuevas —`a11y.connections_region`, `a11y.prefs_region`, `connection.submit`,
 `a11y.mode_group`— entran en los dos idiomas o el segundo test de esta tabla falla.
+
+`connection.add` **no** es nueva: hoy la lleva el botón que envía el formulario, y pasa a nombrar
+el desplegable que lo abre. El botón se queda con `connection.submit`.
