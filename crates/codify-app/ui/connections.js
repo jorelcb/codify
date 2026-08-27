@@ -72,10 +72,12 @@ async function conectar() {
   if (!caja) return;
 
   try {
+    // Lo dice el usuario, no el código: sin esto no había forma de conectar a un proveedor
+    // concreto, y el endpoint acababa vacío (issue #48).
     const desafio = await invoke("connect_provider", {
-      label: "Proveedor remoto",
-      endpoint: "https://api.example.com",
-      tier: "heavy",
+      label: el("conn-label")?.value?.trim() || "",
+      endpoint: el("conn-endpoint")?.value?.trim() || "",
+      tier: el("conn-tier")?.value || "cheap",
       delegada: false,
     });
     caja.hidden = false;

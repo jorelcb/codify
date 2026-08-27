@@ -59,6 +59,21 @@
       <h3 class="visually-hidden" data-i18n="connection.title"></h3>
       <ul id="conexiones-lista"></ul>
       <p id="conexiones-vacio" data-i18n="connection.none"></p>
+      <label class="inline">
+        <span class="label" data-i18n="connection.label_field"></span>
+        <input type="text" id="conn-label" />
+      </label>
+      <label class="inline">
+        <span class="label" data-i18n="connection.endpoint_field"></span>
+        <input type="text" id="conn-endpoint" />
+      </label>
+      <label class="inline">
+        <span class="label" data-i18n="connection.tier_field"></span>
+        <select id="conn-tier">
+          <option value="cheap" data-i18n="connection.tier_cheap"></option>
+          <option value="heavy" data-i18n="connection.tier_heavy"></option>
+        </select>
+      </label>
       <button id="conectar" class="ghost" data-i18n="connection.add"></button>
 
       <div id="desafio" hidden>

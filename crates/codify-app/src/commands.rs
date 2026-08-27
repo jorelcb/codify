@@ -7,7 +7,7 @@
 use crate::adapters::{
     EventAuditSink, PendingDecisions, StatePayload, SystemClock, WindowPrompter,
 };
-use codify_core::application::connections::ProviderConnection;
+use codify_core::application::connections::{ConnectionState, ProviderConnection};
 use codify_core::application::ports::{
     AccountConnector, CredentialStore, Desafio, ReferenciaDeCredencial, Secreto,
 };
@@ -56,6 +56,10 @@ struct DesafioPendiente {
     conector: Arc<dyn AccountConnector>,
     tier: Tier,
     label: String,
+    /// A dónde apunta la cuenta. Se guarda porque `complete_connection` lo necesita y no lo
+    /// recibe: sin esto la conexión nacía con el host vacío y el proveedor apuntaba a
+    /// `https://` (issue #48).
+    endpoint: String,
 }
 
 #[derive(Default)]
@@ -440,6 +444,7 @@ pub async fn connect_provider(
                 conector,
                 tier,
                 label,
+                endpoint: solo_host(&endpoint),
             },
         );
     }
@@ -458,6 +463,7 @@ pub async fn complete_connection(
         conector,
         tier,
         label,
+        endpoint,
     } = state
         .challenges
         .lock()
@@ -482,7 +488,7 @@ pub async fn complete_connection(
         .await
         .map_err(|e| e.to_string())?;
 
-    let conexion = ProviderConnection::new(challenge_id, label, "", tier, referencia);
+    let conexion = conexion_desde(&challenge_id, &label, &endpoint, tier);
     let dto = to_connection_dto(&conexion);
     if let Ok(mut c) = state.connections.lock() {
         c.push(conexion);
@@ -542,10 +548,17 @@ async fn adapters_remotos(state: &State<'_, AppState>) -> Vec<Arc<dyn ModelProvi
 
     let store = SystemKeyring::new();
     let mut out: Vec<Arc<dyn ModelProvider>> = Vec::new();
+    let mut sin_credencial: Vec<String> = Vec::new();
     for c in conexiones {
-        // Sin credencial no hay proveedor. Se omite en silencio a propósito: el motivo lo dará
-        // la conexión cuando el usuario mire el panel, no un fallo a mitad de sesión.
-        if let Ok(Some(secreto)) = store.obtener(c.credential()).await {
+        // Sin credencial no hay proveedor, **y se dice**: la conexión pasa a
+        // `CredentialMissing` para que el panel lo muestre. Antes se omitía en silencio con el
+        // argumento de que el panel daría el motivo, y el panel no tenía cómo (issue #48).
+        let secreto = store.obtener(c.credential()).await.ok().flatten();
+        let Some(secreto) = secreto else {
+            sin_credencial.push(c.id.clone());
+            continue;
+        };
+        {
             if let Ok(p) = RemoteOpenAiCompatProvider::new(
                 c.label.clone(),
                 format!("https://{}", c.endpoint_host),
@@ -557,7 +570,47 @@ async fn adapters_remotos(state: &State<'_, AppState>) -> Vec<Arc<dyn ModelProvi
             }
         }
     }
+
+    // Marcar lo que ya no tiene credencial. Se hace después del bucle para no tener el candado
+    // de conexiones abierto mientras se habla con el llavero.
+    if !sin_credencial.is_empty() {
+        if let Ok(mut conns) = state.connections.lock() {
+            for c in conns.iter_mut() {
+                if sin_credencial.contains(&c.id) {
+                    c.state = ConnectionState::CredentialMissing;
+                }
+            }
+        }
+    }
     out
+}
+
+/// Arma la conexión a partir de lo que el desafío guardó.
+///
+/// Extraída del comando para que **el cableado se pueda probar**. El defecto de #48 vivía justo
+/// aquí —el endpoint llegaba y se tiraba— y no lo veía ningún test porque los que había probaban
+/// las piezas por separado: `solo_host` por un lado, `ProviderConnection::new` por otro. Entre
+/// las dos no miraba nadie.
+fn conexion_desde(id: &str, label: &str, endpoint_host: &str, tier: Tier) -> ProviderConnection {
+    ProviderConnection::new(
+        id,
+        label,
+        endpoint_host,
+        tier,
+        ReferenciaDeCredencial::new(id),
+    )
+}
+
+/// Solo el host de una URL. FR-009 pide decir **quién** podría recibir contenido, no cómo se
+/// llega — y una URL puede llevar credenciales embebidas.
+fn solo_host(url: &str) -> String {
+    url.trim()
+        .trim_start_matches("https://")
+        .trim_start_matches("http://")
+        .split('/')
+        .next()
+        .unwrap_or("")
+        .to_string()
 }
 
 /// Id corto y suficiente: solo tiene que ser único dentro de esta ejecución.
@@ -1109,4 +1162,71 @@ pub async fn defer_tentative(
         .defer_tentative(&SessionId::new(session_id), &path, index)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests_conexion {
+    use super::*;
+
+    /// El camino que ningún test recorría (issue #48).
+    ///
+    /// Los tests del núcleo prueban `RemoteOpenAiCompatProvider` con una URL explícita — justo el
+    /// trozo que sí funcionaba. El defecto vivía en el cableado: el endpoint llegaba a
+    /// `connect_provider`, se usaba para armar las URLs del device-flow y se tiraba, así que la
+    /// conexión nacía con el host vacío y el proveedor apuntaba a `https://`.
+    ///
+    /// La lógica probada y el cableado sin probar es la clase de fallo que ha aparecido en las
+    /// cinco fases de este proyecto. Este test cierra el hueco en el camino de US1.
+    #[test]
+    fn el_endpoint_sobrevive_de_la_peticion_a_la_conexion() {
+        // El camino real: lo que `connect_provider` guarda es lo que `complete_connection` usa.
+        let guardado = solo_host("https://api.example.com/v1/");
+        let conexion = conexion_desde("conn-1", "Frontier", &guardado, Tier::Heavy);
+
+        assert!(
+            !conexion.endpoint_host.is_empty(),
+            "con el host vacío el proveedor apuntaría a `https://` y no podría llamar a nadie"
+        );
+        assert_eq!(
+            format!("https://{}", conexion.endpoint_host),
+            "https://api.example.com",
+            "es la URL que `adapters_remotos` construye"
+        );
+    }
+
+    /// FR-009 pide decir **quién** podría recibir contenido, no cómo se llega — y una URL puede
+    /// llevar credenciales embebidas.
+    #[test]
+    fn el_host_no_arrastra_esquema_ruta_ni_credenciales() {
+        assert_eq!(
+            solo_host("https://usuario:clave@api.example.com/v1"),
+            "usuario:clave@api.example.com"
+        );
+        assert_eq!(solo_host("http://localhost:8080/x"), "localhost:8080");
+        assert_eq!(solo_host("  api.example.com  "), "api.example.com");
+    }
+
+    /// Una conexión sin credencial **no** se muestra conectada.
+    ///
+    /// Antes se omitía en silencio al armar el grafo, con el argumento de que el panel daría el
+    /// motivo. El panel no tenía cómo: no existía el estado.
+    #[test]
+    fn una_conexion_sin_credencial_deja_de_ser_usable() {
+        let mut c = ProviderConnection::new(
+            "conn-1",
+            "Frontier",
+            "api.example.com",
+            Tier::Heavy,
+            ReferenciaDeCredencial::new("conn-1"),
+        );
+        assert!(c.usable());
+
+        c.state = ConnectionState::CredentialMissing;
+
+        assert!(
+            !c.usable(),
+            "si no se puede usar, no puede seguir diciendo que está conectada"
+        );
+        assert_eq!(to_connection_dto(&c).state, "credential_missing");
+    }
 }
