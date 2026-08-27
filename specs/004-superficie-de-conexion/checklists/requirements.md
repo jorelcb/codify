@@ -36,9 +36,12 @@
   sin preguntar», «señala qué control decide si algo sale»— pero su verificación es de las que
   este proyecto marca `[~]` hasta que alguien se sienta delante. **SC-002 y SC-005 sí son
   automáticos**, y son los que evitan que el arreglo se deshaga sin que nadie se entere.
-- **Un supuesto que conviene revisar en `/speckit-clarify`**: que la superficie siga en la ventana
-  principal. Está razonado —ver el modo no es infrecuente aunque conectar sí lo sea— pero si se
-  decidiera lo contrario cambiaría el diseño entero.
+- **Resuelto en la sesión de clarificación del 2026-08-27**: el formulario se revela al pedirlo,
+  no ocupa sitio en el caso por defecto; y el modo se muestra en dos sitios con una sola fuente de
+  verdad, con comprobación automática de que no puedan discrepar. La segunda pregunta salió de
+  mirar el HTML: el modo ya aparecía duplicado y nadie lo había notado.
+- **SC-005 quedó cuantificado** —24 caracteres visibles— porque «ancho legible» no es comprobable.
+  El número está elegido, no medido, y así se dice en Assumptions.
 - **FR-006 es el que da valor duradero**: sin una comprobación automática de unicidad de nombres,
   el defecto que originó este spec volvería la próxima vez que alguien copie una sección — que es
   exactamente como llegó.
