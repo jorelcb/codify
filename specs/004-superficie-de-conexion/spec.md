@@ -45,11 +45,11 @@ un proveedor, sin explicarle nada. Si pregunta qué va en un campo, el escenario
 1. **Given** la aplicación abierta sin cuentas conectadas, **When** el usuario mira la
    superficie de conexión, **Then** ve el modo y la ausencia de cuentas, **sin campos de
    formulario ocupando sitio**.
-1b. **Given** esa misma pantalla, **When** el usuario pulsa «Conectar un proveedor», **Then**
+2. **Given** esa misma pantalla, **When** el usuario pulsa «Conectar un proveedor», **Then**
    aparece el formulario, y cada campo lleva su etiqueta asociada de forma inequívoca.
-2. **Given** el formulario a la vista, **When** el usuario lo recorre, **Then** el orden de los
+3. **Given** el formulario a la vista, **When** el usuario lo recorre, **Then** el orden de los
    campos corresponde al orden en que hay que rellenarlos.
-3. **Given** una cuenta conectada, **When** el usuario mira la lista, **Then** distingue la
+4. **Given** una cuenta conectada, **When** el usuario mira la lista, **Then** distingue la
    lista de cuentas del formulario para añadir una nueva.
 
 ---
@@ -116,7 +116,10 @@ nombre con otra.
   del indicador de estado del proveedor. MUST NOT reutilizar la disposición de una barra de
   estado para contener un formulario.
 - **FR-002**: Cada campo del formulario de conexión MUST llevar una **etiqueta asociada y
-  legible**, colocada de modo que no pueda confundirse con la del campo contiguo.
+  legible**, colocada de modo que no pueda confundirse con la del campo contiguo. «Legible» no se
+  cuantifica a propósito: lo comprobable de forma automática es que la etiqueta esté **asociada** y
+  no se confunda con la contigua; que además se entienda lo mide SC-001, con una persona delante.
+  Ponerle un número aquí daría una falsa sensación de cobertura.
 - **FR-002a**: El formulario MUST NOT ocupar espacio cuando no se está usando: se revela al pedir
   conectar un proveedor. El caso por defecto del producto —sin cuentas— es el que debe quedar más
   limpio.
@@ -187,4 +190,13 @@ nombre con otra.
 
 - Rediseñar la corriente de actividad, el panel de decisión o la vista de artefacto.
 - Cambiar qué campos pide el formulario de conexión: se presentan mejor los que ya hay.
-- Cualquier cambio en el comportamiento de conexión, custodia o reparto — eso es `003`.
+- Cualquier cambio en el comportamiento de conexión, custodia o reparto — eso es `003`, **con
+  una excepción declarada abajo**.
+
+**La excepción.** `start_session` deja de leer `request.local` y pasa a leer el modo guardado. Eso
+es comportamiento de reparto, y entra igual porque **FR-003a es irrealizable sin ello**: «ambas
+superficies leen el mismo estado» sería falso mientras exista un tercer lector con su propia
+copia. Repara de paso `003`-FR-008a, hoy incumplido de punta a punta — el modo se guardaba y no se
+aplicaba. Está razonado en [research.md D2](./research.md) y registrado en la tabla de Complexity
+Tracking del plan; **el defecto lleva issue propio** para que el arreglo sea trazable fuera de este
+spec.
