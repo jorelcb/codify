@@ -6,7 +6,11 @@ Una cuenta remota autorizada. Vive en `application/`, no en `domain/`: el Domini
 de sesión, referencia y artefacto — «cuenta conectada» es vocabulario de esta capa.
 
 - **Campos**: `id`, `label` (lo que el usuario ve), `endpoint`, `tier` (`Cheap` | `Heavy`),
-  `state` (`Connected` | `Expired` | `Revoked`).
+  `state` (`Connected` | `Expired` | `Revoked` | `CredentialMissing`).
+- **`CredentialMissing`** existe porque faltaba (issue #48): la credencial puede desaparecer del
+  almacén —el usuario limpia su llavero, otra aplicación la borra— y sin este estado la conexión
+  seguía mostrándose `Connected` mientras el sistema la omitía en silencio al armar el grafo. Un
+  estado que miente es peor que uno que falta.
 - **Invariante que sostiene FR-002**: **no contiene la credencial**. Lleva la referencia con la
   que pedírsela al almacén. Un `ProviderConnection` serializado a la interfaz o a un registro no
   puede filtrar un secreto porque no lo tiene.
