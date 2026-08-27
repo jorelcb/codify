@@ -14,6 +14,13 @@ pub enum ConnectionState {
     Expired,
     /// El usuario o el proveedor la revocaron.
     Revoked,
+    /// La credencial **ya no está en el almacén**: el usuario limpió su llavero, u otra
+    /// aplicación la borró.
+    ///
+    /// Existe porque sin ella la conexión se mostraba `Connected` y no funcionaba: el sistema la
+    /// omitía en silencio al armar el grafo y el usuario no tenía dónde enterarse. Un estado que
+    /// miente es peor que uno que falta.
+    CredentialMissing,
 }
 
 impl ConnectionState {
@@ -23,14 +30,16 @@ impl ConnectionState {
             ConnectionState::Connected => "connected",
             ConnectionState::Expired => "expired",
             ConnectionState::Revoked => "revoked",
+            ConnectionState::CredentialMissing => "credential_missing",
         }
     }
 
-    pub fn all() -> [ConnectionState; 3] {
+    pub fn all() -> [ConnectionState; 4] {
         [
             ConnectionState::Connected,
             ConnectionState::Expired,
             ConnectionState::Revoked,
+            ConnectionState::CredentialMissing,
         ]
     }
 }
