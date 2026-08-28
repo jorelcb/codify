@@ -81,6 +81,21 @@ Esta sí se puede hacer sin ayuda, y comprueba el defecto de research D2:
 
 El paso 4 es el que demuestra que `003`-FR-008a se cumple de punta a punta, cosa que no ocurría.
 
+**Ya comprobado en T028**, con un arnés de navegador que sirve la interfaz real contra el catálogo
+real y un núcleo de mentira con la **misma forma** que el de verdad —guarda el modo y lo devuelve—.
+Los tres pasos: al arrancar insignia, casilla y estado guardado dicen `local`; al desmarcar los
+tres dicen `hybrid`; al volver a marcar, los tres vuelven. Antes de este ciclo, la insignia se
+quedaba en `local` en el paso 2.
+
+Y de paso SC-005, medido sobre el render en vez de deducido del CSS: **cero desbordamiento** con la
+superficie a 692 px —lo que da una ventana en su mínimo de 720— y también a 500 y 360; entre 27 y
+44 caracteres visibles por campo, siempre por encima de los 24; y el contenedor envolviendo de una
+fila a tres en vez de estrujar los campos.
+
+Lo que el arnés **no** demuestra es que `start_session` lea el modo guardado: eso dejó de ser
+posible de otro modo cuando `request.local` desapareció del tipo, así que lo garantiza el
+compilador.
+
 ---
 
 ## Qué anotar

@@ -186,12 +186,12 @@ sesión. Antes de este ciclo no cambiaba ninguna de las dos cosas.
 
 ## Fase 6: Cierre y lo que no puede cerrar el build
 
-- [ ] T027 Dejar el árbol en verde: `cargo test --workspace`, `cargo clippy --workspace
+- [X] T027 Dejar el árbol en verde: `cargo test --workspace`, `cargo clippy --workspace
       --all-targets -- -D warnings`, `cargo fmt --all -- --check`. Se esperan **19** tests de
       contrato de interfaz. Es aquí donde se cierra **FR-007**: no tiene tarea propia porque no
       pide construir nada —pide **no romper** las garantías de catálogo de `002`—, y quien lo
       comprueba son los tests que ya existen
-- [ ] T028 Comprobación de humo del modo con la aplicación levantada, según
+- [X] T028 Comprobación de humo del modo con la aplicación levantada, según
       [quickstart.md](./quickstart.md): la insignia cambia al desmarcar, y la sesión siguiente se
       arma en híbrido. Es la demostración de punta a punta de que `003`-FR-008a se cumple
 - [ ] T029 Abrir issue por el defecto de `003` que este ciclo consume —`set_mode` escribía en un

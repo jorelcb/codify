@@ -158,6 +158,10 @@ button:disabled { opacity: 0.55; cursor: default; }
 .conexion {
   display: flex;
   flex-direction: column;
+  /* Las partes se ciñen al ancho de lectura que la corriente ya establece: un recuadro de
+     1500 px alrededor de una casilla no se lee como una decisión, se lee como un error. */
+  align-items: stretch;
+  max-width: 920px;
   gap: 14px;
   padding: 14px;
   background: var(--panel);
