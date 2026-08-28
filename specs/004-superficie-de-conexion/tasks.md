@@ -27,7 +27,7 @@ dependencias pendientes).
 Sin dependencias que instalar: esta feature no añade ninguna. Lo único que hace falta es una línea
 de base a la que atribuir cualquier regresión.
 
-- [ ] T001 Registrar la línea de base — `cargo test --workspace` (231 verdes) y
+- [X] T001 Registrar la línea de base — `cargo test --workspace` (231 verdes) y
       `cargo test -p codify-app --test ui_contract` (14 verdes) — anotando los números en el commit
       de arranque, para que una caída posterior sea atribuible
 
@@ -38,10 +38,10 @@ de base a la que atribuir cualquier regresión.
 **Por qué bloquea**: las tres historias editan la misma sección. Separarla una vez, antes, evita
 tres reescrituras que se pisan.
 
-- [ ] T002 Separar `#conexiones` de la barra de estado en `ui/index.html`: deja de llevar
+- [X] T002 Separar `#conexiones` de la barra de estado en `ui/index.html`: deja de llevar
       `class="provider"` y pasa a su propia clase; el `<h2>` deja de estar oculto y encabeza la
       sección (FR-001)
-- [ ] T003 Abrir el bloque de presentación propia de la superficie en `ui/styles.css`: disposición
+- [X] T003 Abrir el bloque de presentación propia de la superficie en `ui/styles.css`: disposición
       en bloque con las tres partes en orden —modo, cuentas, formulario—, **sin** heredar de
       `.provider` (FR-001, [research D4](./research.md))
 
@@ -60,31 +60,31 @@ una sola vez, la historia falla.
 
 ### Test primero
 
-- [ ] T004 [US1] Escribir `los_campos_del_formulario_caben_en_la_ventana_minima` en
+- [X] T004 [US1] Escribir `los_campos_del_formulario_caben_en_la_ventana_minima` en
       `tests/ui_contract.rs` — cada campo de texto del formulario declara `min-width` en `ch` de al
       menos 24, y su contenedor envuelve. **Debe fallar** al escribirlo (R4, SC-005)
-- [ ] T005 [US1] Escribir `la_superficie_de_conexion_tiene_forma_propia` en
+- [X] T005 [US1] Escribir `la_superficie_de_conexion_tiene_forma_propia` en
       `tests/ui_contract.rs` — `#conexiones` no lleva la clase de la barra de estado, el formulario
       está en un contenedor plegado por defecto, y la lista de cuentas queda fuera de él. **Debe
       fallar** (R5, FR-001, FR-002a, FR-004)
 
 ### Implementación
 
-- [ ] T006 [P] [US1] Añadir `connection.submit` («Conectar» / «Connect») a `src/strings.rs` y
+- [X] T006 [P] [US1] Añadir `connection.submit` («Conectar» / «Connect») a `src/strings.rs` y
       repuntar el botón `#conectar` de `ui/index.html` a esa clave, dejando `connection.add`
       —«Conectar un proveedor»— libre para el `<summary>` que despliega el formulario
-- [ ] T007 [US1] Envolver el formulario de conexión en `<details><summary>` en `ui/index.html`, de
+- [X] T007 [US1] Envolver el formulario de conexión en `<details><summary>` en `ui/index.html`, de
       modo que quede plegado por defecto (FR-002a, [research D5](./research.md))
-- [ ] T008 [US1] Dar a cada campo su etiqueta asociada e inequívoca en `ui/index.html`, en el orden
+- [X] T008 [US1] Dar a cada campo su etiqueta asociada e inequívoca en `ui/index.html`, en el orden
       en que hay que rellenarlos, y separar visiblemente la lista de cuentas del formulario
       (FR-002, FR-004)
-- [ ] T009 [US1] Estilar el formulario en `ui/styles.css`: `min-width: 24ch` en los campos de
+- [X] T009 [US1] Estilar el formulario en `ui/styles.css`: `min-width: 24ch` en los campos de
       texto y contenedor que envuelve, para que el mínimo no produzca desbordamiento (SC-005,
       [research D3](./research.md)). Cubrir además los dos casos límite que el mínimo **no**
       resuelve: un `max-width` que impida que un valor largo empuje a los demás fuera de la fila, y
       una lista de cuentas que crezca con su propio desplazamiento en vez de empujar al formulario
       fuera de la vista
-- [ ] T010 [US1] Verificar T004 inyectando la violación en `ui/styles.css`: bajar un campo a
+- [X] T010 [US1] Verificar T004 inyectando la violación en `ui/styles.css`: bajar un campo a
       `20ch`, comprobar que el test cae, revertir; repetir quitando el `flex-wrap`. Verificar
       también R5 devolviéndole a `#conexiones` la clase `provider` en `ui/index.html`. **Un test
       que no se ha visto fallar no está verificado**
@@ -164,18 +164,18 @@ sesión. Antes de este ciclo no cambiaba ninguna de las dos cosas.
 
 ### Test primero
 
-- [ ] T023 [US3] Escribir `ningun_par_de_regiones_comparte_nombre_accesible` en
+- [X] T023 [US3] Escribir `ningun_par_de_regiones_comparte_nombre_accesible` en
       `tests/ui_contract.rs` — recoge las regiones de `index.html`, resuelve su `data-i18n-aria`
       contra `src/strings.rs`, y falla si se repite **una clave o un texto**, en cualquiera de los
       dos idiomas. **Debe fallar con los dos pares que hay hoy** (R1, FR-005, FR-006, SC-002)
 
 ### Implementación
 
-- [ ] T024 [P] [US3] Añadir `a11y.connections_region` y `a11y.prefs_region` a `src/strings.rs`, en
+- [X] T024 [P] [US3] Añadir `a11y.connections_region` y `a11y.prefs_region` a `src/strings.rs`, en
       los dos idiomas
-- [ ] T025 [US3] Cablearlas en `ui/index.html`: `#conexiones` deja `a11y.provider_region` y
+- [X] T025 [US3] Cablearlas en `ui/index.html`: `#conexiones` deja `a11y.provider_region` y
       `footer.prefs` deja `a11y.toolbar_region` ([data-model.md §Región](./data-model.md))
-- [ ] T026 [US3] Verificar T023 inyectando la violación en `ui/index.html`: dar a `#applied` el
+- [X] T026 [US3] Verificar T023 inyectando la violación en `ui/index.html`: dar a `#applied` el
       nombre de `#decide`, comprobar que el test cae, revertir
 
 **Punto de control**: siete regiones, siete nombres distintos, en los dos idiomas.

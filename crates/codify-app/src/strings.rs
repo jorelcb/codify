@@ -103,7 +103,11 @@ const CATALOG: &[(&str, &str, &str)] = &[
     ("provider.next_step", "Qué hacer", "What to do"),
     // `003` — conectar cuentas remotas y elegir el modo.
     ("connection.title", "Proveedores conectados", "Connected providers"),
+    // `004` — `connection.add` nombra el desplegable que **abre** el formulario; el botón que
+    // lo **envía** necesita su propio texto. Con el mismo en los dos había dos controles
+    // idénticos, uno que abre y otro que envía.
     ("connection.add", "Conectar un proveedor", "Connect a provider"),
+    ("connection.submit", "Conectar", "Connect"),
     ("connection.none", "Ninguno. La aplicación funciona en local.", "None. The app runs locally."),
     ("connection.disconnect", "Desconectar", "Disconnect"),
     ("connection.code_hint", "Introduce este código en la página que se abrirá:", "Enter this code on the page that will open:"),
@@ -223,6 +227,11 @@ const CATALOG: &[(&str, &str, &str)] = &[
     ("a11y.applied_region", "Cambios aplicados sin preguntar", "Changes applied without asking"),
     ("a11y.provider_region", "Configuración del modelo", "Model configuration"),
     ("a11y.toolbar_region", "Controles de la sesión", "Session controls"),
+    // `004`-FR-005 — dos regiones no pueden llamarse igual. `#conexiones` compartía nombre con
+    // `#provider`, y el pie con la barra superior: quien navega por regiones oía lo mismo en
+    // sitios distintos.
+    ("a11y.connections_region", "Modo y proveedores conectados", "Mode and connected providers"),
+    ("a11y.prefs_region", "Preferencias de la aplicación", "Application preferences"),
     ("a11y.shortcuts", "Atajos: Enter inicia, Escape cancela, flechas recorren la actividad.", "Shortcuts: Enter starts, Escape cancels, arrows move through the activity."),
 ];
 
