@@ -698,3 +698,178 @@ fn sin_comentarios(fuente: &str) -> String {
         .collect::<Vec<_>>()
         .join("\n")
 }
+
+// ---------------------------------------------------------------------------
+// `004` · La superficie de conexión — forma propia, campos legibles, nombres únicos
+// ---------------------------------------------------------------------------
+
+/// Devuelve el cuerpo de la primera regla CSS cuyo selector empieza por `selector`.
+fn regla_css(css: &str, selector: &str) -> Option<String> {
+    let at = css.find(&format!("\n{selector} {{"))? + 1;
+    let rest = &css[at..];
+    let open = rest.find('{')? + 1;
+    let close = rest.find('}')?;
+    Some(rest[open..close].to_string())
+}
+
+/// Lee una declaración `prop: <n>ch` de un cuerpo de regla.
+fn medida_ch(cuerpo: &str, prop: &str) -> Option<u32> {
+    cuerpo
+        .split(';')
+        .map(str::trim)
+        .find(|d| d.starts_with(prop) && d[prop.len()..].trim_start().starts_with(':'))
+        .and_then(|d| d.split(':').nth(1))
+        .and_then(|v| v.trim().strip_suffix("ch"))
+        .and_then(|n| n.trim().parse().ok())
+}
+
+/// **SC-005** — los campos siguen siendo legibles con la ventana en su mínimo.
+///
+/// El criterio se expresa en `ch`, que es el ancho del carácter «0» de la fuente en uso: así
+/// «24 caracteres» **es** la declaración, no una aproximación en píxeles que cambiaría de
+/// significado al cambiar la tipografía. Los 147 px que había antes no decían nada sobre cuántos
+/// caracteres cabían.
+///
+/// El suelo por sí solo no basta: dentro de un contenedor que no envuelve produce desbordamiento
+/// en vez de campos legibles, y sin techo un valor largo empuja a los demás fuera de la fila.
+#[test]
+fn los_campos_del_formulario_caben_en_la_ventana_minima() {
+    const MINIMO: u32 = 24;
+    // Sin comentarios: las declaraciones van comentadas y un `/* … */` delante de `min-width`
+    // haría que el análisis no la viera.
+    let css = strip_between(&read(ui_dir().join("styles.css")), "/*", "*/");
+
+    let campo = regla_css(&css, ".campo")
+        .expect("styles.css debe declarar una regla `.campo` para los campos del formulario");
+
+    let min = medida_ch(&campo, "min-width").unwrap_or_else(|| {
+        panic!("`.campo` debe declarar `min-width` en `ch`: SC-005 se mide en caracteres, no en píxeles")
+    });
+    assert!(
+        min >= MINIMO,
+        "`.campo` declara `min-width: {min}ch` y SC-005 exige al menos {MINIMO}: por debajo, una \
+         dirección de proveedor deja de ser adivinable"
+    );
+
+    assert!(
+        medida_ch(&campo, "max-width").is_some(),
+        "`.campo` debe declarar también un `max-width` en `ch`: el suelo no impide que un valor \
+         largo empuje a los demás campos fuera de la fila"
+    );
+
+    let contenedor = regla_css(&css, ".alta-campos")
+        .expect("styles.css debe declarar `.alta-campos`, el contenedor de los campos");
+    assert!(
+        contenedor.replace(' ', "").contains("flex-wrap:wrap"),
+        "`.alta-campos` debe envolver: un `min-width` dentro de un contenedor que no envuelve no \
+         da campos legibles, da desbordamiento horizontal — la otra mitad de SC-005"
+    );
+}
+
+/// **FR-001, FR-002a, FR-004** — la superficie tiene forma propia.
+///
+/// Nace de mirar la aplicación: `#conexiones` reutilizaba la clase de la barra de estado del
+/// proveedor, que es una fila pensada para información pasiva, y metía dentro un formulario de
+/// tres campos. Todos los tests pasaban y la pantalla no se entendía.
+///
+/// FR-006 exige, para los nombres de región, que la comprobación no «dependa de que alguien lo
+/// note mirando». Dejar la forma al ojo sería aplicar ese criterio a la mitad del spec — y el ojo
+/// ya falló aquí una vez.
+#[test]
+fn la_superficie_de_conexion_tiene_forma_propia() {
+    let html = read(ui_dir().join("index.html"));
+
+    let etiqueta = html
+        .split_once("<section id=\"conexiones\"")
+        .and_then(|(_, rest)| rest.split_once('>').map(|(tag, _)| tag.to_string()))
+        .expect("index.html debe tener la sección `#conexiones`");
+    assert!(
+        !etiqueta.contains("provider"),
+        "`#conexiones` sigue llevando la presentación de la barra de estado del proveedor \
+         (`{}`). FR-001 prohíbe reutilizar la disposición de una barra de estado para contener \
+         un formulario",
+        etiqueta.trim()
+    );
+
+    let seccion = html
+        .split_once("<section id=\"conexiones\"")
+        .map(|(_, rest)| rest.split_once("</section>").map(|(s, _)| s).unwrap_or(rest))
+        .expect("la sección `#conexiones` debe cerrar");
+
+    let abre_plegable = seccion
+        .find("<details")
+        .expect("FR-002a: el formulario de conexión debe vivir en un contenedor plegable");
+    let tag_details = seccion[abre_plegable..]
+        .split_once('>')
+        .map(|(t, _)| t)
+        .unwrap_or_default();
+    assert!(
+        !tag_details.contains(" open"),
+        "el plegable del formulario arranca abierto, así que el caso por defecto —sin cuentas \
+         conectadas— sigue pagando por el raro (FR-002a)"
+    );
+
+    let lista = seccion
+        .find("id=\"conexiones-lista\"")
+        .expect("la lista de cuentas conectadas debe estar en la sección");
+    assert!(
+        lista < abre_plegable,
+        "la lista de cuentas está **dentro** del plegable del formulario: al plegarlo desaparecen \
+         las cuentas conectadas, y FR-004 pide justo distinguir una cosa de la otra"
+    );
+}
+
+/// **FR-005, FR-006, SC-002** — dos regiones no pueden llamarse igual.
+///
+/// Se comprueban las claves **y los textos resueltos**, en los dos idiomas. Solo las claves
+/// dejaría pasar dos claves distintas con el mismo texto; solo los textos dejaría pasar el caso
+/// en que un idioma los distingue y el otro no. Quien usa un lector de pantalla oye el texto.
+///
+/// Al escribirlo había dos pares en conflicto, y llevaban ahí desde `003` sin que nadie los
+/// notara mirando: `#conexiones` sonaba igual que `#provider`, y el pie igual que la barra.
+#[test]
+fn ningun_par_de_regiones_comparte_nombre_accesible() {
+    let html = read(ui_dir().join("index.html"));
+
+    let claves: Vec<String> = html
+        .split("data-i18n-aria=\"")
+        .skip(1)
+        .filter_map(|rest| rest.split('"').next().map(str::to_string))
+        .collect();
+    assert!(
+        claves.len() >= 2,
+        "no se encontraron regiones con nombre accesible en index.html"
+    );
+
+    let mut repetidas = Vec::new();
+    for (i, a) in claves.iter().enumerate() {
+        if claves[..i].contains(a) && !repetidas.contains(a) {
+            repetidas.push(a.clone());
+        }
+    }
+    assert!(
+        repetidas.is_empty(),
+        "estas claves nombran más de una región, así que suenan igual al recorrerlas: {repetidas:?}"
+    );
+
+    for locale in [Locale::Es, Locale::En] {
+        let entries = strings_for(locale).entries;
+        let mut vistos: Vec<(String, String)> = Vec::new();
+        for clave in &claves {
+            let texto = entries.get(clave.as_str()).unwrap_or_else(|| {
+                panic!(
+                    "la región '{clave}' no tiene texto en {}: se oiría la clave cruda",
+                    locale.code()
+                )
+            });
+            if let Some((otra, _)) = vistos.iter().find(|(_, t)| t == texto) {
+                panic!(
+                    "en {} las regiones '{otra}' y '{clave}' se llaman igual ({texto:?}): quien \
+                     navega por regiones no puede saber en cuál está",
+                    locale.code()
+                );
+            }
+            vistos.push((clave.clone(), texto.to_string()));
+        }
+    }
+}

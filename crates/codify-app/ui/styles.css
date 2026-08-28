@@ -147,6 +147,94 @@ button:disabled { opacity: 0.55; cursor: default; }
 .provider[data-state="checking"] .glyph { color: var(--muted); }
 
 .inline { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------------------------------------------------------------------------
+ * `004` — la superficie de conexión y modo.
+ *
+ * NO hereda de `.provider`. Aquella es una barra de estado: una fila, todo del
+ * mismo peso, pensada para información pasiva. Aquí hay una decisión, una lista
+ * y un formulario, y meterlos en una fila fue el defecto que originó el spec.
+ * ------------------------------------------------------------------------- */
+.conexion {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.conexion-titulo {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* FR-003: el modo se lee como una decisión, no como un dato. Lleva marco y una
+   barra lateral que ningún otro control de esta zona tiene, para que se
+   distinga sin necesidad de leer las etiquetas completas. */
+.modo {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent, var(--ok));
+  border-radius: 6px;
+  background: var(--bg);
+}
+.modo .label { font-weight: 600; }
+
+.cuentas #conexiones-lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  /* Muchas cuentas conectadas no pueden empujar al formulario fuera de la
+     vista: la lista se desplaza dentro de sí misma. */
+  max-height: 8.5rem;
+  overflow-y: auto;
+}
+.cuentas #conexiones-vacio { margin: 0; color: var(--muted); }
+
+/* FR-002a: plegado por defecto. El caso común —sin cuentas— no paga por el raro. */
+.alta > summary {
+  cursor: pointer;
+  padding: 6px 0;
+  font-weight: 600;
+  color: var(--fg);
+}
+.alta > summary::marker { color: var(--muted); }
+.alta[open] > summary { margin-bottom: 10px; }
+
+.alta-campos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+/* FR-002: la etiqueta va **encima** de su campo, no al lado. En fila, la
+   etiqueta del siguiente campo queda pegada al anterior y se confunden. */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  /* SC-005: 24 caracteres visibles. `ch` es el ancho del carácter «0» de la
+     fuente en uso, así que esto **es** el criterio, no una aproximación. */
+  min-width: 24ch;
+  /* Y un techo, porque el suelo no impide que un valor largo —una dirección de
+     proveedor extensa— empuje a los demás fuera de la fila. */
+  max-width: 40ch;
+  flex: 1 1 24ch;
+}
+.campo > .label { color: var(--muted); }
+.campo > input,
+.campo > select { width: 100%; }
+
 .label { color: var(--muted); font-size: 12px; }
 
 select {
