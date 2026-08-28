@@ -107,44 +107,46 @@ sale de su equipo.
 
 ### Tests primero
 
-- [ ] T011 [P] [US2] Escribir `el_modo_no_puede_discrepar_entre_sus_dos_superficies` en
+- [X] T011 [P] [US2] Escribir `el_modo_no_puede_discrepar_entre_sus_dos_superficies` en
       `tests/ui_contract.rs` — un solo sitio escribe `dataset.mode`, un solo sitio escribe el
       `checked` de `#modo-local`, y ambos son la misma función. **Debe fallar** (R2, SC-006)
-- [ ] T012 [P] [US2] Escribir `la_interfaz_no_tiene_su_propia_idea_del_modo` en
+- [X] T012 [P] [US2] Escribir `la_interfaz_no_tiene_su_propia_idea_del_modo` en
       `tests/ui_contract.rs` — ningún módulo declara estado de modo propio. **Debe fallar hoy por
       `ui.local`** (R3, FR-003a)
 
 ### Implementación — la fuente única
 
-- [ ] T013 [US2] Añadir el comando `mode() -> ModeDto` y hacer que `set_mode` devuelva el modo
+- [X] T013 [US2] Añadir el comando `mode() -> ModeDto` y hacer que `set_mode` devuelva el modo
       resultante, en `src/commands.rs` (contrato §Comandos)
-- [ ] T014 [US2] Hacer que `start_session` lea `AppState.mode` en vez de `request.local`, y
+- [X] T014 [US2] Hacer que `start_session` lea `AppState.mode` en vez de `request.local`, y
       **eliminar** `local` de `StartSessionRequest`, en `src/commands.rs`. Es lo que repara
       `003`-FR-008a: hasta ahora el modo se guardaba y no se aplicaba
-- [ ] T015 [US2] Concentrar en `ui/main.js` la **única** función que pinta el modo, pintando las
+- [X] T015 [US2] Concentrar en `ui/main.js` la **única** función que pinta el modo, pintando las
       dos superficies —insignia y casilla— desde el valor que devuelve el backend; borrar
       `ui.local` (FR-003a)
-- [ ] T016 [US2] Quitar a `ui/connections.js` toda opinión sobre el modo: el manejador de la
+- [X] T016 [US2] Quitar a `ui/connections.js` toda opinión sobre el modo: el manejador de la
       casilla invoca `set_mode` y delega el repintado en la función de T015
-- [ ] T017 [US2] Comprobar que `provider.refresh(...)` y cualquier otro consumidor del modo en
+- [X] T017 [US2] Comprobar que `provider.refresh(...)` y cualquier otro consumidor del modo en
       `ui/main.js` leen la fuente única, no una copia — el defecto se propagó por ahí
 
 ### Implementación — la presentación
 
-- [ ] T018 [P] [US2] Añadir `a11y.mode_group` a `src/strings.rs` en los dos idiomas, y agrupar el
-      control de modo bajo ese nombre en `ui/index.html`
-- [ ] T019 [US2] Distinguir el modo del resto en `ui/styles.css`: se identifica como decisión sin
+- [X] T018 [P] [US2] Agrupar el control de modo en `ui/index.html` con un nombre accesible
+      propio. **Se resolvió sin clave nueva**: `aria-labelledby` apunta al encabezado visible del
+      grupo, así que el nombre tiene un solo dueño. La clave `a11y.mode_group` que el plan preveía
+      habría sido una segunda copia del mismo texto — el defecto que este spec vino a quitar
+- [X] T019 [US2] Distinguir el modo del resto en `ui/styles.css`: se identifica como decisión sin
       leer las etiquetas completas, y permanece visible con el formulario plegado (FR-003)
-- [ ] T020 [US2] Colocar los receptores posibles **junto al control de modo** cuando el modo
+- [X] T020 [US2] Colocar los receptores posibles **junto al control de modo** cuando el modo
       admite remotos y hay cuentas conectadas, en `ui/connections.js` y `ui/index.html`
       (`003`-FR-009)
 
 ### Cierre de la historia
 
-- [ ] T021 [US2] Verificar T011 y T012 inyectando: pintar la insignia desde `connections.js` (debe
+- [X] T021 [US2] Verificar T011 y T012 inyectando: pintar la insignia desde `connections.js` (debe
       caer R2) y reintroducir `local: true` en el estado de `main.js` (debe caer R3). Revertir cada
       una
-- [ ] T022 [P] [US2] Actualizar
+- [X] T022 [P] [US2] Actualizar
       `specs/003-conectividad-y-tiers/contracts/tauri-commands.md` con la firma nueva de
       `set_mode`, el comando `mode()` y la desaparición de `request.local` — el contrato que cambia
       es el del crate que se toca, no el del spec en que se trabaja

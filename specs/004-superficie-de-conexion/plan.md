@@ -37,7 +37,7 @@ vigente. Está documentado en [research.md](./research.md) (D2) y decide la form
 catálogo; cero-egress estructural intacto
 
 **Scale/Scope**: una sección del HTML, dos módulos JS, el CSS de esa sección, dos comandos Tauri,
-cuatro claves de catálogo nuevas en dos idiomas, y cinco tests nuevos
+tres claves de catálogo nuevas en dos idiomas, y cinco tests nuevos
 
 ## Constitution Check
 
@@ -93,7 +93,7 @@ crates/codify-app/
 ├── src/
 │   ├── commands.rs      # `set_mode` devuelve el modo; `mode()` nuevo; `start_session` lee
 │   │                    #   `state.mode` en vez de creerle a la petición
-│   └── strings.rs       # 4 claves nuevas × 2 idiomas
+│   └── strings.rs       # 3 claves nuevas × 2 idiomas
 ├── ui/
 │   ├── index.html       # `#conexiones` deja de ser `.provider`; formulario en `<details>`;
 │   │                    #   nombres de región únicos

@@ -102,9 +102,23 @@ impl AppState {
 #[serde(rename_all = "camelCase")]
 pub struct StartSessionRequest {
     pub repo_root: String,
-    /// `true` ⇒ modo local con cero-egress garantizado por construcción.
-    pub local: bool,
     pub locale: Option<String>,
+}
+
+/// El modo, tal como lo ve la interfaz. Es lo que devuelven `mode` y `set_mode`, para que quien
+/// pide el cambio reciba el estado resultante en vez de asumirlo.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModeDto {
+    pub local: bool,
+}
+
+impl From<Mode> for ModeDto {
+    fn from(mode: Mode) -> Self {
+        Self {
+            local: matches!(mode, Mode::Local),
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -525,14 +539,33 @@ pub async fn disconnect_provider(
     Ok(())
 }
 
+/// Lee el modo guardado. **Es la única fuente**: la interfaz pregunta y no recuerda.
+///
+/// `004`-FR-003a. Antes la interfaz llevaba su propia copia —un `true` que no se reasignaba
+/// nunca—, así que la insignia decía «local» hicieras lo que hicieras y el modo guardado no lo
+/// leía nadie.
+#[tauri::command]
+pub async fn mode(state: State<'_, AppState>) -> Result<ModeDto, String> {
+    Ok(modo_actual(&state).into())
+}
+
 /// `003`-FR-008a. El modo se guarda y el grafo se rearma en la **siguiente** sesión: la viva
 /// conserva el suyo (FR-008b), y por eso este comando no toca ninguna.
+///
+/// Devuelve el modo resultante para que quien lo pidió pinte **eso**, y no lo que supuso.
 #[tauri::command]
-pub async fn set_mode(state: State<'_, AppState>, local: bool) -> Result<(), String> {
+pub async fn set_mode(state: State<'_, AppState>, local: bool) -> Result<ModeDto, String> {
+    let nuevo = if local { Mode::Local } else { Mode::Hybrid };
     if let Ok(mut m) = state.mode.lock() {
-        *m = if local { Mode::Local } else { Mode::Hybrid };
+        *m = nuevo;
     }
-    Ok(())
+    Ok(modo_actual(&state).into())
+}
+
+/// El modo guardado, o local si el candado está envenenado. La degradación va hacia el lado que
+/// no deja salir nada.
+fn modo_actual(state: &State<'_, AppState>) -> Mode {
+    state.mode.lock().map(|m| *m).unwrap_or(Mode::Local)
 }
 
 /// Convierte las cuentas conectadas en proveedores, pidiendo cada credencial al almacén.
@@ -664,11 +697,11 @@ pub async fn start_session(
     state: State<'_, AppState>,
     request: StartSessionRequest,
 ) -> Result<String, String> {
-    let mode = if request.local {
-        Mode::Local
-    } else {
-        Mode::Hybrid
-    };
+    // `004`-FR-003a. Antes esto leía `request.local`, que la interfaz fijaba a `true` y no
+    // reasignaba jamás: `set_mode` guardaba un modo que ningún lector consultaba, y la sesión
+    // siempre se armaba en local. Fallaba del lado seguro, pero el usuario no podía elegir —
+    // que es un defecto distinto de estar protegido.
+    let mode = modo_actual(&state);
     let _ = app.emit(
         "session.state_changed",
         StatePayload {

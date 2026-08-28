@@ -146,8 +146,12 @@ crea un segundo dueño del mismo hecho.
 
 ## D6 · Las cuatro claves de catálogo nuevas
 
-`a11y.connections_region` y `a11y.prefs_region` deshacen los dos pares repetidos de D1;
-`a11y.mode_group` nombra el grupo del modo.
+`a11y.connections_region` y `a11y.prefs_region` deshacen los dos pares repetidos de D1.
+
+**Y no hay tercera para el modo.** Se previó `a11y.mode_group`, y al implementarlo se vio que
+sería una segunda copia del texto de su propio encabezado, libre de divergir de él. El grupo se
+nombra con `aria-labelledby` apuntando al encabezado visible: un texto, un dueño — que es lo que
+este spec pide en FR-003a para el modo mismo.
 
 **El `<summary>` no estrena clave: reutiliza `connection.add`** («Conectar un proveedor»), que es
 literalmente el texto que la clarificación puso en la puerta de entrada. Lo que cambia es el

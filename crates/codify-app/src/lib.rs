@@ -21,6 +21,7 @@ pub fn run() {
             commands::complete_connection,
             commands::list_connections,
             commands::disconnect_provider,
+            commands::mode,
             commands::set_mode,
             commands::ui_strings,
             commands::system_locale,

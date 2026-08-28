@@ -8,7 +8,11 @@ Extiende la superficie de `002/contracts/skin-commands.md`.
 | `complete_connection` | `{ challengeId, secret? }` | `ProviderConnectionDto` | 🆕 FR-001 |
 | `list_connections` | — | `ProviderConnectionDto[]` | 🆕 FR-003 |
 | `disconnect_provider` | `{ connectionId }` | `ack` | 🆕 FR-003 |
-| `set_mode` | `{ mode }` | `ack` | 🆕 FR-008a — **rearma el grafo** |
+| `set_mode` | `{ local }` | `ModeDto` | 🆕 FR-008a — **rearma el grafo** |
+| `mode` | — | `ModeDto` | `004`-FR-003a — la fuente única del modo |
+
+`ModeDto` es `{ local: bool }`. `set_mode` **devuelve** el modo resultante en vez de un `ack`:
+quien pide el cambio pinta lo que el núcleo confirma, no lo que supuso.
 
 ### `ProviderConnectionDto` — campos
 
@@ -44,5 +48,9 @@ para que el usuario vea qué proveedores podrían recibir contenido, sin exponer
    fiable que acordarse de no rellenarlo.
 2. `set_mode` MUST NOT afectar a una sesión en curso (FR-008b) y MUST NOT exigir reiniciar
    (SC-007).
+2a. `start_session` MUST leer el modo del **estado guardado**, y su petición MUST NOT llevarlo.
+   Mientras lo llevó, la interfaz mandaba una copia que fijaba a `true` y no reasignaba nunca: el
+   modo se guardaba y no se aplicaba, de modo que FR-008a se cumplía a medias. Corregido en
+   `004` — ver su [research D2](../../004-superficie-de-conexion/research.md).
 3. El catálogo gana `connection.*` y `mode.*` en **los dos idiomas**, con el test que ya recorre
    los códigos del núcleo — el mismo patrón de `SessionFailure` y `ProviderIssue`.
