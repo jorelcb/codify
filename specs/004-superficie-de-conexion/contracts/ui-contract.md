@@ -8,7 +8,7 @@ verifica es una intención.
 ## Comandos Tauri
 
 Cambios sobre lo que fija
-[`003`/contracts/tauri-commands.md](../../003-conectividad-y-tiers/contracts/tauri-commands.md),
+[`003`/contracts/skin-commands.md](../../003-conectividad-y-tiers/contracts/skin-commands.md),
 que hay que actualizar en el mismo ciclo.
 
 | Comando | Antes | Después | Por qué |
@@ -100,8 +100,13 @@ la mitad del spec — y el ojo ya falló una vez aquí.
 | El punto de quiebre responsivo es alcanzable | `el_punto_de_quiebre_responsivo_es_alcanzable` |
 | Cero-egress estructural | `compile_fail.rs`, `egress_guard.rs` |
 
-Las cuatro claves nuevas —`a11y.connections_region`, `a11y.prefs_region`, `connection.submit`,
-`a11y.mode_group`— entran en los dos idiomas o el segundo test de esta tabla falla.
+Las **tres** claves nuevas —`a11y.connections_region`, `a11y.prefs_region`, `connection.submit`—
+entran en los dos idiomas o el segundo test de esta tabla falla.
+
+No hay una cuarta. El plan preveía `a11y.mode_group` para nombrar el grupo del modo, y al
+implementarlo se vio que sería **una segunda copia del texto de su propio encabezado**, libre de
+divergir de él. Se nombra con `aria-labelledby` apuntando al encabezado visible: un texto, un
+dueño. Estrenar aquí el defecto que este spec vino a quitar habría sido difícil de defender.
 
 `connection.add` **no** es nueva: hoy la lleva el botón que envía el formulario, y pasa a nombrar
 el desplegable que lo abre. El botón se queda con `connection.submit`.

@@ -4,6 +4,7 @@
 // equipo, y enseñarlo después de conectar sería tarde para decidir.
 
 import { t } from "./i18n.js";
+import * as mode from "./mode.js";
 
 const { invoke } = window.__TAURI__.core;
 
@@ -37,16 +38,18 @@ export function renderConexiones(conexiones) {
 
   // FR-009: con remotos permitidos, el usuario ve **antes de empezar** quién podría recibir
   // contenido del repositorio.
-  const receptores = el("modo-receptores");
-  if (receptores) {
-    const hayRemotos = conexiones.length > 0 && !el("modo-local")?.checked;
+  // El modo se pregunta, no se deduce de la casilla: la casilla enseña el modo, no lo define.
+  mode.actual().then((local) => {
+    const receptores = el("modo-receptores");
+    if (!receptores) return;
+    const hayRemotos = conexiones.length > 0 && !local;
     receptores.hidden = !hayRemotos;
     if (hayRemotos) {
       receptores.textContent = `${t("mode.will_receive")} ${conexiones
         .map((c) => c.endpointHost || c.label)
         .join(", ")}`;
     }
-  }
+  });
 }
 
 async function refrescar() {
@@ -94,10 +97,14 @@ async function conectar() {
   }
 }
 
-/** FR-008a/b: el modo se guarda y se aplica a la siguiente sesión. */
-async function cambiarModo() {
-  const local = el("modo-local")?.checked ?? true;
-  await invoke("set_mode", { local });
+/**
+ * `003`-FR-008a/b: el modo se guarda y se aplica a la siguiente sesión.
+ *
+ * Este manejador **pide** el cambio y no pinta nada: quien pinta es `mode.js`, y lo hace con lo
+ * que devuelve el núcleo. La casilla que el usuario acaba de pulsar es una petición, no el estado.
+ */
+async function cambiarModo(evento) {
+  await mode.cambiar(evento.target.checked);
   const aviso = el("modo-aviso");
   if (aviso) {
     aviso.hidden = false;

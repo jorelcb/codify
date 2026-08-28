@@ -11,6 +11,7 @@ import * as artifact from "./artifact.js";
 import * as decide from "./decide.js";
 import * as applied from "./applied.js";
 import * as connections from "./connections.js";
+import * as mode from "./mode.js";
 
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
@@ -21,7 +22,6 @@ const el = {
   action: document.getElementById("action"),
   state: document.getElementById("state"),
   mode: document.getElementById("mode"),
-  modeLabel: document.getElementById("mode-label"),
   uiLocale: document.getElementById("ui-locale"),
   artifactLocale: document.getElementById("artifact-locale"),
   providerRetry: document.getElementById("provider-retry"),
@@ -43,7 +43,6 @@ const el = {
 const ui = {
   sessionId: null,
   running: false,
-  local: true,
   /** Rutas de artefactos ya generados, para poder abrirlos **mientras** la sesión corre. */
   artifacts: new Set(),
   unattendedTentative: 0,
@@ -71,14 +70,6 @@ function refreshArtifactList() {
 function setSessionState(state) {
   el.state.dataset.state = state;
   el.state.textContent = i18n.t(state === "idle" ? "session.none" : `session.state.${state}`);
-}
-
-/** El indicador de modo es **persistente** y lleva texto, no solo color (FR-005/FR-026). */
-function renderMode() {
-  const key = ui.local ? "mode.local" : "mode.hybrid";
-  el.mode.dataset.mode = ui.local ? "local" : "hybrid";
-  el.modeLabel.textContent = i18n.t(key);
-  el.mode.title = i18n.t(ui.local ? "mode.local_hint" : "mode.hybrid_hint");
 }
 
 /** El refinamiento solo tiene sentido con una sesión viva y algo generado. */
@@ -200,7 +191,7 @@ async function start() {
     return;
   }
   if (!provider.isReady()) {
-    await provider.refresh(ui.local);
+    await provider.refresh(await mode.actual());
     if (!provider.isReady()) return; // el panel ya explica qué falta (FR-019)
   }
 
@@ -216,7 +207,7 @@ async function start() {
 
   try {
     ui.sessionId = await invoke("start_session", {
-      request: { repoRoot, local: ui.local, locale: el.artifactLocale.value },
+      request: { repoRoot, locale: el.artifactLocale.value },
     });
     artifact.configure(ui.sessionId, (remaining) => {
       ui.unattendedTentative = remaining;
@@ -291,7 +282,7 @@ async function finish() {
 // ---------------------------------------------------------------------------
 
 el.action.addEventListener("click", () => (ui.running ? cancel() : start()));
-el.providerRetry.addEventListener("click", () => provider.refresh(ui.local));
+el.providerRetry.addEventListener("click", async () => provider.refresh(await mode.actual()));
 el.openArtifact.addEventListener("click", () => artifact.open());
 
 /**
@@ -371,7 +362,7 @@ document.addEventListener("keydown", (e) => {
 
 el.uiLocale.addEventListener("change", async () => {
   await i18n.setLocale(el.uiLocale.value);
-  renderMode();
+  mode.render();
   setRunning(ui.running);
   // Sin condición: el estado se repinta **siempre**, incluido `idle`. Excluirlo dejaba
   // «sin sesión» congelado en el idioma de arranque (SC-009).
@@ -451,12 +442,12 @@ el.tentativeConfirm?.addEventListener("click", async () => {
   el.uiLocale.value = i18n.locale();
   el.artifactLocale.value = i18n.locale();
 
-  renderMode();
+  await mode.render();
   setRunning(false);
   setSessionState("idle");
 
   // Sondear al arrancar: si falta el backend, el usuario lo sabe antes de intentar nada.
-  await provider.refresh(ui.local);
+  await provider.refresh(await mode.actual());
   el.repo.focus();
 })();
 

@@ -793,7 +793,11 @@ fn la_superficie_de_conexion_tiene_forma_propia() {
 
     let seccion = html
         .split_once("<section id=\"conexiones\"")
-        .map(|(_, rest)| rest.split_once("</section>").map(|(s, _)| s).unwrap_or(rest))
+        .map(|(_, rest)| {
+            rest.split_once("</section>")
+                .map(|(s, _)| s)
+                .unwrap_or(rest)
+        })
         .expect("la sección `#conexiones` debe cerrar");
 
     let abre_plegable = seccion
@@ -872,4 +876,126 @@ fn ningun_par_de_regiones_comparte_nombre_accesible() {
             vistos.push((clave.clone(), texto.to_string()));
         }
     }
+}
+
+/// Nombre de la función que envuelve la posición `at` dentro de `fuente`.
+///
+/// Heurística deliberada: la `function nombre(` más cercana hacia atrás. Es suficiente para un
+/// JavaScript sin anidamiento profundo, y decir que dos escrituras «están en la misma función»
+/// necesita exactamente esto.
+fn funcion_que_envuelve(fuente: &str, at: usize) -> String {
+    fuente[..at]
+        .rmatch_indices("function ")
+        .next()
+        .map(|(i, _)| {
+            fuente[i + "function ".len()..]
+                .chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_' || *c == '$')
+                .collect()
+        })
+        .unwrap_or_else(|| "<nivel de módulo>".to_string())
+}
+
+/// Todas las posiciones de `aguja` en cada archivo `.js` de la interfaz.
+fn sitios(aguja: &str) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for (name, content) in ui_files() {
+        if !name.ends_with(".js") {
+            continue;
+        }
+        let sin = sin_comentarios(&content);
+        let mut desde = 0;
+        while let Some(rel) = sin[desde..].find(aguja) {
+            let at = desde + rel;
+            out.push((name.clone(), funcion_que_envuelve(&sin, at)));
+            desde = at + aguja.len();
+        }
+    }
+    out
+}
+
+/// **FR-003a, SC-006** — las dos superficies del modo no pueden discrepar.
+///
+/// El modo se enseña en dos sitios porque responden preguntas distintas: la insignia dice en qué
+/// modo estás de un vistazo, la casilla permite cambiarlo. Lo que no puede ocurrir es que digan
+/// cosas distintas.
+///
+/// Al escribir este test había **dos escritores y ninguna sincronización**: la insignia se pintaba
+/// desde `ui.local`, que valía `true` y no se reasignaba jamás, y la casilla vivía por su cuenta
+/// en el DOM. La insignia decía «local» hicieras lo que hicieras.
+///
+/// La regla, entonces: un solo escritor por superficie, y el mismo para las dos. Contarlos es lo
+/// que lo impide; compararlos después solo lo detectaría.
+#[test]
+fn el_modo_no_puede_discrepar_entre_sus_dos_superficies() {
+    let insignia = sitios("dataset.mode =");
+    let casilla = sitios(".checked =");
+
+    assert_eq!(
+        insignia.len(),
+        1,
+        "la insignia de modo se escribe en {} sitios: {insignia:?}. Con más de uno pueden \
+         discrepar; con ninguno, no se pinta",
+        insignia.len()
+    );
+    assert_eq!(
+        casilla.len(),
+        1,
+        "la casilla de modo se escribe en {} sitios: {casilla:?}. Si nunca se escribe, refleja lo \
+         que el usuario pulsó y no lo que el backend guardó",
+        casilla.len()
+    );
+    assert_eq!(
+        insignia[0], casilla[0],
+        "las dos superficies del modo se pintan en sitios distintos ({:?} y {:?}): existe un \
+         camino por el que una cambia y la otra no",
+        insignia[0], casilla[0]
+    );
+}
+
+/// El módulo que es dueño del modo. Nadie más puede tener una idea propia de cuál es.
+const DUENO_DEL_MODO: &str = "mode.js";
+
+/// **FR-003a** — la interfaz no guarda copia del modo.
+///
+/// Sin esto, el test anterior pasa con las dos superficies pintadas a la vez desde un valor
+/// equivocado — que es literalmente lo que ocurría: `ui.local` valía `true` para siempre, y
+/// `start_session` decidía el modo de la sesión leyendo esa copia en vez del estado guardado. El
+/// resultado es que `set_mode` escribía donde nadie leía y `003`-FR-008a no se cumplía.
+///
+/// La fuente única es el backend. La interfaz pregunta; no recuerda.
+#[test]
+fn la_interfaz_no_tiene_su_propia_idea_del_modo() {
+    let mut copias = Vec::new();
+    for (name, content) in ui_files() {
+        if !name.ends_with(".js") || name == DUENO_DEL_MODO {
+            continue;
+        }
+        for (n, linea) in sin_comentarios(&content).lines().enumerate() {
+            if linea.contains("local:") {
+                copias.push(format!("{name}:{}: {}", n + 1, linea.trim()));
+            }
+        }
+    }
+    assert!(
+        copias.is_empty(),
+        "estos módulos llevan su propia idea del modo, y una copia que nadie sincroniza es una \
+         copia que miente:\n{}",
+        copias.join("\n")
+    );
+
+    let dueno = ui_files()
+        .into_iter()
+        .find(|(n, _)| n == DUENO_DEL_MODO)
+        .map(|(_, c)| sin_comentarios(&c))
+        .unwrap_or_else(|| panic!("falta `ui/{DUENO_DEL_MODO}`, que es quien posee el modo"));
+    let mutable: Vec<&str> = dueno
+        .lines()
+        .filter(|l| l.starts_with("let ") || l.starts_with("var "))
+        .collect();
+    assert!(
+        mutable.is_empty(),
+        "`{DUENO_DEL_MODO}` guarda estado mutable de módulo ({mutable:?}): sería una caché del \
+         modo, y una caché es una segunda verdad esperando a divergir"
+    );
 }

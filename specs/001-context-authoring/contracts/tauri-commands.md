@@ -6,7 +6,7 @@ Superficie del **driving adapter** de la piel Tauri: comandos que el frontend we
 
 | Comando | Input | Output | Delega en |
 |---|---|---|---|
-| `start_session` | `{ repo_root, mode: "local"\|"hybrid", locale? }` | `{ session_id }` | `AuthoringService::start_session` |
+| `start_session` | `{ repo_root, locale? }` | `{ session_id }` | `AuthoringService::start_session` |
 | `session_state` | `{ session_id }` | `SessionState` (`ingesting`\|`generating`\|`refining`\|`approved`\|…) | `session_state` |
 | `submit_message` | `{ session_id, message }` | `ack` | `submit_message` (loop de refinamiento) |
 | `pending_proposals` | `{ session_id }` | `[ChangeProposal]` (con `risk`, `diff`) | `pending_proposals` |
@@ -14,7 +14,11 @@ Superficie del **driving adapter** de la piel Tauri: comandos que el frontend we
 | `set_locale` | `{ session_id, locale }` | `ack` | `set_locale` (override, FR-019) |
 | `connect_provider` | `{ backend, endpoint?, auth: "local"\|"api_key"\|"oauth" }` | inicia flujo (device-code si oauth) | infra `providers/` (D3) |
 | `list_connections` | `—` | `[ModelConnection]` (con `is_local`) | infra |
-| `set_mode` | `{ session_id, mode }` | `ack` (revalida elegibilidad de proveedores) | infra |
+| `set_mode` | `{ local }` | `ModeDto` | infra — firma vigente en [`003`](../../003-conectividad-y-tiers/contracts/skin-commands.md) |
+
+> **El modo no viaja en la petición de sesión.** Lo lee `start_session` del estado guardado, que es
+> la única fuente (`004`-FR-003a). Mientras viajó, la interfaz mandaba una copia congelada y el
+> modo elegido no llegaba a aplicarse.
 
 ## Eventos (backend → frontend)
 
