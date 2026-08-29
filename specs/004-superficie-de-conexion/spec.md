@@ -132,6 +132,13 @@ nombre con otra.
   que este proyecto ya corrigió una vez en el indicador de proveedor.
 - **FR-004**: La lista de cuentas conectadas MUST distinguirse del formulario para añadir una.
 
+> **FR-003 y FR-003a sirven a un control cuya existencia está en revisión.** La validación con
+> persona del 2026-08-29 concluyó que el modo **no debería ser una decisión del usuario** sino una
+> consecuencia de qué proveedores hay configurados: el deseo era conectar modelos locales, y se
+> interpretó como tener un modo local. Lo que estos dos requisitos piden —que el control se
+> distinga y que sus dos superficies no discrepen— sigue siendo correcto **mientras el control
+> exista**. Si deja de existir, caen con él y no por incumplirse. Decisión en **#56**.
+
 **Accesibilidad**
 
 - **FR-005**: Cada región de la interfaz MUST tener un **nombre accesible único**. Dos regiones
