@@ -35,6 +35,10 @@ function pintar(local) {
   if (etiqueta) etiqueta.textContent = t(local ? "mode.local" : "mode.hybrid");
   const casilla = el("modo-local");
   if (casilla) casilla.checked = local;
+  // La consecuencia, en el panel y no en un tooltip: se encontró el control y no se entendió
+  // qué decide. Se pinta **aquí**, con las otras dos superficies, para que no pueda discrepar.
+  const consecuencia = el("modo-consecuencia");
+  if (consecuencia) consecuencia.textContent = t(local ? "mode.local_hint" : "mode.hybrid_hint");
 }
 
 /** El modo guardado. Quien lo necesite, que pregunte. */

@@ -102,11 +102,18 @@ const CATALOG: &[(&str, &str, &str)] = &[
     ("provider.retry", "Volver a comprobar", "Check again"),
     ("provider.next_step", "Qué hacer", "What to do"),
     // `003` — conectar cuentas remotas y elegir el modo.
-    ("connection.title", "Proveedores conectados", "Connected providers"),
+    // `004` — «proveedor» nombraba dos cosas: el servidor local de la barra de arriba y el
+    // servicio remoto de este formulario, ambos hablando el mismo protocolo. Quien lo probó
+    // preguntó «¿con qué me estoy conectando, un CLI, un server local?». Aquí se nombra lo que
+    // es; el choque de vocabulario en el modelo se decide en #55.
+    ("connection.title", "Servicios remotos conectados", "Connected remote services"),
+    ("connection.only_hybrid", "Un servicio conectado solo se usa en modo híbrido: en modo local no recibe nada.", "A connected service is used only in hybrid mode: in local mode it receives nothing."),
+    ("connection.label_hint", "openai-produccion", "openai-production"),
+    ("connection.endpoint_hint", "https://api.openai.com/v1", "https://api.openai.com/v1"),
     // `004` — `connection.add` nombra el desplegable que **abre** el formulario; el botón que
     // lo **envía** necesita su propio texto. Con el mismo en los dos había dos controles
     // idénticos, uno que abre y otro que envía.
-    ("connection.add", "Conectar un proveedor", "Connect a provider"),
+    ("connection.add", "Conectar un servicio remoto", "Connect a remote service"),
     ("connection.submit", "Conectar", "Connect"),
     ("connection.none", "Ninguno. La aplicación funciona en local.", "None. The app runs locally."),
     ("connection.disconnect", "Desconectar", "Disconnect"),
@@ -118,7 +125,7 @@ const CATALOG: &[(&str, &str, &str)] = &[
     ("connection.state.revoked", "revocada", "revoked"),
     ("connection.state.credential_missing", "sin credencial: ya no está en el almacén del sistema", "no credential: it is no longer in the system store"),
     ("connection.label_field", "Nombre", "Name"),
-    ("connection.endpoint_field", "Dirección del proveedor", "Provider address"),
+    ("connection.endpoint_field", "Dirección del servicio (compatible con OpenAI)", "Service address (OpenAI-compatible)"),
     ("connection.tier_field", "Para qué usarlo", "What to use it for"),
     ("connection.tier_cheap", "Interacciones frecuentes", "Frequent interactions"),
     ("connection.tier_heavy", "Generación pesada", "Heavy generation"),
@@ -222,7 +229,6 @@ const CATALOG: &[(&str, &str, &str)] = &[
     ("close.review", "Revisarlos", "Review them"),
     // --- Accesibilidad (FR-025 a FR-027) ----------------------------------
     ("a11y.stream_region", "Actividad del agente", "Agent activity"),
-    ("a11y.artifact_region", "Contenido del archivo", "File content"),
     ("a11y.decide_region", "Cambios que esperan tu decisión", "Changes awaiting your decision"),
     ("a11y.applied_region", "Cambios aplicados sin preguntar", "Changes applied without asking"),
     ("a11y.provider_region", "Configuración del modelo", "Model configuration"),
@@ -230,7 +236,7 @@ const CATALOG: &[(&str, &str, &str)] = &[
     // `004`-FR-005 — dos regiones no pueden llamarse igual. `#conexiones` compartía nombre con
     // `#provider`, y el pie con la barra superior: quien navega por regiones oía lo mismo en
     // sitios distintos.
-    ("a11y.connections_region", "Modo y proveedores conectados", "Mode and connected providers"),
+    ("a11y.connections_region", "Modo y servicios remotos", "Mode and remote services"),
     ("a11y.prefs_region", "Preferencias de la aplicación", "Application preferences"),
     ("a11y.shortcuts", "Atajos: Enter inicia, Escape cancela, flechas recorren la actividad.", "Shortcuts: Enter starts, Escape cancels, arrows move through the activity."),
 ];

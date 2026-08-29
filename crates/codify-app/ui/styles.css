@@ -535,3 +535,9 @@ dialog h2 { margin: 0 0 8px; font-size: 16px; }
   .shortcuts { display: none; }
   #repo { flex-basis: 100%; order: 10; }
 }
+
+.modo-hint {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
