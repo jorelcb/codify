@@ -269,6 +269,14 @@ es imposible hasta #54, y ningún texto de ayuda cambia eso.
 
 - [X] T039 Verificar T033 y T034 por inyección: devolver el `role="region"` al diálogo, y declarar
       un comando nuevo sin invocarlo. Revertir cada una
+- [X] T041 Escribir `un_dialogo_cerrado_no_se_puede_declarar_visible` en
+      `crates/codify-app/tests/ui_contract.rs` — ninguna regla da `display` a un `<dialog>` sin
+      guardarlo con `[open]`. Hermano de `el_atributo_hidden_gana_siempre`, misma enfermedad con
+      otro atributo
+- [X] T042 Quitar el `display: flex` sin guardar de `dialog.artifact` en `ui/styles.css`. Pisaba
+      el `dialog:not([open]) { display: none }` del navegador, así que el diálogo cerrado quedaba
+      aplastado a un rectángulo diminuto **y seguía en el árbol de accesibilidad**. Es la causa
+      exacta de «señalaba un espacio diminuto, no visible»
 - [ ] T040 [persona] Reintentar **T031** y **T032** con la aplicación delante. T030 no se reintenta:
       su criterio es inalcanzable hasta #54
 

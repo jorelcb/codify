@@ -1107,3 +1107,53 @@ fn ningun_comando_del_backend_queda_sin_invocar() {
          darlos por cerrados ({saldados:?})"
     );
 }
+
+/// Un `<dialog>` cerrado no se puede declarar visible.
+///
+/// Hermano de `el_atributo_hidden_gana_siempre`, y la misma enfermedad con otro atributo. La hoja
+/// del navegador oculta un diálogo con `dialog:not([open]) { display: none }`, y **cualquier**
+/// `display` de autor sin guardar por `[open]` lo pisa. El resultado no es un diálogo visible: es
+/// un diálogo aplastado a un rectángulo diminuto, invisible pero **presente en el árbol de
+/// accesibilidad**.
+///
+/// Lo encontró una persona recorriendo la aplicación con lector de pantalla: la última entrada de
+/// su lista apuntaba «a un espacio diminuto, no visible». Ningún test lo veía porque miraban el
+/// HTML, y el HTML estaba bien — lo que estaba mal era una regla de CSS a cuatrocientas líneas.
+#[test]
+fn un_dialogo_cerrado_no_se_puede_declarar_visible() {
+    let css = strip_between(&read(ui_dir().join("styles.css")), "/*", "*/");
+
+    let mut culpables = Vec::new();
+    for bloque in css.split('}') {
+        let Some((selector, cuerpo)) = bloque.split_once('{') else {
+            continue;
+        };
+        let selector = selector.trim();
+        if !selector.split(',').any(|s| {
+            let s = s.trim();
+            s == "dialog" || s.starts_with("dialog.") || s.starts_with("dialog#")
+        }) {
+            continue;
+        }
+        if selector.contains("[open]") {
+            continue;
+        }
+        // Cada declaración se limpia entera: quitar solo los espacios deja el salto de línea
+        // delante y ninguna empieza por `display:`. Este test pasó en verde por eso mismo antes
+        // de arreglarlo, que es la moraleja de todo este ciclo.
+        let declara_display = cuerpo.split(';').any(|d| {
+            let d: String = d.chars().filter(|c| !c.is_whitespace()).collect();
+            d.starts_with("display:") && d != "display:none"
+        });
+        if declara_display {
+            culpables.push(selector.to_string());
+        }
+    }
+
+    assert!(
+        culpables.is_empty(),
+        "estas reglas dan `display` a un `<dialog>` sin guardarlo con `[open]`, así que el diálogo \
+         sigue en el árbol de accesibilidad estando cerrado y aparece al recorrer la interfaz: \
+         {culpables:?}"
+    );
+}
