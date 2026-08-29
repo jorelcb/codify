@@ -206,18 +206,20 @@ sesión. Antes de este ciclo no cambiaba ninguna de las dos cosas.
       es un hueco funcional de `003`, abierto como **#54**. Se añade que no entendía **a qué tipo
       de proveedor** se estaba conectando, cosa que el operador comparte: **#55**. **SC-001 es
       inalcanzable en este ciclo** y queda como fallo declarado, ligado a esos dos
-- [ ] T031 [persona] **SC-003 — FALLA (2026-08-29).** Los nombres se leen y son distintos, pero
+- [X] T031 [persona] **SC-003 — FALLA (2026-08-29).** Los nombres se leen y son distintos, pero
       (a) la numeración del rotor no corresponde: tres entradas con «(2.)»; (b) `Generated File`
       apunta a un espacio diminuto e invisible —el diálogo de artefacto lleva `role="region"` y
       figura como landmark **estando cerrado**—; (c) se ve apeñuscado y superpuesto con otras
       secciones. **El test R1 pasaba mientras esto fallaba**: contaba el diálogo como una región
       legítima, porque medía el HTML y el HTML es lo que está mal
-- [ ] T032 [persona] **SC-004 — el control se encuentra, el concepto no se entiende (2026-08-29).**
+- [X] T032 [persona] **SC-004 — el control se encuentra, el concepto no se entiende (2026-08-29).**
       Señaló la casilla «Local only» a la primera y la activó y desactivó varias veces, así que
       FR-003 cumple su enunciado. Pero preguntó: «¿qué es? ¿qué hace? Entiendo lo que dice, pero no
       el concepto, qué relación tiene con el uso, qué pasa en cada opción». Las frases que lo
       explican —`mode.local_hint` y `mode.hybrid_hint`— existen y viven **solo en el tooltip de la
       insignia**, invisibles. Una decisión que no se entiende no es una decisión
+      **Resuelto en el reintento de T040**, tras dos vueltas.
+      **Reintentado en T040**: pasa, y su criterio queda impugnado (#56).
 
 > **T030–T032 no se marcan `[X]` porque el CI pase.** Necesitan a una persona delante. Si el ciclo
 > se cierra sin ellas, se dice en el PR — no se dan por hechas.
