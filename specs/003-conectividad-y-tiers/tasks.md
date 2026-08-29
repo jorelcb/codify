@@ -125,7 +125,12 @@ US1 exista sin romper la promesa del producto.
 
 - [X] T029 [P] Cada código nuevo —estado de conexión, modo— tiene texto en **los dos idiomas**, con el test que recorre los códigos del núcleo, en `crates/codify-app/tests/ui_contract.rs`
 - [X] T030 [P] Contratos al día: `contracts/ports.md` y `contracts/skin-commands.md` reflejan lo entregado, y `002/contracts/skin-commands.md` recoge los campos nuevos del DTO de sesión si los hubiera
-- [~] T031 Ejecutar la validación de `quickstart.md` (S1–S7) — **S3, S5 y S7 cubiertos por tests** (`us2_tier_routing.rs`, `us3_mode.rs`) y **SC-003 por el test de compilación fallida**, que es la única forma de comprobarlo. **Queda lo que necesita una persona y un proveedor real**: S1 y S2 exigen una cuenta con la que autorizar; S4 y S6 exigen buscar la credencial en disco y en el keyring **con las herramientas del sistema**, no preguntándole a la aplicación. Misma clase que `001`-T050 y `002`-T049
+- [~] T031 Ejecutar la validación de `quickstart.md` (S1–S7) — **S3, S5 y S7 cubiertos por tests** (`us2_tier_routing.rs`, `us3_mode.rs`) y **SC-003 por el test de compilación fallida**, que es la única forma de comprobarlo. **Queda lo que necesita una persona y un proveedor real**: S1 y S2 exigen una cuenta con la que autorizar; S4 exige buscar la credencial **en disco**, que sí es legítimo. **S6 NO se comprueba leyendo el
+  llavero del operador**: lanzar `security` contra él disparó Cortex XDR y un diálogo pidiendo la
+  contraseña de `login` (2026-08-27). Y ese diálogo *era* la evidencia — un proceso ajeno no puede
+  leer la entrada. La comprobación correcta la hace la suite de contrato desde el proceso de la
+  propia aplicación, que es quien tiene derecho a ella. Pedirle a una persona que autorice a un
+  agente a leer su llavero enseña un hábito que no queremos enseñar. Misma clase que `001`-T050 y `002`-T049
 
 ---
 
