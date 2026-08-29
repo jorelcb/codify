@@ -194,17 +194,18 @@ sesión. Antes de este ciclo no cambiaba ninguna de las dos cosas.
 - [X] T028 Comprobación de humo del modo con la aplicación levantada, según
       [quickstart.md](./quickstart.md): la insignia cambia al desmarcar, y la sesión siguiente se
       arma en híbrido. Es la demostración de punta a punta de que `003`-FR-008a se cumple
-- [ ] T029 Abrir issue por el defecto de `003` que este ciclo consume —`set_mode` escribía en un
-      estado que nadie leía— para que el arreglo quede trazable fuera de este spec
-- [ ] T029 Abrir issue por el defecto de `003` que este ciclo consume —`set_mode` escribía en un
-      estado que nadie leía— para que el arreglo quede trazable fuera de este spec
+- [X] T029 Issue abierto por el defecto de `003` que este ciclo consume: **#53**. Y dos más, de la
+      validación con persona: **#54** (conectar es imposible, `complete_connection` sin quien lo
+      llame) y **#55** («proveedor» nombra dos cosas en la misma ventana)
 - [ ] T030 [persona] **SC-001 — FALLA (2026-08-29).** Encontró «Connect a provider». **No supo qué
       hacer al empezar** —ni el autor—. Escribió `claude` en *Name*, pulsó **Connect**: no ocurre
       nada. Escribió algo en *Provider address*, pulsó Connect: tampoco. **Causa raíz: conectar un
       proveedor es imposible.** `connect_provider` devuelve un desafío, la interfaz enseña una
       frase, y ahí acaba: `complete_connection` está registrado en el backend y **ningún JavaScript
       lo invoca**. No hay campo donde escribir la credencial. Ningún texto de ayuda arregla esto —
-      es un hueco funcional de `003`
+      es un hueco funcional de `003`, abierto como **#54**. Se añade que no entendía **a qué tipo
+      de proveedor** se estaba conectando, cosa que el operador comparte: **#55**. **SC-001 es
+      inalcanzable en este ciclo** y queda como fallo declarado, ligado a esos dos
 - [ ] T031 [persona] **SC-003 — FALLA (2026-08-29).** Los nombres se leen y son distintos, pero
       (a) la numeración del rotor no corresponde: tres entradas con «(2.)»; (b) `Generated File`
       apunta a un espacio diminuto e invisible —el diálogo de artefacto lleva `role="region"` y
