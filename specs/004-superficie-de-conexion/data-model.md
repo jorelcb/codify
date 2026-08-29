@@ -44,17 +44,28 @@ Una zona de la interfaz recorrible por un lector de pantalla.
 | **Regla de unicidad** | Dos regiones no comparten nombre. Ni la clave, ni el texto, en ninguno de los dos idiomas |
 | **Se comprueba** | Automáticamente (FR-006). Un nombre repetido hace fallar el build |
 
-**Censo actual** — siete regiones, dos pares en conflicto:
+**Cómo se nombran, tras el ciclo.** Cada región se nombra **desde su propio encabezado** con
+`aria-labelledby`. Así el nombre tiene un solo dueño y la región aparece en los **dos** rotores: el
+de puntos de referencia y el de títulos. Nombrarlas con una clave suelta las dejaba fuera del
+segundo, que es el que se usa para hacerse un mapa de una pantalla.
 
-| Región | Clave hoy | Clave después |
-|---|---|---|
-| `header.bar` | `a11y.toolbar_region` | `a11y.toolbar_region` |
-| `#provider` | `a11y.provider_region` | `a11y.provider_region` |
-| `#conexiones` | `a11y.provider_region` ⚠️ | **`a11y.connections_region`** |
-| `#stream` | `a11y.stream_region` | `a11y.stream_region` |
-| `#decide` | `a11y.decide_region` | `a11y.decide_region` |
-| `#applied` | `a11y.applied_region` | `a11y.applied_region` |
-| `footer.prefs` | `a11y.toolbar_region` ⚠️ | **`a11y.prefs_region`** |
+| Región | Encabezado que la nombra |
+|---|---|
+| `header.bar` | `a11y.toolbar_region` |
+| `#provider` | `provider.title` |
+| `#conexiones` | `a11y.connections_region` |
+| `#stream` | `a11y.stream_region` |
+| `#decide` | `proposal.title` |
+| `#applied` | `proposal.applied_title` |
+| `footer.prefs` | `a11y.prefs_region` |
+
+Seis regiones visibles a la vez —`#decide` y `#applied` solo durante una sesión— y **el diálogo de
+artefacto ya no es una**: llevaba `role="region"` y figuraba en el rotor estando cerrado.
+
+Se retiraron `a11y.provider_region`, `a11y.decide_region`, `a11y.applied_region` y
+`a11y.artifact_region`: nombraban regiones que **ya tenían encabezado propio**, así que eran una
+segunda copia del mismo nombre. Una ya había divergido — decía «Configuración del modelo» donde la
+vista dice «Modelo».
 
 ---
 

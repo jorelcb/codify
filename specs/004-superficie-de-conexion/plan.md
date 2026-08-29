@@ -37,7 +37,14 @@ vigente. Está documentado en [research.md](./research.md) (D2) y decide la form
 catálogo; cero-egress estructural intacto
 
 **Scale/Scope**: una sección del HTML, dos módulos JS, el CSS de esa sección, dos comandos Tauri,
-tres claves de catálogo nuevas en dos idiomas, y cinco tests nuevos
+tres claves de catálogo nuevas en dos idiomas, cuatro retiradas, y **ocho** tests nuevos
+
+**Lo que se entregó, contra lo que este plan preveía.** Los requisitos de presentación —FR-002a
+(el formulario plegado) y FR-005/FR-006 (nombre de región único y comprobado)— acabaron necesitando
+más de lo previsto: el diálogo de artefacto era una región fantasma por una regla de CSS, y el
+documento **no tenía esquema de títulos**, así que cinco de las seis regiones no aparecían en el
+rotor que se usa para orientarse. De ahí tres tests que este plan no anticipaba (R6, R7, R8), y un
+módulo nuevo, `ui/mode.js`
 
 ## Constitution Check
 

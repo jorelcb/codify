@@ -35,8 +35,10 @@ siguen aplicando sin cambios.
 
 > `ningun_par_de_regiones_comparte_nombre_accesible`
 
-Recoge las regiones de `index.html`, resuelve su `data-i18n-aria` contra `strings.rs`, y falla si
-se repite **una clave o un texto**, en cualquiera de los dos idiomas.
+Recoge las regiones de `index.html` —por su `data-i18n-aria` **y por el `aria-labelledby` que
+apunta a su encabezado**, que es la forma preferida— las resuelve contra `strings.rs`, y falla si
+se repite **una clave o un texto**, en cualquiera de los dos idiomas. Falla también si un
+`<dialog>` lleva rol de región: aparecería en el rotor estando cerrado.
 
 **Inyección que debe hacerlo fallar**: darle a `#applied` el nombre de `#decide`.
 
@@ -86,6 +88,42 @@ contenedor por defecto; meter la lista dentro del plegable.
 **Por qué existe.** FR-006 exige, para los nombres de región, que la comprobación no «dependa de
 que alguien lo note mirando». Dejar la forma de la superficie al ojo sería aplicar ese criterio a
 la mitad del spec — y el ojo ya falló una vez aquí.
+
+### R6 · Un diálogo cerrado no se puede declarar visible — FR-005
+
+> `un_dialogo_cerrado_no_se_puede_declarar_visible`
+
+Ninguna regla de CSS da `display` a un `<dialog>` sin guardarla con `[open]`. La hoja del navegador
+lo oculta con `dialog:not([open]) { display: none }` y cualquier `display` de autor lo pisa: el
+diálogo no se ve —queda aplastado— pero **sigue en el árbol de accesibilidad**.
+
+**Inyección**: devolver el `display: flex` sin guardar a `dialog.artifact`.
+
+Hermano de `el_atributo_hidden_gana_siempre`: misma enfermedad, otro atributo.
+
+### R7 · El documento tiene un esquema de títulos navegable — FR-005, SC-003
+
+> `el_documento_tiene_un_esquema_de_titulos_navegable`
+
+Un solo `h1`, ningún salto de nivel, y **ninguna región nombrada por una clave suelta**: todas
+desde su encabezado. Una clave suelta nombra el punto de referencia y no pone nada en el rotor de
+títulos, que es el que se usa para hacerse un mapa.
+
+**Inyecciones**: quitar el `h1`; subir un `h3` a `h5`; devolver una clave suelta a una región.
+
+### R8 · Ningún comando del backend queda sin invocar
+
+> `ningun_comando_del_backend_queda_sin_invocar`
+
+Los comandos registrados contra los que la interfaz invoca. Los huecos de hoy van en una lista
+**con su issue al lado**: es deuda con nombre, no permiso. El test avisa también si uno se salda y
+se olvida de salir de la lista.
+
+**Inyecciones**: declarar un comando nuevo sin invocarlo; poner en la lista uno que ya se invoca.
+
+Un comando registrado que nadie llama compila, pasa sus tests y no hace nada:
+`complete_connection` llevaba así desde `003`, de modo que conectar era **imposible** con todo en
+verde (#54).
 
 ---
 
