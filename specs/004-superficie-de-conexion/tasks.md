@@ -224,6 +224,55 @@ sesión. Antes de este ciclo no cambiaba ninguna de las dos cosas.
 
 ---
 
+---
+
+## Fase 7: Lo que dijo la persona (2026-08-29)
+
+La validación con alguien delante devolvió tres fallos, y **ninguno donde el spec los esperaba**.
+Esta fase arregla lo que cae dentro de `004`; lo que no, va en [#54](https://github.com/jorelcb/codify/issues/54) y [#55](https://github.com/jorelcb/codify/issues/55).
+
+**Lo que no se arregla aquí, y hay que decirlo**: SC-001 seguirá en fallo. Conectar un proveedor
+es imposible hasta #54, y ningún texto de ayuda cambia eso.
+
+### Tests primero
+
+- [X] T033 [US3] Endurecer `ningun_par_de_regiones_comparte_nombre_accesible` en
+      `crates/codify-app/tests/ui_contract.rs`: una región **dentro de un elemento que no puede
+      verse** —un `<dialog>` sin `open`— no es una región, es ruido en el rotor. **Debe fallar**
+      con el diálogo de artefacto tal como está
+- [X] T034 Escribir `ningun_comando_del_backend_queda_sin_invocar` en el mismo archivo — los
+      comandos registrados en `src/lib.rs` contra los que invoca `ui/*.js`. `complete_connection`
+      va en una lista de huecos conocidos **con su issue**, porque hoy no se puede cerrar; lo que
+      el test impide es que aparezca **otro**. Es la comprobación que encontró #54, y cuesta tres
+      líneas
+
+### Implementación
+
+- [X] T035 [US3] Quitar `role="region"` y `data-i18n-aria` del `#artifact-dialog` en
+      `ui/index.html` — un `<dialog>` ya se nombra con su `aria-labelledby`, y forzarle rol de
+      región rompía su semántica y lo colaba como landmark estando cerrado. Retirar
+      `a11y.artifact_region` de `src/strings.rs`
+- [X] T036 [US3] Arreglar la jerarquía de encabezados en `ui/index.html`: la superficie lleva su
+      propio encabezado, y `MODO` y `PROVEEDORES CONECTADOS` pasan a ser **hermanos** en vez de
+      `h2`/`h3`. Es lo que descolocaba la numeración del rotor
+- [X] T037 [US2] Sacar la consecuencia del modo del tooltip al panel, en `ui/index.html`,
+      `ui/mode.js` y `ui/styles.css`: `mode.local_hint` / `mode.hybrid_hint` como **texto visible**
+      que cambia con el modo. Se encontró el control y no se entendió qué decide; las frases que lo
+      explican ya existen y estaban escondidas (FR-003)
+- [X] T038 [US1] Nombrar en `src/strings.rs` y `ui/index.html` lo que el formulario conecta de
+      verdad: un **servicio remoto compatible con OpenAI**, con clave, que **solo actúa en modo
+      híbrido**. Placeholders con un ejemplo real en los tres campos — el campo del repositorio ya
+      establece ese patrón y los de conexión no lo seguían (FR-002). Tapa el síntoma de #55; el
+      vocabulario del modelo se decide allí
+
+### Cierre
+
+- [X] T039 Verificar T033 y T034 por inyección: devolver el `role="region"` al diálogo, y declarar
+      un comando nuevo sin invocarlo. Revertir cada una
+- [ ] T040 [persona] Reintentar **T031** y **T032** con la aplicación delante. T030 no se reintenta:
+      su criterio es inalcanzable hasta #54
+
+
 ## Dependencias y orden
 
 ### Entre fases

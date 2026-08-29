@@ -835,11 +835,45 @@ fn la_superficie_de_conexion_tiene_forma_propia() {
 fn ningun_par_de_regiones_comparte_nombre_accesible() {
     let html = read(ui_dir().join("index.html"));
 
-    let claves: Vec<String> = html
+    // Un `<dialog>` no es una región. Se nombra solo, con su `aria-labelledby`, y forzarle un rol
+    // de landmark lo cuela en el rotor **estando cerrado**: quien navega por regiones llega a una
+    // entrada que apunta a un espacio invisible. Lo dijo una persona probándolo, y este test
+    // pasaba mientras tanto porque contaba esa región como legítima.
+    let dialogos_con_rol: Vec<String> = html
+        .split("<dialog")
+        .skip(1)
+        .filter_map(|rest| rest.split_once('>').map(|(tag, _)| tag.to_string()))
+        .filter(|tag| tag.contains("role=\"region\"") || tag.contains("data-i18n-aria"))
+        .collect();
+    assert!(
+        dialogos_con_rol.is_empty(),
+        "un `<dialog>` con rol de región aparece en el rotor aunque esté cerrado, y pierde su \
+         propia semántica de diálogo:\n{}",
+        dialogos_con_rol.join("\n")
+    );
+
+    // El censo cuenta las dos formas de nombrar una región: la clave directa y la referencia a un
+    // encabezado visible. La segunda es preferible —el nombre tiene un solo dueño— y dejarla fuera
+    // haría que este test dejara de ver justo las regiones mejor construidas.
+    let mut claves: Vec<String> = html
         .split("data-i18n-aria=\"")
         .skip(1)
         .filter_map(|rest| rest.split('"').next().map(str::to_string))
         .collect();
+    for rest in html.split("aria-labelledby=\"").skip(1) {
+        let Some(id) = rest.split('"').next() else {
+            continue;
+        };
+        let Some((_, tras_id)) = html.split_once(&format!("id=\"{id}\"")) else {
+            continue;
+        };
+        let Some(tag) = tras_id.split_once('>').map(|(t, _)| t) else {
+            continue;
+        };
+        if let Some(clave) = between(tag, "data-i18n=\"", "\"") {
+            claves.push(clave);
+        }
+    }
     assert!(
         claves.len() >= 2,
         "no se encontraron regiones con nombre accesible en index.html"
@@ -997,5 +1031,79 @@ fn la_interfaz_no_tiene_su_propia_idea_del_modo() {
         mutable.is_empty(),
         "`{DUENO_DEL_MODO}` guarda estado mutable de módulo ({mutable:?}): sería una caché del \
          modo, y una caché es una segunda verdad esperando a divergir"
+    );
+}
+
+/// Comandos del backend que **hoy** no tiene quien los llame, y por qué se toleran.
+///
+/// Cada uno con su issue. La lista no es un permiso: es una deuda con nombre, y el test existe
+/// para que no crezca sola.
+const COMANDOS_SIN_LLAMAR: &[(&str, &str)] = &[
+    // El flujo de conexión se abre y nunca se cierra: `connect_provider` devuelve un desafío, la
+    // interfaz enseña una frase y no hay campo donde escribir la credencial. Encontrado probando
+    // con una persona delante, que pulsó «Conectar» y no ocurrió nada — correctamente.
+    ("complete_connection", "#54"),
+    // Las propuestas llegan por evento. Este comando las devolvería al recargar, y nadie lo
+    // invoca: o sobra, o falta el camino de recuperación. Encontrado por este mismo test.
+    ("pending_proposals", "sin issue todavía"),
+];
+
+/// Un comando registrado que nadie invoca compila, pasa sus tests y no hace nada.
+///
+/// Es el hueco de #48 en su forma más pura, y volvió a morder: `complete_connection` llevaba
+/// desde `003` sin quien lo llamara, así que conectar un proveedor era **imposible** mientras
+/// todos los tests estaban verdes. `ninguna_funcion_de_la_interfaz_queda_sin_llamar` no lo veía
+/// porque mira funciones de JavaScript, no comandos.
+#[test]
+fn ningun_comando_del_backend_queda_sin_invocar() {
+    let rust = read(crate_dir().join("src/commands.rs"));
+    let comandos: Vec<String> = rust
+        .split("#[tauri::command]")
+        .skip(1)
+        .filter_map(|rest| rest.split_once(" fn "))
+        .filter_map(|(_, tras)| {
+            let nombre: String = tras
+                .chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
+            (!nombre.is_empty()).then_some(nombre)
+        })
+        .collect();
+    assert!(
+        comandos.len() > 10,
+        "no se reconocieron los comandos de commands.rs: el análisis está roto, no el código"
+    );
+
+    let js: String = ui_files()
+        .into_iter()
+        .filter(|(n, _)| n.ends_with(".js"))
+        .map(|(_, c)| sin_comentarios(&c))
+        .collect();
+
+    let mut huerfanos = Vec::new();
+    for cmd in &comandos {
+        if js.contains(&format!("invoke(\"{cmd}\"")) {
+            continue;
+        }
+        match COMANDOS_SIN_LLAMAR.iter().find(|(n, _)| n == cmd) {
+            Some(_) => {}
+            None => huerfanos.push(cmd.clone()),
+        }
+    }
+    assert!(
+        huerfanos.is_empty(),
+        "estos comandos están registrados y ningún JavaScript los invoca, así que la parte de la \
+         aplicación que sirven es inalcanzable: {huerfanos:?}"
+    );
+
+    let saldados: Vec<&str> = COMANDOS_SIN_LLAMAR
+        .iter()
+        .filter(|(n, _)| js.contains(&format!("invoke(\"{n}\"")))
+        .map(|(n, _)| *n)
+        .collect();
+    assert!(
+        saldados.is_empty(),
+        "estos comandos ya se invocan y siguen en la lista de deuda: quitarlos de ahí es parte de \
+         darlos por cerrados ({saldados:?})"
     );
 }

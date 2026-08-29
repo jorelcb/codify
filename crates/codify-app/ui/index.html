@@ -48,15 +48,22 @@
     <!-- `003` — modo y proveedores conectados. `004` — con presentación propia: esto no es una
          barra de estado, es una zona con tres partes. El modo va primero a propósito: es lo que
          decide si algo puede salir del equipo, y verlo después de conectar sería tarde. -->
-    <section id="conexiones" class="conexion" role="region" aria-label="" data-i18n-aria="a11y.connections_region">
+    <!-- La sección lleva su propio encabezado, y `MODO` y los servicios conectados son
+         **hermanos** debajo. Con el modo en `h2` y los servicios en `h3`, la numeración del rotor
+         no correspondía: lo dijo quien lo recorrió con lector de pantalla. -->
+    <section id="conexiones" class="conexion" role="region" aria-labelledby="conexiones-titulo">
+      <h2 id="conexiones-titulo" class="visually-hidden" data-i18n="a11y.connections_region"></h2>
       <!-- El grupo del modo se nombra **desde su propio encabezado**, no desde una clave aparte:
            dos copias del mismo texto es justo lo que este spec vino a quitar. -->
       <div class="modo" role="group" aria-labelledby="modo-titulo">
-        <h2 id="modo-titulo" class="conexion-titulo" data-i18n="mode.title"></h2>
+        <h3 id="modo-titulo" class="conexion-titulo" data-i18n="mode.title"></h3>
         <label class="inline">
           <input type="checkbox" id="modo-local" checked />
           <span class="label" data-i18n="mode.local_option"></span>
         </label>
+        <!-- La consecuencia, visible. Vivía solo en el tooltip de la insignia: alguien encontró
+             el control a la primera y preguntó «¿qué hace? ¿qué pasa en cada opción?». -->
+        <p id="modo-consecuencia" class="modo-hint"></p>
         <p id="modo-aviso" class="next-step" hidden data-i18n="mode.changed"></p>
         <p id="modo-receptores" class="next-step" hidden data-i18n="mode.will_receive"></p>
       </div>
@@ -71,14 +78,16 @@
            vacíos permanentes hacen que el caso común pague por el raro. -->
       <details class="alta">
         <summary data-i18n="connection.add"></summary>
+        <p class="next-step" data-i18n="connection.only_hybrid"></p>
         <div class="alta-campos">
           <label class="campo">
             <span class="label" data-i18n="connection.label_field"></span>
-            <input type="text" id="conn-label" />
+            <input type="text" id="conn-label" data-i18n-attr="placeholder:connection.label_hint" />
           </label>
           <label class="campo">
             <span class="label" data-i18n="connection.endpoint_field"></span>
-            <input type="text" id="conn-endpoint" />
+            <input type="text" id="conn-endpoint"
+                   data-i18n-attr="placeholder:connection.endpoint_hint" />
           </label>
           <label class="campo">
             <span class="label" data-i18n="connection.tier_field"></span>
@@ -164,8 +173,9 @@
 
     <!-- Artefacto completo, con su fundamento a la vista (FR-021, FR-011 a FR-013).
          Es un diálogo modal para que el foco quede atrapado dentro y Escape lo cierre. -->
-    <dialog id="artifact-dialog" class="artifact" aria-labelledby="artifact-title"
-            role="region" aria-label="" data-i18n-aria="a11y.artifact_region">
+    <!-- Un `<dialog>` se nombra con su propio encabezado. Llevaba `role="region"` y aparecía en
+         el rotor **estando cerrado**, apuntando a un espacio invisible. -->
+    <dialog id="artifact-dialog" class="artifact" aria-labelledby="artifact-title">
       <header class="artifact-head">
         <h2 id="artifact-title" data-i18n="artifact.title"></h2>
         <label class="inline">
