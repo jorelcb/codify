@@ -1157,3 +1157,74 @@ fn un_dialogo_cerrado_no_se_puede_declarar_visible() {
          {culpables:?}"
     );
 }
+
+/// Elementos que son región de la interfaz.
+const ETIQUETAS_DE_REGION: &[&str] = &["<header", "<section", "<main", "<footer", "<nav", "<aside"];
+
+/// El documento tiene un esquema de títulos por el que se puede navegar.
+///
+/// Nace de una segunda vuelta con lector de pantalla. El rotor de **Títulos** —el que se usa para
+/// hacerse un mapa de una pantalla— mostraba cuatro entradas «(2.) (2.) (3.) (3.)», sin ningún
+/// nivel 1 y sin cinco de las seis regiones. Los números son el **nivel** del encabezado, no su
+/// posición, y el esquema era: ningún `h1`, y cinco regiones sin encabezado propio.
+///
+/// Tres reglas, entonces:
+///
+/// 1. **Un solo `h1`.** Sin él no hay raíz, y todo cuelga del aire.
+/// 2. **Ningún salto de nivel.** De `h2` no se pasa a `h4`: el hueco se oye como una sección que
+///    falta.
+/// 3. **Cada región se nombra desde su propio encabezado.** Así el nombre tiene un solo dueño
+///    —el mismo argumento que FR-003a hace para el modo— y la región aparece en los **dos**
+///    rotores, el de puntos de referencia y el de títulos.
+#[test]
+fn el_documento_tiene_un_esquema_de_titulos_navegable() {
+    // Los diálogos son contextos aparte: su encabezado no cuelga del esquema del documento.
+    let html = strip_between(&read(ui_dir().join("index.html")), "<dialog", "</dialog>");
+
+    let niveles: Vec<u32> = html
+        .split("<h")
+        .skip(1)
+        .filter_map(|rest| rest.chars().next())
+        .filter_map(|c| c.to_digit(10))
+        .filter(|n| (1..=6).contains(n))
+        .collect();
+
+    let unos = niveles.iter().filter(|n| **n == 1).count();
+    assert_eq!(
+        unos, 1,
+        "el documento tiene {unos} encabezados de nivel 1 y debe tener exactamente uno: es la \
+         raíz del esquema, y sin ella nada suena como nivel 1 al recorrer los títulos"
+    );
+
+    for par in niveles.windows(2) {
+        assert!(
+            par[1] <= par[0] + 1,
+            "el esquema salta de nivel {} a nivel {}: el hueco se oye como una sección que falta \
+             (orden completo: {niveles:?})",
+            par[0],
+            par[1]
+        );
+    }
+
+    let mut sin_encabezado = Vec::new();
+    for etiqueta in ETIQUETAS_DE_REGION {
+        for rest in html.split(etiqueta).skip(1) {
+            let Some((tag, _)) = rest.split_once('>') else {
+                continue;
+            };
+            if !tag.contains("role=\"region\"") && !tag.contains("data-i18n-aria") {
+                continue;
+            }
+            if !tag.contains("aria-labelledby") {
+                let id = between(tag, "id=\"", "\"").unwrap_or_else(|| etiqueta.to_string());
+                sin_encabezado.push(id);
+            }
+        }
+    }
+    assert!(
+        sin_encabezado.is_empty(),
+        "estas regiones se nombran con una clave aparte en vez de con su propio encabezado, así \
+         que no aparecen al recorrer los títulos y su nombre tiene dos dueños posibles: \
+         {sin_encabezado:?}"
+    );
+}

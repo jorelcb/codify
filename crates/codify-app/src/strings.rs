@@ -229,9 +229,6 @@ const CATALOG: &[(&str, &str, &str)] = &[
     ("close.review", "Revisarlos", "Review them"),
     // --- Accesibilidad (FR-025 a FR-027) ----------------------------------
     ("a11y.stream_region", "Actividad del agente", "Agent activity"),
-    ("a11y.decide_region", "Cambios que esperan tu decisión", "Changes awaiting your decision"),
-    ("a11y.applied_region", "Cambios aplicados sin preguntar", "Changes applied without asking"),
-    ("a11y.provider_region", "Configuración del modelo", "Model configuration"),
     ("a11y.toolbar_region", "Controles de la sesión", "Session controls"),
     // `004`-FR-005 — dos regiones no pueden llamarse igual. `#conexiones` compartía nombre con
     // `#provider`, y el pie con la barra superior: quien navega por regiones oía lo mismo en
