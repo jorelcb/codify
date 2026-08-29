@@ -277,6 +277,14 @@ es imposible hasta #54, y ningún texto de ayuda cambia eso.
       el `dialog:not([open]) { display: none }` del navegador, así que el diálogo cerrado quedaba
       aplastado a un rectángulo diminuto **y seguía en el árbol de accesibilidad**. Es la causa
       exacta de «señalaba un espacio diminuto, no visible»
+- [X] T043 Escribir `el_documento_tiene_un_esquema_de_titulos_navegable` en
+      `crates/codify-app/tests/ui_contract.rs`: un solo `h1`, ningún salto de nivel, y **cada
+      región nombrada desde su propio encabezado**
+- [X] T044 Dar al documento su esquema en `ui/index.html`: `h1` con el nombre del producto, un
+      `h2` por región que además la nombra vía `aria-labelledby`, y `h3` para lo de dentro de la
+      superficie. Retirar `a11y.provider_region`, `a11y.decide_region` y `a11y.applied_region` de
+      `src/strings.rs`: las regiones que las usaban ya tenían encabezado propio, y la clave era
+      una segunda copia del mismo nombre
 - [ ] T040 [persona] Reintentar **T031** y **T032** con la aplicación delante. T030 no se reintenta:
       su criterio es inalcanzable hasta #54
 

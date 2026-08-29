@@ -8,8 +8,12 @@
   </head>
   <body>
     <!-- Controles de la sesión. Región con nombre para lectores de pantalla (FR-027). -->
-    <header class="bar" role="region" aria-label="" data-i18n-aria="a11y.toolbar_region">
-      <span class="brand">codify</span>
+    <!-- Cada región se nombra **desde su propio encabezado**: así el nombre tiene un solo dueño,
+         y la región aparece en los dos rotores, el de puntos de referencia y el de títulos. Antes
+         cinco de las seis se nombraban con una clave aparte y no salían al recorrer los títulos. -->
+    <header class="bar" role="region" aria-labelledby="barra-titulo">
+      <h1 class="brand">codify</h1>
+      <h2 id="barra-titulo" class="visually-hidden" data-i18n="a11y.toolbar_region"></h2>
 
       <input id="repo" type="text" spellcheck="false" data-i18n-attr="placeholder:session.repo_placeholder" />
 
@@ -32,8 +36,8 @@
     </header>
 
     <!-- Estado del proveedor de modelo: guía en vez de callar (FR-019). -->
-    <section id="provider" class="provider" role="region" aria-label="" data-i18n-aria="a11y.provider_region">
-      <h2 class="visually-hidden" data-i18n="provider.title"></h2>
+    <section id="provider" class="provider" role="region" aria-labelledby="provider-titulo">
+      <h2 id="provider-titulo" class="visually-hidden" data-i18n="provider.title"></h2>
       <span class="glyph" id="provider-glyph" aria-hidden="true">…</span>
       <!-- Sin `data-i18n`: lo pinta `provider.render()` a partir del último sondeo. -->
       <span id="provider-status"></span>
@@ -109,16 +113,17 @@
 
     <!-- La corriente cronológica de bloques (FR-020). aria-live para que un lector de
          pantalla anuncie lo que va llegando sin que el usuario tenga que ir a buscarlo. -->
-    <main id="stream" class="stream" role="log" aria-live="polite" aria-label="" data-i18n-aria="a11y.stream_region">
+    <main id="stream" class="stream" role="log" aria-live="polite" aria-labelledby="stream-titulo">
+      <h2 id="stream-titulo" class="visually-hidden" data-i18n="a11y.stream_region"></h2>
       <p class="hint" data-i18n="stream.hint"></p>
     </main>
 
     <!-- Panel de decisión (FR-010/FR-012/FR-014). Vive FUERA de la corriente a propósito:
          la corriente es append-only y registra qué pasó; esto es lo que está esperando a una
          persona ahora mismo, y cambia. Mezclarlos obligaría a reescribir bloques ya emitidos. -->
-    <section id="decide" class="decide" role="region" aria-label="" data-i18n-aria="a11y.decide_region" hidden>
+    <section id="decide" class="decide" role="region" aria-labelledby="decide-titulo" hidden>
       <header class="decide-head">
-        <h2 data-i18n="proposal.title"></h2>
+        <h2 id="decide-titulo" data-i18n="proposal.title"></h2>
         <span id="decide-count" class="decide-count"></span>
         <button id="decide-prev" class="ghost" data-i18n="proposal.prev"></button>
         <button id="decide-next" class="ghost" data-i18n="proposal.next"></button>
@@ -140,8 +145,8 @@
 
     <!-- Lo que se aplicó SIN preguntar (FR-008). Si el producto se permite no consultar por
          lo de bajo riesgo, el precio es que deshacerlo esté a mano — no en un menú. -->
-    <section id="applied" class="applied" role="region" aria-label="" data-i18n-aria="a11y.applied_region" hidden>
-      <h2 data-i18n="proposal.applied_title"></h2>
+    <section id="applied" class="applied" role="region" aria-labelledby="applied-titulo" hidden>
+      <h2 id="applied-titulo" data-i18n="proposal.applied_title"></h2>
       <ul id="applied-list" class="applied-list"></ul>
     </section>
 
@@ -152,7 +157,8 @@
     </form>
 
     <!-- Preferencias: los dos idiomas son independientes y se ve que lo son (FR-016/016b). -->
-    <footer class="prefs" role="region" aria-label="" data-i18n-aria="a11y.prefs_region">
+    <footer class="prefs" role="region" aria-labelledby="prefs-titulo">
+      <h2 id="prefs-titulo" class="visually-hidden" data-i18n="a11y.prefs_region"></h2>
       <label class="inline">
         <span class="label" data-i18n="locale.ui_label"></span>
         <select id="ui-locale">
