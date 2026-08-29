@@ -433,11 +433,15 @@ select {
 
 /* --- Vista de artefacto -------------------------------------------------- */
 
+/* Sin `display` aquí: la hoja del navegador oculta un diálogo cerrado con
+   `dialog:not([open]) { display: none }`, y este `display: flex` lo pisaba. El diálogo no se veía
+   —quedaba aplastado a un rectángulo diminuto— pero **seguía en el árbol de accesibilidad**, y
+   quien recorría la interfaz con lector de pantalla llegaba a él. El `display` va abajo, guardado
+   por `[open]`, que es donde debía estar desde el principio. */
 dialog.artifact {
   width: min(46rem, 92vw);
   max-width: none;
   max-height: 86vh;
-  display: flex;
   flex-direction: column;
   padding: 0;
 }
