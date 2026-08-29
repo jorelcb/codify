@@ -285,8 +285,16 @@ es imposible hasta #54, y ningún texto de ayuda cambia eso.
       superficie. Retirar `a11y.provider_region`, `a11y.decide_region` y `a11y.applied_region` de
       `src/strings.rs`: las regiones que las usaban ya tenían encabezado propio, y la clave era
       una segunda copia del mismo nombre
-- [ ] T040 [persona] Reintentar **T031** y **T032** con la aplicación delante. T030 no se reintenta:
-      su criterio es inalcanzable hasta #54
+- [X] T040 [persona] **Reintento del 2026-08-29.**
+      **T031 · SC-003 — pasa.** El rotor de Títulos muestra ocho entradas con raíz de nivel 1, y
+      el de Puntos de referencia las seis regiones, cada una nombrada desde su propio encabezado.
+      Hicieron falta dos vueltas: la primera arregló la jerarquía dentro de la superficie, que era
+      ordenar una habitación de una casa sin plano.
+      **T032 · SC-004 — pasa como está escrito, y su criterio queda impugnado.** Se señala el
+      control y ahora se entiende qué hace cada opción. Pero el operador concluye: «no lo veo
+      funcional». El deseo era **conectar modelos locales** y se interpretó como **tener un modo
+      local**; son cosas distintas, y del modo no había deseo. SC-004 medía si el control se
+      entiende, no si debía existir. Recogido en **#56**
 
 
 ## Dependencias y orden
