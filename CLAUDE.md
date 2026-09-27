@@ -75,5 +75,5 @@ contrato que nadie ha probado.**
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/004-superficie-de-conexion/plan.md` (codify — la superficie de conexión y modo).
+`specs/005-conectar-termina/plan.md` (codify — conectar una cuenta llega a su fin).
 <!-- SPECKIT END -->
