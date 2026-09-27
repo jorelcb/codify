@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [X] No [NEEDS CLARIFICATION] markers remain
 - [X] Requirements are testable and unambiguous
 - [X] Success criteria are measurable
 - [X] Success criteria are technology-agnostic (no implementation details)
@@ -31,9 +31,13 @@
 
 ## Notes
 
-- **Queda un marcador, y es de alcance**: si la vía delegada entra en este ciclo. Existe en el
-  núcleo y **la interfaz no la pide nunca**, así que hoy es inalcanzable. Incluirla dobla el
-  trabajo y no es lo que bloquea `004`-SC-001. Es la primera pregunta de `/speckit-clarify`.
+- **Resuelto en la sesión de clarificación del 2026-09-26.** La vía delegada queda fuera **y
+  declarada**: no se aplaza ningún requisito, porque ninguno la cubría. Lo que se gana es dejar de
+  tener un camino invisible, que es literalmente el defecto que trajo este spec — y que el test de
+  comandos huérfanos no habría cazado, porque la delegada es una rama dentro de un comando, no un
+  comando. De ahí FR-012 y SC-007.
+- **La frontera del idioma se decidió hacia el catálogo**: lo que cruza del núcleo a la piel son
+  claves, nunca frases. Una frase redactada en el núcleo solo puede estar en un idioma.
 - **Los nombres del backend aparecen en el spec a propósito** —`complete_connection`,
   `connect_provider`— en la sección que explica por qué existe. Sin ellos no se puede decir dónde
   está el hueco, y ese hueco *es* el motivo del spec. Los requisitos no los citan.
