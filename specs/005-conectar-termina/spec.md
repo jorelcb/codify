@@ -25,6 +25,15 @@ JavaScript lo invoque. El desafío se abre y nunca se completa.
 SC-001 —conectar sin preguntar— quedó declarado en fallo porque **no se puede medir si alguien
 conecta sin ayuda mientras conectar sea imposible**. Este spec es lo que lo desbloquea.
 
+## Clarifications
+
+### Session 2026-09-26
+
+- Q: ¿Entra la vía delegada en este ciclo? → A: **No: solo la vía directa, y la delegada queda declarada como camino sin puerta.** No se aplaza ningún requisito, porque hoy no hay ninguno que la cubra: `003` construyó el motor de las dos vías y solo cableó una. Lo que sí se hace es **dejar de tener un camino invisible** — el mismo defecto que trajo este spec, y que el test de comandos huérfanos no caza porque la delegada no es un comando sino una rama dentro de uno, elegida por un parámetro que la interfaz nunca varía.
+
+- Q: Las instrucciones del desafío nacen como texto en el núcleo, que no sabe en qué idioma está la interfaz. ¿Qué viaja? → A: **Una clave de catálogo, no texto.** El conector sabe *qué* hay que decirle al usuario, no *cómo* decirlo en su idioma. La frontera se queda donde este proyecto la pone siempre —el núcleo decide, la piel redacta— y la clave entra en los tests de catálogo que ya existen, sin inventar nada.
+- Q: ¿Quién cierra un desafío que no se completa? → A: **Las dos cosas: control explícito para cancelar, y reemplazo al volver a pedir conectar.** Responden a casos distintos: el control a «cambié de idea», el reemplazo al que de verdad ocurre —pulsar «Conectar» dos veces—. Solo con el control, el segundo intento dejaría huérfano al primero; solo con el reemplazo, no habría forma de decir «déjalo». Una cuenta no puede tener dos desafíos compitiendo.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Pegar la credencial y quedar conectado (Priority: P1)
@@ -79,18 +88,20 @@ credenciales a medio camino. Un camino que solo tiene entrada acaba acumulando g
 
 **Acceptance Scenarios**:
 
-1. **Given** un desafío en curso, **When** el usuario lo abandona, **Then** deja de estar en curso
-   y sus datos a medias no se conservan.
+1. **Given** un desafío en curso, **When** el usuario usa el control de cancelar, **Then** deja de
+   estar en curso y sus datos a medias no se conservan.
 2. **Given** un desafío abandonado, **When** el usuario vuelve a pedir conectar, **Then** empieza
    uno nuevo, sin arrastrar nada del anterior.
+3. **Given** un desafío en curso, **When** el usuario pide conectar otra vez esa misma cuenta,
+   **Then** el anterior queda reemplazado y **solo uno** sigue en curso.
 
 ---
 
 ### Edge Cases
 
 - **Credencial vacía**: enviar sin escribir nada no debe consumir el desafío.
-- **Dos intentos seguidos**: pedir conectar dos veces no deja dos desafíos compitiendo por la misma
-  cuenta.
+- **Dos intentos seguidos**: el segundo reemplaza al primero (FR-009). Es el caso que de verdad
+  ocurre, y hoy deja dos dentro del sistema sin que nada lo diga.
 - **El almacén desaparece a mitad**: el sistema tenía almacén al abrir el desafío y no al
   completarlo.
 - **Una credencial larga**: una clave de proveedor puede pasar de cien caracteres y no debe romper
@@ -123,23 +134,37 @@ credenciales a medio camino. Un camino que solo tiene entrada acaba acumulando g
 
 **Que no se acumule lo empezado**
 
-- **FR-008**: Un desafío MUST poder abandonarse, y al hacerlo MUST NOT quedar retenido nada de lo
-  que llevaba.
-- **FR-009**: Pedir conectar de nuevo MUST empezar de cero, sin heredar un desafío anterior.
+- **FR-008**: Un desafío MUST poder abandonarse **desde un control visible**, y al hacerlo MUST NOT
+  quedar retenido nada de lo que llevaba.
+- **FR-009**: Pedir conectar de nuevo MUST **reemplazar** al desafío anterior de esa cuenta, no
+  añadirse a él. Una cuenta MUST NOT tener dos desafíos en curso a la vez — hoy pulsar «Conectar»
+  dos veces deja dos dentro, y solo sale el que se complete.
 
 **Lo que no puede romperse**
 
-- **FR-010**: Toda cadena visible MUST salir del catálogo, en los dos idiomas — **incluidas las que
-  hoy nacen en el backend**. Las instrucciones del desafío están escritas como literal en español
-  dentro del código del comando, y hoy no se ven solo porque la interfaz las ignora.
+- **FR-010**: Toda cadena visible MUST salir del catálogo, en los dos idiomas — **incluidas las
+  que hoy nacen en el backend**. Las instrucciones del desafío están escritas como literal en
+  español dentro del código del comando, y hoy no se ven solo porque la interfaz las ignora.
+- **FR-010a**: Lo que el desafío lleva para el usuario MUST ser una **clave de catálogo**, no texto
+  ya redactado. El núcleo sabe qué hay que decir; en qué idioma decirlo es de la piel, que es la
+  única que conoce el idioma elegido. Una cadena redactada en el núcleo solo puede estar en un
+  idioma, y en este proyecto eso ya tiene nombre: una cadena fuera del catálogo.
 - **FR-011**: La credencial MUST NOT aparecer en registros, eventos ni mensajes de error, ni
   persistir en la interfaz una vez enviada (`003`-FR-002).
 
+**Que no queden caminos invisibles**
+
+- **FR-012**: Un camino del núcleo que la interfaz **no puede alcanzar** MUST estar declarado como
+  tal, con el issue que lo recoge, y la declaración MUST comprobarse de forma automática. Vale para
+  una rama elegida por un parámetro que la interfaz nunca varía, no solo para un comando sin
+  invocar. Es la generalización de lo que produjo este spec: algo construido, con sus tests en
+  verde, sin que nadie pudiera llegar a ello durante dos ciclos.
+
 ### Key Entities
 
-- **Desafío**: una conexión empezada y no terminada. Tiene identificador, vía —credencial directa o
-  autorización delegada— y las instrucciones de qué se espera del usuario. Vive mientras dure el
-  intento.
+- **Desafío**: una conexión empezada y no terminada. Tiene identificador, vía —credencial directa
+  o autorización delegada— y **la clave de catálogo** de lo que se espera del usuario, no su texto.
+  Vive mientras dure el intento.
 - **Vía de conexión**: cómo se obtiene el secreto. Lo que cambia entre vías es **cómo se obtiene**,
   no qué se hace con él: custodia, uso y revocación son idénticas.
 
@@ -151,19 +176,25 @@ credenciales a medio camino. Un camino que solo tiene entrada acaba acumulando g
   ayuda. Es el criterio que `004` dejó declarado en fallo.
 - **SC-002**: **Cero** comandos del backend sin quien los invoque, verificable de forma automática.
 - **SC-003**: **Cero** cadenas visibles fuera del catálogo, contando también las que nacen en el
-  backend, verificable de forma automática.
+  backend: lo que cruza del núcleo a la piel son claves, nunca frases. Verificable de forma
+  automática.
 - **SC-004**: Todo motivo de fallo de la conexión tiene texto y salida en **los dos idiomas**,
   verificable de forma automática.
 - **SC-005**: Desde que se envía la credencial hasta que la cuenta aparece o se explica el fallo,
-  el usuario **nunca** se queda sin señal de que algo está ocurriendo.
-- **SC-006**: Tras abandonar un desafío, **cero** desafíos quedan en curso.
+  el usuario **nunca** se queda sin señal de que algo está ocurriendo: el control de envío declara
+  que está en curso y no admite un segundo envío mientras tanto.
+- **SC-006**: Tras cancelar un desafío, **cero** desafíos quedan en curso. Y en ningún momento hay
+  **más de uno** por cuenta.
+- **SC-007**: **Cero** caminos del núcleo alcanzables solo en teoría: o la interfaz los alcanza, o
+  están declarados con su issue. Verificable de forma automática.
 
 ## Assumptions
 
-- **La vía delegada queda fuera de este ciclo.** [NEEDS CLARIFICATION: la autorización delegada
-  —código y dirección que el usuario lleva a otro sitio— existe en el núcleo pero **la interfaz
-  pide siempre la vía directa**, así que hoy es inalcanzable. ¿Entra en este ciclo, o se cierra
-  primero el camino que la gente sí encuentra?]
+- **La vía delegada queda fuera de este ciclo, y declarada.** Su código existe y funciona; lo que
+  no existe es la puerta: la interfaz pide siempre la vía directa. Este ciclo cierra el camino que
+  la gente sí encuentra, y **hace visible** que el otro no tiene entrada — ver FR-012. Construirle
+  una puerta ahora sería además apostar a que sobreviva a #56, que puede cambiar por dónde se entra
+  a conectar.
 - El almacén de credenciales sigue siendo **el del sistema, sin alternativa**: si no lo hay, se
   dice y se sigue en local. No se inventa un sustituto, que es lo que `003`-FR-004 decidió.
 - No se rediseña la puerta. Que el formulario sea uno o dos, y que aparezca donde aparece, es
@@ -179,6 +210,8 @@ credenciales a medio camino. Un camino que solo tiene entrada acaba acumulando g
 
 ### Out of scope
 
+- **Construir la puerta de la autorización delegada.** Su motor existe en el núcleo desde `003`;
+  este ciclo declara que no tiene entrada (FR-012) y le abre issue, pero no la cablea.
 - Rediseñar cómo se añade un proveedor, o unificar local y remoto — eso es #56.
 - Autodetectar proveedores ya instalados — #56 también.
 - Cambiar qué se hace con la credencial una vez obtenida: custodia, uso y revocación son de `003` y
