@@ -20,13 +20,14 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all -- --check
 ```
 
-**Se espera**: 244 tests (239 de antes + 5 nuevos), workspace entero en verde.
+**Se espera**: 246 tests (239 de antes + 7 nuevos), workspace entero en verde.
 
 | Criterio | Test |
 |---|---|
 | **SC-002** | `ningun_comando_del_backend_queda_sin_invocar`, con `complete_connection` **fuera** de la lista de deuda |
 | **SC-003** | `ningun_texto_visible_escapa_al_catalogo` + `toda_instruccion_de_credencial_tiene_texto_en_ambos_idiomas` |
 | **SC-004** | los tests de catálogo que recorren los motivos de fallo |
+| **SC-005** (su mitad automatizable) | `el_envio_no_admite_un_segundo_intento` |
 | **SC-006** | `pedir_conectar_dos_veces_deja_uno_solo` |
 | **SC-007** | `ningun_camino_del_nucleo_queda_sin_puerta` |
 | **FR-006** | `una_credencial_rechazada_no_pierde_el_desafio` |
