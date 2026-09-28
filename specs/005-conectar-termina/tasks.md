@@ -230,11 +230,17 @@ tests en verde, que nadie pudo alcanzar durante dos ciclos.
       log— y no se diagnosticó. Se hace con la persona de T037, que ya tendrá la app delante.
       **El envío con éxito no se ejercitó a propósito**: escribe un secreto en el llavero del
       operador, y eso lo decide quien es dueño del llavero
-- [ ] T037 [persona] **SC-001**: alguien que no conoce la aplicación conecta una cuenta de punta a
-      punta, sin ayuda. **Es el criterio que `004` dejó declarado en fallo** y no se hereda como
-      aprobado: se vuelve a medir ahora que el camino existe. Anotar **sus palabras** si falla
-- [ ] T038 [persona] **SC-005**: nunca hay un instante sin señal al enviar la credencial. Un envío
-      mudo es indistinguible de «pulsé y no pasó nada», que es el defecto que originó este spec
+- [ ] T037 [persona] **SC-001 — FALLA (2026-09-28).** **Ni siquiera un desarrollador** completó el
+      flujo. El camino existe y termina, y aun así la pantalla es inusable. Tres motivos, del
+      operador: (a) **desalineada con cómo se conecta un modelo hoy**; (b) **incoherente con el
+      caso de uso** — conectar un modelo no debería ser tan complejo; (c) **campos sin valor**:
+      «Para qué usarlo», con sus dos opciones, no le sirve de nada a quien conecta.
+      **No es un fallo de ejecución de `005`**: este spec prometió que el camino terminara y
+      termina. Lo que falla es el formulario, que `005` puso explícitamente fuera de alcance. El
+      diagnóstico va a **#56** y decide `006`
+- [ ] T038 [persona] **SC-005 — sin medir.** No se llegó a enviar ninguna credencial, así que no
+      hay nada que decir sobre la señal durante el envío. Se mide cuando exista una pantalla que
+      alguien pueda completar
 
 > **T037 y T038 no se marcan `[X]` porque el CI pase.** Y T037 cierra además `004`-T030, que quedó
 > abierta esperando justo a esto.
