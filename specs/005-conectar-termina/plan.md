@@ -22,8 +22,9 @@ usar durante dos ciclos.
 **Primary Dependencies**: Tauri 2 (piel); `keyring` (almacén del sistema, ya presente). **Ninguna
 nueva**
 
-**Storage**: el almacén de credenciales del sistema, ya cableado (`SystemKeyring`). El desafío en
-curso vive en memoria del proceso
+**Storage**: el almacén de credenciales del sistema (`SystemKeyring`), **inyectable**: construirlo
+dentro del camino hacía que cualquier test del camino escribiera en el llavero real de quien lo
+corriera, y los primeros de este ciclo lo hicieron. El desafío en curso vive en memoria del proceso
 
 **Testing**: `cargo test`. Contrato de interfaz por análisis estático en
 `crates/codify-app/tests/ui_contract.rs` (22 tests hoy); comportamiento del núcleo en
@@ -39,7 +40,13 @@ curso vive en memoria del proceso
 fuera del catálogo, **incluidas las del backend**; cero-egress estructural intacto
 
 **Scale/Scope**: un desafío en curso como máximo. Dos módulos JS, un comando nuevo, dos comandos
-retocados, un enum de dominio, seis claves de catálogo y siete tests nuevos
+retocados, un enum de dominio, y catorce claves de catálogo
+
+**Entregado: doce tests nuevos**, no los siete que este plan previó. Cinco salieron de inyectar
+violaciones y ver que no caía nada: el caso literal de FR-006 —que **el proveedor** rechace, no que
+el campo esté vacío— no era alcanzable sin un conector inyectable; el almacén ausente no tenía
+prueba; y **ningún test impedía escribir en el llavero del operador**, cosa que los primeros de este
+ciclo hicieron.
 
 ## Constitution Check
 
@@ -100,8 +107,8 @@ crates/codify-app/
 │   ├── connections.js   # el camino completo: enviar, cancelar, desenlace
 │   └── styles.css       # el estado «en curso»
 └── tests/
-    ├── ui_contract.rs   # 4 tests nuevos
-    └── conexion_termina.rs  # 3 tests nuevos del camino, en el núcleo de la app
+    ├── ui_contract.rs   # 6 tests nuevos (22 → 28)
+    └── conexion_termina.rs  # 6 tests nuevos del camino
 ```
 
 **Structure Decision**: sin estructura nueva. Un archivo de test nuevo en `codify-app` porque los

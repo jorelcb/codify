@@ -20,7 +20,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all -- --check
 ```
 
-**Se espera**: 246 tests (239 de antes + 7 nuevos), workspace entero en verde.
+**Se espera**: **251** tests (239 de antes + 12 nuevos), workspace entero en verde.
 
 | Criterio | Test |
 |---|---|

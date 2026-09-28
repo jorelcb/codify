@@ -109,6 +109,34 @@ además la carrera de dos envíos del mismo desafío.
 **La otra mitad de SC-005 —que *se note* que algo ocurre— la sigue midiendo una persona.** Un test
 puede comprobar que el control está deshabilitado; que eso se entienda como «está pasando», no.
 
+### R8 · Ningún test escribe en el llavero real
+
+> `ningun_test_escribe_en_el_llavero_real`
+
+Ningún archivo de test construye el almacén del sistema, salvo los declarados —los `#[ignore]` que
+CI nunca corre—. Nace de haberlo hecho: los primeros tests de este ciclo dejaron secretos en el
+llavero de quien los corriera, porque `completar_desafio` construía el almacén por dentro.
+
+**Inyección**: construir el almacén del sistema en cualquier archivo de test.
+
+Un test que toca el llavero **no falla**: deja rastro en silencio. Por eso hace falta una guarda y
+no basta con acordarse.
+
+### R9 · Sin almacén se dice, y no se guarda en otro sitio — `003`-FR-004
+
+> `sin_almacen_se_dice_y_no_se_guarda_en_otro_sitio`
+
+Con el almacén ausente, la conexión falla con su motivo y **no se guarda nada en ningún sitio**.
+Cubre además el caso de que el almacén desaparezca entre abrir el desafío y completarlo.
+
+### R10 · El rechazo del proveedor conserva el desafío — FR-006, el caso literal
+
+> `un_rechazo_del_proveedor_no_pierde_el_desafio`
+
+R4 probaba la credencial **vacía**, que sale antes de hablar con nadie. El rechazo de verdad no era
+alcanzable sin poder sustituir el conector — lo descubrió una inyección que no hizo caer ningún
+test.
+
 ---
 
 ## Lo que no cambia, y sigue verificado
