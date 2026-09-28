@@ -115,11 +115,29 @@ const CATALOG: &[(&str, &str, &str)] = &[
     // idénticos, uno que abre y otro que envía.
     ("connection.add", "Conectar un servicio remoto", "Connect a remote service"),
     ("connection.submit", "Conectar", "Connect"),
+    // `005` — lo que el desafío pide, traducido aquí y no redactado en el núcleo. La clave la
+    // compone `InstruccionDeCredencial::code()`, así que un valor nuevo sin texto no pasa el test.
+    // `005` — el camino hasta el final: pedir la credencial, enviarla, y decir qué pasó.
+    ("connection.secret_field", "Clave del proveedor", "Provider key"),
+    ("connection.send", "Enviar", "Send"),
+    ("connection.sending", "Enviando…", "Sending…"),
+    ("connection.cancel", "Cancelar", "Cancel"),
+    ("connection.connected", "Cuenta conectada.", "Account connected."),
+    // Cada fallo con su **salida**: sin ella un fallo se parece a que no haya pasado nada, que es
+    // el defecto que originó este spec.
+    ("connection.failure.rejected", "El proveedor no aceptó esa clave.", "The provider did not accept that key."),
+    ("connection.failure.rejected.next", "Revísala y vuelve a enviarla: no hace falta rehacer el formulario.", "Check it and send it again: there is no need to fill the form in again."),
+    ("connection.failure.empty", "No escribiste ninguna clave.", "You did not enter a key."),
+    ("connection.failure.empty.next", "Pega la clave de tu proveedor y envíala.", "Paste your provider key and send it."),
+    ("connection.failure.no_store", "Este sistema no tiene almacén de credenciales.", "This system has no credential store."),
+    ("connection.failure.no_store.next", "Puedes seguir trabajando en modo local, sin conectar nada.", "You can keep working in local mode, without connecting anything."),
+    ("connection.failure.not_in_progress", "Esa conexión ya no está en curso.", "That connection is no longer in progress."),
+    ("connection.failure.not_in_progress.next", "Vuelve a pulsar «Conectar un servicio remoto» para empezar de nuevo.", "Press “Connect a remote service” again to start over."),
+    ("connection.instruction.paste_key", "Pega la clave de tu proveedor: se guarda en el almacén del sistema y no vuelve a mostrarse.", "Paste your provider key: it is stored in the system keychain and never shown again."),
     ("connection.none", "Ninguno. La aplicación funciona en local.", "None. The app runs locally."),
     ("connection.disconnect", "Desconectar", "Disconnect"),
     ("connection.code_hint", "Introduce este código en la página que se abrirá:", "Enter this code on the page that will open:"),
     ("connection.secret_hint", "Se guarda en el almacén del sistema y no vuelve a mostrarse.", "It is stored in the system keychain and never shown again."),
-    ("connection.no_store", "Este sistema no tiene almacén de credenciales. Puedes seguir en modo local.", "This system has no credential store. You can continue in local mode."),
     ("connection.state.connected", "conectada", "connected"),
     ("connection.state.expired", "caducada: hay que reconectar", "expired: reconnect needed"),
     ("connection.state.revoked", "revocada", "revoked"),

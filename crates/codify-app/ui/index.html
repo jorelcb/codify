@@ -103,10 +103,23 @@
         </div>
         <button id="conectar" class="ghost" data-i18n="connection.submit"></button>
 
+        <!-- `005` — aquí termina el camino. Antes esto eran tres párrafos y ningún sitio donde
+             escribir: el desafío se abría y no se cerraba nunca. -->
         <div id="desafio" hidden>
           <p id="desafio-codigo" class="next-step" data-i18n="connection.code_hint"></p>
-          <p id="desafio-credencial" class="next-step" data-i18n="connection.secret_hint"></p>
-          <p id="desafio-sin-almacen" class="next-step" hidden data-i18n="connection.no_store"></p>
+          <!-- Sin `data-i18n`: lo pinta `connections.js` con la clave que manda el desafío. -->
+          <p id="desafio-instruccion" class="next-step"></p>
+          <label class="campo">
+            <span class="label" data-i18n="connection.secret_field"></span>
+            <input type="password" id="conn-secreto" autocomplete="off" spellcheck="false"
+                   data-i18n-attr="placeholder:connection.secret_hint" />
+          </label>
+          <div class="desafio-acciones">
+            <button id="desafio-enviar" class="primary" data-i18n="connection.send"></button>
+            <button id="desafio-cancelar" class="ghost" data-i18n="connection.cancel"></button>
+          </div>
+          <!-- Sin `data-i18n`: el motivo y su salida los pinta `connections.js` según el fallo. -->
+          <p id="desafio-fallo" class="next-step" hidden></p>
         </div>
       </details>
     </section>

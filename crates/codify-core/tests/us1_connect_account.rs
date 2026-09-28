@@ -2,7 +2,8 @@
 
 use codify_core::application::connections::{ConnectionState, ProviderConnection};
 use codify_core::application::ports::{
-    AccountConnector, CredentialStore, Desafio, ReferenciaDeCredencial, Secreto, Tier,
+    AccountConnector, CredentialStore, Desafio, InstruccionDeCredencial, ReferenciaDeCredencial,
+    Secreto, Tier,
 };
 use codify_core::domain::error::CoreError;
 use codify_core::infrastructure::secrets::device_flow::DeviceFlow;
@@ -55,7 +56,7 @@ impl CredentialStore for Almacen {
 
 #[tokio::test]
 async fn abandonar_la_credencial_no_deja_conexion_a_medias() {
-    let conector = DirectCredential::new("pega tu clave");
+    let conector = DirectCredential::new(InstruccionDeCredencial::PegarClave);
     let desafio = conector.iniciar().await.expect("inicia");
 
     let err = conector

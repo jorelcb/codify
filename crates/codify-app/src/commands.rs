@@ -11,7 +11,7 @@ use codify_core::application::connections::{ConnectionState, ProviderConnection}
 use codify_core::application::ports::{
     AccountConnector, CredentialStore, Desafio, ReferenciaDeCredencial, Secreto,
 };
-use codify_core::application::ports::{ModelProvider, Tier};
+use codify_core::application::ports::{InstruccionDeCredencial, ModelProvider, Tier};
 use codify_core::application::ports::{ProviderDiscovery, ProviderIssue};
 use codify_core::application::service::{
     AuthoringService, ContextAuthoring, SessionSnapshot, StartSession,
@@ -51,7 +51,9 @@ const DEFAULT_MODEL: &str = "qwen2.5-coder";
 ///
 /// Con nombres en vez de una tupla: `(Desafio, Arc<dyn AccountConnector>, Tier, String)` obliga
 /// a recordar qué era el cuarto elemento cada vez que se lee.
-struct DesafioPendiente {
+struct DesafioEnCurso {
+    /// Identificador que la piel devuelve al completar o abandonar.
+    id: String,
     desafio: Desafio,
     conector: Arc<dyn AccountConnector>,
     tier: Tier,
@@ -69,13 +71,46 @@ pub struct AppState {
     /// con la que pedírselo al almacén del sistema.
     connections: Mutex<Vec<ProviderConnection>>,
     /// Desafíos de conexión a medio completar, por id.
-    challenges: Mutex<HashMap<String, DesafioPendiente>>,
+    /// **Cero o uno.** `005`-FR-009: una cuenta no puede tener dos desafíos compitiendo, y aquí
+    /// eso deja de ser una regla que vigilar para ser la forma del estado — dos a la vez no se
+    /// pueden escribir. Era un mapa, y pulsar «Conectar» dos veces dejaba dos dentro.
+    challenge: Mutex<Option<DesafioEnCurso>>,
     /// El modo elegido por el usuario (`003`-FR-008a). Cambiarlo rearma el grafo de la
     /// **siguiente** sesión; la viva conserva el suyo (FR-008b).
     mode: Mutex<Mode>,
     /// Decisiones que el núcleo está esperando ahora mismo. Es el otro extremo del canal
     /// que `WindowPrompter::present` deja abierto: `decide` lo resuelve.
     pending: PendingDecisions,
+    /// El almacén de credenciales. **Inyectable a propósito**: construirlo dentro del camino
+    /// hacía que cualquier test del camino escribiera en el llavero real de quien lo corriera.
+    /// Un test no tiene por qué tocar los secretos de nadie para comprobar que el camino termina.
+    almacen: Option<Arc<dyn CredentialStore>>,
+    /// El conector, por el mismo motivo: sin poder sustituirlo, el rechazo del proveedor no se
+    /// puede provocar.
+    conector: Option<Arc<dyn AccountConnector>>,
+}
+
+impl AppState {
+    /// El almacén a usar: el inyectado, o el del sistema.
+    fn almacen(&self) -> Arc<dyn CredentialStore> {
+        self.almacen
+            .clone()
+            .unwrap_or_else(|| Arc::new(SystemKeyring::new()))
+    }
+
+    /// Sustituye el almacén. Para tests: **nada del camino debe escribir en el llavero real**.
+    pub fn con_almacen(mut self, almacen: Arc<dyn CredentialStore>) -> Self {
+        self.almacen = Some(almacen);
+        self
+    }
+
+    /// Sustituye el conector. Sin esto, el caso literal de FR-006 —que **el proveedor** rechace la
+    /// credencial— no era alcanzable desde ningún test: el único rechazo que se podía provocar era
+    /// el de la credencial vacía, que sale antes de hablar con nadie. Lo descubrió una inyección.
+    pub fn con_conector(mut self, conector: Arc<dyn AccountConnector>) -> Self {
+        self.conector = Some(conector);
+        self
+    }
 }
 
 impl AppState {
@@ -391,7 +426,7 @@ fn cablear<M: ModoDelGrafo>(
 ///
 /// **No tiene campo para el secreto, ni podría tenerlo**: `ProviderConnection` tampoco. Es más
 /// fiable que acordarse de no rellenarlo.
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProviderConnectionDto {
     pub id: String,
@@ -432,85 +467,206 @@ pub async fn connect_provider(
         "heavy" => Tier::Heavy,
         _ => Tier::Cheap,
     };
-    let conector: Arc<dyn AccountConnector> = if delegada {
-        Arc::new(
-            DeviceFlow::new(
-                format!("{endpoint}/device/code"),
-                format!("{endpoint}/token"),
-                env_or("CODIFY_OAUTH_CLIENT_ID", "codify"),
-            )
-            .map_err(|e| e.to_string())?,
-        )
-    } else {
-        Arc::new(DirectCredential::new(
-            "Pega tu credencial: se guarda en el almacén del sistema y no vuelve a mostrarse.",
-        ))
-    };
+    state
+        .inner()
+        .abrir_desafio(&label, &endpoint, tier, delegada)
+        .await
+}
 
-    let desafio = conector.iniciar().await.map_err(|e| e.to_string())?;
-    let id = format!("conn-{}", uuid_simple());
-    let dto = ConnectChallengeDto::from(&id, &desafio);
-    if let Ok(mut m) = state.challenges.lock() {
-        m.insert(
-            id,
-            DesafioPendiente {
+/// Por qué la conexión no pudo completarse.
+///
+/// Códigos estables para el catálogo, como `SessionFailure` y `ProviderIssue`. Cada uno necesita
+/// además **una salida**: sin ella, un fallo se parece al defecto que originó este spec — pulsar y
+/// que no pase nada.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FalloDeConexion {
+    /// El proveedor no aceptó la credencial. **No consume el desafío**: se corrige y se reintenta.
+    CredencialRechazada,
+    /// Se envió sin escribir nada. No llega al proveedor ni consume el desafío.
+    CredencialVacia,
+    /// Este sistema no tiene almacén de credenciales (`003`-FR-004).
+    SinAlmacen,
+    /// El desafío caducó, se abandonó, o lo reemplazó uno nuevo.
+    DesafioNoEnCurso,
+}
+
+impl FalloDeConexion {
+    pub fn code(&self) -> &'static str {
+        match self {
+            FalloDeConexion::CredencialRechazada => "rejected",
+            FalloDeConexion::CredencialVacia => "empty",
+            FalloDeConexion::SinAlmacen => "no_store",
+            FalloDeConexion::DesafioNoEnCurso => "not_in_progress",
+        }
+    }
+
+    /// Un fallo que no consume el desafío se puede corregir sin rehacer el formulario.
+    pub fn conserva_el_desafio(&self) -> bool {
+        matches!(
+            self,
+            FalloDeConexion::CredencialRechazada | FalloDeConexion::CredencialVacia
+        )
+    }
+
+    pub fn all() -> [FalloDeConexion; 4] {
+        [
+            FalloDeConexion::CredencialRechazada,
+            FalloDeConexion::CredencialVacia,
+            FalloDeConexion::SinAlmacen,
+            FalloDeConexion::DesafioNoEnCurso,
+        ]
+    }
+}
+
+/// El ciclo de vida del desafío, **en el estado y no en el comando**.
+///
+/// Los comandos reciben `State<'_, AppState>`, que no se construye fuera de una aplicación Tauri:
+/// con la lógica dentro de ellos, el camino no era invocable desde ningún test. Es el hueco de
+/// #48 —lógica probada, cableado no— y aquí se evita poniendo el cableado donde se puede llamar.
+impl AppState {
+    /// Abre un desafío, **reemplazando** el que hubiera (FR-009).
+    ///
+    /// Es **el** camino: `connect_provider` lo llama y no duplica nada. Tener el comando por un
+    /// lado y una versión simplificada para tests por otro es el defecto de #48 — dos caminos, y
+    /// el probado no es el que corre.
+    pub async fn abrir_desafio(
+        &self,
+        label: &str,
+        endpoint: &str,
+        tier: Tier,
+        delegada: bool,
+    ) -> Result<ConnectChallengeDto, String> {
+        let conector: Arc<dyn AccountConnector> = if let Some(c) = &self.conector {
+            Arc::clone(c)
+        } else if delegada {
+            Arc::new(
+                DeviceFlow::new(
+                    format!("{endpoint}/device/code"),
+                    format!("{endpoint}/token"),
+                    env_or("CODIFY_OAUTH_CLIENT_ID", "codify"),
+                )
+                .map_err(|e| e.to_string())?,
+            )
+        } else {
+            Arc::new(DirectCredential::new(InstruccionDeCredencial::PegarClave))
+        };
+
+        let desafio = conector.iniciar().await.map_err(|e| e.to_string())?;
+        let id = format!("conn-{}", uuid_simple());
+        let dto = ConnectChallengeDto::from(&id, &desafio);
+        if let Ok(mut c) = self.challenge.lock() {
+            *c = Some(DesafioEnCurso {
+                id,
                 desafio,
                 conector,
                 tier,
-                label,
-                endpoint: solo_host(&endpoint),
-            },
-        );
+                label: label.to_string(),
+                endpoint: solo_host(endpoint),
+            });
+        }
+        Ok(dto)
     }
-    Ok(dto)
+
+    /// Completa el desafío en curso. **Solo lo consume si termina bien** (FR-006).
+    pub async fn completar_desafio(
+        &self,
+        challenge_id: &str,
+        secret: Option<String>,
+    ) -> Result<ProviderConnectionDto, FalloDeConexion> {
+        // Se **lee**, no se saca. Sacarlo aquí era el defecto: un rechazo lo destruía.
+        let (desafio, conector, tier, label, endpoint) = {
+            let guard = self
+                .challenge
+                .lock()
+                .map_err(|_| FalloDeConexion::DesafioNoEnCurso)?;
+            let d = guard
+                .as_ref()
+                .filter(|d| d.id == challenge_id)
+                .ok_or(FalloDeConexion::DesafioNoEnCurso)?;
+            (
+                d.desafio.clone(),
+                Arc::clone(&d.conector),
+                d.tier,
+                d.label.clone(),
+                d.endpoint.clone(),
+            )
+        };
+
+        // Sin escribir nada no se molesta al proveedor, y el desafío se queda como estaba.
+        let secreto = match secret {
+            Some(s) if !s.trim().is_empty() => s,
+            _ => return Err(FalloDeConexion::CredencialVacia),
+        };
+
+        let store = self.almacen();
+        if !store.disponible() {
+            // FR-004: se dice, y NO se recurre a otro sitio.
+            return Err(FalloDeConexion::SinAlmacen);
+        }
+
+        let obtenido = conector
+            .completar(&desafio, Some(Secreto::new(secreto)))
+            .await
+            .map_err(|_| FalloDeConexion::CredencialRechazada)?;
+
+        let referencia = ReferenciaDeCredencial::new(challenge_id.to_string());
+        store
+            .guardar(&referencia, obtenido)
+            .await
+            .map_err(|_| FalloDeConexion::SinAlmacen)?;
+
+        let conexion = conexion_desde(challenge_id, &label, &endpoint, tier);
+        let dto = to_connection_dto(&conexion);
+        if let Ok(mut c) = self.connections.lock() {
+            c.push(conexion);
+        }
+        // Solo aquí: el desafío se consume al terminar bien.
+        if let Ok(mut c) = self.challenge.lock() {
+            *c = None;
+        }
+        Ok(dto)
+    }
+
+    /// FR-008: se puede decir «déjalo», y no queda retenido nada.
+    pub fn abandonar_desafio(&self) {
+        if let Ok(mut c) = self.challenge.lock() {
+            *c = None;
+        }
+    }
+
+    pub fn hay_desafio(&self) -> bool {
+        self.challenge.lock().map(|c| c.is_some()).unwrap_or(false)
+    }
+
+    pub fn conexiones(&self) -> Vec<ProviderConnectionDto> {
+        self.connections
+            .lock()
+            .map(|c| c.iter().map(to_connection_dto).collect())
+            .unwrap_or_default()
+    }
 }
 
-/// `003`-FR-001/FR-002. Guarda en el almacén del sistema y devuelve la conexión **sin** secreto.
 #[tauri::command]
 pub async fn complete_connection(
     state: State<'_, AppState>,
     challenge_id: String,
     secret: Option<String>,
 ) -> Result<ProviderConnectionDto, String> {
-    let DesafioPendiente {
-        desafio,
-        conector,
-        tier,
-        label,
-        endpoint,
-    } = state
-        .challenges
-        .lock()
-        .ok()
-        .and_then(|mut m| m.remove(&challenge_id))
-        .ok_or_else(|| "ese desafío ya no está en curso".to_string())?;
-
-    let store = SystemKeyring::new();
-    if !store.disponible() {
-        // FR-004: se dice, y NO se recurre a otro sitio.
-        return Err("no hay almacén de credenciales disponible en este sistema".into());
-    }
-
-    let secreto = conector
-        .completar(&desafio, secret.map(Secreto::new))
+    state
+        .inner()
+        .completar_desafio(&challenge_id, secret)
         .await
-        .map_err(|e| e.to_string())?;
-
-    let referencia = ReferenciaDeCredencial::new(challenge_id.clone());
-    store
-        .guardar(&referencia, secreto)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let conexion = conexion_desde(&challenge_id, &label, &endpoint, tier);
-    let dto = to_connection_dto(&conexion);
-    if let Ok(mut c) = state.connections.lock() {
-        c.push(conexion);
-    }
-    Ok(dto)
+        // El código viaja, no la frase: la piel lo traduce contra el catálogo, con su salida.
+        .map_err(|f| f.code().to_string())
 }
 
-/// `003`-FR-003.
+/// `005`-FR-008. Se puede decir «déjalo», y no queda retenido nada de lo que llevaba.
+#[tauri::command]
+pub async fn abandon_connection(state: State<'_, AppState>) -> Result<(), String> {
+    state.inner().abandonar_desafio();
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn list_connections(
     state: State<'_, AppState>,
@@ -680,12 +836,13 @@ impl ConnectChallengeDto {
                 url: Some(url.clone()),
                 instructions: None,
             },
-            Desafio::PideCredencial { instrucciones } => Self {
+            // `005` — viaja el **código**, no la frase: la piel lo traduce contra el catálogo.
+            Desafio::PideCredencial { instruccion } => Self {
                 challenge_id: id.into(),
                 kind: "credencial".into(),
                 code: None,
                 url: None,
-                instructions: Some(instrucciones.clone()),
+                instructions: Some(instruccion.code().to_string()),
             },
         }
     }
