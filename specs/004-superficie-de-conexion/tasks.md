@@ -204,8 +204,10 @@ sesión. Antes de este ciclo no cambiaba ninguna de las dos cosas.
       frase, y ahí acaba: `complete_connection` está registrado en el backend y **ningún JavaScript
       lo invoca**. No hay campo donde escribir la credencial. Ningún texto de ayuda arregla esto —
       es un hueco funcional de `003`, abierto como **#54**. Se añade que no entendía **a qué tipo
-      de proveedor** se estaba conectando, cosa que el operador comparte: **#55**. **SC-001 es
-      inalcanzable en este ciclo** y queda como fallo declarado, ligado a esos dos
+      de proveedor** se estaba conectando, cosa que el operador comparte: **#55**. **SC-001 era
+      inalcanzable en este ciclo** y quedó como fallo declarado.
+      **Desbloqueada por `005`** (#54): el camino ya termina, así que el criterio vuelve a ser
+      medible. Se mide en `005`-T037, con una persona delante — no se hereda como aprobado
 - [X] T031 [persona] **SC-003 — FALLA (2026-08-29).** Los nombres se leen y son distintos, pero
       (a) la numeración del rotor no corresponde: tres entradas con «(2.)»; (b) `Generated File`
       apunta a un espacio diminuto e invisible —el diálogo de artefacto lleva `role="region"` y
