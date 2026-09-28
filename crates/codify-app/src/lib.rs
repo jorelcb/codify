@@ -19,6 +19,7 @@ pub fn run() {
             commands::probe_provider,
             commands::connect_provider,
             commands::complete_connection,
+            commands::abandon_connection,
             commands::list_connections,
             commands::disconnect_provider,
             commands::mode,

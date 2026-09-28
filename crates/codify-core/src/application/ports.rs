@@ -228,7 +228,37 @@ pub enum Desafio {
     /// Autorización delegada: la aplicación enseña código y dirección, el usuario va fuera.
     Delegada { codigo: String, url: String },
     /// El proveedor no ofrece delegada: hay que pedir la credencial **una sola vez**.
-    PideCredencial { instrucciones: String },
+    PideCredencial {
+        instruccion: InstruccionDeCredencial,
+    },
+}
+
+/// Lo que hay que decirle al usuario para que encuentre su credencial.
+///
+/// Viaja como **código**, no como frase. El núcleo sabe *qué* hay que decir; en qué idioma decirlo
+/// solo lo sabe la piel, que es quien conoce el idioma elegido — una frase redactada aquí solo
+/// podría estar en uno, y eso en este proyecto ya tiene nombre: una cadena fuera del catálogo.
+///
+/// Mismo patrón que `ProviderIssue`, `SessionFailure` y `ConnectionState`, y por el mismo motivo:
+/// un valor nuevo sin traducir **no pasa el test**, en vez de aparecer en pantalla en el idioma
+/// equivocado.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InstruccionDeCredencial {
+    /// Pegar una clave que el usuario ya tiene de su proveedor.
+    PegarClave,
+}
+
+impl InstruccionDeCredencial {
+    /// Código estable para el catálogo de la piel.
+    pub fn code(&self) -> &'static str {
+        match self {
+            InstruccionDeCredencial::PegarClave => "paste_key",
+        }
+    }
+
+    pub fn all() -> [InstruccionDeCredencial; 1] {
+        [InstruccionDeCredencial::PegarClave]
+    }
 }
 
 /// Obtiene una credencial del usuario (`003`-FR-001).

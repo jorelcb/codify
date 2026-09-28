@@ -1039,10 +1039,6 @@ fn la_interfaz_no_tiene_su_propia_idea_del_modo() {
 /// Cada uno con su issue. La lista no es un permiso: es una deuda con nombre, y el test existe
 /// para que no crezca sola.
 const COMANDOS_SIN_LLAMAR: &[(&str, &str)] = &[
-    // El flujo de conexión se abre y nunca se cierra: `connect_provider` devuelve un desafío, la
-    // interfaz enseña una frase y no hay campo donde escribir la credencial. Encontrado probando
-    // con una persona delante, que pulsó «Conectar» y no ocurrió nada — correctamente.
-    ("complete_connection", "#54"),
     // Las propuestas llegan por evento. Este comando las devolvería al recargar, y nadie lo
     // invoca: o sobra, o falta el camino de recuperación. Encontrado por este mismo test.
     ("pending_proposals", "sin issue todavía"),
@@ -1227,4 +1223,150 @@ fn el_documento_tiene_un_esquema_de_titulos_navegable() {
          que no aparecen al recorrer los títulos y su nombre tiene dos dueños posibles: \
          {sin_encabezado:?}"
     );
+}
+
+// ---------------------------------------------------------------------------
+// `005` · Conectar una cuenta llega a su fin
+// ---------------------------------------------------------------------------
+
+/// **FR-010a, SC-003** — toda instrucción de credencial tiene texto en los dos idiomas.
+///
+/// El desafío le dice al usuario dónde encontrar su credencial, y eso viaja del núcleo a la piel
+/// como **código**, no como frase. El núcleo sabe qué hay que decir; en qué idioma decirlo solo lo
+/// sabe quien conoce el idioma elegido.
+///
+/// Hasta este ciclo viajaba como frase, y estaba escrita **en español dentro del comando**. No se
+/// veía porque la interfaz ignoraba el campo, y `ningun_texto_visible_escapa_al_catalogo` no podía
+/// encontrarla: mira `ui/` y `strings.rs`, no `commands.rs`.
+#[test]
+fn toda_instruccion_de_credencial_tiene_texto_en_ambos_idiomas() {
+    use codify_core::application::ports::InstruccionDeCredencial;
+
+    for locale in [Locale::Es, Locale::En] {
+        let entries = strings_for(locale).entries;
+        for instruccion in InstruccionDeCredencial::all() {
+            let key = format!("connection.instruction.{}", instruccion.code());
+            let texto = entries.get(key.as_str()).unwrap_or_else(|| {
+                panic!(
+                    "la instrucción {instruccion:?} no tiene texto en {}: se vería la clave cruda",
+                    locale.code()
+                )
+            });
+            assert!(
+                !texto.trim().is_empty(),
+                "'{key}' está vacío en {}",
+                locale.code()
+            );
+        }
+    }
+}
+
+/// El módulo que conduce el envío de la credencial.
+const MODULO_DE_CONEXION: &str = "connections.js";
+
+/// **FR-011** — la credencial no sobrevive al envío.
+///
+/// Una credencial que se queda en el campo sigue en el DOM, visible para cualquier cosa que lo
+/// recorra, mucho después de haber cumplido su función. Y una copia en una variable de módulo es
+/// lo mismo con menos testigos: es la regla que `004` aplicó al modo, aquí sobre algo que importa
+/// bastante más que un modo.
+#[test]
+fn la_credencial_no_sobrevive_al_envio() {
+    let js = ui_files()
+        .into_iter()
+        .find(|(n, _)| n == MODULO_DE_CONEXION)
+        .map(|(_, c)| sin_comentarios(&c))
+        .unwrap_or_else(|| panic!("falta `ui/{MODULO_DE_CONEXION}`"));
+
+    assert!(
+        js.contains("conn-secreto"),
+        "no hay campo de credencial: sin él el desafío no se puede completar (FR-001)"
+    );
+    // **Dentro de la función que envía**, no en cualquier parte del archivo. Buscarlo suelto
+    // dejaba pasar la violación: el borrado de `cancelarDesafio` contaba por el del envío, y
+    // quitar este seguía en verde. Lo descubrí inyectándolo.
+    let envio = js
+        .split_once("async function enviarCredencial")
+        .and_then(|(_, r)| r.split_once("\n}"))
+        .map(|(cuerpo, _)| cuerpo.to_string())
+        .expect("`connections.js` debe tener la función que envía la credencial");
+    assert!(
+        envio.contains("value = \"\"") || envio.contains("value=\"\""),
+        "la credencial no se borra **al enviarla**: se queda en el DOM cuando ya no hace falta"
+    );
+
+    let copias: Vec<String> = js
+        .lines()
+        .enumerate()
+        .filter(|(_, l)| {
+            let l = l.trim();
+            (l.starts_with("let ") || l.starts_with("var ")) && l.contains("secreto")
+        })
+        .map(|(n, l)| format!("{}:{}: {}", MODULO_DE_CONEXION, n + 1, l.trim()))
+        .collect();
+    assert!(
+        copias.is_empty(),
+        "la credencial queda guardada en una variable de módulo, que es una copia que nadie \
+         limpia:\n{}",
+        copias.join("\n")
+    );
+}
+
+/// **SC-005** — el envío no admite un segundo intento mientras el primero viaja.
+///
+/// Cierra además una carrera: dos envíos del mismo desafío, con el segundo llegando a uno ya
+/// consumido. Y sobre todo, un envío sin señal es indistinguible de «pulsé y no pasó nada», que es
+/// literalmente el defecto que originó este spec.
+///
+/// Lo que este test **no** puede comprobar es que la señal se *entienda*. Eso lo mide una persona.
+#[test]
+fn el_envio_no_admite_un_segundo_intento() {
+    let js = ui_files()
+        .into_iter()
+        .find(|(n, _)| n == MODULO_DE_CONEXION)
+        .map(|(_, c)| sin_comentarios(&c))
+        .unwrap_or_else(|| panic!("falta `ui/{MODULO_DE_CONEXION}`"));
+
+    let deshabilita = js.matches("disabled = true").count();
+    let rehabilita = js.matches("disabled = false").count();
+    assert!(
+        deshabilita > 0,
+        "el control de envío no se deshabilita mientras la credencial viaja: se puede pulsar dos \
+         veces, y el segundo intento llega a un desafío ya consumido"
+    );
+    assert!(
+        rehabilita >= deshabilita,
+        "se deshabilita {deshabilita} vez/veces y se vuelve a habilitar {rehabilita}: un control \
+         que no se recupera deja la pantalla muerta tras el primer fallo"
+    );
+}
+
+/// **FR-005, SC-004** — todo motivo de fallo de la conexión tiene texto **y salida**, en ambos
+/// idiomas.
+///
+/// La salida no es adorno. Un fallo que dice qué pasó y no qué hacer se parece demasiado al
+/// defecto que originó este spec: pulsar y quedarse igual.
+#[test]
+fn todo_fallo_de_conexion_tiene_texto_y_salida_en_ambos_idiomas() {
+    use codify_app::commands::FalloDeConexion;
+
+    for locale in [Locale::Es, Locale::En] {
+        let entries = strings_for(locale).entries;
+        for fallo in FalloDeConexion::all() {
+            for sufijo in ["", ".next"] {
+                let key = format!("connection.failure.{}{sufijo}", fallo.code());
+                let texto = entries.get(key.as_str()).unwrap_or_else(|| {
+                    panic!(
+                        "el fallo {fallo:?} no tiene '{key}' en {}: se vería la clave cruda",
+                        locale.code()
+                    )
+                });
+                assert!(
+                    !texto.trim().is_empty(),
+                    "'{key}' está vacío en {}",
+                    locale.code()
+                );
+            }
+        }
+    }
 }

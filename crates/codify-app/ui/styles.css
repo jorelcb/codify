@@ -545,3 +545,6 @@ dialog h2 { margin: 0 0 8px; font-size: 16px; }
   color: var(--muted);
   font-size: 12px;
 }
+
+.desafio-acciones { display: flex; gap: 8px; margin: 10px 0; }
+.desafio-acciones button[disabled] { opacity: 0.6; cursor: progress; }

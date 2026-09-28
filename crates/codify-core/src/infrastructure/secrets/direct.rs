@@ -5,19 +5,19 @@
 //! —sin eso este spec no sirve a los proveedores que lo motivan— sino que quede en un archivo
 //! del proyecto, en la configuración o en un registro. De eso se encarga `CredentialStore`.
 
-use crate::application::ports::{AccountConnector, Desafio, Secreto};
+use crate::application::ports::{AccountConnector, Desafio, InstruccionDeCredencial, Secreto};
 use crate::domain::error::{CoreError, Result};
 
 pub struct DirectCredential {
-    instrucciones: String,
+    instruccion: InstruccionDeCredencial,
 }
 
 impl DirectCredential {
-    /// `instrucciones` es lo que la piel enseña al usuario: dónde encontrar su credencial.
-    pub fn new(instrucciones: impl Into<String>) -> Self {
-        Self {
-            instrucciones: instrucciones.into(),
-        }
+    /// `instruccion` es **qué** hay que decirle al usuario, no cómo decirlo: la piel lo redacta en
+    /// el idioma elegido. Recibía una `String`, y quien lo construía le pasaba una frase en
+    /// español que nunca llegó a verse porque la interfaz ignoraba ese campo.
+    pub fn new(instruccion: InstruccionDeCredencial) -> Self {
+        Self { instruccion }
     }
 }
 
@@ -25,7 +25,7 @@ impl DirectCredential {
 impl AccountConnector for DirectCredential {
     async fn iniciar(&self) -> Result<Desafio> {
         Ok(Desafio::PideCredencial {
-            instrucciones: self.instrucciones.clone(),
+            instruccion: self.instruccion,
         })
     }
 
