@@ -206,8 +206,10 @@ sesión. Antes de este ciclo no cambiaba ninguna de las dos cosas.
       es un hueco funcional de `003`, abierto como **#54**. Se añade que no entendía **a qué tipo
       de proveedor** se estaba conectando, cosa que el operador comparte: **#55**. **SC-001 era
       inalcanzable en este ciclo** y quedó como fallo declarado.
-      **Desbloqueada por `005`** (#54): el camino ya termina, así que el criterio vuelve a ser
-      medible. Se mide en `005`-T037, con una persona delante — no se hereda como aprobado
+      **Desbloqueada por `005`** (#54): el camino ya termina, así que el criterio volvió a ser
+      medible. **Medido el 2026-09-28 en `005`-T037, y vuelve a fallar** — esta vez no porque
+      conectar sea imposible, sino porque el formulario pide tres cosas que quien conecta un modelo
+      no sabe ni quiere decidir. Sigue en rojo, ahora ligado a **#56**
 - [X] T031 [persona] **SC-003 — FALLA (2026-08-29).** Los nombres se leen y son distintos, pero
       (a) la numeración del rotor no corresponde: tres entradas con «(2.)»; (b) `Generated File`
       apunta a un espacio diminuto e invisible —el diálogo de artefacto lleva `role="region"` y
