@@ -55,7 +55,7 @@ convierte una invariante en algo que **no se puede escribir**.
       `crates/codify-core/src/infrastructure/secrets/direct.rs` para recibir el tipo de dominio, y
       **borrar el literal en español** de `connect_provider` en `crates/codify-app/src/commands.rs`
 - [ ] T005 [P] Añadir las claves de instrucción a `crates/codify-app/src/strings.rs`, en los dos
-      idiomas
+      idiomas (FR-010, SC-003)
 - [ ] T006 Sustituir el mapa de desafíos por `Mutex<Option<DesafioEnCurso>>` en
       `crates/codify-app/src/commands.rs`. Dos desafíos a la vez deja de ser un estado que hay que
       impedir y pasa a ser uno que **no se puede nombrar** ([research D3](./research.md))
@@ -82,31 +82,35 @@ formulario sigue donde `004` lo dejó.
 - [ ] T008 [US1] Escribir el camino feliz en `crates/codify-app/tests/conexion_termina.rs`: abrir
       desafío → enviar credencial → la cuenta queda conectada y el desafío deja de estar en curso.
       **Debe fallar** (FR-002, FR-003)
+- [ ] T009 [US1] Escribir `el_envio_no_admite_un_segundo_intento` en
+      `crates/codify-app/tests/ui_contract.rs` — el manejador del envío deshabilita su control
+      mientras la credencial viaja, y lo vuelve a habilitar al terminar. **Debe fallar** (R7,
+      SC-005)
 
 ### Implementación
 
-- [ ] T009 [US1] Añadir al plegable de `crates/codify-app/ui/index.html` **dónde escribir la
+- [ ] T010 [US1] Añadir al plegable de `crates/codify-app/ui/index.html` **dónde escribir la
       credencial** y su control de envío, con las instrucciones que llegan del desafío, dentro de
-      la superficie que `004` dejó ([research D6](./research.md))
-- [ ] T010 [US1] Cablear el envío en `crates/codify-app/ui/connections.js`: invocar
+      la superficie que `004` dejó (FR-001, [research D6](./research.md))
+- [ ] T011 [US1] Cablear el envío en `crates/codify-app/ui/connections.js`: invocar
       `complete_connection` con el identificador del desafío y la credencial. **Es la llamada que
       no existía**, y por la que conectar era imposible
-- [ ] T011 [US1] Al terminar bien, en `crates/codify-app/ui/connections.js`: refrescar la lista sin
+- [ ] T012 [US1] Al terminar bien, en `crates/codify-app/ui/connections.js`: refrescar la lista sin
       reiniciar, vaciar el campo de la credencial y devolver el plegable a su estado limpio
       (FR-003, FR-011)
-- [ ] T012 [P] [US1] Añadir a `crates/codify-app/src/strings.rs` las claves del envío y del
+- [ ] T013 [P] [US1] Añadir a `crates/codify-app/src/strings.rs` las claves del envío y del
       desenlace, en los dos idiomas
-- [ ] T013 [US1] Declarar el estado «en curso» en `crates/codify-app/ui/connections.js` y
+- [ ] T014 [US1] Declarar el estado «en curso» en `crates/codify-app/ui/connections.js` y
       `crates/codify-app/ui/styles.css`: mientras la credencial viaja se dice, y **no se admite un
       segundo envío**. Cierra SC-005 y de paso la carrera de dos envíos del mismo desafío
       ([research D5](./research.md))
-- [ ] T014 [US1] Sacar `complete_connection` de la lista de comandos sin invocar en
+- [ ] T015 [US1] Sacar `complete_connection` de la lista de comandos sin invocar en
       `crates/codify-app/tests/ui_contract.rs` — el test avisa si se olvida, y saldar la deuda es
-      parte de darla por cerrada
+      parte de darla por cerrada (FR-004, SC-002)
 
 ### Cierre de la historia
 
-- [ ] T015 [US1] Verificar T007 y T008 por inyección: conservar el valor de la credencial tras
+- [ ] T016 [US1] Verificar T007 y T008 por inyección: conservar el valor de la credencial tras
       enviarla en `crates/codify-app/ui/connections.js`; y quitar la llamada a `complete_connection`.
       Revertir cada una. **Un test que no se ha visto fallar no está verificado**
 
@@ -124,25 +128,28 @@ formulario sigue donde `004` lo dejó.
 
 ### Test primero
 
-- [ ] T016 [US2] Escribir `una_credencial_rechazada_no_pierde_el_desafio` en
+- [ ] T017 [US2] Escribir `una_credencial_rechazada_no_pierde_el_desafio` en
       `crates/codify-app/tests/conexion_termina.rs`: desafío abierto → credencial rechazada →
       **sigue en curso** → credencial buena → conectado. **Hoy no puede pasar**, y ninguno lo
       intentaba (R4, FR-006)
 
 ### Implementación
 
-- [ ] T017 [US2] Consumir el desafío **solo al terminar bien** en
+- [ ] T018 [US2] Consumir el desafío **solo al terminar bien** en
       `crates/codify-app/src/commands.rs`. Hoy sale del estado antes de intentar nada, así que un
-      rechazo lo destruye ([research D4](./research.md))
-- [ ] T018 [US2] Distinguir los motivos de fallo en `crates/codify-app/src/commands.rs`: credencial
+      rechazo lo destruye ([research D4](./research.md)). Cubrir además el caso límite de la
+      **credencial vacía**: enviar sin escribir nada no consume el desafío ni llega al proveedor
+- [ ] T019 [US2] Distinguir los motivos de fallo en `crates/codify-app/src/commands.rs`: credencial
       rechazada · sin almacén · desafío que ya no está en curso. Cada uno con su código estable,
-      como `SessionFailure` (FR-005, FR-007)
-- [ ] T019 [P] [US2] Dar a cada motivo texto **y salida** en `crates/codify-app/src/strings.rs`, en
-      los dos idiomas. «Qué puede hacer ahora» no es opcional: sin eso, un fallo se parece al
+      como `SessionFailure` (FR-005, FR-007). Incluir el caso de que el almacén **desaparezca a
+      mitad**: había almacén al abrir el desafío y no al completarlo, que es un fallo distinto de no
+      haberlo tenido nunca
+- [ ] T020 [P] [US2] Dar a cada motivo texto **y salida** en `crates/codify-app/src/strings.rs`, en
+      los dos idiomas (SC-004). «Qué puede hacer ahora» no es opcional: sin eso, un fallo se parece al
       defecto que originó este spec
-- [ ] T020 [US2] Enseñar el motivo y su salida en `crates/codify-app/ui/connections.js`, dejando el
+- [ ] T021 [US2] Enseñar el motivo y su salida en `crates/codify-app/ui/connections.js`, dejando el
       formulario **utilizable** para corregir sin rehacerlo
-- [ ] T021 [US2] Verificar T016 por inyección: volver a consumir el desafío antes de intentar, en
+- [ ] T022 [US2] Verificar T017 por inyección: volver a consumir el desafío antes de intentar, en
       `crates/codify-app/src/commands.rs`. Revertir
 
 **Punto de control**: equivocarse de credencial se corrige sin rehacer el formulario.
@@ -159,21 +166,21 @@ formulario sigue donde `004` lo dejó.
 
 ### Test primero
 
-- [ ] T022 [US3] Escribir `pedir_conectar_dos_veces_deja_uno_solo` en
+- [ ] T023 [US3] Escribir `pedir_conectar_dos_veces_deja_uno_solo` en
       `crates/codify-app/tests/conexion_termina.rs`: dos peticiones dejan **uno**; cancelar deja
-      **cero**. **Debe fallar** antes de T024 (R5, FR-009, SC-006)
+      **cero**. **Debe fallar** antes de T025 (R5, FR-009, SC-006)
 
 ### Implementación
 
-- [ ] T023 [US3] Añadir el comando `abandon_connection` en `crates/codify-app/src/commands.rs` y
+- [ ] T024 [US3] Añadir el comando `abandon_connection` en `crates/codify-app/src/commands.rs` y
       registrarlo en `crates/codify-app/src/lib.rs` (FR-008)
-- [ ] T024 [US3] Hacer que `connect_provider` **reemplace** el desafío anterior en
+- [ ] T025 [US3] Hacer que `connect_provider` **reemplace** el desafío anterior en
       `crates/codify-app/src/commands.rs` (FR-009)
-- [ ] T025 [US3] Añadir el control de cancelar en `crates/codify-app/ui/index.html` y cablearlo en
+- [ ] T026 [US3] Añadir el control de cancelar en `crates/codify-app/ui/index.html` y cablearlo en
       `crates/codify-app/ui/connections.js`, volviendo al estado limpio
-- [ ] T026 [P] [US3] Añadir la clave del control de cancelar a `crates/codify-app/src/strings.rs`,
+- [ ] T027 [P] [US3] Añadir la clave del control de cancelar a `crates/codify-app/src/strings.rs`,
       en los dos idiomas
-- [ ] T027 [US3] Verificar T022 por inyección: volver a un mapa en
+- [ ] T028 [US3] Verificar T023 por inyección: volver a un mapa en
       `crates/codify-app/src/commands.rs` y comprobar que **el test lo nota** — no el compilador.
       Revertir
 
@@ -186,15 +193,17 @@ formulario sigue donde `004` lo dejó.
 No pertenece a ninguna historia: es la regla que sale del propio defecto. Algo construido, con sus
 tests en verde, que nadie pudo alcanzar durante dos ciclos.
 
-- [ ] T028 Escribir `ningun_camino_del_nucleo_queda_sin_puerta` en
+- [ ] T029 Escribir `ningun_camino_del_nucleo_queda_sin_puerta` en
       `crates/codify-app/tests/ui_contract.rs`: para cada selector de rama conocido, los valores
       literales que la interfaz puede enviar; una rama inalcanzable con todos ellos debe estar en
-      la lista de **caminos declarados con su issue** (R2, FR-012, SC-007)
-- [ ] T029 Declarar la autorización delegada como camino sin puerta en la lista de
-      `crates/codify-app/tests/ui_contract.rs`, con el issue que la recoge
+      la lista de **caminos declarados con su issue**, y declarando la lista de selectores
+      conocidos —hoy con un solo miembro, el parámetro `delegada` (R2, FR-012, SC-007)
 - [ ] T030 Abrir el issue de la vía delegada: su motor existe desde `003`, la interfaz manda
-      siempre la vía directa, y hasta ahora nada lo decía
-- [ ] T031 Verificar T028 por inyección en `crates/codify-app/tests/ui_contract.rs`: quitar la
+      siempre la vía directa, y hasta ahora nada lo decía. **Va antes de T031**, que necesita su
+      número
+- [ ] T031 Declarar la autorización delegada como camino sin puerta en la lista de
+      `crates/codify-app/tests/ui_contract.rs`, **con el número de issue que abrió T030**
+- [ ] T032 Verificar T029 por inyección en `crates/codify-app/tests/ui_contract.rs`: quitar la
       delegada de la lista de declarados; y meter en la lista algo que la interfaz sí alcanza.
       Revertir cada una
 
@@ -202,21 +211,24 @@ tests en verde, que nadie pudo alcanzar durante dos ciclos.
 
 ## Fase 7: Cierre, y lo que no cierra el build
 
-- [ ] T032 Dejar el árbol en verde: `cargo test --workspace`, `cargo clippy --workspace
-      --all-targets -- -D warnings`, `cargo fmt --all -- --check`. Se esperan **244** tests
-- [ ] T033 [P] Actualizar
+- [ ] T033 Dejar el árbol en verde: `cargo test --workspace`, `cargo clippy --workspace
+      --all-targets -- -D warnings`, `cargo fmt --all -- --check`. Se esperan **246** tests
+- [ ] T034 [P] Actualizar
       `specs/003-conectividad-y-tiers/contracts/skin-commands.md` con `abandon_connection`, el
       cambio de `complete_connection` y el campo de instrucción que pasa a ser un código — el
       contrato que cambia es el del crate que se toca
-- [ ] T034 Recorrer los cuatro fallos de [quickstart.md](./quickstart.md) con la aplicación
+- [ ] T035 Marcar `004`-T030 en `specs/004-superficie-de-conexion/tasks.md` según el resultado de
+      T037: era inalcanzable por este mismo defecto y queda medible al cerrarlo. Se hace **aquí**
+      porque el barrido cruzado corre después del merge, y para entonces ya sería deriva
+- [ ] T036 Recorrer los cuatro fallos de [quickstart.md](./quickstart.md) con la aplicación
       levantada, **en los dos idiomas**, cambiando el idioma sin reiniciar
-- [ ] T035 [persona] **SC-001**: alguien que no conoce la aplicación conecta una cuenta de punta a
+- [ ] T037 [persona] **SC-001**: alguien que no conoce la aplicación conecta una cuenta de punta a
       punta, sin ayuda. **Es el criterio que `004` dejó declarado en fallo** y no se hereda como
       aprobado: se vuelve a medir ahora que el camino existe. Anotar **sus palabras** si falla
-- [ ] T036 [persona] **SC-005**: nunca hay un instante sin señal al enviar la credencial. Un envío
+- [ ] T038 [persona] **SC-005**: nunca hay un instante sin señal al enviar la credencial. Un envío
       mudo es indistinguible de «pulsé y no pasó nada», que es el defecto que originó este spec
 
-> **T035 y T036 no se marcan `[X]` porque el CI pase.** Y T035 cierra además `004`-T030, que quedó
+> **T037 y T038 no se marcan `[X]` porque el CI pase.** Y T037 cierra además `004`-T030, que quedó
 > abierta esperando justo a esto.
 
 ---
@@ -245,15 +257,20 @@ Test en rojo → implementación → **inyección de la violación**. El tercer 
 de los defectos de este spec sobrevivieron a suites verdes, y un test de `004` pasó en verde antes
 de servir para nada por un fallo de análisis propio.
 
+> **Citar el requisito al escribir la tarea, no al revisarla.** Este hallazgo salió del
+> `/speckit-analyze` de `004` y del de `005`. Arreglar las instancias no arregla la costumbre: una
+> tarea sin cita está cubierta y no se puede demostrar, que a efectos de una revisión es lo mismo
+> que no estarlo.
+
 ### Oportunidades de paralelismo
 
 | Fase | `[P]` | Por qué |
 |---|---|---|
 | 2 | T005 | `strings.rs`, mientras el resto toca el núcleo |
-| 3 | T007, T012 | Un test y el catálogo, ajenos al camino |
-| 4 | T019 | Catálogo |
-| 5 | T026 | Catálogo |
-| 7 | T033 | Documento de contrato |
+| 3 | T007, T013 | Un test y el catálogo, ajenos al camino |
+| 4 | T020 | Catálogo |
+| 5 | T027 | Catálogo |
+| 7 | T034 | Documento de contrato |
 
 **Cadena crítica**: T003 → T004 → T006. Es el cambio de forma de los tipos, y partirlo deja el
 árbol sin compilar entre medias.
@@ -279,10 +296,10 @@ abandonar justo en el paso que este spec existe para arreglar.
 |---|---|---|
 | 1 · Preparación | T001 | — |
 | 2 · Fundacional | T002–T006 | — |
-| 3 · US1 (P1) | T007–T015 | Pegar la credencial y quedar conectado |
-| 4 · US2 (P2) | T016–T021 | Saber por qué no se pudo |
-| 5 · US3 (P3) | T022–T027 | Abandonar sin dejar rastro |
-| 6 · Caminos invisibles | T028–T031 | — |
-| 7 · Cierre | T032–T036 | — |
+| 3 · US1 (P1) | T007–T016 | Pegar la credencial y quedar conectado |
+| 4 · US2 (P2) | T017–T022 | Saber por qué no se pudo |
+| 5 · US3 (P3) | T023–T028 | Abandonar sin dejar rastro |
+| 6 · Caminos invisibles | T029–T032 | — |
+| 7 · Cierre | T033–T038 | — |
 
-**Total: 36 tareas.** 34 las cierra el build; **2 necesitan a una persona delante**.
+**Total: 38 tareas.** 36 las cierra el build; **2 necesitan a una persona delante**.

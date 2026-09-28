@@ -31,7 +31,7 @@ español— y recibe el tipo de dominio.
 
 ## Reglas que un test hace cumplir
 
-Cinco nuevas. Las veintidós que ya existen siguen aplicando.
+Siete nuevas. Las veintidós que ya existen siguen aplicando.
 
 ### R1 · Toda instrucción tiene texto en los dos idiomas — FR-010a, SC-003
 
@@ -48,6 +48,11 @@ Recorre `InstruccionDeCredencial::all()` contra el catálogo. Un valor nuevo sin
 Para cada selector de rama conocido, recoge los **valores literales que la interfaz puede enviar**.
 Una rama inalcanzable con cualquiera de ellos debe estar en la lista de caminos declarados, **con su
 issue**.
+
+**Dónde vive la lista de selectores.** En el propio test, junto a la de caminos declarados. Hoy
+tiene **un miembro**: el parámetro `delegada` de `connect_provider`. Añadir un selector de rama es
+parte de añadir la rama — si no se declara, el test no puede saber que existe, y ese es el límite
+honesto de esta comprobación ([research D2](../research.md)).
 
 **Inyecciones**: quitar la vía delegada de la lista de declarados; sacar de la lista algo que la
 interfaz ya alcanza.
@@ -80,6 +85,29 @@ conectado. **Hoy este test no puede pasar** ([research D4](../research.md)).
 Pedir conectar dos veces seguidas deja **uno**; cancelar deja **cero**.
 
 **Inyección**: volver a un mapa en vez de un `Option` — y que el test lo note, no el tipo.
+
+### R6 · El camino feliz llega hasta el final — FR-002, FR-003
+
+> `conectar_una_cuenta_termina_en_la_lista`
+
+Desafío abierto → credencial enviada → la cuenta queda conectada, el desafío deja de estar en curso,
+y la lista la muestra. **Hoy este test no puede pasar**: no hay quien llame a `complete_connection`.
+
+**Inyección**: quitar la llamada a `complete_connection`.
+
+Es el test que, de haber existido, habría hecho innecesario este spec.
+
+### R7 · El envío no admite un segundo intento — SC-005
+
+> `el_envio_no_admite_un_segundo_intento`
+
+El control de envío se deshabilita mientras la credencial viaja y se rehabilita al terminar. Cierra
+además la carrera de dos envíos del mismo desafío.
+
+**Inyección**: quitar la deshabilitación.
+
+**La otra mitad de SC-005 —que *se note* que algo ocurre— la sigue midiendo una persona.** Un test
+puede comprobar que el control está deshabilitado; que eso se entienda como «está pasando», no.
 
 ---
 

@@ -39,7 +39,7 @@ curso vive en memoria del proceso
 fuera del catálogo, **incluidas las del backend**; cero-egress estructural intacto
 
 **Scale/Scope**: un desafío en curso como máximo. Dos módulos JS, un comando nuevo, dos comandos
-retocados, un enum de dominio, seis claves de catálogo y cinco tests nuevos
+retocados, un enum de dominio, seis claves de catálogo y siete tests nuevos
 
 ## Constitution Check
 
@@ -100,8 +100,8 @@ crates/codify-app/
 │   ├── connections.js   # el camino completo: enviar, cancelar, desenlace
 │   └── styles.css       # el estado «en curso»
 └── tests/
-    ├── ui_contract.rs   # 3 tests nuevos
-    └── conexion_termina.rs  # 2 tests nuevos del camino, en el núcleo de la app
+    ├── ui_contract.rs   # 4 tests nuevos
+    └── conexion_termina.rs  # 3 tests nuevos del camino, en el núcleo de la app
 ```
 
 **Structure Decision**: sin estructura nueva. Un archivo de test nuevo en `codify-app` porque los
