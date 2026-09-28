@@ -10,6 +10,16 @@ Extiende la superficie de `002/contracts/skin-commands.md`.
 | `disconnect_provider` | `{ connectionId }` | `ack` | 🆕 FR-003 |
 | `set_mode` | `{ local }` | `ModeDto` | 🆕 FR-008a — **rearma el grafo** |
 | `mode` | — | `ModeDto` | `004`-FR-003a — la fuente única del modo |
+| `complete_connection` | `{ challengeId, secret? }` | `ProviderConnectionDto` | `005` — **la llamada que faltaba**: existía desde `003` sin que nadie la invocara |
+| `abandon_connection` | — | `ack` | `005`-FR-008 — decir «déjalo» sin dejar nada retenido |
+
+**`complete_connection` consume el desafío solo si termina bien** (`005`-FR-006). Antes lo sacaba
+del estado *antes* de intentar, así que una credencial rechazada obligaba a rehacer el formulario.
+Sus fallos viajan como **código** —`rejected`, `empty`, `no_store`, `not_in_progress`— y cada uno
+tiene texto **y salida** en el catálogo.
+
+El campo `instructions` del desafío lleva una **clave de catálogo**, no una frase. Nació como
+literal en español dentro del comando, invisible porque la interfaz ignoraba el campo.
 
 `ModeDto` es `{ local: bool }`. `set_mode` **devuelve** el modo resultante en vez de un `ack`:
 quien pide el cambio pinta lo que el núcleo confirma, no lo que supuso.

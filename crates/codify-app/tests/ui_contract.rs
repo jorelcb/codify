@@ -1370,3 +1370,147 @@ fn todo_fallo_de_conexion_tiene_texto_y_salida_en_ambos_idiomas() {
         }
     }
 }
+
+/// Selectores de rama: un parámetro con el que la interfaz elige **qué camino del núcleo** se
+/// recorre, y los valores que puede llegar a mandar.
+///
+/// Que esta lista viva aquí es su límite honesto: el test no descubre selectores que nadie le haya
+/// enseñado. Declararla es parte de añadir una rama.
+const SELECTORES: &[(&str, &str, &[&str])] = &[(
+    "connect_provider",
+    "delegada",
+    &["credencial directa", "autorización delegada"],
+)];
+
+/// Caminos del núcleo que **hoy no tienen puerta**, con el issue que los recoge.
+///
+/// Deuda con nombre, no permiso. Igual que la lista de comandos sin invocar.
+const CAMINOS_SIN_PUERTA: &[(&str, &str, &str)] = &[(
+    "connect_provider",
+    "autorización delegada",
+    // `DeviceFlow` existe desde `003` y la interfaz manda siempre la vía directa. Construirle la
+    // puerta ahora sería apostar a que sobreviva al rediseño de #56.
+    "#59",
+)];
+
+/// **FR-012, SC-007** — ningún camino del núcleo queda sin puerta sin que nadie lo diga.
+///
+/// Este spec nace de algo construido, con sus tests en verde, que nadie pudo alcanzar durante dos
+/// ciclos. `ningun_comando_del_backend_queda_sin_invocar` caza el caso del comando huérfano; este
+/// caza el de la **rama** dentro de un comando, elegida por un parámetro que la piel fija — que es
+/// lo que le pasa a la autorización delegada.
+///
+/// **Lo que no cubre**: esta clase, no todo código inalcanzable. Está dicho en research D2 del
+/// spec, no descubierto al revisar.
+#[test]
+fn ningun_camino_del_nucleo_queda_sin_puerta() {
+    let js: String = ui_files()
+        .into_iter()
+        .filter(|(n, _)| n.ends_with(".js"))
+        .map(|(_, c)| sin_comentarios(&c))
+        .collect();
+
+    for (comando, parametro, ramas) in SELECTORES {
+        // Los valores literales que la interfaz manda para este selector.
+        let mut valores = Vec::new();
+        for trozo in js.split(&format!("invoke(\"{comando}\"")).skip(1) {
+            let Some(bloque) = trozo.split("});").next() else {
+                continue;
+            };
+            let Some((_, tras)) = bloque.split_once(&format!("{parametro}:")) else {
+                continue;
+            };
+            let valor: String = tras
+                .trim_start()
+                .chars()
+                .take_while(|c| c.is_alphanumeric())
+                .collect();
+            if !valor.is_empty() && !valores.contains(&valor) {
+                valores.push(valor);
+            }
+        }
+
+        // `false` alcanza la primera rama, `true` la segunda. Un valor calculado alcanza ambas.
+        let literal = valores.iter().all(|v| v == "true" || v == "false");
+        for (i, rama) in ramas.iter().enumerate() {
+            let alcanzable =
+                !literal || valores.contains(&if i == 0 { "false" } else { "true" }.to_string());
+            if alcanzable {
+                continue;
+            }
+            let declarado = CAMINOS_SIN_PUERTA
+                .iter()
+                .any(|(c, r, _)| c == comando && r == rama);
+            assert!(
+                declarado,
+                "la rama «{rama}» de `{comando}` no es alcanzable desde la interfaz —solo manda \
+                 `{parametro}: {valores:?}`— y no está declarada. Algo construido que nadie puede \
+                 usar es lo que costó dos ciclos en #54: o se le abre la puerta, o se dice"
+            );
+        }
+    }
+
+    // Y al revés: lo que ya se alcanza no puede seguir en la lista de deuda.
+    for (comando, rama, issue) in CAMINOS_SIN_PUERTA {
+        let manda_true = js.split(&format!("invoke(\"{comando}\"")).skip(1).any(|t| {
+            t.split("});")
+                .next()
+                .is_some_and(|b| b.contains("delegada: true"))
+        });
+        assert!(
+            !manda_true,
+            "«{rama}» de `{comando}` ya se alcanza y sigue declarada sin puerta ({issue}): salir \
+             de la lista es parte de darla por cerrada"
+        );
+    }
+}
+
+/// Tests que **sí** pueden tocar el llavero real, y por qué se les permite.
+///
+/// Solo los marcados `#[ignore]`, que CI nunca corre y que quien valida ejecuta a sabiendas.
+const PUEDEN_TOCAR_EL_LLAVERO: &[&str] = &["contract_credential_store.rs"];
+
+/// Ningún test escribe en el llavero de quien corre la suite.
+///
+/// Nace de haberlo hecho. Al cablear el camino de `005`, `completar_desafio` construía
+/// `SystemKeyring` por dentro, así que los primeros tests del camino **dejaron secretos en el
+/// llavero real** — y habrían dejado uno más en cada máquina que corriera `cargo test`.
+///
+/// El arreglo fue hacer el almacén inyectable; esta guarda es para que no vuelva. Comprobar que un
+/// camino termina no puede exigir tocar los secretos de nadie, y un test que lo hace no falla: deja
+/// rastro en silencio.
+#[test]
+fn ningun_test_escribe_en_el_llavero_real() {
+    let raiz = crate_dir().parent().expect("crates/").to_path_buf();
+    let dirs = [
+        raiz.join("codify-app/tests"),
+        raiz.join("codify-core/tests"),
+    ];
+    let mut culpables = Vec::new();
+    for entrada in dirs
+        .iter()
+        .filter_map(|d| std::fs::read_dir(d).ok())
+        .flatten()
+    {
+        let ruta = entrada.expect("entrada").path();
+        let nombre = ruta
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        if !nombre.ends_with(".rs") || PUEDEN_TOCAR_EL_LLAVERO.contains(&nombre.as_str()) {
+            continue;
+        }
+        let contenido = sin_comentarios(&read(&ruta));
+        // La aguja se compone en dos trozos **a propósito**: escrita entera, aparecería en este
+        // archivo y el test se acusaría a sí mismo. Ya lo hizo una vez.
+        let construir = concat!("SystemKeyring", "::new(");
+        if contenido.contains(construir) {
+            culpables.push(nombre);
+        }
+    }
+    assert!(
+        culpables.is_empty(),
+        "estos tests construyen el almacén del sistema, así que escriben en el llavero de quien \
+         corra la suite: {culpables:?}. El almacén es inyectable — usa uno en memoria"
+    );
+}
