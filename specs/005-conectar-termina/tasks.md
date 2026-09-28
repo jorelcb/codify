@@ -193,17 +193,17 @@ formulario sigue donde `004` lo dejó.
 No pertenece a ninguna historia: es la regla que sale del propio defecto. Algo construido, con sus
 tests en verde, que nadie pudo alcanzar durante dos ciclos.
 
-- [ ] T029 Escribir `ningun_camino_del_nucleo_queda_sin_puerta` en
+- [X] T029 Escribir `ningun_camino_del_nucleo_queda_sin_puerta` en
       `crates/codify-app/tests/ui_contract.rs`: para cada selector de rama conocido, los valores
       literales que la interfaz puede enviar; una rama inalcanzable con todos ellos debe estar en
       la lista de **caminos declarados con su issue**, y declarando la lista de selectores
       conocidos —hoy con un solo miembro, el parámetro `delegada` (R2, FR-012, SC-007)
-- [ ] T030 Abrir el issue de la vía delegada: su motor existe desde `003`, la interfaz manda
+- [X] T030 Abrir el issue de la vía delegada: su motor existe desde `003`, la interfaz manda
       siempre la vía directa, y hasta ahora nada lo decía. **Va antes de T031**, que necesita su
       número
-- [ ] T031 Declarar la autorización delegada como camino sin puerta en la lista de
+- [X] T031 Declarar la autorización delegada como camino sin puerta en la lista de
       `crates/codify-app/tests/ui_contract.rs`, **con el número de issue que abrió T030**
-- [ ] T032 Verificar T029 por inyección en `crates/codify-app/tests/ui_contract.rs`: quitar la
+- [X] T032 Verificar T029 por inyección en `crates/codify-app/tests/ui_contract.rs`: quitar la
       delegada de la lista de declarados; y meter en la lista algo que la interfaz sí alcanza.
       Revertir cada una
 
@@ -211,17 +211,25 @@ tests en verde, que nadie pudo alcanzar durante dos ciclos.
 
 ## Fase 7: Cierre, y lo que no cierra el build
 
-- [ ] T033 Dejar el árbol en verde: `cargo test --workspace`, `cargo clippy --workspace
+- [X] T033 Dejar el árbol en verde: `cargo test --workspace`, `cargo clippy --workspace
       --all-targets -- -D warnings`, `cargo fmt --all -- --check`. Se esperan **246** tests
-- [ ] T034 [P] Actualizar
+- [X] T034 [P] Actualizar
       `specs/003-conectividad-y-tiers/contracts/skin-commands.md` con `abandon_connection`, el
       cambio de `complete_connection` y el campo de instrucción que pasa a ser un código — el
       contrato que cambia es el del crate que se toca
-- [ ] T035 Marcar `004`-T030 en `specs/004-superficie-de-conexion/tasks.md` según el resultado de
+- [X] T035 Marcar `004`-T030 en `specs/004-superficie-de-conexion/tasks.md` según el resultado de
       T037: era inalcanzable por este mismo defecto y queda medible al cerrarlo. Se hace **aquí**
       porque el barrido cruzado corre después del merge, y para entonces ya sería deriva
-- [ ] T036 Recorrer los cuatro fallos de [quickstart.md](./quickstart.md) con la aplicación
-      levantada, **en los dos idiomas**, cambiando el idioma sin reiniciar
+- [~] T036 Recorrer los cuatro fallos de [quickstart.md](./quickstart.md) con la aplicación
+      levantada, **en los dos idiomas**, cambiando el idioma sin reiniciar.
+      **Parcial (2026-09-28).** Verificado sobre el árbol de accesibilidad de la app real que el
+      camino **existe**: el desafío se abre, la instrucción llega traducida del catálogo, el campo
+      de la credencial es de tipo seguro —el sistema lo devuelve como `[redacted]`, así que no se
+      expone ni al árbol— y están Enviar y Cancelar. **Queda recorrer los fallos**: conducir la
+      ventana por accesibilidad resultó inestable —desaparece del árbol tras un clic, sin crash ni
+      log— y no se diagnosticó. Se hace con la persona de T037, que ya tendrá la app delante.
+      **El envío con éxito no se ejercitó a propósito**: escribe un secreto en el llavero del
+      operador, y eso lo decide quien es dueño del llavero
 - [ ] T037 [persona] **SC-001**: alguien que no conoce la aplicación conecta una cuenta de punta a
       punta, sin ayuda. **Es el criterio que `004` dejó declarado en fallo** y no se hereda como
       aprobado: se vuelve a medir ahora que el camino existe. Anotar **sus palabras** si falla
