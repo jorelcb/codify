@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [X] No [NEEDS CLARIFICATION] markers remain
 - [X] Requirements are testable and unambiguous
 - [X] Success criteria are measurable
 - [X] Success criteria are technology-agnostic (no implementation details)
@@ -31,10 +31,16 @@
 
 ## Notes
 
-- **Queda un marcador, y decide el tamaño del ciclo**: si entra hablar con un agente de línea de
-  órdenes. Es la pregunta que #63 necesita respondida —«qué cuenta como local» cuando un proveedor
-  es un programa y no una dirección— y toca el principio **[NON-NEGOTIABLE]** de cero-egress, que
-  hoy se sostiene en que la dirección sea del propio equipo. Primera pregunta de `/speckit-clarify`.
+- **Resuelto en la sesión de clarificación del 2026-10-02.** Lo que clasifica a un proveedor no es
+  dónde corre el programa sino **dónde ocurre la inferencia**. Este ciclo detecta todo y cablea solo
+  lo que puede sostener esa propiedad; un agente de inferencia remota se encuentra y se nombra por
+  lo que es.
+- **Y se corrigió un error de lectura del agente, no del spec**: el cero-egress estructural rige el
+  camino local, que es lo que la constitución dice. El producto siempre quiso **los dos caminos**.
+  Tratar «nada sale del equipo» como condición universal dejaría fuera la mitad del producto. No
+  hace falta enmienda constitucional: hacía falta dejar de leerla de más.
+- **La variable de entorno deja de ser el modo de integrar un modelo local.** Ninguna herramienta
+  comparable le pide eso al usuario. Sobrevive como anulación de desarrollo, declarada.
 - **El «por qué» de este spec no es una opinión: es lo que hay en la máquina.** Cuatro programas
   usables en el `PATH` y la aplicación enseñando una dirección por defecto hacia un servicio que no
   está instalado. Eso se comprobó, no se supuso.

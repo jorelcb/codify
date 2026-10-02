@@ -32,6 +32,14 @@ una dirección por defecto que apunta a Ollama, **que en esa máquina no está i
 Las dos rondas de validación con personas fallaron intentando conectar algo **remoto**. Nadie llegó
 a probar el camino local, que es el que el producto dice servir primero.
 
+## Clarifications
+
+### Session 2026-10-02
+
+- Q: ¿Entra en este ciclo hablar con un agente de línea de órdenes, y qué cuenta como «local»? → A: **Detectar todo; cablear en este ciclo solo lo que puede probarse local.** Lo que decide la clasificación no es dónde corre el programa sino **dónde ocurre la inferencia**: `llama-server` y `lms` corren local y infieren local; `claude` corre local e infiere en remoto. Son caminos distintos, no uno bueno y uno malo.
+- **Corrección del operador, no una pregunta del agente**: «nada sale del equipo» no es una condición que todo proveedor deba cumplir. **Suponerlo era un error de lectura.** El objetivo del producto siempre fue **ofrecer los dos caminos**: integración con modelos que cumplen esa condición, y también con los de inferencia remota. La constitución ya lo dice acotado —cero-egress estructural **en modo local**—; quien lo generalizó fue el agente. Un proveedor remoto no es una violación: es la otra mitad del producto. **Lo que sí es un defecto es que algo remoto se presente como local.**
+- Q: Hoy el único modo de decir dónde está tu modelo es una variable de entorno, con una dirección por defecto. ¿Cómo convive con la detección? → A: **No convive: la detección es el único modo en que un usuario integra un modelo local.** Pedir una variable de entorno para usar algo que ya está instalado es trasladarle al usuario el trabajo de descubrir, y **ninguna herramienta comparable lo hace**. La variable sobrevive únicamente como anulación para desarrollo y pruebas, declarada como tal; el producto deja de mencionarla y deja de inventarse una dirección por defecto.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Abrir la aplicación y que ya sepa qué tengo (Priority: P1)
@@ -92,6 +100,8 @@ Buscar lo instalado no retrasa el momento en que la aplicación es utilizable.
 - **Un servidor que responde y no sirve modelos**: contesta en el puerto y su lista está vacía.
 - **Algo que no es lo que parece**: un ejecutable llamado como uno conocido que hace otra cosa.
 - **Nada instalado**, que es el caso de quien abre esto por primera vez.
+- **Una anulación de desarrollo apuntando a algo que no responde**: se trata como cualquier otra
+  cosa que no responde, sin trato de favor por venir del entorno.
 
 ## Requirements *(mandatory)*
 
@@ -123,10 +133,29 @@ Buscar lo instalado no retrasa el momento en que la aplicación es utilizable.
 - **FR-009**: Lo que no se puede usar MUST decirse con **qué falta** para poder usarlo, no
   simplemente omitirse.
 
+**Cómo se integra un modelo local**
+
+- **FR-013**: La detección MUST ser **el único modo** en que un usuario integra un modelo local. No
+  MUST exigirse configurar nada para usar algo que ya está instalado.
+- **FR-014**: La aplicación MUST NOT ofrecer una dirección por defecto cuando no hay nada
+  escuchando en ella. Hoy enseña una que apunta a un servicio que puede no estar instalado, y eso
+  es afirmar algo sin comprobarlo — justo lo que el producto dice no hacer.
+- **FR-015**: Una anulación por entorno MAY existir **para desarrollo y pruebas**, y MUST estar
+  declarada como tal. MUST NOT aparecer en la interfaz ni en nada que el usuario tenga que leer
+  para usar el producto.
+
 **Lo que no puede romperse**
 
-- **FR-010**: Un modelo detectado MUST seguir sometido a la garantía de que nada sale del equipo.
-  Detectar **amplía lo que se encuentra, nunca lo que se permite**.
+- **FR-010**: Cada modelo detectado MUST clasificarse por **dónde ocurre la inferencia**, no por
+  dónde corre el programa. Un programa que vive en la máquina y consulta un servicio remoto **es
+  remoto**, y presentarlo como local sería el defecto — no tenerlo.
+- **FR-010a**: La clasificación MUST poder **sostenerse**, no declararse. Hoy un proveedor local lo
+  es porque su dirección es del propio equipo y el constructor rechaza cualquier otra. Lo que se
+  cablee en este ciclo MUST conservar esa propiedad; lo que no pueda sostenerla **no se cablea como
+  local**.
+- **FR-010b**: Detectar **no decide** por el usuario. Encontrar un modelo de inferencia remota no lo
+  pone en marcha ni lo da por aceptado: se enseña, se dice lo que es, y se usa si el usuario lo
+  elige. Los dos caminos existen a propósito.
 - **FR-011**: La detección MUST NOT ejecutar nada que modifique la máquina. Mirar qué hay no es
   instalar, arrancar ni configurar nada.
 - **FR-012**: Toda cadena visible MUST salir del catálogo, en los dos idiomas.
@@ -150,25 +179,35 @@ Buscar lo instalado no retrasa el momento en que la aplicación es utilizable.
   ella. Hoy se enseña una que apunta a un servicio que puede no estar instalado.
 - **SC-003**: Todo lo ofrecido declara su procedencia: **cero** entradas que aparecen sin explicar
   de dónde salieron.
-- **SC-004**: La aplicación responde desde el arranque **aunque la detección no haya terminado**.
-- **SC-005**: Detectar **no cambia** lo que puede salir del equipo, verificable de forma
-  automática.
+- **SC-004**: La aplicación responde desde el arranque **aunque la detección no haya terminado**, y
+  la detección no pasa de **3 segundos** antes de abandonarse diciéndolo.
+- **SC-007**: **Cero** pasos de configuración para usar un modelo que ya está instalado. Lo que el
+  usuario tiene que leer para empezar a trabajar en local es **nada**.
+- **SC-005**: **Cero** modelos clasificados como locales cuya inferencia ocurra fuera del equipo,
+  verificable de forma automática. Detectar amplía lo que se encuentra; lo que cambia qué sale es
+  lo que el usuario elige, no lo que la aplicación descubre.
 - **SC-006**: Una persona con algo instalado llega a generar contexto **sin pasar por ningún
   formulario de conexión**.
 
 ## Assumptions
 
-- **Qué se hace con lo detectado** [NEEDS CLARIFICATION: hoy la aplicación habla con los modelos
-  locales por HTTP, y rechaza por construcción cualquier dirección que no sea del propio equipo —
-  así es como la garantía de cero-egress no puede mentir. Un agente de línea de órdenes como
-  `claude` **no tiene dirección**: es un programa que se ejecuta. ¿Entra en este ciclo hablar con
-  él, o este ciclo **encuentra** y solo se usa lo que ya se sabe usar?]
+- **Este ciclo detecta todo y cablea solo lo que puede probarse local.** Un agente de línea de
+  órdenes de inferencia remota se encuentra, se enseña y se clasifica como remoto; que además se
+  pueda **usar** por esa vía es trabajo de otro ciclo, porque hablar con un subproceso necesita un
+  adapter que hoy no existe. Encontrarlo y nombrarlo correctamente ya es más de lo que hay.
 - La detección es **de solo lectura**. Mirar el `PATH` y preguntar a un servidor que ya está
   corriendo no cambia nada en la máquina; instalar o arrancar algo sí, y eso lo decide el usuario.
+- **El producto ofrece los dos caminos a propósito**: modelos cuya inferencia no sale del equipo, y
+  modelos de inferencia remota. La garantía estructural de cero-egress rige **el primero**, que es
+  lo que la constitución dice. Tratarla como una condición que todo proveedor debe cumplir dejaría
+  fuera la mitad del producto.
 - No se rediseña cómo se añade un proveedor **remoto**. Eso es #61, y este spec no depende de él ni
   al revés.
 - La lista de qué buscar es **conocida y declarada**: se mira lo que se sabe mirar. Encontrar algo
   nuevo exige enseñárselo, y eso se dice en vez de aparentar que se descubre solo.
+- **El límite de la detección son 3 segundos.** Es un número elegido, no medido: por encima de eso
+  la espera se nota al abrir, y por debajo se corre el riesgo de descartar un servidor que tarda en
+  contestar. Si aparece evidencia de que hace falta otro, se revisa.
 
 ### Dependencies
 
@@ -181,5 +220,7 @@ Buscar lo instalado no retrasa el momento en que la aplicación es utilizable.
 
 - Instalar o arrancar nada por cuenta propia. Se dice qué falta; lo hace el usuario.
 - Rediseñar el alta de proveedores remotos (#61).
+- **Usar** un modelo de inferencia remota a través de un subproceso. Se detecta y se clasifica;
+  hablarle necesita un adapter de subproceso y es un ciclo propio.
 - Que el modo deje de ser una entrada (#63) — depende de este, pero se decide allí.
 - Descubrir proveedores que nadie ha enseñado a buscar.
