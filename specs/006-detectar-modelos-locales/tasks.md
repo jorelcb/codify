@@ -135,18 +135,18 @@ procedencia que no se puede omitir, y una clasificación que no se puede declara
 
 ### Test primero
 
-- [ ] T018 [US2] Escribir `todo_modelo_disponible_declara_su_procedencia` en
+- [X] T018 [US2] Escribir `todo_modelo_disponible_declara_su_procedencia` en
       `crates/codify-app/tests/ui_contract.rs` — la piel **enseña** la procedencia. Que no se pueda
       construir sin ella lo sostiene el tipo; este test cubre lo que el tipo no alcanza. **Debe
       fallar** (R3, FR-005, FR-006, SC-003)
 
 ### Implementación
 
-- [ ] T019 [US2] Enseñar la procedencia de cada modelo en `crates/codify-app/ui/provider.js`, y
+- [X] T019 [US2] Enseñar la procedencia de cada modelo en `crates/codify-app/ui/provider.js`, y
       distinguir lo detectado de lo que puso el usuario (FR-005, FR-006)
-- [ ] T020 [P] [US2] Añadir las claves de procedencia a `crates/codify-app/src/strings.rs`, en los
+- [X] T020 [P] [US2] Añadir las claves de procedencia a `crates/codify-app/src/strings.rs`, en los
       dos idiomas (FR-012)
-- [ ] T021 [US2] Verificar T018 por inyección: enseñar la lista sin la procedencia, en
+- [X] T021 [US2] Verificar T018 por inyección: enseñar la lista sin la procedencia, en
       `crates/codify-app/ui/provider.js`. Revertir
 
 **Punto de control**: ninguna fila de la lista aparece sin decir de dónde salió. Una lista mágica
@@ -164,18 +164,18 @@ contradice el principio rector del proyecto.
 
 ### Test primero
 
-- [ ] T022 [US3] Escribir `la_deteccion_respeta_su_presupuesto` en
+- [X] T022 [US3] Escribir `la_deteccion_respeta_su_presupuesto` en
       `crates/codify-core/tests/deteccion.rs` — con una fuente que nunca contesta, la detección
       termina dentro de los **3 s** y lo declara. **Debe fallar** (R6, FR-007, FR-008, SC-004)
 
 ### Implementación
 
-- [ ] T023 [US3] Correr las fuentes **a la vez** con un presupuesto común de 3 s en
+- [X] T023 [US3] Correr las fuentes **a la vez** con un presupuesto común de 3 s en
       `crates/codify-core/src/application/deteccion.rs`, abandonando y declarándolo lo que no
       llegue ([research D5](./research.md))
-- [ ] T024 [US3] Pintar la interfaz **antes** de que la detección termine, diciendo que está
+- [X] T024 [US3] Pintar la interfaz **antes** de que la detección termine, diciendo que está
       mirando, en `crates/codify-app/ui/provider.js` (FR-007)
-- [ ] T025 [US3] Verificar T022 por inyección: esperar a la fuente lenta sin presupuesto, en
+- [X] T025 [US3] Verificar T022 por inyección: esperar a la fuente lenta sin presupuesto, en
       `crates/codify-core/src/application/deteccion.rs`. Revertir
 
 **Punto de control**: la aplicación responde desde el arranque aunque no haya terminado de mirar.
@@ -188,26 +188,26 @@ No cuelga de ninguna historia: es lo que deja de hacerse. Enseñar una direcció
 que puede no estar instalado es **afirmar algo sin comprobarlo**, en un producto cuya tesis es que
 eso no se hace.
 
-- [ ] T026 Escribir `ninguna_direccion_por_defecto_sobrevive` en
+- [X] T026 Escribir `ninguna_direccion_por_defecto_sobrevive` en
       `crates/codify-app/tests/ui_contract.rs` — no existe ninguna dirección de proveedor escrita
       como valor por defecto. **Debe fallar**: hoy está `DEFAULT_ENDPOINT` (R5, FR-014, SC-002)
-- [ ] T027 Escribir `la_interfaz_no_pide_una_direccion` en
+- [X] T027 Escribir `la_interfaz_no_pide_una_direccion` en
       `crates/codify-app/tests/ui_contract.rs` — ningún campo pide una dirección de proveedor
       local, y `CODIFY_LOCAL_ENDPOINT` no aparece ni en `ui/` ni en el catálogo. **Debe fallar**
       (R9, FR-013, FR-015)
-- [ ] T028 Retirar `DEFAULT_ENDPOINT` de `crates/codify-app/src/commands.rs` y hacer que
+- [X] T028 Retirar `DEFAULT_ENDPOINT` de `crates/codify-app/src/commands.rs` y hacer que
       `probe_provider` sondee **lo detectado** en vez de una dirección inventada (FR-014)
-- [ ] T029 Dejar `CODIFY_LOCAL_ENDPOINT` como **anulación de desarrollo**, declarada en
+- [X] T029 Dejar `CODIFY_LOCAL_ENDPOINT` como **anulación de desarrollo**, declarada en
       `crates/codify-app/src/commands.rs` y pasando por el mismo sondeo que todo lo demás, sin
       trato de favor. Fuera de la interfaz y de todo lo que el usuario tenga que leer (FR-015)
-- [ ] T030 Verificar T026 por inyección: devolver una constante con una dirección en
+- [X] T030 Verificar T026 por inyección: devolver una constante con una dirección en
       `crates/codify-app/src/commands.rs`. Revertir
 
 ---
 
 ## Fase 7: Cierre, y lo que no cierra el build
 
-- [ ] T031 Dejar el árbol en verde: `cargo test --workspace`, `cargo clippy --workspace
+- [X] T031 Dejar el árbol en verde: `cargo test --workspace`, `cargo clippy --workspace
       --all-targets -- -D warnings`, `cargo fmt --all -- --check`. Se esperan **261** tests
 - [ ] T032 [P] Actualizar `specs/003-conectividad-y-tiers/contracts/skin-commands.md` con el
       comando de detección y la desaparición de la dirección por defecto — el contrato que cambia

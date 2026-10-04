@@ -1676,3 +1676,94 @@ fn la_deteccion_arranca_sola() {
          caso esperado es que haya más de uno (FR-004)"
     );
 }
+
+/// **FR-005, FR-006, SC-003** — todo lo ofrecido declara de dónde salió.
+///
+/// Que no se pueda **construir** un modelo sin procedencia lo sostiene el tipo. Este test cubre lo
+/// que el tipo no alcanza: que la piel la **enseñe**, y que se distinga lo detectado de lo que puso
+/// el usuario. Una lista que aparece sola, sin explicar nada, es la clase de afirmación que este
+/// producto existe para no hacer.
+#[test]
+fn todo_modelo_disponible_declara_su_procedencia() {
+    let js = ui_files()
+        .into_iter()
+        .find(|(n, _)| n == "provider.js")
+        .map(|(_, c)| sin_comentarios(&c))
+        .expect("falta `ui/provider.js`");
+
+    let pintado = js
+        .split_once("export function renderDetectados")
+        .and_then(|(_, r)| r.split_once("\n}"))
+        .map(|(cuerpo, _)| cuerpo.to_string())
+        .expect("`provider.js` debe pintar lo detectado");
+
+    assert!(
+        pintado.contains("detection.origin."),
+        "lo detectado se enseña sin decir de dónde salió: una lista mágica contradice el principio \
+         del proyecto, que es no afirmar lo que no se puede verificar"
+    );
+    assert!(
+        pintado.contains("detection.inference."),
+        "no se dice dónde infiere cada modelo, que es lo que distingue los dos caminos"
+    );
+}
+
+/// **FR-014, SC-002** — no queda ninguna dirección de proveedor escrita como valor por defecto.
+///
+/// Enseñar `http://localhost:11434` cuando ahí no hay nada es **afirmar algo sin comprobarlo**, en
+/// un producto cuya tesis es que eso no se hace. En la máquina donde se escribió este spec esa
+/// dirección apunta a un servicio que no está instalado, mientras hay cuatro cosas usables en el
+/// `PATH` que la aplicación no veía.
+#[test]
+fn ninguna_direccion_por_defecto_sobrevive() {
+    let rust = sin_comentarios(&read(crate_dir().join("src/commands.rs")));
+    let culpables: Vec<String> = rust
+        .lines()
+        .enumerate()
+        .filter(|(_, l)| {
+            let l = l.trim();
+            // Una dirección escrita en el código **fuera de una lista de sitios donde sondear**.
+            l.contains("http://") && (l.contains("const ") || l.contains("DEFAULT"))
+        })
+        .map(|(n, l)| format!("commands.rs:{}: {}", n + 1, l.trim()))
+        .collect();
+    assert!(
+        culpables.is_empty(),
+        "queda una dirección escrita como valor por defecto, y una dirección que nadie comprobó no \
+         se enseña:\n{}",
+        culpables.join("\n")
+    );
+}
+
+/// **FR-013, FR-015** — la interfaz no pide una dirección, ni menciona la anulación de desarrollo.
+///
+/// Pedir una variable de entorno para usar algo que ya está instalado es trasladarle al usuario el
+/// trabajo de descubrir. Ninguna herramienta comparable lo hace.
+#[test]
+fn la_interfaz_no_pide_una_direccion() {
+    let html = read(ui_dir().join("index.html"));
+    let campos_sospechosos: Vec<&str> = html
+        .lines()
+        .filter(|l| l.contains("<input") && (l.contains("endpoint") || l.contains("conn-endpoint")))
+        .filter(|l| !l.contains("conn-endpoint")) // el del servicio **remoto** sí lo pide, y debe
+        .collect();
+    assert!(
+        campos_sospechosos.is_empty(),
+        "la interfaz pide una dirección de modelo local: eso es lo que la detección viene a \
+         eliminar\n{campos_sospechosos:?}"
+    );
+
+    // La anulación de desarrollo existe, y **no es algo que el usuario deba leer**.
+    let variable = concat!("CODIFY_LOCAL", "_ENDPOINT");
+    for (name, content) in ui_files() {
+        assert!(
+            !content.contains(variable),
+            "`{variable}` aparece en `ui/{name}`: es una anulación de desarrollo, no parte del \
+             producto"
+        );
+    }
+    assert!(
+        !read(crate_dir().join("src/strings.rs")).contains(variable),
+        "`{variable}` aparece en el catálogo: nada que el usuario lea debería mencionarla"
+    );
+}

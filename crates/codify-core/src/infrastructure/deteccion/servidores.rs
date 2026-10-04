@@ -11,7 +11,7 @@ use crate::infrastructure::providers::probe::LocalProviderProbe;
 
 /// Puertos de loopback donde miran las herramientas del ramo. **Declarados**: añadir uno es
 /// añadirlo aquí.
-const PUERTOS: &[(&str, u16)] = &[("ollama", 11434), ("llama.cpp", 8080), ("lm-studio", 1234)];
+pub const PUERTOS: &[(&str, u16)] = &[("ollama", 11434), ("llama.cpp", 8080), ("lm-studio", 1234)];
 
 #[derive(Default)]
 pub struct ServidoresEnEsteEquipo;

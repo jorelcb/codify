@@ -155,3 +155,33 @@ async fn el_path_se_recorre_entero() {
         "un binario del `PATH` no puede sostener dónde infiere, así que no se cablea como local"
     );
 }
+
+/// **FR-007, FR-008, SC-004** — la detección tiene un límite y lo declara.
+///
+/// Una fuente que no contesta no puede dejar la aplicación esperando: se abandona **diciéndolo**.
+/// Una espera muda es indistinguible de que no pase nada, y eso ya costó un ciclo entero en esta
+/// misma aplicación.
+#[tokio::test]
+async fn la_deteccion_respeta_su_presupuesto() {
+    use codify_core::application::deteccion::detectar_con;
+
+    let fuentes: Vec<std::sync::Arc<dyn FuenteDeDeteccion>> =
+        vec![std::sync::Arc::new(FuenteDeMentira {
+            nombre: "la que nunca contesta",
+            modelos: vec![servidor("fantasma")],
+            tarda: Duration::from_secs(30),
+        })];
+
+    let empezo = std::time::Instant::now();
+    let d = detectar_con(&fuentes, Duration::from_millis(80)).await;
+
+    assert!(
+        empezo.elapsed() < Duration::from_secs(1),
+        "la detección esperó a una fuente que no contesta: {:?}",
+        empezo.elapsed()
+    );
+    assert!(
+        d.incompleta,
+        "no se dijo que la búsqueda quedó a medias: abandonar en silencio es peor que tardar"
+    );
+}

@@ -10,6 +10,7 @@ Extiende la superficie de `002/contracts/skin-commands.md`.
 | `disconnect_provider` | `{ connectionId }` | `ack` | 🆕 FR-003 |
 | `set_mode` | `{ local }` | `ModeDto` | 🆕 FR-008a — **rearma el grafo** |
 | `mode` | — | `ModeDto` | `004`-FR-003a — la fuente única del modo |
+| `detect_models` | — | `DeteccionDto` | `006` — qué modelos hay **en esta máquina**, buscado al arrancar |
 | `complete_connection` | `{ challengeId, secret? }` | `ProviderConnectionDto` | `005` — **la llamada que faltaba**: existía desde `003` sin que nadie la invocara |
 | `abandon_connection` | — | `ack` | `005`-FR-008 — decir «déjalo» sin dejar nada retenido |
 
@@ -17,6 +18,11 @@ Extiende la superficie de `002/contracts/skin-commands.md`.
 del estado *antes* de intentar, así que una credencial rechazada obligaba a rehacer el formulario.
 Sus fallos viajan como **código** —`rejected`, `empty`, `no_store`, `not_in_progress`— y cada uno
 tiene texto **y salida** en el catálogo.
+
+**`006` — no hay dirección por defecto.** Desapareció `http://localhost:11434`, que apuntaba a un
+servicio que podía no estar instalado: `probe_provider` y `start_session` usan **lo detectado**, y
+sin nada detectado lo dicen en vez de inventarse una dirección. `CODIFY_LOCAL_ENDPOINT` sobrevive
+como anulación de desarrollo, fuera de la interfaz y del catálogo.
 
 El campo `instructions` del desafío lleva una **clave de catálogo**, no una frase. Nació como
 literal en español dentro del comando, invisible porque la interfaz ignoraba el campo.
