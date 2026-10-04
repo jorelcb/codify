@@ -31,7 +31,7 @@ producto quiere los dos caminos. Lo que sería un defecto es que apareciera como
 
 ## Fase 1: Preparación
 
-- [ ] T001 Registrar la línea de base — `cargo test --workspace` (**251** verdes) y
+- [X] T001 Registrar la línea de base — `cargo test --workspace` (**251** verdes) y
       `cargo test -p codify-app --test ui_contract` (28 verdes), para que una caída posterior sea
       atribuible
 
@@ -44,25 +44,25 @@ procedencia que no se puede omitir, y una clasificación que no se puede declara
 
 ### Tests primero
 
-- [ ] T002 Escribir `nada_marcado_como_local_infiere_fuera` en
+- [X] T002 Escribir `nada_marcado_como_local_infiere_fuera` en
       `crates/codify-core/tests/deteccion.rs` — un modelo solo se marca «infiere dentro» si viene
       de una fuente que lo sostiene; lo que solo lo declara se enseña y no se cablea. **Debe
       fallar**: los tipos no existen (R2, FR-010, FR-010a, SC-005)
-- [ ] T003 [P] Escribir `toda_distancia_tiene_texto_en_ambos_idiomas` en
+- [X] T003 [P] Escribir `toda_distancia_tiene_texto_en_ambos_idiomas` en
       `crates/codify-app/tests/ui_contract.rs`, recorriendo `Distancia::all()` contra el catálogo.
       **Debe fallar** (R4, FR-012)
 
 ### Implementación
 
-- [ ] T004 Crear `ModeloDisponible`, `Procedencia`, `Distancia` y `DondeInfiere` en
+- [X] T004 Crear `ModeloDisponible`, `Procedencia`, `Distancia` y `DondeInfiere` en
       `crates/codify-core/src/application/deteccion.rs`. **La procedencia no puede omitirse**: lo
       sostiene el tipo, no un test (FR-005). `Distancia` y `DondeInfiere` con `code()` y `all()`,
       como `ProviderIssue`
-- [ ] T005 Definir el port `DetectorDeModelos` en `crates/codify-core/src/application/deteccion.rs`.
+- [X] T005 Definir el port `DetectorDeModelos` en `crates/codify-core/src/application/deteccion.rs`.
       Vive en `application/` porque
       **el dominio no nombra «detectar»**: es una capacidad, y la constitución separa esos dos
       casos (FR-001)
-- [ ] T006 [P] Añadir a `crates/codify-app/src/strings.rs` las claves de las distancias y de dónde
+- [X] T006 [P] Añadir a `crates/codify-app/src/strings.rs` las claves de las distancias y de dónde
       infiere, en los dos idiomas (FR-012)
 
 **Punto de control**: 251 tests siguen verdes, más los dos nuevos. Nada de la interfaz ha cambiado.
@@ -79,44 +79,44 @@ procedencia que no se puede omitir, y una clasificación que no se puede declara
 
 ### Tests primero
 
-- [ ] T007 [US1] Escribir `la_deteccion_no_ejecuta_nada` en
+- [X] T007 [US1] Escribir `la_deteccion_no_ejecuta_nada` en
       `crates/codify-app/tests/ui_contract.rs` — ningún módulo de `infrastructure/deteccion/`
       construye un proceso hijo. **Debe fallar** mientras el módulo no exista, y **debe seguir
       cayendo** si alguien añade la invocación (R1, FR-011)
-- [ ] T008 [US1] Escribir en `crates/codify-core/tests/deteccion.rs` que las dos fuentes producen
+- [X] T008 [US1] Escribir en `crates/codify-core/tests/deteccion.rs` que las dos fuentes producen
       la **distancia** que les toca —servidor que responde → usable; binario en el `PATH` →
       instalado— con fuentes de mentira. **Debe fallar** (FR-002)
-- [ ] T009 [US1] Escribir `todo_motivo_de_indisponibilidad_tiene_texto_y_salida` en
+- [X] T009 [US1] Escribir `todo_motivo_de_indisponibilidad_tiene_texto_y_salida` en
       `crates/codify-app/tests/ui_contract.rs` — cada distancia que no sea «usable» tiene texto **y
       salida**: qué falta para poder usarlo. **Debe fallar** (R4, FR-009)
-- [ ] T010 [US1] Escribir `la_deteccion_arranca_sola` en
+- [X] T010 [US1] Escribir `la_deteccion_arranca_sola` en
       `crates/codify-app/tests/ui_contract.rs` — el arranque invoca la detección sin que nadie la
       pida, y lo detectado se enseña como **varias opciones**, no como un valor único. **Debe
       fallar** (R7, FR-001, FR-004, FR-010b)
-- [ ] T011 [US1] Escribir `el_path_se_recorre_entero` en `crates/codify-core/tests/deteccion.rs` —
+- [X] T011 [US1] Escribir `el_path_se_recorre_entero` en `crates/codify-core/tests/deteccion.rs` —
       con un `PATH` de mentira que incluya un directorio no estándar, lo que hay dentro se
       encuentra. **Debe fallar** (R8, FR-003)
 
 ### Implementación
 
-- [ ] T012 [US1] Crear la fuente de servidores en
+- [X] T012 [US1] Crear la fuente de servidores en
       `crates/codify-core/src/infrastructure/deteccion/servidores.rs`, sobre `LocalProviderProbe` y
       una lista **declarada** de puertos de loopback. Es la única que sostiene la clasificación por
       construcción. Un servidor que responde sin modelos ya lo dice `ProviderIssue::NoModels`, así
       que ese caso límite queda cubierto por lo que hay ([research D2](./research.md))
-- [ ] T013 [US1] Crear la fuente de programas en
+- [X] T013 [US1] Crear la fuente de programas en
       `crates/codify-core/src/infrastructure/deteccion/programas.rs`: recorre el `PATH` buscando
       nombres declarados y reporta **presencia y ruta**. **No ejecuta nada** — ni para saber la
       versión (FR-003, FR-011, [research D3](./research.md))
-- [ ] T014 [US1] Añadir el comando de detección en `crates/codify-app/src/commands.rs` y
+- [X] T014 [US1] Añadir el comando de detección en `crates/codify-app/src/commands.rs` y
       registrarlo en `crates/codify-app/src/lib.rs` (FR-001)
-- [ ] T015 [US1] Enseñar lo detectado al arrancar en `crates/codify-app/ui/index.html` y
+- [X] T015 [US1] Enseñar lo detectado al arrancar en `crates/codify-app/ui/index.html` y
       `crates/codify-app/ui/provider.js`, **para elegir**, no imponiendo uno. Encontrar algo no lo
       da por aceptado: se enseña y se usa si el usuario lo elige (FR-004, FR-010b, FR-013)
-- [ ] T016 [US1] Decir **qué falta** para lo que no se puede usar todavía, en
+- [X] T016 [US1] Decir **qué falta** para lo que no se puede usar todavía, en
       `crates/codify-app/ui/provider.js` y `crates/codify-app/src/strings.rs`: instalado pero sin
       arrancar, y nada instalado (FR-009)
-- [ ] T017 [US1] Verificar T007 y T008 por inyección: invocar un binario encontrado en
+- [X] T017 [US1] Verificar T007 y T008 por inyección: invocar un binario encontrado en
       `crates/codify-core/src/infrastructure/deteccion/programas.rs`; y devolver la distancia
       equivocada. Revertir cada una
 

@@ -369,6 +369,7 @@ el.uiLocale.addEventListener("change", async () => {
   setSessionState(el.state.dataset.state);
   // Todo lo que se escribe a mano hay que repintarlo: `apply()` solo alcanza al DOM marcado.
   provider.render();
+  provider.detectar();
   artifact.render();
   decide.render();
   applied.render();
@@ -447,6 +448,9 @@ el.tentativeConfirm?.addEventListener("click", async () => {
   setSessionState("idle");
 
   // Sondear al arrancar: si falta el backend, el usuario lo sabe antes de intentar nada.
+  // `006` — mirar qué hay en este equipo **sin bloquear el arranque**: la interfaz ya responde
+  // mientras la búsqueda ocurre, y la propia búsqueda declara si no le dio tiempo.
+  provider.detectar();
   await provider.refresh(await mode.actual());
   el.repo.focus();
 })();

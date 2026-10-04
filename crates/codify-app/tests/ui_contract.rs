@@ -1514,3 +1514,165 @@ fn ningun_test_escribe_en_el_llavero_real() {
          corra la suite: {culpables:?}. El almacén es inyectable — usa uno en memoria"
     );
 }
+
+// ---------------------------------------------------------------------------
+// `006` · La aplicación ve lo que ya tienes instalado
+// ---------------------------------------------------------------------------
+
+/// **FR-012** — toda distancia, procedencia y lugar de inferencia tienen texto en los dos idiomas.
+///
+/// Mismo patrón que `ProviderIssue`, `SessionFailure` y `ConnectionState`: se recorre `all()`, y un
+/// valor nuevo sin traducir **no pasa el test** en vez de aparecer en pantalla como clave cruda.
+#[test]
+fn toda_distancia_tiene_texto_en_ambos_idiomas() {
+    use codify_core::application::deteccion::{Distancia, DondeInfiere, Procedencia};
+
+    for locale in [Locale::Es, Locale::En] {
+        let entries = strings_for(locale).entries;
+        let mut claves: Vec<String> = Distancia::all()
+            .iter()
+            .map(|d| format!("detection.distance.{}", d.code()))
+            .collect();
+        claves.extend(
+            Procedencia::all()
+                .iter()
+                .map(|p| format!("detection.origin.{}", p.code())),
+        );
+        claves.extend(
+            DondeInfiere::all()
+                .iter()
+                .map(|d| format!("detection.inference.{}", d.code())),
+        );
+
+        for key in claves {
+            let texto = entries.get(key.as_str()).unwrap_or_else(|| {
+                panic!(
+                    "falta '{key}' en {}: se vería la clave cruda",
+                    locale.code()
+                )
+            });
+            assert!(
+                !texto.trim().is_empty(),
+                "'{key}' está vacío en {}",
+                locale.code()
+            );
+        }
+    }
+}
+
+/// Archivos que implementan la detección. Lo que pasa ahí dentro está sujeto a R1.
+const MODULOS_DE_DETECCION: &str = "deteccion";
+
+/// **FR-011** — la detección no ejecuta nada de lo que encuentra.
+///
+/// Para saber que un `llama-server` del `PATH` es lo que dice, lo natural sería invocarlo. Y eso es
+/// **ejecutar un binario arbitrario, elegido por su nombre, para decidir si enseñar una fila en una
+/// lista**. Cualquier cosa puede llamarse `ollama` y estar antes en el `PATH`.
+///
+/// Es el mismo razonamiento que llevó a no leer el llavero del operador: la comprobación cara no
+/// era necesaria para la pregunta que había que responder.
+#[test]
+fn la_deteccion_no_ejecuta_nada() {
+    let dir = crate_dir()
+        .parent()
+        .expect("crates/")
+        .join("codify-core/src/infrastructure")
+        .join(MODULOS_DE_DETECCION);
+    assert!(
+        dir.is_dir(),
+        "falta el módulo de detección en {dir:?}: sin él no hay nada que comprobar"
+    );
+
+    // La aguja se compone en trozos **a propósito**: escrita entera aparecería en este archivo y
+    // el test se acusaría a sí mismo. Ya pasó con la guarda del llavero.
+    let lanzar = [concat!("Command", "::new"), concat!("process", "::Command")];
+    let mut culpables = Vec::new();
+    for entrada in std::fs::read_dir(&dir).expect("leer el módulo") {
+        let ruta = entrada.expect("entrada").path();
+        if ruta.extension().and_then(|e| e.to_str()) != Some("rs") {
+            continue;
+        }
+        let contenido = sin_comentarios(&read(&ruta));
+        if lanzar.iter().any(|a| contenido.contains(a)) {
+            culpables.push(ruta.file_name().unwrap().to_string_lossy().to_string());
+        }
+    }
+    assert!(
+        culpables.is_empty(),
+        "estos módulos de detección lanzan un proceso: {culpables:?}. Mirar qué hay instalado no \
+         exige ejecutarlo, y ejecutar lo que se encuentra en el `PATH` es código arbitrario"
+    );
+}
+
+/// **FR-009** — todo lo que no se puede usar dice **qué falta**.
+///
+/// Una lista de cosas que no sirven, sin decir qué les falta, es tan inútil como no tenerla.
+#[test]
+fn todo_motivo_de_indisponibilidad_tiene_texto_y_salida() {
+    use codify_core::application::deteccion::Distancia;
+
+    for locale in [Locale::Es, Locale::En] {
+        let entries = strings_for(locale).entries;
+        for distancia in Distancia::all() {
+            if distancia == Distancia::Usable {
+                continue; // lo que se puede usar no necesita salida: se usa
+            }
+            let key = format!("detection.distance.{}.next", distancia.code());
+            let texto = entries.get(key.as_str()).unwrap_or_else(|| {
+                panic!(
+                    "la distancia {distancia:?} no dice qué falta en {}: '{key}'",
+                    locale.code()
+                )
+            });
+            assert!(
+                !texto.trim().is_empty(),
+                "'{key}' está vacío en {}",
+                locale.code()
+            );
+        }
+    }
+}
+
+/// **FR-001, FR-004, FR-010b** — la detección arranca sola y ofrece opciones.
+///
+/// Nadie tiene que pedirla, y lo que encuentra se enseña **para elegir**. Encontrar algo no lo da
+/// por aceptado: los dos caminos existen a propósito y la elección es del usuario.
+#[test]
+fn la_deteccion_arranca_sola() {
+    let js: String = ui_files()
+        .into_iter()
+        .filter(|(n, _)| n.ends_with(".js"))
+        .map(|(_, c)| sin_comentarios(&c))
+        .collect();
+
+    assert!(
+        js.contains("invoke(\"detect_models\""),
+        "nadie invoca la detección: la aplicación seguiría esperando a que el usuario configure \
+         algo (FR-001)"
+    );
+
+    // Que exista el `invoke` en algún módulo no significa que **alguien lo llame al arrancar**:
+    // buscarlo suelto dejaba pasar la violación de quitar la llamada del arranque. Lo descubrió
+    // una inyección.
+    let boot = read(ui_dir().join("main.js"));
+    let boot = sin_comentarios(&boot);
+    let arranque = boot
+        .split_once("async function boot()")
+        .map(|(_, r)| r.split("\n})").next().unwrap_or(r).to_string())
+        .expect("main.js debe tener su función de arranque");
+    assert!(
+        arranque.contains("detectar("),
+        "el arranque no pide la detección: nadie la invoca sin que el usuario haga algo (FR-001)"
+    );
+
+    let html = read(ui_dir().join("index.html"));
+    assert!(
+        html.contains("id=\"detectados\""),
+        "no hay dónde enseñar lo detectado"
+    );
+    assert!(
+        js.contains("detectados") && (js.contains("map(") || js.contains("forEach")),
+        "lo detectado no se enseña como varias opciones: un valor único sería imponer uno, y el \
+         caso esperado es que haya más de uno (FR-004)"
+    );
+}

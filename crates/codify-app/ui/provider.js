@@ -93,3 +93,71 @@ export async function refresh(local = true) {
   render();
   return status;
 }
+
+// ---------------------------------------------------------------------------
+// `006` — lo que hay en este equipo
+// ---------------------------------------------------------------------------
+
+/**
+ * Pinta lo detectado **para elegir**, no para imponer.
+ *
+ * Encontrar algo no lo da por aceptado: los dos caminos —modelos que responden aquí y servicios
+ * que consultan fuera— existen a propósito, y cuál se usa lo decide el usuario. Lo que sí se dice
+ * siempre es **de dónde salió cada fila** y **dónde infiere**: una lista que aparece sola, sin
+ * explicar nada, es la clase de afirmación que este producto existe para no hacer.
+ */
+export function renderDetectados(deteccion) {
+  const lista = document.getElementById("detectados-lista");
+  const estado = document.getElementById("detectados-estado");
+  if (!lista || !estado) return;
+
+  lista.replaceChildren(
+    ...deteccion.modelos.map((m) => {
+      const li = document.createElement("li");
+      li.dataset.distancia = m.distancia;
+      // Lo que solo **declara** su clasificación no se ofrece como local, aunque diga inferir
+      // dentro. Donde se puede tener una garantía sostenida no se acepta una declarada.
+      li.dataset.localSostenido = String(m.localSostenido);
+
+      const nombre = document.createElement("span");
+      nombre.className = "label";
+      nombre.textContent = m.nombre;
+
+      const detalle = document.createElement("span");
+      detalle.className = "hint-inline";
+      detalle.textContent = `${t(`detection.distance.${m.distancia}`)} · ${t(
+        `detection.origin.${m.procedencia}`,
+      )} · ${t(`detection.inference.${m.dondeInfiere}`)}`;
+
+      li.append(nombre, detalle);
+
+      // Lo que todavía no se puede usar dice **qué falta**: una lista de cosas inservibles sin
+      // explicar qué les falta es tan inútil como no tenerla.
+      if (m.distancia !== "usable") {
+        const salida = document.createElement("p");
+        salida.className = "next-step";
+        salida.textContent = t(`detection.distance.${m.distancia}.next`);
+        li.append(salida);
+      }
+      return li;
+    }),
+  );
+
+  if (deteccion.incompleta) estado.textContent = t("detection.incomplete");
+  else if (deteccion.modelos.length === 0) estado.textContent = t("detection.none");
+  else estado.hidden = true;
+}
+
+/** Arranca la búsqueda sola: nadie tiene que pedirla. */
+export async function detectar() {
+  const estado = document.getElementById("detectados-estado");
+  if (estado) {
+    estado.hidden = false;
+    estado.textContent = t("detection.searching");
+  }
+  try {
+    renderDetectados(await invoke("detect_models"));
+  } catch {
+    renderDetectados({ modelos: [], incompleta: true });
+  }
+}

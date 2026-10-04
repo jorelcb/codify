@@ -24,6 +24,7 @@ pub fn run() {
             commands::disconnect_provider,
             commands::mode,
             commands::set_mode,
+            commands::detect_models,
             commands::ui_strings,
             commands::system_locale,
             commands::artifact,

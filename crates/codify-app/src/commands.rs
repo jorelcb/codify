@@ -1192,6 +1192,56 @@ pub async fn probe_provider(local: bool) -> Result<ProviderStatusDto, String> {
 }
 
 /// Catálogo de cadenas del idioma pedido (FR-016b).
+/// Lo que la detección encontró, para la piel.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModeloDetectadoDto {
+    pub nombre: String,
+    /// Códigos estables: la piel los traduce contra el catálogo.
+    pub distancia: String,
+    pub procedencia: String,
+    pub donde_infiere: String,
+    /// `false` para lo que solo **declara** su clasificación. La piel no lo ofrece como local.
+    pub local_sostenido: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeteccionDto {
+    pub modelos: Vec<ModeloDetectadoDto>,
+    /// Si alguna fuente no llegó a tiempo. Se **dice**, no se oculta.
+    pub incompleta: bool,
+}
+
+/// `006`-FR-001 — mira qué modelos hay en esta máquina, sin que nadie lo pida.
+#[tauri::command]
+pub async fn detect_models() -> Result<DeteccionDto, String> {
+    use codify_core::application::deteccion::{detectar, FuenteDeDeteccion};
+    use codify_core::infrastructure::deteccion::{
+        programas::ProgramasEnElPath, servidores::ServidoresEnEsteEquipo,
+    };
+
+    let fuentes: Vec<Arc<dyn FuenteDeDeteccion>> = vec![
+        Arc::new(ServidoresEnEsteEquipo),
+        Arc::new(ProgramasEnElPath::del_entorno()),
+    ];
+    let d = detectar(&fuentes).await;
+    Ok(DeteccionDto {
+        modelos: d
+            .modelos
+            .iter()
+            .map(|m| ModeloDetectadoDto {
+                nombre: m.nombre().to_string(),
+                distancia: m.distancia().code().to_string(),
+                procedencia: m.procedencia().code().to_string(),
+                donde_infiere: m.donde_infiere().code().to_string(),
+                local_sostenido: m.se_puede_cablear_como_local(),
+            })
+            .collect(),
+        incompleta: d.incompleta,
+    })
+}
+
 #[tauri::command]
 pub fn ui_strings(locale: String) -> crate::strings::UiStrings {
     crate::strings::strings_for(crate::strings::Locale::parse(&locale))
