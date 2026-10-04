@@ -105,8 +105,10 @@ crates/codify-app/
 │   └── strings.rs       # claves nuevas × 2 idiomas
 ├── ui/                  # lo detectado al arrancar, con su procedencia y qué falta
 └── tests/
-    ├── ui_contract.rs   # las reglas estáticas
-    └── deteccion.rs     # el comportamiento, con fuentes de mentira
+    └── ui_contract.rs   # las reglas estáticas
+
+crates/codify-core/tests/
+└── deteccion.rs         # el comportamiento, con fuentes de mentira
 ```
 
 **Structure Decision**: un módulo nuevo por capa —`application/deteccion.rs` e

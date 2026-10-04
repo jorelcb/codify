@@ -86,26 +86,37 @@ procedencia que no se puede omitir, y una clasificación que no se puede declara
 - [ ] T008 [US1] Escribir en `crates/codify-core/tests/deteccion.rs` que las dos fuentes producen
       la **distancia** que les toca —servidor que responde → usable; binario en el `PATH` →
       instalado— con fuentes de mentira. **Debe fallar** (FR-002)
+- [ ] T009 [US1] Escribir `todo_motivo_de_indisponibilidad_tiene_texto_y_salida` en
+      `crates/codify-app/tests/ui_contract.rs` — cada distancia que no sea «usable» tiene texto **y
+      salida**: qué falta para poder usarlo. **Debe fallar** (R4, FR-009)
+- [ ] T010 [US1] Escribir `la_deteccion_arranca_sola` en
+      `crates/codify-app/tests/ui_contract.rs` — el arranque invoca la detección sin que nadie la
+      pida, y lo detectado se enseña como **varias opciones**, no como un valor único. **Debe
+      fallar** (R7, FR-001, FR-004, FR-010b)
+- [ ] T011 [US1] Escribir `el_path_se_recorre_entero` en `crates/codify-core/tests/deteccion.rs` —
+      con un `PATH` de mentira que incluya un directorio no estándar, lo que hay dentro se
+      encuentra. **Debe fallar** (R8, FR-003)
 
 ### Implementación
 
-- [ ] T009 [US1] Crear la fuente de servidores en
+- [ ] T012 [US1] Crear la fuente de servidores en
       `crates/codify-core/src/infrastructure/deteccion/servidores.rs`, sobre `LocalProviderProbe` y
       una lista **declarada** de puertos de loopback. Es la única que sostiene la clasificación por
-      construcción ([research D2](./research.md))
-- [ ] T010 [US1] Crear la fuente de programas en
+      construcción. Un servidor que responde sin modelos ya lo dice `ProviderIssue::NoModels`, así
+      que ese caso límite queda cubierto por lo que hay ([research D2](./research.md))
+- [ ] T013 [US1] Crear la fuente de programas en
       `crates/codify-core/src/infrastructure/deteccion/programas.rs`: recorre el `PATH` buscando
       nombres declarados y reporta **presencia y ruta**. **No ejecuta nada** — ni para saber la
       versión (FR-003, FR-011, [research D3](./research.md))
-- [ ] T011 [US1] Añadir el comando de detección en `crates/codify-app/src/commands.rs` y
+- [ ] T014 [US1] Añadir el comando de detección en `crates/codify-app/src/commands.rs` y
       registrarlo en `crates/codify-app/src/lib.rs` (FR-001)
-- [ ] T012 [US1] Enseñar lo detectado al arrancar en `crates/codify-app/ui/index.html` y
+- [ ] T015 [US1] Enseñar lo detectado al arrancar en `crates/codify-app/ui/index.html` y
       `crates/codify-app/ui/provider.js`, **para elegir**, no imponiendo uno. Encontrar algo no lo
       da por aceptado: se enseña y se usa si el usuario lo elige (FR-004, FR-010b, FR-013)
-- [ ] T013 [US1] Decir **qué falta** para lo que no se puede usar todavía, en
+- [ ] T016 [US1] Decir **qué falta** para lo que no se puede usar todavía, en
       `crates/codify-app/ui/provider.js` y `crates/codify-app/src/strings.rs`: instalado pero sin
       arrancar, y nada instalado (FR-009)
-- [ ] T014 [US1] Verificar T007 y T008 por inyección: invocar un binario encontrado en
+- [ ] T017 [US1] Verificar T007 y T008 por inyección: invocar un binario encontrado en
       `crates/codify-core/src/infrastructure/deteccion/programas.rs`; y devolver la distancia
       equivocada. Revertir cada una
 
@@ -124,18 +135,18 @@ procedencia que no se puede omitir, y una clasificación que no se puede declara
 
 ### Test primero
 
-- [ ] T015 [US2] Escribir `todo_modelo_disponible_declara_su_procedencia` en
+- [ ] T018 [US2] Escribir `todo_modelo_disponible_declara_su_procedencia` en
       `crates/codify-app/tests/ui_contract.rs` — la piel **enseña** la procedencia. Que no se pueda
       construir sin ella lo sostiene el tipo; este test cubre lo que el tipo no alcanza. **Debe
-      fallar** (R3, FR-005, SC-003)
+      fallar** (R3, FR-005, FR-006, SC-003)
 
 ### Implementación
 
-- [ ] T016 [US2] Enseñar la procedencia de cada modelo en `crates/codify-app/ui/provider.js`, y
+- [ ] T019 [US2] Enseñar la procedencia de cada modelo en `crates/codify-app/ui/provider.js`, y
       distinguir lo detectado de lo que puso el usuario (FR-005, FR-006)
-- [ ] T017 [P] [US2] Añadir las claves de procedencia a `crates/codify-app/src/strings.rs`, en los
+- [ ] T020 [P] [US2] Añadir las claves de procedencia a `crates/codify-app/src/strings.rs`, en los
       dos idiomas (FR-012)
-- [ ] T018 [US2] Verificar T015 por inyección: enseñar la lista sin la procedencia, en
+- [ ] T021 [US2] Verificar T018 por inyección: enseñar la lista sin la procedencia, en
       `crates/codify-app/ui/provider.js`. Revertir
 
 **Punto de control**: ninguna fila de la lista aparece sin decir de dónde salió. Una lista mágica
@@ -153,18 +164,18 @@ contradice el principio rector del proyecto.
 
 ### Test primero
 
-- [ ] T019 [US3] Escribir `la_deteccion_respeta_su_presupuesto` en
+- [ ] T022 [US3] Escribir `la_deteccion_respeta_su_presupuesto` en
       `crates/codify-core/tests/deteccion.rs` — con una fuente que nunca contesta, la detección
       termina dentro de los **3 s** y lo declara. **Debe fallar** (R6, FR-007, FR-008, SC-004)
 
 ### Implementación
 
-- [ ] T020 [US3] Correr las fuentes **a la vez** con un presupuesto común de 3 s en
+- [ ] T023 [US3] Correr las fuentes **a la vez** con un presupuesto común de 3 s en
       `crates/codify-core/src/application/deteccion.rs`, abandonando y declarándolo lo que no
       llegue ([research D5](./research.md))
-- [ ] T021 [US3] Pintar la interfaz **antes** de que la detección termine, diciendo que está
+- [ ] T024 [US3] Pintar la interfaz **antes** de que la detección termine, diciendo que está
       mirando, en `crates/codify-app/ui/provider.js` (FR-007)
-- [ ] T022 [US3] Verificar T019 por inyección: esperar a la fuente lenta sin presupuesto, en
+- [ ] T025 [US3] Verificar T022 por inyección: esperar a la fuente lenta sin presupuesto, en
       `crates/codify-core/src/application/deteccion.rs`. Revertir
 
 **Punto de control**: la aplicación responde desde el arranque aunque no haya terminado de mirar.
@@ -177,38 +188,42 @@ No cuelga de ninguna historia: es lo que deja de hacerse. Enseñar una direcció
 que puede no estar instalado es **afirmar algo sin comprobarlo**, en un producto cuya tesis es que
 eso no se hace.
 
-- [ ] T023 Escribir `ninguna_direccion_por_defecto_sobrevive` en
+- [ ] T026 Escribir `ninguna_direccion_por_defecto_sobrevive` en
       `crates/codify-app/tests/ui_contract.rs` — no existe ninguna dirección de proveedor escrita
       como valor por defecto. **Debe fallar**: hoy está `DEFAULT_ENDPOINT` (R5, FR-014, SC-002)
-- [ ] T024 Retirar `DEFAULT_ENDPOINT` de `crates/codify-app/src/commands.rs` y hacer que
+- [ ] T027 Escribir `la_interfaz_no_pide_una_direccion` en
+      `crates/codify-app/tests/ui_contract.rs` — ningún campo pide una dirección de proveedor
+      local, y `CODIFY_LOCAL_ENDPOINT` no aparece ni en `ui/` ni en el catálogo. **Debe fallar**
+      (R9, FR-013, FR-015)
+- [ ] T028 Retirar `DEFAULT_ENDPOINT` de `crates/codify-app/src/commands.rs` y hacer que
       `probe_provider` sondee **lo detectado** en vez de una dirección inventada (FR-014)
-- [ ] T025 Dejar `CODIFY_LOCAL_ENDPOINT` como **anulación de desarrollo**, declarada en
+- [ ] T029 Dejar `CODIFY_LOCAL_ENDPOINT` como **anulación de desarrollo**, declarada en
       `crates/codify-app/src/commands.rs` y pasando por el mismo sondeo que todo lo demás, sin
       trato de favor. Fuera de la interfaz y de todo lo que el usuario tenga que leer (FR-015)
-- [ ] T026 Verificar T023 por inyección: devolver una constante con una dirección en
+- [ ] T030 Verificar T026 por inyección: devolver una constante con una dirección en
       `crates/codify-app/src/commands.rs`. Revertir
 
 ---
 
 ## Fase 7: Cierre, y lo que no cierra el build
 
-- [ ] T027 Dejar el árbol en verde: `cargo test --workspace`, `cargo clippy --workspace
-      --all-targets -- -D warnings`, `cargo fmt --all -- --check`. Se esperan **258** tests
-- [ ] T028 [P] Actualizar `specs/003-conectividad-y-tiers/contracts/skin-commands.md` con el
+- [ ] T031 Dejar el árbol en verde: `cargo test --workspace`, `cargo clippy --workspace
+      --all-targets -- -D warnings`, `cargo fmt --all -- --check`. Se esperan **261** tests
+- [ ] T032 [P] Actualizar `specs/003-conectividad-y-tiers/contracts/skin-commands.md` con el
       comando de detección y la desaparición de la dirección por defecto — el contrato que cambia
       es el del crate que se toca
-- [ ] T029 [persona] **SC-001**: abrir la aplicación en una máquina con algo instalado y ver que
+- [ ] T033 [persona] **SC-001**: abrir la aplicación en una máquina con algo instalado y ver que
       aparece, **sin escribir ni configurar nada** — cero pasos de configuración (SC-007). En esta
       máquina deberían salir cuatro cosas
-- [ ] T030 [persona] **SC-002**: con nada escuchando, **ninguna dirección** aparece en pantalla. Se
+- [ ] T034 [persona] **SC-002**: con nada escuchando, **ninguna dirección** aparece en pantalla. Se
       dice qué podría instalarse
-- [ ] T031 [persona] **SC-006**: generar contexto de un repositorio **sin pasar por la superficie
+- [ ] T035 [persona] **SC-006**: generar contexto de un repositorio **sin pasar por la superficie
       de conexión**. Es el criterio que mide si este ciclo sirve: las dos validaciones anteriores
       fallaron intentando conectar algo remoto, y **nadie llegó a probar el camino local**
-- [ ] T032 [persona] Comprobar que si aparece `claude` se enseña como lo que es —programa de la
+- [ ] T036 [persona] Comprobar que si aparece `claude` se enseña como lo que es —programa de la
       máquina, **inferencia fuera**—. Que esté en la lista es correcto; que figurara como local no
 
-> **T029–T032 no se marcan `[X]` porque el CI pase.** Y hay un motivo extra en este ciclo: los
+> **T033–T036 no se marcan `[X]` porque el CI pase.** Y hay un motivo extra en este ciclo: los
 > tests usan fuentes de mentira, así que **nadie ha comprobado que el descubrimiento real
 > funcione** hasta que alguien abra esto en su máquina. Está declarado en el plan como renuncia.
 
@@ -240,16 +255,21 @@ Test en rojo → implementación → **inyección de la violación**. En este ci
 importan más que el resto: la de T007 —que no se ejecute nada encontrado— y la de T002 —que nada
 remoto se cuele como local—. Son las que protegen algo que no se recupera.
 
+> **Por qué este hallazgo se repite.** Tres ciclos seguidos con requisitos implementados y sin
+> test. La causa no son las instancias: escribo las tareas de implementación recorriendo los
+> requisitos, y las de test recorriendo el contrato — de modo que **lo que el contrato no nombra se
+> queda sin red**. La corrección es escribir el contrato recorriendo los requisitos, no al revés.
+
 ### Oportunidades de paralelismo
 
 | Fase | `[P]` | Por qué |
 |---|---|---|
 | 2 | T003 | Test de catálogo, ajeno a los tipos |
 | 2 | T006 | `strings.rs` |
-| 4 | T017 | `strings.rs` |
-| 7 | T028 | Documento de contrato |
+| 4 | T020 | `strings.rs` |
+| 7 | T032 | Documento de contrato |
 
-**Cadena crítica**: T004 → T005 → T009/T010. Los tipos, el port y las fuentes: partirlo deja el
+**Cadena crítica**: T004 → T005 → T012/T013. Los tipos, el port y las fuentes: partirlo deja el
 árbol sin compilar entre medias.
 
 ---
@@ -272,10 +292,10 @@ hacer.
 |---|---|---|
 | 1 · Preparación | T001 | — |
 | 2 · Fundacional | T002–T006 | — |
-| 3 · US1 (P1) | T007–T014 | Abrir y que ya sepa qué tengo |
-| 4 · US2 (P2) | T015–T018 | Saber de dónde salió cada cosa |
-| 5 · US3 (P3) | T019–T022 | Que detectar no cueste la apertura |
-| 6 · La dirección inventada | T023–T026 | — |
-| 7 · Cierre | T027–T032 | — |
+| 3 · US1 (P1) | T007–T017 | Abrir y que ya sepa qué tengo |
+| 4 · US2 (P2) | T018–T021 | Saber de dónde salió cada cosa |
+| 5 · US3 (P3) | T022–T025 | Que detectar no cueste la apertura |
+| 6 · La dirección inventada | T026–T030 | — |
+| 7 · Cierre | T031–T036 | — |
 
-**Total: 32 tareas.** 28 las cierra el build; **4 necesitan a una persona con su máquina delante**.
+**Total: 36 tareas.** 32 las cierra el build; **4 necesitan a una persona con su máquina delante**.

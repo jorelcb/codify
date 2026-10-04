@@ -88,6 +88,34 @@ Con una fuente que nunca contesta, la detección termina dentro del presupuesto 
 
 **Inyección**: una fuente que duerme más que el presupuesto y un detector que la espera.
 
+### R7 · La detección arranca sola y ofrece opciones — FR-001, FR-004, FR-010b
+
+> `la_deteccion_arranca_sola`
+
+El arranque invoca la detección sin que nadie la pida, y lo detectado se enseña como **varias
+opciones**, no como un valor único que se impone.
+
+**Inyección**: quitar la invocación del arranque; enseñar un solo modelo en vez de una lista.
+
+### R8 · El `PATH` se recorre entero — FR-003
+
+> `el_path_se_recorre_entero`
+
+Con un `PATH` de mentira que incluya un directorio no estándar, lo que hay dentro se encuentra.
+Compilar desde fuente es normal en este terreno: en la máquina donde se escribió este spec,
+`llama-server` vive fuera de toda ruta habitual.
+
+**Inyección**: recorrer solo un conjunto fijo de directorios conocidos.
+
+### R9 · La interfaz no pide una dirección — FR-013, FR-015
+
+> `la_interfaz_no_pide_una_direccion`
+
+Ningún campo pide una dirección de proveedor local, y `CODIFY_LOCAL_ENDPOINT` **no aparece** ni en
+`ui/` ni en el catálogo: es una anulación de desarrollo, no algo que el usuario deba leer.
+
+**Inyección**: devolver un campo de dirección a la interfaz; mencionar la variable en el catálogo.
+
 ---
 
 ## Lo que no cambia, y sigue verificado

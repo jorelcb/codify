@@ -96,9 +96,12 @@ Buscar lo instalado no retrasa el momento en que la aplicación es utilizable.
 
 - **Instalado fuera de las rutas habituales**: `llama-server` compilado desde fuente vive en el
   `PATH` del usuario y en ningún sitio estándar. Si solo se miran rutas conocidas, no se encuentra.
-- **Un binario que está y no arranca**: existe en el `PATH` y falla al invocarlo.
+- **Un binario que está y no arranca**: se enseña como instalado igualmente. Saber si arranca
+  exigiría **ejecutarlo**, y esta feature decide no hacerlo. Lo descubre el usuario al usarlo.
 - **Un servidor que responde y no sirve modelos**: contesta en el puerto y su lista está vacía.
-- **Algo que no es lo que parece**: un ejecutable llamado como uno conocido que hace otra cosa.
+- **Algo que no es lo que parece**: un ejecutable llamado como uno conocido que hace otra cosa
+  **se enseñará como si lo fuera**. Distinguirlos exigiría ejecutarlo. Es lo que esta decisión
+  acepta no saber, razonado en [research D3](./research.md).
 - **Nada instalado**, que es el caso de quien abre esto por primera vez.
 - **Una anulación de desarrollo apuntando a algo que no responde**: se trata como cualquier otra
   cosa que no responde, sin trato de favor por venir del entorno.
