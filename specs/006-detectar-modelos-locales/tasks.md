@@ -209,7 +209,7 @@ eso no se hace.
 
 - [X] T031 Dejar el árbol en verde: `cargo test --workspace`, `cargo clippy --workspace
       --all-targets -- -D warnings`, `cargo fmt --all -- --check`. Se esperan **261** tests
-- [ ] T032 [P] Actualizar `specs/003-conectividad-y-tiers/contracts/skin-commands.md` con el
+- [X] T032 [P] Actualizar `specs/003-conectividad-y-tiers/contracts/skin-commands.md` con el
       comando de detección y la desaparición de la dirección por defecto — el contrato que cambia
       es el del crate que se toca
 - [ ] T033 [persona] **SC-001**: abrir la aplicación en una máquina con algo instalado y ver que
