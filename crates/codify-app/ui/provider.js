@@ -55,7 +55,10 @@ export function render() {
   glyphEl.textContent = "!";
   statusEl.textContent = lastStatus.models.length
     ? t("provider.no_models")
-    : `${t("provider.unreachable")} · ${lastStatus.endpoint}`;
+    : lastStatus.endpoint
+      ? `${t("provider.unreachable")} · ${lastStatus.endpoint}`
+      // Sin dirección no hay nada que poner detrás: antes quedaba un «·» suelto apuntando a nada.
+      : t("provider.unreachable");
   // El núcleo nombra el motivo; el texto lo elige la piel, así que cambia con el idioma.
   const queHacer = lastStatus.issue ? t(`provider.issue.${lastStatus.issue}`) : t("error.unknown");
   nextEl.textContent = `${t("provider.next_step")}: ${queHacer}`;
@@ -136,7 +139,12 @@ export function renderDetectados(deteccion) {
       if (m.distancia !== "usable") {
         const salida = document.createElement("p");
         salida.className = "next-step";
-        salida.textContent = t(`detection.distance.${m.distancia}.next`);
+        // Lo que no se puede usar desde aquí no recibe un «arráncalo»: sería una promesa falsa, y
+        // afirmar lo que no es cierto es el defecto que esta feature vino a corregir.
+        const alcanzable = m.dondeInfiere === "inside";
+        salida.textContent = t(
+          `detection.distance.${m.distancia}.next${alcanzable ? "" : "_remote"}`,
+        );
         li.append(salida);
       }
       return li;
