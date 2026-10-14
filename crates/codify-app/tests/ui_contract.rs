@@ -1767,3 +1767,33 @@ fn la_interfaz_no_pide_una_direccion() {
         "`{variable}` aparece en el catálogo: nada que el usuario lea debería mencionarla"
     );
 }
+
+/// La barra de estado del proveedor **no contiene bloques de contenido**.
+///
+/// `.provider` es una fila horizontal para información pasiva. Meterle dentro una lista la
+/// desborda y solapa lo que hay debajo — en el caso que lo destapó, la caja de refinamiento, que
+/// quedó inusable.
+///
+/// Es exactamente el defecto que `004` corrigió para la superficie de conexión, **repetido cuatro
+/// specs después** por quien lo había corregido. `la_superficie_de_conexion_tiene_forma_propia`
+/// vigila que `#conexiones` no entre ahí; nadie vigilaba la dirección contraria.
+#[test]
+fn la_barra_de_estado_no_contiene_bloques() {
+    let html = read(ui_dir().join("index.html"));
+    let barra = html
+        .split_once("<section id=\"provider\"")
+        .and_then(|(_, r)| r.split_once("</section>"))
+        .map(|(cuerpo, _)| cuerpo.to_string())
+        .expect("index.html debe tener la barra de estado del proveedor");
+
+    let bloques: Vec<&str> = ["<ul", "<ol", "<details", "<h3"]
+        .iter()
+        .filter(|t| barra.contains(**t))
+        .copied()
+        .collect();
+    assert!(
+        bloques.is_empty(),
+        "la barra de estado contiene bloques de contenido ({bloques:?}): es una fila para \
+         información pasiva, y lo que crece dentro acaba solapando lo de abajo"
+    );
+}
