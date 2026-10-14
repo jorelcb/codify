@@ -38,7 +38,45 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, State};
 
-const DEFAULT_ENDPOINT: &str = "http://localhost:11434";
+/// A dónde apuntar cuando no hay detección: **a ningún sitio**.
+///
+/// `006`-FR-014. Aquí había `http://localhost:11434`, que apunta a Ollama. En la máquina donde se
+/// escribió ese spec, Ollama no está instalado y había cuatro modelos usables en el `PATH` que la
+/// aplicación no veía. Enseñar una dirección que nadie comprobó es afirmar algo sin verificarlo,
+/// que es justo lo que este producto dice no hacer.
+///
+/// `CODIFY_LOCAL_ENDPOINT` sobrevive como **anulación de desarrollo** —`live_backend` la usa— y
+/// pasa por el mismo sondeo que todo lo demás, sin trato de favor. No aparece en la interfaz.
+fn endpoint_de_desarrollo() -> Option<String> {
+    std::env::var("CODIFY_LOCAL_ENDPOINT")
+        .ok()
+        .filter(|v| !v.trim().is_empty())
+}
+
+/// El primer modelo local que la detección encuentre listo para usar, si lo hay.
+async fn endpoint_detectado() -> Option<String> {
+    use codify_core::application::deteccion::{detectar, Distancia, FuenteDeDeteccion};
+    use codify_core::infrastructure::deteccion::servidores::{ServidoresEnEsteEquipo, PUERTOS};
+
+    let fuentes: Vec<Arc<dyn FuenteDeDeteccion>> = vec![Arc::new(ServidoresEnEsteEquipo)];
+    let d = detectar(&fuentes).await;
+    let usable = d
+        .modelos
+        .iter()
+        .find(|m| m.distancia() == Distancia::Usable && m.se_puede_cablear_como_local())?;
+    PUERTOS
+        .iter()
+        .find(|(n, _)| *n == usable.nombre())
+        .map(|(_, p)| format!("http://127.0.0.1:{p}"))
+}
+
+/// A qué endpoint local hablar: la anulación de desarrollo si la hay, y si no **lo detectado**.
+async fn endpoint_local() -> Option<String> {
+    match endpoint_de_desarrollo() {
+        Some(e) => Some(e),
+        None => endpoint_detectado().await,
+    }
+}
 const DEFAULT_MODEL: &str = "qwen2.5-coder";
 
 // ---------------------------------------------------------------------------
@@ -345,12 +383,15 @@ fn build_service(
     app: &AppHandle,
     repo_root: &str,
     mode: Mode,
+    // A qué modelo local hablar. Lo resuelve quien llama, **detectándolo**: aquí ya no hay una
+    // dirección por defecto que inventarse (`006`-FR-014).
+    endpoint_local: &str,
     pending: PendingDecisions,
     remotos: Vec<Arc<dyn ModelProvider>>,
 ) -> Result<ContextAuthoring, String> {
     let provider = LocalOpenAiCompatProvider::new(
         "local",
-        env_or("CODIFY_LOCAL_ENDPOINT", DEFAULT_ENDPOINT),
+        endpoint_local,
         env_or("CODIFY_LOCAL_MODEL", DEFAULT_MODEL),
     )
     .map_err(|e| format!("no se pudo preparar el proveedor local: {e}"))?;
@@ -372,6 +413,7 @@ fn build_service(
             CoreBuilder::<Local>::new(),
             app,
             repo_root,
+            endpoint_local,
             pending,
             provider,
             resolver,
@@ -381,7 +423,15 @@ fn build_service(
             for r in remotos {
                 b = b.remote_provider(r);
             }
-            cablear(b, app, repo_root, pending, provider, resolver)?
+            cablear(
+                b,
+                app,
+                repo_root,
+                endpoint_local,
+                pending,
+                provider,
+                resolver,
+            )?
         }
     };
 
@@ -398,6 +448,7 @@ fn cablear<M: ModoDelGrafo>(
     builder: CoreBuilder<M>,
     app: &AppHandle,
     repo_root: &str,
+    endpoint_local: &str,
     pending: PendingDecisions,
     provider: LocalOpenAiCompatProvider,
     resolver: FsHttpReferenceResolver,
@@ -414,7 +465,7 @@ fn cablear<M: ModoDelGrafo>(
         .clock(Arc::new(SystemClock))
         .writer(Arc::new(FsArtifactWriter::new(repo_root)))
         .discovery(Arc::new(
-            LocalProviderProbe::new(env_or("CODIFY_LOCAL_ENDPOINT", DEFAULT_ENDPOINT))
+            LocalProviderProbe::new(endpoint_local)
                 .map_err(|e| format!("no se pudo preparar la sonda: {e}"))?,
         ))
         .cancellations(Arc::new(TokenCancellationFactory))
@@ -870,10 +921,14 @@ pub async fn start_session(
     // El `for` de dentro de `build_service` no puede colarlas en un grafo local: allí el método
     // no existe.
     let remotos = adapters_remotos(&state).await;
+    let endpoint = endpoint_local()
+        .await
+        .ok_or_else(|| "no se encontró ningún modelo local en este equipo".to_string())?;
     let service = Arc::new(build_service(
         &app,
         &request.repo_root,
         mode,
+        &endpoint,
         state.pending(),
         remotos,
     )?);
@@ -1166,7 +1221,15 @@ pub async fn cancel_session(
 /// Sondea el backend de modelo. No falla: informa con un motivo accionable (FR-019/FR-028).
 #[tauri::command]
 pub async fn probe_provider(local: bool) -> Result<ProviderStatusDto, String> {
-    let endpoint = env_or("CODIFY_LOCAL_ENDPOINT", DEFAULT_ENDPOINT);
+    // Sin dirección inventada: la de desarrollo si la hay, y si no **lo que se detectó**.
+    let Some(endpoint) = endpoint_local().await else {
+        return Ok(ProviderStatusDto {
+            reachable: false,
+            endpoint: String::new(),
+            models: Vec::new(),
+            issue: Some(ProviderIssue::NotListening.code().to_string()),
+        });
+    };
 
     let probe = match LocalProviderProbe::new(&endpoint) {
         Ok(p) => p,
@@ -1192,6 +1255,56 @@ pub async fn probe_provider(local: bool) -> Result<ProviderStatusDto, String> {
 }
 
 /// Catálogo de cadenas del idioma pedido (FR-016b).
+/// Lo que la detección encontró, para la piel.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModeloDetectadoDto {
+    pub nombre: String,
+    /// Códigos estables: la piel los traduce contra el catálogo.
+    pub distancia: String,
+    pub procedencia: String,
+    pub donde_infiere: String,
+    /// `false` para lo que solo **declara** su clasificación. La piel no lo ofrece como local.
+    pub local_sostenido: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeteccionDto {
+    pub modelos: Vec<ModeloDetectadoDto>,
+    /// Si alguna fuente no llegó a tiempo. Se **dice**, no se oculta.
+    pub incompleta: bool,
+}
+
+/// `006`-FR-001 — mira qué modelos hay en esta máquina, sin que nadie lo pida.
+#[tauri::command]
+pub async fn detect_models() -> Result<DeteccionDto, String> {
+    use codify_core::application::deteccion::{detectar, FuenteDeDeteccion};
+    use codify_core::infrastructure::deteccion::{
+        programas::ProgramasEnElPath, servidores::ServidoresEnEsteEquipo,
+    };
+
+    let fuentes: Vec<Arc<dyn FuenteDeDeteccion>> = vec![
+        Arc::new(ServidoresEnEsteEquipo),
+        Arc::new(ProgramasEnElPath::del_entorno()),
+    ];
+    let d = detectar(&fuentes).await;
+    Ok(DeteccionDto {
+        modelos: d
+            .modelos
+            .iter()
+            .map(|m| ModeloDetectadoDto {
+                nombre: m.nombre().to_string(),
+                distancia: m.distancia().code().to_string(),
+                procedencia: m.procedencia().code().to_string(),
+                donde_infiere: m.donde_infiere().code().to_string(),
+                local_sostenido: m.se_puede_cablear_como_local(),
+            })
+            .collect(),
+        incompleta: d.incompleta,
+    })
+}
+
 #[tauri::command]
 pub fn ui_strings(locale: String) -> crate::strings::UiStrings {
     crate::strings::strings_for(crate::strings::Locale::parse(&locale))

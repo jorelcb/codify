@@ -3,6 +3,7 @@
 
 pub mod cancel;
 pub mod composition;
+pub mod deteccion;
 pub mod diff;
 pub mod providers;
 pub mod repo;

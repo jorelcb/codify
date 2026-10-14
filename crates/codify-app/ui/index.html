@@ -49,6 +49,17 @@
       <p id="provider-next" class="next-step" hidden></p>
     </section>
 
+    <!-- `006` — lo que hay en este equipo. **Fuera de la barra de estado**: es una lista, y una
+         barra de estado es una fila para información pasiva. Meterla dentro solapaba la caja de
+         refinamiento de abajo — el mismo defecto que `004` corrigió para las conexiones, repetido
+         aquí cuatro specs después. -->
+    <section id="detectados" class="conexion" role="region" aria-labelledby="detectados-titulo">
+      <h2 id="detectados-titulo" class="conexion-titulo" data-i18n="detection.title"></h2>
+      <!-- Sin `data-i18n`: lo pinta `provider.js` según cómo fuera la búsqueda. -->
+      <p id="detectados-estado" class="next-step"></p>
+      <ul id="detectados-lista"></ul>
+    </section>
+
     <!-- `003` — modo y proveedores conectados. `004` — con presentación propia: esto no es una
          barra de estado, es una zona con tres partes. El modo va primero a propósito: es lo que
          decide si algo puede salir del equipo, y verlo después de conectar sería tarde. -->

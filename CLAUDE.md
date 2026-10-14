@@ -75,5 +75,5 @@ contrato que nadie ha probado.**
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/005-conectar-termina/plan.md` (codify — conectar una cuenta llega a su fin).
+`specs/006-detectar-modelos-locales/plan.md` (codify — la aplicación ve lo que ya tienes instalado).
 <!-- SPECKIT END -->

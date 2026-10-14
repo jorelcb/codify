@@ -133,6 +133,28 @@ const CATALOG: &[(&str, &str, &str)] = &[
     ("connection.failure.no_store.next", "Puedes seguir trabajando en modo local, sin conectar nada.", "You can keep working in local mode, without connecting anything."),
     ("connection.failure.not_in_progress", "Esa conexión ya no está en curso.", "That connection is no longer in progress."),
     ("connection.failure.not_in_progress.next", "Vuelve a pulsar «Conectar un servicio remoto» para empezar de nuevo.", "Press “Connect a remote service” again to start over."),
+    // `006` — lo que la aplicación encuentra en la máquina. La clave la componen `code()` de
+    // `Distancia`, `Procedencia` y `DondeInfiere`, así que un valor nuevo sin texto no pasa el test.
+    ("detection.title", "Modelos en este equipo", "Models on this machine"),
+    ("detection.searching", "Buscando modelos en este equipo…", "Looking for models on this machine…"),
+    ("detection.incomplete", "La búsqueda no terminó a tiempo. Puede faltar algo.", "The search did not finish in time. Something may be missing."),
+    ("detection.distance.usable", "listo para usar", "ready to use"),
+    ("detection.distance.installed", "instalado, sin arrancar", "installed, not running"),
+    ("detection.distance.absent", "no está instalado", "not installed"),
+    // Cada distancia que no sea «listo» dice **qué falta**: sin eso, una lista de cosas que no se
+    // pueden usar es tan inútil como no tenerla.
+    ("detection.distance.installed.next", "Arráncalo para poder usarlo desde aquí.", "Start it to use it from here."),
+    // Para lo que consulta un servicio remoto, «arráncalo para usarlo desde aquí» sería **falso**:
+    // hablarle necesita un adapter que todavía no existe. Decir una cosa que no es cierta es peor
+    // que no decir nada, y es exactamente el defecto que este spec vino a corregir.
+    ("detection.distance.installed.next_remote", "Está instalado, pero todavía no se puede usar desde aquí.", "It is installed, but cannot be used from here yet."),
+    ("detection.distance.absent.next", "Instálalo si quieres trabajar sin que nada salga de este equipo.", "Install it if you want to work without anything leaving this machine."),
+    ("detection.origin.server", "encontrado escuchando en este equipo", "found listening on this machine"),
+    ("detection.origin.program", "encontrado instalado en este equipo", "found installed on this machine"),
+    ("detection.origin.user", "lo configuraste tú", "you configured it"),
+    ("detection.inference.inside", "responde en este equipo", "answers on this machine"),
+    ("detection.inference.outside", "consulta un servicio remoto", "queries a remote service"),
+    ("detection.none", "No se encontró ningún modelo en este equipo.", "No models were found on this machine."),
     ("connection.instruction.paste_key", "Pega la clave de tu proveedor: se guarda en el almacén del sistema y no vuelve a mostrarse.", "Paste your provider key: it is stored in the system keychain and never shown again."),
     ("connection.none", "Ninguno. La aplicación funciona en local.", "None. The app runs locally."),
     ("connection.disconnect", "Desconectar", "Disconnect"),
@@ -160,7 +182,7 @@ const CATALOG: &[(&str, &str, &str)] = &[
     // Un texto por cada `ProviderIssue::code()`. El núcleo nombra el motivo; el idioma
     // se decide aquí. Hay un test que comprueba que no falte ninguno.
     ("provider.issue.no_models", "Descarga un modelo, por ejemplo `ollama pull qwen2.5-coder`.", "Download a model, for example `ollama pull qwen2.5-coder`."),
-    ("provider.issue.not_listening", "Arranca un backend local, por ejemplo con `ollama serve`, o apunta a otro endpoint.", "Start a local backend, for example with `ollama serve`, or point to another endpoint."),
+    ("provider.issue.not_listening", "No hay ningún modelo en marcha en este equipo. Arranca uno de los que aparecen arriba.", "No model is running on this machine. Start one of those listed above."),
     ("provider.issue.endpoint_not_local", "En modo local el endpoint tiene que estar en esta máquina: usa una dirección de loopback.", "In local mode the endpoint must be on this machine: use a loopback address."),
     // --- Idioma (FR-016 / FR-016b) ----------------------------------------
     ("locale.ui_label", "Idioma de la interfaz", "Interface language"),
