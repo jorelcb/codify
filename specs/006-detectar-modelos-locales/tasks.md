@@ -212,15 +212,22 @@ eso no se hace.
 - [X] T032 [P] Actualizar `specs/003-conectividad-y-tiers/contracts/skin-commands.md` con el
       comando de detección y la desaparición de la dirección por defecto — el contrato que cambia
       es el del crate que se toca
-- [ ] T033 [persona] **SC-001**: abrir la aplicación en una máquina con algo instalado y ver que
+- [X] T033 [persona] **SC-001**: abrir la aplicación en una máquina con algo instalado y ver que
       aparece, **sin escribir ni configurar nada** — cero pasos de configuración (SC-007). En esta
       máquina deberían salir cuatro cosas
-- [ ] T034 [persona] **SC-002**: con nada escuchando, **ninguna dirección** aparece en pantalla. Se
+- [X] T034 [persona] **SC-002**: con nada escuchando, **ninguna dirección** aparece en pantalla. Se
       dice qué podría instalarse
 - [ ] T035 [persona] **SC-006**: generar contexto de un repositorio **sin pasar por la superficie
       de conexión**. Es el criterio que mide si este ciclo sirve: las dos validaciones anteriores
       fallaron intentando conectar algo remoto, y **nadie llegó a probar el camino local**
-- [ ] T036 [persona] Comprobar que si aparece `claude` se enseña como lo que es —programa de la
+      — **FALLA** (validación del 2026-10-14). Con `llama-server` detectado y en uso, la sesión
+      terminó sin escribir nada: «No file was written», y sin decir por qué. Antes de eso, el
+      compositor de refinamiento estaba inutilizable por solapamiento. El solapamiento se corrigió
+      en este ciclo ([a8c45d8](https://github.com/jorelcb/codify/commit/a8c45d8)); el **silencio de
+      la sesión no**, y no es un defecto de interfaz: queda abierto en
+      [#64](https://github.com/jorelcb/codify/issues/64). Que no haya camino visible de «tengo un
+      modelo» a «genera el contexto» queda en [#65](https://github.com/jorelcb/codify/issues/65)
+- [X] T036 [persona] Comprobar que si aparece `claude` se enseña como lo que es —programa de la
       máquina, **inferencia fuera**—. Que esté en la lista es correcto; que figurara como local no
 
 > **T033–T036 no se marcan `[X]` porque el CI pase.** Y hay un motivo extra en este ciclo: los
